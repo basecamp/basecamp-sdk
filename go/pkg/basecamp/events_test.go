@@ -124,6 +124,43 @@ func TestEvent_UnmarshalList(t *testing.T) {
 }
 
 // Regression: an event whose wire payload omits `details` decodes to a nil
+// The second fixture entry is a delegated action: an Agent performed it on the
+// creator's behalf, so performed_by rides beside creator. The first and third
+// are direct and carry no performer.
+func TestEvent_DelegatedPerformer(t *testing.T) {
+	data := loadEventsFixture(t, "list.json")
+
+	var events []Event
+	if err := json.Unmarshal(data, &events); err != nil {
+		t.Fatalf("failed to unmarshal list.json: %v", err)
+	}
+	if events[0].PerformedBy != nil || events[2].PerformedBy != nil {
+		t.Error("direct events must not carry PerformedBy")
+	}
+	delegated := events[1]
+	if delegated.PerformedBy == nil {
+		t.Fatal("expected PerformedBy on the delegated event")
+	}
+	if delegated.PerformedBy.ID != 1049715999 || delegated.PerformedBy.PersonableType != "Agent" {
+		t.Errorf("unexpected performer: %+v", delegated.PerformedBy)
+	}
+	if delegated.Creator == nil || delegated.Creator.PersonableType != "User" {
+		t.Errorf("creator must stay the attributed person, got %+v", delegated.Creator)
+	}
+
+	var generatedEvents []generated.Event
+	if err := json.Unmarshal(data, &generatedEvents); err != nil {
+		t.Fatalf("failed to unmarshal into generated events: %v", err)
+	}
+	mapped := eventFromGenerated(generatedEvents[1])
+	if mapped.PerformedBy == nil || mapped.PerformedBy.ID != 1049715999 || mapped.PerformedBy.PersonableType != "Agent" {
+		t.Errorf("expected eventFromGenerated to carry the performer, got %+v", mapped.PerformedBy)
+	}
+	if eventFromGenerated(generatedEvents[0]).PerformedBy != nil {
+		t.Error("eventFromGenerated must leave PerformedBy nil for a direct event")
+	}
+}
+
 // generated.Event.Details pointer; eventFromGenerated must not deref it.
 // (Pre-guard, this panicked — Go auto-deref compiles `ge.Details.X` fine.)
 func TestEventFromGenerated_NilDetails(t *testing.T) {

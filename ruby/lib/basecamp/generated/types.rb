@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-16T05:05:12Z
+# Generated: 2026-09-16T05:55:14Z
 
 require "json"
 require "time"
@@ -1888,7 +1888,7 @@ module Basecamp
         @kind = data["kind"]
         @recording_id = parse_integer(data["recording_id"])
         @details = parse_type(data["details"], "FeedEventDetails")
-        @performed_by_id = parse_integer(data["performed_by_id"])
+        @performed_by_id = data["performed_by_id"]
       end
 
       def to_h
@@ -1918,7 +1918,7 @@ module Basecamp
 
       def initialize(data = {})
         @boost_id = parse_integer(data["boost_id"])
-        @boosted_event_id = parse_integer(data["boosted_event_id"])
+        @boosted_event_id = data["boosted_event_id"]
         @boosted_event_type = data["boosted_event_type"]
         @column_id = parse_integer(data["column_id"])
         @previous_column_id = parse_integer(data["previous_column_id"])

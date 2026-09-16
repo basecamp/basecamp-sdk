@@ -62,6 +62,29 @@
       },
       "can_manage_projects": true,
       "can_manage_people": true
+    },
+    "performed_by": {
+      "id": 1049715999,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVU--agent999",
+      "name": "Release Notes Agent",
+      "email_address": null,
+      "personable_type": "Agent",
+      "title": null,
+      "bio": null,
+      "location": null,
+      "created_at": "2026-08-01T09:00:00.000Z",
+      "updated_at": "2026-08-01T09:00:00.000Z",
+      "admin": false,
+      "owner": false,
+      "client": false,
+      "employee": false,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkz4=--agent.png",
+      "can_manage_projects": false,
+      "can_manage_people": false,
+      "can_ping": false,
+      "can_access_timesheet": false,
+      "can_access_hill_charts": false
     }
   },
   {

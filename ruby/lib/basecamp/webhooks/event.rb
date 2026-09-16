@@ -5,7 +5,7 @@ module Basecamp
     # Structured wrapper around webhook event payloads.
     # Accepts any hash - does not reject unknown fields or event kinds.
     class Event
-      attr_reader :id, :kind, :details, :created_at, :recording, :creator, :copy, :raw
+      attr_reader :id, :kind, :details, :created_at, :recording, :creator, :performed_by, :copy, :raw
 
       def initialize(hash)
         @raw = hash
@@ -15,6 +15,9 @@ module Basecamp
         @created_at = hash["created_at"]
         @recording = hash["recording"] || {}
         @creator = hash["creator"] || {}
+        # The agent that carried out a delegated action (personable_type "Agent",
+        # or "Tombstone" once deleted); nil for actions performed directly.
+        @performed_by = hash["performed_by"]
         @copy = hash["copy"]
       end
 

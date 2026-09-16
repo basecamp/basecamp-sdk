@@ -816,14 +816,14 @@ class FeedEvent(TypedDict):
     event_type: str
     id: int
     kind: str
-    performed_by_id: NotRequired[int]
+    performed_by_id: NotRequired[int | None]
     recording_id: int
 
 
 class FeedEventDetails(TypedDict):
     boost_id: NotRequired[int]
-    boosted_event_id: NotRequired[int]
-    boosted_event_type: NotRequired[str]
+    boosted_event_id: NotRequired[int | None]
+    boosted_event_type: NotRequired[str | None]
     column_id: NotRequired[int]
     previous_column_id: NotRequired[int]
 

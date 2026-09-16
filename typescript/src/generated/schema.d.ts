@@ -4906,7 +4906,7 @@ export interface components {
              *     `performers`/`exclude_performers` filters — is this when present, else
              *     `creator_id`.
              */
-            performed_by_id?: number;
+            performed_by_id?: number | null;
             /**
              * Format: int64
              * @description The recording the event references.
@@ -4929,8 +4929,8 @@ export interface components {
             /** Format: int64 */
             boost_id?: number;
             /** Format: int64 */
-            boosted_event_id?: number;
-            boosted_event_type?: string;
+            boosted_event_id?: number | null;
+            boosted_event_type?: string | null;
             /** Format: int64 */
             column_id?: number;
             /** Format: int64 */

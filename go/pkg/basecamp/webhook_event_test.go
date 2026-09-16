@@ -3,6 +3,8 @@ package basecamp
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 func TestWebhookEvent_UnmarshalTodoCreated(t *testing.T) {
@@ -163,6 +165,42 @@ func TestWebhookEvent_UnmarshalMessageCopied(t *testing.T) {
 	// Creator is different in this fixture
 	if event.Creator.Name != "Matt Donahue" {
 		t.Errorf("expected creator name 'Matt Donahue', got %q", event.Creator.Name)
+	}
+}
+
+func TestWebhookEvent_UnmarshalDelegated(t *testing.T) {
+	data := loadWebhooksFixture(t, "event-todo-created-delegated.json")
+
+	var event WebhookEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		t.Fatalf("failed to unmarshal event-todo-created-delegated.json: %v", err)
+	}
+	if event.Creator.Name != "Annie Bryan" {
+		t.Errorf("expected creator to stay the attributed person, got %q", event.Creator.Name)
+	}
+	if event.PerformedBy == nil {
+		t.Fatal("expected PerformedBy on a delegated event")
+	}
+	if event.PerformedBy.ID != 1049715999 || event.PerformedBy.PersonableType != "Agent" {
+		t.Errorf("unexpected performer: %+v", event.PerformedBy)
+	}
+
+	// The generated decode path maps the same member through webhookEventFromGenerated.
+	var ge generated.WebhookEvent
+	if err := json.Unmarshal(data, &ge); err != nil {
+		t.Fatalf("failed to unmarshal into generated.WebhookEvent: %v", err)
+	}
+	mapped := webhookEventFromGenerated(ge)
+	if mapped.PerformedBy == nil || mapped.PerformedBy.ID != 1049715999 || mapped.PerformedBy.PersonableType != "Agent" {
+		t.Errorf("expected webhookEventFromGenerated to carry the performer, got %+v", mapped.PerformedBy)
+	}
+
+	var direct WebhookEvent
+	if err := json.Unmarshal(loadWebhooksFixture(t, "event-todo-created.json"), &direct); err != nil {
+		t.Fatalf("failed to unmarshal event-todo-created.json: %v", err)
+	}
+	if direct.PerformedBy != nil {
+		t.Error("a direct event must not carry PerformedBy")
 	}
 }
 

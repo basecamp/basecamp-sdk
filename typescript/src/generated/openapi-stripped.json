@@ -28679,9 +28679,13 @@
             "format": "int64"
           },
           "performed_by_id": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "description": "The agent that carried out a delegated action; `null` on the wire when the\naction was performed directly. The effective performer — used by the\n`performers`/`exclude_performers` filters — is this when present, else\n`creator_id`.",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type": "int64"
           },
           "recording_id": {
             "type": "integer",
@@ -28719,11 +28723,19 @@
             "format": "int64"
           },
           "boosted_event_id": {
-            "type": "integer",
-            "format": "int64"
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "x-go-type": "int64"
           },
           "boosted_event_type": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "x-go-type": "string"
           },
           "column_id": {
             "type": "integer",
