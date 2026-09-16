@@ -8,7 +8,7 @@ export interface RetryConfig {
 }
 
 export interface PaginationConfig {
-  style: "link" | "cursor" | "page";
+  style: "link" | "cursor";
   totalCountHeader?: string;
   maxPageSize?: number;
   key?: string;
@@ -36,7 +36,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-16T10:23:15.770Z",
+  "generated": "2026-09-16T10:45:34.176Z",
   "operations": {
     "GetAccount": {
       "retry": {

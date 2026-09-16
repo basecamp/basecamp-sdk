@@ -201,11 +201,15 @@ class OperationParser(private val api: OpenApiParser) {
         // consumer persists after accepting that page. Flattening the walk would
         // swallow every intermediate position and leave a crashed consumer with
         // nothing to resume from.
-        val paginationStyle = operation["x-basecamp-pagination"]?.jsonObject?.get("style")?.jsonPrimitive?.content
+        // `?.jsonObject` throws on JsonNull, which is not Kotlin null -- a literal
+        // "x-basecamp-pagination": null would crash here where the other five
+        // generators read it as unpaginated. Narrow to a real object first.
+        val paginationExtension = operation["x-basecamp-pagination"] as? JsonObject
+        val paginationStyle = paginationExtension?.get("style")?.jsonPrimitive?.content
         // Only "link" and "cursor" are implemented. Anything else -- a typo, or
         // the "page" style the trait used to advertise -- must fail loudly: read
         // as "not paginated" it would silently ship a method that never walks.
-        require(operation["x-basecamp-pagination"] == null || paginationStyle in setOf("link", "cursor")) {
+        require(paginationExtension == null || paginationStyle in setOf("link", "cursor")) {
             "$operationId: unsupported pagination style $paginationStyle (expected \"link\" or \"cursor\")"
         }
         val hasPagination = paginationStyle == "link"
@@ -214,7 +218,7 @@ class OperationParser(private val api: OpenApiParser) {
         // hasPagination -- so a cursor operation would be typed as the item under
         // its key instead of the envelope the wire actually sends.
         val paginationKey = if (paginationStyle == "link") {
-            operation["x-basecamp-pagination"]?.jsonObject?.get("key")?.jsonPrimitive?.content
+            paginationExtension?.get("key")?.jsonPrimitive?.content
         } else {
             null
         }

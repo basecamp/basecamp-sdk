@@ -45,11 +45,30 @@ class GenerateServicesPaginationStyleTest < Minitest::Test
   # The disjunction Ruby alone carries: a bare-array response sets returns_array,
   # which would send a cursor operation down the Link-following path even though
   # has_pagination is false for it.
+  #
+  # Asserted against the emitted method rather than against a copy of the
+  # predicate. A copy is worth nothing here: delete the cursor guard from
+  # generate_method and a test that re-implements it stays green while the
+  # generator ships the walk.
   def test_a_cursor_operation_with_a_bare_array_response_still_does_not_walk
     operation = parse(style: "cursor", response_schema: { "type" => "array" })
-
     assert operation[:returns_array], "the fixture must exercise the returns_array half"
-    assert_not paginated?(operation), "a cursor operation never follows Link headers"
+
+    emitted = Array(@generator.send(:generate_method, operation, service_name: "Widgets")).join("\n")
+
+    assert_no_match(/wrap_paginated|paginate\(/, emitted,
+      "a cursor operation must not be emitted as a Link-following walk")
+  end
+
+  # The control: the same response shape under the link style DOES walk, so the
+  # assertion above is discriminating rather than matching nothing.
+  def test_the_same_shape_under_link_style_does_walk
+    operation = parse(style: "link", response_schema: { "type" => "array" }, key: nil)
+
+    emitted = Array(@generator.send(:generate_method, operation, service_name: "Widgets")).join("\n")
+
+    assert_match(/wrap_paginated|paginate\(/, emitted,
+      "a link operation over a bare array is exactly what the walk is for")
   end
 
   def test_an_unrecognised_style_is_refused_rather_than_read_as_unpaginated
@@ -60,22 +79,18 @@ class GenerateServicesPaginationStyleTest < Minitest::Test
   end
 
   private
-    def parse(style:, response_schema: { "type" => "object" })
+    def parse(style:, response_schema: { "type" => "object" }, key: "events")
       operation = {
         "operationId" => "PollWidgets",
+        "description" => "Poll the widgets.",
         "responses" => { "200" => { "content" => { "application/json" => { "schema" => response_schema } } } }
       }
       unless style == :none
-        operation["x-basecamp-pagination"] = { "key" => "events" }
+        operation["x-basecamp-pagination"] = {}
+        operation["x-basecamp-pagination"]["key"] = key if key
         operation["x-basecamp-pagination"]["style"] = style unless style.nil?
       end
 
       @generator.send(:parse_operation, "/{accountId}/widgets.json", "get", operation)
-    end
-
-    # The gate generate_method applies, kept in one place so the test names the
-    # real predicate rather than a paraphrase of it.
-    def paginated?(op)
-      !op[:cursor_pagination] && (op[:returns_array] || op[:has_pagination]) && !op[:pagination_key]
     end
 end

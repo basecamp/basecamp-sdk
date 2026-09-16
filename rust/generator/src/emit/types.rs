@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use std::collections::BTreeMap;
 
-use crate::emit::{HEADER, doc_comment, string_literal, wrapped_items};
+use crate::emit::{HEADER, check_cursor_key, doc_comment, string_literal, wrapped_items};
 use crate::model::{Field, FieldType, Model, Response, Role, Schema, Shape};
 use crate::naming::{field_ident, variant_name};
 
@@ -12,6 +12,11 @@ use crate::naming::{field_ident, variant_name};
 fn envelopes(model: &Model) -> Result<BTreeMap<String, (String, String)>, String> {
     let mut envelopes: BTreeMap<String, (String, String)> = BTreeMap::new();
     for operation in model.operations() {
+        // A cursor operation contributes no envelope, but its key still has to
+        // name a real collection member -- nothing else in the pipeline reads
+        // it, so this sweep is where a typo is caught before it reaches the
+        // shipped route catalogue.
+        check_cursor_key(operation, model)?;
         let Some((key, item)) = wrapped_items(operation, model)? else {
             continue;
         };

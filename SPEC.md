@@ -1338,7 +1338,7 @@ Three response shapes exist across the API:
 | **Keyed array** | `{"events": [item, ...]}` | Extract items from named key |
 | **Wrapped response** | `{"wrapper_field": ..., "events": [item, ...]}` | Return wrapper fields + paginated items from named key |
 
-The variant is determined at code-generation time from the OpenAPI response schema and encoded in the generated service method (via `x-basecamp-pagination` extension or response schema analysis).
+The variant is determined at code-generation time from the OpenAPI response schema and encoded in the generated service method (via `x-basecamp-pagination` extension or response schema analysis). The extension's `style` decides whether a walk is generated at all: `link` produces the Link-following, page-flattening variants above, and `cursor` produces none — one call answers one page carrying its own opaque position, which is the only thing a consumer may persist, and flattening would swallow every one. Every service generator refuses any other value rather than reading it as unpaginated.
 
 **Wrapped response pagination:** For endpoints that return a wrapper object with a paginated array inside (e.g., `personProgress` returns `{person, events: [...]}`), the generated service method paginates the embedded array while preserving the wrapper fields from the first page. The `paginate` algorithm above handles item extraction; the wrapping/unwrapping is a code-generation concern, not a transport concern. See `typescript/src/generated/services/reports.ts` and `go/pkg/basecamp/timeline.go` for reference implementations.
 

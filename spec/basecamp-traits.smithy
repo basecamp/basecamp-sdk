@@ -46,11 +46,20 @@ structure basecampPagination {
     ///            position, and a position is the only thing a consumer can
     ///            resume from.
     ///
-    /// Every generator rejects any other value rather than reading it as "not
-    /// paginated", which would silently ship a method that never walks. A
-    /// third style ("page", with a page-number query parameter) was documented
-    /// here for a long time and implemented nowhere; it was removed rather than
-    /// left as a promise. Add it back with an implementation, not before.
+    /// The six service generators reject any other value rather than reading it
+    /// as "not paginated", which would silently ship a method that never walks.
+    /// The metadata emitters and the behavior model copy `style` through
+    /// unvalidated, so a bad value reaches those artifacts before a service
+    /// generator refuses it — the refusal is a build gate, not a schema
+    /// constraint.
+    ///
+    /// A third value, "page", was documented here for years and no generator
+    /// ever read it. That is not the same as page-number paging being
+    /// unimplemented: `page` is a real query parameter across the SDKs (SPEC
+    /// "The `page` Query Parameter"), reached without this trait. What never
+    /// existed was a pagination *style* by that name, so the word was removed
+    /// rather than left as a promise. Add it back with a generator that reads
+    /// it, not before.
     style: String
 
     /// Name of the response header containing total count
@@ -214,7 +223,7 @@ structure basecampAuthRoutableUrl {}
 @documentation("Pagination semantics for BasecampJson protocol (legacy)")
 @deprecated(message: "Use basecampPagination instead for OpenAPI bridge support")
 structure pagination {
-    @documentation("Pagination style: link | cursor | none")
+    @documentation("Pagination style. Deprecated and read by nothing; basecampPagination's `style` is the live vocabulary.")
     style: String
 }
 

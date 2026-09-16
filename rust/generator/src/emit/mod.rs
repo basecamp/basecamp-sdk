@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use crate::emit::types::rust_type;
-use crate::model::{FieldType, Model, Operation, Response, Shape};
+use crate::model::{FieldType, Model, Operation, PaginationMode, Response, Shape};
 
 pub(crate) mod accessors;
 pub(crate) mod metadata;
@@ -52,6 +52,9 @@ pub(crate) fn string_literal(value: &str) -> String {
 
 /// The member of a paginated envelope that holds the collection, when the model names one
 /// (`x-basecamp-pagination.key`): its field and element type.
+///
+/// Link style only -- this is what produces the wrapper type, and a cursor
+/// operation has no wrapper. Its key is still checked: see `check_cursor_key`.
 pub(crate) fn wrapped_items<'m>(
     operation: &Operation,
     model: &'m Model,
@@ -64,24 +67,49 @@ pub(crate) fn wrapped_items<'m>(
     let Some(key) = &pagination.key else {
         return Ok(None);
     };
+    keyed_items(operation, model, response, key).map(Some)
+}
+
+/// A cursor operation's key names its page's items, and nothing consumes it
+/// except the route catalogue -- which is exactly why it has to be checked
+/// here. `wrapped_items` refuses a key that is not a required array member of
+/// the response, but only for the link style; without this, a cursor key could
+/// be a typo and reach the shipped catalogue with nothing having read it.
+pub(crate) fn check_cursor_key(operation: &Operation, model: &Model) -> Result<(), String> {
+    let (PaginationMode::Cursor { key: Some(key) }, Response::Json(response)) =
+        (&operation.pagination, &operation.response)
+    else {
+        return Ok(());
+    };
+    keyed_items(operation, model, response, key).map(|_| ())
+}
+
+/// The shared check: `key` must name a required, non-nullable array member of
+/// the response schema. Answers its wire name and element type.
+fn keyed_items<'m>(
+    operation: &Operation,
+    model: &'m Model,
+    response: &str,
+    key: &str,
+) -> Result<(&'m str, String), String> {
     let refuse = |what: &str| {
         Err(format!(
             "{} paginates over `{key}`, which {what}",
             operation.id
         ))
     };
-    let Some(schema) = model.schemas.iter().find(|schema| &schema.name == response) else {
+    let Some(schema) = model.schemas.iter().find(|schema| schema.name == response) else {
         return refuse(&format!("is not a member of {response}"));
     };
     let Shape::Struct(fields) = &schema.shape else {
         return refuse(&format!("is not a member of {response}"));
     };
-    let Some(field) = fields.iter().find(|field| &field.wire_name == key) else {
+    let Some(field) = fields.iter().find(|field| field.wire_name == key) else {
         return refuse(&format!("is not a member of {response}"));
     };
     match &field.kind {
         FieldType::List(inner) if field.required && !field.nullable => {
-            Ok(Some((field.wire_name.as_str(), rust_type(inner, false))))
+            Ok((field.wire_name.as_str(), rust_type(inner, false)))
         }
         FieldType::List(_) => refuse("is optional on the wire"),
         _ => refuse("is not an array"),
