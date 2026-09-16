@@ -1134,11 +1134,12 @@ export interface paths {
          *     is an absolute continuation URL present only while this walk has more to
          *     serve. Not wired into the generic Link paginator — see the section note.
          *
-         *     **Errors.** 400 for a malformed position (resume with `since=`) or a malformed
-         *     filter (the body names the filter; a position reset will not help) — both the
-         *     flat `{error}` body. 409 (FeedFilterMismatchError) when the position was
-         *     minted for a different filter set. 410 (FeedPositionGoneError) when the
-         *     position predates the feed's epoch; follow its `resume` URL.
+         *     **Errors.** 400 (FeedRequestError) for a malformed position (resume with
+         *     `since=`) or a malformed filter (fix the filters; a position reset will not
+         *     help), told apart by its optional `reason` and undifferentiated when `reason`
+         *     is absent. 409 (FeedFilterMismatchError) when the position was minted for a
+         *     different filter set. 410 (FeedPositionGoneError) when the position predates
+         *     the feed's epoch; its `resume` re-enters at the epoch.
          */
         get: operations["PollEvents"];
         put?: never;
@@ -1306,11 +1307,12 @@ export interface paths {
          *     **Pagination**: the body envelope (`items`, `position`, `next`), exactly as
          *     PollEvents — not the Link header, and not the generic paginator.
          *
-         *     **Errors** follow PollEvents, except that 403 carries no body — the agent
-         *     guard's bare `head :forbidden` (BareForbiddenError) — and that 410
-         *     (FeedPositionGoneError) here means the position fell behind the retention
-         *     window: `epoch_after_id` is absent and `resume` re-enters at `since=0`,
-         *     the earliest retained item.
+         *     **Errors** follow PollEvents (FeedRequestError 400, FeedFilterMismatchError
+         *     409), except that 403 carries no body — the agent guard's bare
+         *     `head :forbidden` (BareForbiddenError) — and that the 410 is the inbox's own
+         *     InboxPositionGoneError: the position fell behind the retention window, there
+         *     is no epoch, and `resume` re-enters at `since=0`, the earliest retained item
+         *     — not the feed's recovery, and not interchangeable with it.
          */
         get: operations["PollInbox"];
         put?: never;
@@ -4948,25 +4950,44 @@ export interface components {
             filters_digest: string;
         };
         /**
-         * @description 410 from the event feed's poll lanes: the held `position` predates what the
-         *     lane can still serve. On PollEvents that is the feed's epoch — an operational
-         *     fence that can be raised — and `epoch_after_id` names it; on PollInbox it is
-         *     the inbox's 30-day retention window, and `epoch_after_id` is absent. Either
-         *     way `resume` is an absolute URL that re-enters the same lane with the
-         *     request's canonical filters preserved: at the epoch (`since=<epoch_after_id>`)
-         *     for the feed, at the earliest retained item (`since=0`) for the inbox.
-         *     Consumers validate the URL (same origin as the API base, no scheme downgrade)
-         *     before following it — SPEC.md §23 "Continuation and Resume URL Validation".
+         * @description 410 from PollEvents: the held `position` predates the feed's epoch — an
+         *     operational fence that can be raised. `epoch_after_id` names the epoch and
+         *     `resume` is an absolute URL that re-enters the feed AT THE EPOCH
+         *     (`since=<epoch_after_id>`) with the request's canonical filters preserved,
+         *     so the servable history above the fence is not skipped. Not interchangeable
+         *     with the inbox's InboxPositionGoneError, whose recovery re-enters at
+         *     `since=0`. Consumers validate the URL (same origin as the API base, no scheme
+         *     downgrade) before following it — SPEC.md §23 "Continuation and Resume URL
+         *     Validation".
          */
         FeedPositionGoneErrorResponseContent: {
             error: string;
             /**
              * Format: int64
-             * @description The feed's epoch: the event id after which history is servable. Feed only.
+             * @description The feed's epoch: the event id after which history is servable.
              */
-            epoch_after_id?: number;
-            /** @description Absolute re-entry URL for the same lane, filters preserved. */
+            epoch_after_id: number;
+            /** @description Absolute re-entry URL for the feed, at the epoch, filters preserved. */
             resume: string;
+        };
+        /**
+         * @description 400 from the event feed's poll lanes (PollEvents, PollInbox). Two distinct
+         *     cases share the status: a malformed `position` (recover by re-entering with
+         *     `since=`) and a malformed filter (fix the filters; a position reset will not
+         *     help). `reason` tells them apart — `invalid_position` or `invalid_filter`
+         *     (bc3 #13362) — and is OPTIONAL: a server that has not shipped it answers the
+         *     flat `{error}` body, and a consumer that finds `reason` absent must treat the
+         *     400 as undifferentiated and surface it rather than guess between recovering
+         *     and stopping.
+         */
+        FeedRequestErrorResponseContent: {
+            error: string;
+            /**
+             * @description `invalid_position` (re-enter with `since=`) or `invalid_filter` (fix the
+             *     filters). Absent from servers that predate bc3 #13362: then the 400 is
+             *     undifferentiated.
+             */
+            reason?: string;
         };
         FieldErrorMap: {
             [key: string]: string[];
@@ -5456,6 +5477,21 @@ export interface components {
             reason: string;
             addressed_at: string;
             event: components["schemas"]["FeedEvent"];
+        };
+        /**
+         * @description 410 from PollInbox: the held `position` fell behind the inbox's 30-day
+         *     retention window. There is no epoch; `resume` is an absolute URL that
+         *     re-enters the inbox at `since=0`, the earliest retained item — exactly-once
+         *     continuation, since a stale position has seen none of the retained backlog.
+         *     A distinct shape from the feed's FeedPositionGoneError on purpose: the two
+         *     recoveries are not interchangeable, and a consumer must not handle one lane's
+         *     410 with the other's arm. Validate the URL before following it, as for the
+         *     feed.
+         */
+        InboxPositionGoneErrorResponseContent: {
+            error: string;
+            /** @description Absolute re-entry URL for the inbox, at `since=0`, filters preserved. */
+            resume: string;
         };
         InternalServerErrorResponseContent: {
             error: string;
@@ -13283,13 +13319,13 @@ export interface operations {
                     "application/json": components["schemas"]["PollEventsResponseContent"];
                 };
             };
-            /** @description BadRequestError 400 response */
+            /** @description FeedRequestError 400 response */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                    "application/json": components["schemas"]["FeedRequestErrorResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */
@@ -13893,13 +13929,13 @@ export interface operations {
                     "application/json": components["schemas"]["PollInboxResponseContent"];
                 };
             };
-            /** @description BadRequestError 400 response */
+            /** @description FeedRequestError 400 response */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                    "application/json": components["schemas"]["FeedRequestErrorResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */
@@ -13927,13 +13963,13 @@ export interface operations {
                     "application/json": components["schemas"]["FeedFilterMismatchErrorResponseContent"];
                 };
             };
-            /** @description FeedPositionGoneError 410 response */
+            /** @description InboxPositionGoneError 410 response */
             410: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FeedPositionGoneErrorResponseContent"];
+                    "application/json": components["schemas"]["InboxPositionGoneErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

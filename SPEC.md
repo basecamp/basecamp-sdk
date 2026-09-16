@@ -3120,8 +3120,8 @@ The generated layer is the account event feed's HTTP surface as BC3 documents it
 
 | Operation | Method + path | Traits | Errors |
 |---|---|---|---|
-| `PollEvents` | `GET /{accountId}/events.json` | `@readonly`; retry 429/503 ×3 | 400 (flat `{error}`: malformed position **or** malformed filter — the message discriminates), 409 `FeedFilterMismatchError`, 410 `FeedPositionGoneError`, 401, 403, 429, 500 |
-| `PollInbox` | `GET /{accountId}/inbox.json` | `@readonly`; retry 429/503 ×3 | as `PollEvents`, except 403 `BareForbiddenError` — a bodyless `head :forbidden` — for every non-agent principal |
+| `PollEvents` | `GET /{accountId}/events.json` | `@readonly`; retry 429/503 ×3 | 400 `FeedRequestError` (malformed position **or** malformed filter, told apart by its optional `reason`), 409 `FeedFilterMismatchError`, 410 `FeedPositionGoneError` (re-enters at the epoch), 401, 403, 429, 500 |
+| `PollInbox` | `GET /{accountId}/inbox.json` | `@readonly`; retry 429/503 ×3 | 400 `FeedRequestError` and 409 as `PollEvents`; 403 `BareForbiddenError` — a bodyless `head :forbidden` — for every non-agent principal; 410 `InboxPositionGoneError` (re-enters at `since=0`), a distinct shape from the feed's |
 | `CreateStreamTicket` | `POST /{accountId}/events/stream_ticket.json`, no body, 200 | `@idempotent` + `@basecampIdempotent(natural: true)`; retry 429/503 ×3 | 401, 403, 429, 500 |
 
 **Pagination is the body envelope, never the Link walk.** Every 200 from the two poll
@@ -3164,23 +3164,36 @@ What keeps the credential out of logs is that no SDK renders a response body in 
 hooks, and the connector's §9 projection rule (origin only, never the ticket); `url` is
 connected to verbatim (Hard Rule 2).
 
-**Typed error bodies.** 409 carries `position_digest` and `filters_digest` (bare 16-hex
-srv2 digests); 410 carries `resume` — an absolute re-entry URL with the canonical filters
-preserved — and, on the feed only, `epoch_after_id`: the feed's `resume` re-enters at
-`since=<epoch_after_id>`, the inbox's at `since=0` (the earliest retained item; the inbox's
-410 means the position fell behind its 30-day retention). Both map to `api_error`,
-non-retryable, under §6's status algorithm. The Go wrapper additionally returns them as
-`*FeedFilterMismatchError` / `*FeedPositionGoneError`, each unwrapping to the canonical
-`*Error`, so the seam adapters read the digests and the resume URL off the typed value;
-the other SDKs surface the canonical error and leave the typed members to their connector
+**Typed error bodies.** The 400 is `FeedRequestError` `{error, reason?}` on both lanes:
+`reason` is `invalid_position` (recover by re-entering with `since=`) or `invalid_filter`
+(fix the filters; a position reset will not help), shipped by bc3 #13362 and **optional**
+— when it is absent the 400 is undifferentiated and a consumer surfaces it rather than
+guessing between recovering and stopping. 409 carries `position_digest` and
+`filters_digest` (bare 16-hex srv2 digests). The two lanes' 410s are **two shapes on two
+operations, deliberately not interchangeable**: `PollEvents` answers `FeedPositionGoneError`
+`{error, epoch_after_id, resume}` — `epoch_after_id` required, `resume` re-entering at
+`since=<epoch_after_id>` so the servable history above the fence is not skipped — and
+`PollInbox` answers `InboxPositionGoneError` `{error, resume}` — no epoch, `resume`
+re-entering at `since=0`, the earliest retained item, because a stale inbox position has
+seen none of the retained backlog. A consumer must not handle one lane's 410 with the
+other's arm, which is why they are not one shape with an optional member. The inbox's 403
+for a non-agent principal is bodyless (`BareForbiddenError`, `BareNotFoundError`'s
+treatment), so nothing advertises a decodable body the server never sends. 409 and both
+410s map to `api_error`, non-retryable, and the 400 to `validation`, under §6's status
+algorithm. The Go wrapper additionally returns them as `*FeedRequestError` (with
+`Reason`), `*FeedFilterMismatchError`, `*FeedPositionGoneError` (feed only) and
+`*InboxPositionGoneError` (inbox only), each unwrapping to the canonical `*Error`, so the
+seam adapters read the reason, the digests and the resume URL off the typed value; the
+other SDKs surface the canonical error and leave the typed members to their connector
 adapters. `CreateStreamTicket` is marked idempotent because the mint is a stateless signed
 capability with no server-side consumption — a replayed request is harmless — and not as
 a claim that two mints return the same ticket.
 
-**Fixtures.** `conformance/tests/event_feed.json` (ten cases, all seven runners) pins the
-envelope decode including a `null` `performed_by_id` and both `details` variants, the
-walk-end page without `next`, the 400/409/410 mapping on the feed, the agents-only 403
-and the retention 410 on the inbox, and the bodyless mint with its 401. The connector's
+**Fixtures.** `conformance/tests/event_feed.json` (twelve cases, all seven runners) pins
+the envelope decode including a `null` `performed_by_id` and every `details` variant, the
+walk-end page without `next`, the 400 with and without `reason` plus the 409 and the epoch
+410 on the feed, the agents-only bodyless 403, the reasoned 400 and the retention 410 on
+the inbox, and the bodyless mint with its 401. The connector's
 own family stays under `conformance/event-feed/`.
 
 ### Provenance `[manual]`
@@ -4657,7 +4670,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `upcoming_schedule.json` | The reduced calendar projection: entry, recurring occurrence, assignable, empty envelope (4 cases) | §10 (Type Fidelity) |
 | `search.json` | The polymorphic search projection: the generic recording envelope plus all four special branches, and the file-attachment branch in isolation (2 cases) | §10 (Type Fidelity) |
 | `template_library.json` | Library read, copy creation, completed-copy decoding, and people-confirmation validation (4 cases) | §3, §6, §10, §11 |
-| `event_feed.json` | Poll envelope decode (null `performed_by_id`, boost and card-move details), walk end without `next`, 400/409/410 mapping on the feed; inbox envelope, agents-only 403, retention 410; bodyless stream-ticket mint and its 401 (10 cases) | §23, §6, §11 |
+| `event_feed.json` | Poll envelope decode (null `performed_by_id`, verbatim boost and card-move details), walk end without `next`, 400 with and without `reason`, 409 and epoch 410 on the feed; inbox envelope, reasoned 400, agents-only bodyless 403, retention 410; bodyless stream-ticket mint and its 401 (12 cases) | §23, §6, §11 |
 | `project_constructions.json` | Project construction from a template: attributes nested under the `project` envelope, `start_date` carried when given and absent when omitted (2 cases) | §3, §10, §11 |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 <!-- @fixture-section-map:end -->

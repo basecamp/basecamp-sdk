@@ -827,9 +827,14 @@ class FeedFilterMismatchErrorResponseContent(TypedDict):
 
 
 class FeedPositionGoneErrorResponseContent(TypedDict):
-    epoch_after_id: NotRequired[int]
+    epoch_after_id: int
     error: str
     resume: str
+
+
+class FeedRequestErrorResponseContent(TypedDict):
+    error: str
+    reason: NotRequired[str]
 
 
 class FieldKeyedErrors(TypedDict):
@@ -1091,6 +1096,11 @@ class InboxItem(TypedDict):
     addressing_id: int
     event: FeedEvent
     reason: str
+
+
+class InboxPositionGoneErrorResponseContent(TypedDict):
+    error: str
+    resume: str
 
 
 class InternalServerErrorResponseContent(TypedDict):

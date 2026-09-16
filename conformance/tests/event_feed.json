@@ -155,7 +155,7 @@
   },
   {
     "name": "PollEvents surfaces a 410 stale position as a non-retryable error",
-    "description": "A position behind the feed's epoch answers 410 with `epoch_after_id` and a `resume` URL. SPEC §6 maps 410 to `api_error`, non-retryable; the consumer follows `resume` after validating it (SPEC §23), and nothing retries the same position.",
+    "description": "A position behind the feed's epoch answers 410 with `epoch_after_id` (required on this lane) and a `resume` URL that re-enters AT THE EPOCH — FeedPositionGoneError, a shape PollInbox never sends. SPEC §6 maps 410 to `api_error`, non-retryable; the consumer follows `resume` after validating it (SPEC §23), and nothing retries the same position.",
     "operation": "PollEvents",
     "method": "GET",
     "path": "/events.json",
@@ -181,7 +181,7 @@
   },
   {
     "name": "PollEvents surfaces a malformed position 400 as validation",
-    "description": "The feed's 400 is the flat `{error}` body, so it rides SPEC §6's 400 → `validation` mapping with the server's message, which is what tells a malformed position (resume with `since=`) from a malformed filter (fix the filters) — the two cases share a status and a shape.",
+    "description": "A 400 without `reason` — what a server that predates bc3 #13362 sends — is the undifferentiated case: SPEC §6's 400 → `validation` mapping with the server's message, and the consumer surfaces it rather than guessing between re-entering with `since=` and stopping. The sibling case with `reason: invalid_filter` pins the differentiated form.",
     "operation": "PollEvents",
     "method": "GET",
     "path": "/events.json",
@@ -201,6 +201,55 @@
       { "type": "errorMessage", "expected": "Unrecognized position" }
     ],
     "tags": ["event-feed", "error-mapping"]
+  },
+  {
+    "name": "PollEvents surfaces a 400 whose reason names the filter",
+    "description": "bc3 #13362 adds `reason` beside `error` on the poll lanes' 400: `invalid_filter` here (fix the filters; a position reset will not help), `invalid_position` for a malformed position. The status mapping is unchanged — SPEC §6's 400 → `validation` — and the message still names the offending filter; the dedicated FeedRequestError shape is what carries `reason`, optional because a server that predates the change omits it (the sibling case without `reason` pins that fallback).",
+    "operation": "PollEvents",
+    "method": "GET",
+    "path": "/events.json",
+    "mockResponses": [
+      {
+        "status": 400,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "error": "The types filter names an unknown type. Fix the filters; a position reset won't help.",
+          "reason": "invalid_filter"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "requestCount", "expected": 1 },
+      { "type": "errorCode", "expected": "validation" },
+      { "type": "errorField", "path": "httpStatus", "expected": 400 },
+      { "type": "errorField", "path": "retryable", "expected": false },
+      { "type": "errorMessage", "expected": "Fix the filters" }
+    ],
+    "tags": ["event-feed", "error-mapping"]
+  },
+  {
+    "name": "PollInbox surfaces a 400 whose reason names the position",
+    "description": "The inbox lane shares the feed's 400 shape: `reason: invalid_position` says the held position is unusable and the recovery is re-entry with `since=`. Same `validation`/400 mapping as the feed; the message is the server's.",
+    "operation": "PollInbox",
+    "method": "GET",
+    "path": "/inbox.json",
+    "mockResponses": [
+      {
+        "status": 400,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "error": "Unrecognized position. Resume with since=<id> or since=now.",
+          "reason": "invalid_position"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "requestCount", "expected": 1 },
+      { "type": "errorCode", "expected": "validation" },
+      { "type": "errorField", "path": "httpStatus", "expected": 400 },
+      { "type": "errorMessage", "expected": "Unrecognized position" }
+    ],
+    "tags": ["event-feed", "inbox", "error-mapping"]
   },
   {
     "name": "PollInbox decodes the inbox envelope",
@@ -270,7 +319,7 @@
   },
   {
     "name": "PollInbox is forbidden for a person principal",
-    "description": "The inbox serves agents only for now; any other principal receives a bodyless 403, which SPEC §6 maps to `forbidden`.",
+    "description": "The inbox serves agents only for now; any other principal receives a bodyless 403 (BareForbiddenError — the spec advertises no decodable body), which SPEC §6 maps to `forbidden` by status.",
     "operation": "PollInbox",
     "method": "GET",
     "path": "/inbox.json",
@@ -286,7 +335,7 @@
   },
   {
     "name": "PollInbox surfaces a 410 retention gap with no epoch",
-    "description": "On the inbox a 410 means the position fell behind the 30-day retention window: the body carries `resume` (re-entering at `since=0`) and no `epoch_after_id`. Same `api_error`/410 mapping as the feed.",
+    "description": "On the inbox a 410 means the position fell behind the 30-day retention window: InboxPositionGoneError, a distinct shape whose body carries `resume` (re-entering at `since=0`) and no `epoch_after_id` — not the feed's FeedPositionGoneError, and not interchangeable with it. Same `api_error`/410 status mapping as the feed.",
     "operation": "PollInbox",
     "method": "GET",
     "path": "/inbox.json",

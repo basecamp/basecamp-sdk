@@ -167,19 +167,45 @@ func (e *FeedFilterMismatchError) Error() string { return e.Err.Error() }
 // Unwrap exposes the canonical error for errors.Is and errors.As.
 func (e *FeedFilterMismatchError) Unwrap() error { return e.Err }
 
-// FeedPositionGoneError is the feed's 410: the held position predates what
-// the lane can still serve. On PollEvents that is the feed's epoch and
-// EpochAfterID names it; on PollInbox it is the 30-day retention window and
-// EpochAfterID is nil. Resume is an absolute URL that re-enters the same lane
-// with the request's canonical filters preserved — validate it (same origin
-// as the API base, no scheme downgrade) before following it.
+// FeedRequestError is the poll lanes' 400. Two cases share the status — a
+// malformed position (re-enter with Since) and a malformed filter (fix the
+// filters; a position reset will not help) — and Reason tells them apart:
+// FeedReasonInvalidPosition or FeedReasonInvalidFilter. Reason is empty when
+// the server predates bc3 #13362; treat that 400 as undifferentiated and
+// surface it rather than guess between recovering and stopping.
+type FeedRequestError struct {
+	// Err is the canonical SDK error (code validation, HTTPStatus 400).
+	Err *Error
+	// Reason is "invalid_position", "invalid_filter", or "" when the server
+	// did not say.
+	Reason string
+}
+
+// Feed 400 reasons, as bc3 spells them.
+const (
+	FeedReasonInvalidPosition = "invalid_position"
+	FeedReasonInvalidFilter   = "invalid_filter"
+)
+
+// Error returns the server's message.
+func (e *FeedRequestError) Error() string { return e.Err.Error() }
+
+// Unwrap exposes the canonical error for errors.Is and errors.As.
+func (e *FeedRequestError) Unwrap() error { return e.Err }
+
+// FeedPositionGoneError is PollEvents' 410: the held position predates the
+// feed's epoch, an operational fence that can be raised. Resume is an absolute
+// URL that re-enters the feed at the epoch (since=<EpochAfterID>) with the
+// request's canonical filters preserved — validate it (same origin as the API
+// base, no scheme downgrade) before following it. PollInbox never returns
+// this type; its 410 is *InboxPositionGoneError, whose recovery differs.
 type FeedPositionGoneError struct {
 	// Err is the canonical SDK error (code api_error, HTTPStatus 410).
 	Err *Error
 	// EpochAfterID is the feed's epoch: the event id after which history is
-	// servable. Nil on the inbox.
-	EpochAfterID *int64
-	// Resume is the absolute re-entry URL for the same lane.
+	// servable.
+	EpochAfterID int64
+	// Resume is the absolute re-entry URL for the feed, at the epoch.
 	Resume string
 }
 
@@ -188,6 +214,25 @@ func (e *FeedPositionGoneError) Error() string { return e.Err.Error() }
 
 // Unwrap exposes the canonical error for errors.Is and errors.As.
 func (e *FeedPositionGoneError) Unwrap() error { return e.Err }
+
+// InboxPositionGoneError is PollInbox's 410: the held position fell behind
+// the inbox's 30-day retention window. There is no epoch; Resume is an
+// absolute URL that re-enters the inbox at since=0, the earliest retained
+// item. A distinct type from *FeedPositionGoneError on purpose — the two
+// recoveries are not interchangeable, so one errors.As arm cannot silently
+// handle the wrong lane. Validate Resume before following it, as for the feed.
+type InboxPositionGoneError struct {
+	// Err is the canonical SDK error (code api_error, HTTPStatus 410).
+	Err *Error
+	// Resume is the absolute re-entry URL for the inbox, at since=0.
+	Resume string
+}
+
+// Error returns the server's message.
+func (e *InboxPositionGoneError) Error() string { return e.Err.Error() }
+
+// Unwrap exposes the canonical error for errors.Is and errors.As.
+func (e *InboxPositionGoneError) Unwrap() error { return e.Err }
 
 // EventFeedService is the wire layer beneath the SPEC §23 event feed
 // connector: the account event feed's catch-up poll lane, the agent inbox,
@@ -204,10 +249,10 @@ func NewEventFeedService(client *AccountClient) *EventFeedService {
 }
 
 // PollEvents fetches one page of the account event feed. A nil opts enters at
-// the present (since=now). Returns *FeedFilterMismatchError on 409 and
-// *FeedPositionGoneError on 410, each wrapping the canonical *Error; a 400 is
-// a plain *Error whose message says whether the position (resume with Since)
-// or a filter (fix the filters) was malformed.
+// the present (since=now). Returns *FeedRequestError on 400 (its Reason, when
+// the server sent one, says whether the position or a filter was malformed),
+// *FeedFilterMismatchError on 409, and *FeedPositionGoneError on 410, each
+// wrapping the canonical *Error.
 func (s *EventFeedService) PollEvents(ctx context.Context, opts *PollEventsOptions) (result *EventFeedPage, err error) {
 	op := OperationInfo{
 		Service: "EventFeed", Operation: "PollEvents",
@@ -239,7 +284,7 @@ func (s *EventFeedService) PollEvents(ctx context.Context, opts *PollEventsOptio
 	if err != nil {
 		return nil, err
 	}
-	if err = checkFeedResponse(resp.HTTPResponse, resp.Body); err != nil {
+	if err = checkFeedResponse(resp.HTTPResponse, resp.Body, feedLane); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -251,9 +296,10 @@ func (s *EventFeedService) PollEvents(ctx context.Context, opts *PollEventsOptio
 }
 
 // PollInbox fetches one page of the authenticated agent's inbox. A nil opts
-// enters at the present. People receive 403 (the inbox is agents-only for
-// now). Error mapping is as PollEvents, except that a 410's Resume re-enters
-// at the earliest retained item and its EpochAfterID is nil.
+// enters at the present. People receive a bodyless 403 (the inbox is
+// agents-only for now). Error mapping is as PollEvents for 400 and 409; the
+// 410 is *InboxPositionGoneError, whose Resume re-enters at since=0 — never
+// *FeedPositionGoneError.
 func (s *EventFeedService) PollInbox(ctx context.Context, opts *PollInboxOptions) (result *InboxPage, err error) {
 	op := OperationInfo{
 		Service: "EventFeed", Operation: "PollInbox",
@@ -282,7 +328,7 @@ func (s *EventFeedService) PollInbox(ctx context.Context, opts *PollInboxOptions
 	if err != nil {
 		return nil, err
 	}
-	if err = checkFeedResponse(resp.HTTPResponse, resp.Body); err != nil {
+	if err = checkFeedResponse(resp.HTTPResponse, resp.Body, inboxLane); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
@@ -398,9 +444,18 @@ func continuationQuery(rawURL string) (url.Values, error) {
 	return q, nil
 }
 
-// checkFeedResponse is checkResponse plus the feed's two typed bodies: 409's
-// digests and 410's epoch and resume URL, each wrapping the canonical error.
-func checkFeedResponse(resp *http.Response, body []byte) error {
+type feedLaneKind int
+
+const (
+	feedLane feedLaneKind = iota
+	inboxLane
+)
+
+// checkFeedResponse is checkResponse plus the poll lanes' typed bodies: the
+// 400's reason, the 409's digests, and the lane's own 410 — the feed's with
+// its epoch, the inbox's with its since=0 resume — each wrapping the
+// canonical error.
+func checkFeedResponse(resp *http.Response, body []byte, lane feedLaneKind) error {
 	err := checkResponse(resp, body)
 	if err == nil || resp == nil {
 		return err
@@ -410,12 +465,24 @@ func checkFeedResponse(resp *http.Response, body []byte) error {
 		return err
 	}
 	switch resp.StatusCode {
+	case http.StatusBadRequest:
+		var request generated.FeedRequestErrorResponseContent
+		if json.Unmarshal(body, &request) == nil && request.Error != "" {
+			return &FeedRequestError{Err: base, Reason: deref(request.Reason)}
+		}
 	case http.StatusConflict:
 		var mismatch generated.FeedFilterMismatchErrorResponseContent
 		if json.Unmarshal(body, &mismatch) == nil && (mismatch.PositionDigest != "" || mismatch.FiltersDigest != "") {
 			return &FeedFilterMismatchError{Err: base, PositionDigest: mismatch.PositionDigest, FiltersDigest: mismatch.FiltersDigest}
 		}
 	case http.StatusGone:
+		if lane == inboxLane {
+			var gone generated.InboxPositionGoneErrorResponseContent
+			if json.Unmarshal(body, &gone) == nil && gone.Resume != "" {
+				return &InboxPositionGoneError{Err: base, Resume: gone.Resume}
+			}
+			return err
+		}
 		var gone generated.FeedPositionGoneErrorResponseContent
 		if json.Unmarshal(body, &gone) == nil && gone.Resume != "" {
 			return &FeedPositionGoneError{Err: base, EpochAfterID: gone.EpochAfterId, Resume: gone.Resume}
