@@ -1,6 +1,6 @@
 {
   "name": "32-inbox-lane-dedupes-by-addressing-id",
-  "description": "The inbox lane end to end: the subscription carries `inbox: true` after the channel with the reasons param (class-1 identifier literal); the catch-up walk serves an {items, position, next} envelope whose two items address the principal through ONE event (id 100) under two addressing ids — both deliver, since an item is its own delivery — and a repeat of addressing id 11 is suppressed; a live item admitted before the entry page (addressing id 13, over event 101) drains once and the repair poll's re-serve of the same item is suppressed by addressing id, never by event id. Delivered ids are addressing ids. The checkpoint step for the entry page precedes the cumulative delivered assertion so the drain of the buffered item cannot race an intermediate expectDelivered (fixture 01's ordering).",
+  "description": "The inbox lane end to end: the subscription carries `inbox: true` after the channel with the reasons param (class-1 identifier literal); the catch-up walk serves an {items, position, next} envelope whose two items address the principal through ONE event (id 100) under two addressing ids — both deliver, since an item is its own delivery, and the page is in strict addressing-id order; a live item admitted before the entry page (addressing id 13, over event 101) drains once and the repair poll's re-serve of the same item is suppressed by addressing id, never by event id. Delivered ids are addressing ids. The checkpoint step for the entry page precedes the cumulative delivered assertion so the drain of the buffered item cannot race an intermediate expectDelivered (fixture 01's ordering).",
   "config": {
     "lane": "inbox",
     "reasons": [
@@ -102,22 +102,6 @@
               {
                 "addressing_id": 12,
                 "reason": "assigned",
-                "addressed_at": "2026-08-01T12:00:01Z",
-                "event": {
-                  "id": 100,
-                  "kind": "comment_created",
-                  "event_type": "comment.created",
-                  "action": "created",
-                  "created_at": "2026-08-01T12:00:00Z",
-                  "bucket_id": 2,
-                  "creator_id": 3,
-                  "performed_by_id": null,
-                  "recording_id": 900
-                }
-              },
-              {
-                "addressing_id": 11,
-                "reason": "mentioned",
                 "addressed_at": "2026-08-01T12:00:01Z",
                 "event": {
                   "id": 100,

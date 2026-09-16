@@ -1630,7 +1630,9 @@
         },
         "created_at": {
           "type": "string",
-          "minLength": 1
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
         },
         "bucket_id": {
           "type": "integer",
@@ -1698,7 +1700,9 @@
         },
         "created_at": {
           "type": "string",
-          "minLength": 1
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
         },
         "bucket_id": {
           "type": "integer",
@@ -2209,8 +2213,9 @@
         },
         "addressed_at": {
           "type": "string",
+          "format": "date-time",
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
-          "description": "RFC 3339 — the shape every driver parses."
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
         },
         "event": {
           "$ref": "#/$defs/inboxItemEvent"
@@ -2252,7 +2257,9 @@
         },
         "created_at": {
           "type": "string",
-          "minLength": 1
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
         },
         "bucket_id": {
           "type": "integer",

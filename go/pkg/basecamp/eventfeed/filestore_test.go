@@ -277,6 +277,7 @@ func TestFileCheckpointStore_MalformedKeysAreFailedNotMissing(t *testing.T) {
 		{"three elements", `"[\"a\",\"b\",\"c\"]"`},
 		{"six elements", `"[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\"]"`},
 		{"empty lane element", `"[\"a\",\"b\",\"c\",\"d\",\"\"]"`},
+		{"unknown lane element", `"[\"a\",\"b\",\"c\",\"d\",\"inboxx\"]"`},
 		{"non-string element", `"[\"a\",\"b\",\"c\",4]"`},
 		{"non-compact spelling", `"[ \"a\",\"b\",\"c\",\"d\"]"`},
 	} {
@@ -289,6 +290,18 @@ func TestFileCheckpointStore_MalformedKeysAreFailedNotMissing(t *testing.T) {
 			}
 		})
 	}
+	t.Run("a key naming an unknown lane is usage, on Load and Save", func(t *testing.T) {
+		path := storePath(t)
+		bad := key
+		bad.Lane = "inboxx"
+		var te *TerminalError
+		if _, _, err := NewFileCheckpointStore(path).Load(context.Background(), bad); !errors.As(err, &te) || te.Reason != ReasonUsage {
+			t.Errorf("Load(unknown lane) = %v, want a usage-coded error", err)
+		}
+		if err := NewFileCheckpointStore(path).Save(context.Background(), bad, "pos-1"); !errors.As(err, &te) || te.Reason != ReasonUsage {
+			t.Errorf("Save(unknown lane) = %v, want a usage-coded error", err)
+		}
+	})
 	t.Run("an inbox lineage's key is a valid foreign key", func(t *testing.T) {
 		path := storePath(t)
 		inbox := key

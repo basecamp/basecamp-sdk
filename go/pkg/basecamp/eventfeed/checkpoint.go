@@ -86,6 +86,17 @@ func checkIdentityText(field, s string) error {
 	return nil
 }
 
+// checkLaneName admits the lane component's two spellings — empty for the
+// account lane, the inbox lane's name — and nothing else: a key naming a
+// lane the package never writes is not a foreign lineage to look past, it
+// is a malformed key, at construction and in a stored file alike.
+func checkLaneName(lane string) error {
+	if lane != "" && lane != laneKeyName(InboxLane) {
+		return usageError("checkpoint lane must be empty or the inbox lane")
+	}
+	return nil
+}
+
 // CanonicalOrigin canonicalizes a configured base URL to its
 // checkpoint-identity form: lowercase scheme and host; the default port
 // omitted (":443" for https, ":80" for http); no path, query, fragment, or

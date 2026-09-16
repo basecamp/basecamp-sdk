@@ -9,8 +9,9 @@ import (
 
 // The seam interfaces (SPEC.md §23 "Seam Contracts") isolate the connector
 // from wire I/O, time, and persistence. Layer-1 adapters over the generated
-// CreateStreamTicket/PollEvents operations plug in at TicketMinter and
-// PollSource; one seam call is one fully-governed generated call — the
+// CreateStreamTicket and PollEvents (account lane) or PollInbox (inbox lane)
+// operations plug in at TicketMinter and PollSource; one seam call is one
+// fully-governed generated call — the
 // generated operation keeps its full SPEC §7 contract (retry budget, backoff,
 // Retry-After) inside the seam, and the connector never adds a second
 // per-request retry layer. Clock is defined in clock.go; CheckpointStore in
@@ -125,7 +126,10 @@ type Cursor struct {
 // bind to response headers: the X-Feed-Position and Link rel="next" response
 // headers merely echo Position and Next.
 type PollPage struct {
-	// Events are the page's rows, in strict event-id order.
+	// Events are the page's rows, in strict order of the lane's identity:
+	// event id on the account lane; addressing id on the inbox lane, where
+	// each row carries its Addressing (the adapter maps an item onto an
+	// Event).
 	Events []Event
 	// Position is the durable position after this page — the only thing that
 	// ever advances the checkpoint.
@@ -136,7 +140,8 @@ type PollPage struct {
 }
 
 // PollSource serves poll pages. Each call is one fully-governed generated
-// PollEvents call.
+// call of the lane's operation: PollEvents on the account lane, PollInbox on
+// the inbox lane.
 type PollSource interface {
 	// Poll fetches one page at cursor under filters. ctx is the cancellation
 	// channel: triggered on close, caller cancellation, and any teardown of

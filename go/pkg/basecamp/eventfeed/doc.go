@@ -36,8 +36,8 @@
 //
 // The connector performs no wire I/O of its own. Every HTTP exchange reaches
 // the wire through a seam backed by a generated operation: TicketMinter
-// (CreateStreamTicket) and PollSource (PollEvents), each call one
-// fully-governed generated call. Time flows through the injected Clock,
+// (CreateStreamTicket) and PollSource (PollEvents on the account lane,
+// PollInbox on the inbox lane), each call one fully-governed generated call. Time flows through the injected Clock,
 // persistence through CheckpointStore, and the WebSocket through
 // CableTransport — whose dial of the mint's URL, verbatim, is the one
 // sanctioned non-HTTP wire act the connector owns. CableTransport and Clock

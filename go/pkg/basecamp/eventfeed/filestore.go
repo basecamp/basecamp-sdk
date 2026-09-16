@@ -276,6 +276,9 @@ func (s *FileCheckpointStore) Load(_ context.Context, key CheckpointKey) (string
 			return "", false, err
 		}
 	}
+	if err := checkLaneName(key.Lane); err != nil {
+		return "", false, err
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -340,6 +343,9 @@ func (s *FileCheckpointStore) Save(_ context.Context, key CheckpointKey, positio
 		if err := checkIdentityText(in.field, in.value); err != nil {
 			return err
 		}
+	}
+	if err := checkLaneName(key.Lane); err != nil {
+		return err
 	}
 
 	s.mu.Lock()
@@ -533,6 +539,9 @@ func isCanonicalFlatKey(k string) bool {
 		FilterKey:         parts[3],
 	}
 	if len(parts) == 5 {
+		if checkLaneName(parts[4]) != nil {
+			return false
+		}
 		rebuilt.Lane = parts[4]
 	}
 	return rebuilt.FlatKey() == k
