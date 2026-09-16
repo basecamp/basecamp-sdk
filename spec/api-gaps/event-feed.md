@@ -23,7 +23,6 @@ smithy_refs:
   - PollInbox
   - CreateStreamTicket
   - FeedEvent
-  - FeedEventDetails
   - InboxItem
   - FeedFilterMismatchError
   - FeedPositionGoneError
@@ -35,7 +34,7 @@ BC3 merged the contract to `master` on 2026-09-15 — #13049 (`95cd1d290f`, the
 feed's both lanes), #13053 (agent principals), #13056 (boosts as events) and
 #13058 (`188b97cab7`, the inbox) — and the SDK absorbed the **wire layer** in the
 same sweep: `PollEvents`, `PollInbox` and `CreateStreamTicket` on the `EventFeed`
-tag (service `eventFeed`), the `FeedEvent`/`FeedEventDetails`/`InboxItem`
+tag (service `eventFeed`), the `FeedEvent` (with `details` carried verbatim as a document) and `InboxItem`
 shapes, the typed 409 (`FeedFilterMismatchError`) and 410
 (`FeedPositionGoneError`) bodies, and `conformance/tests/event_feed.json`
 dispatched by all seven runners. The provenance pin was **not** advanced by that
