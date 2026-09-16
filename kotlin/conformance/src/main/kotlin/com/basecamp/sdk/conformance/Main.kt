@@ -163,10 +163,18 @@ private fun summarizeEventFeedPage(page: JsonObject): JsonElement = buildJsonObj
         val event = element.jsonObject
         val details = event["details"]?.takeUnless { it is JsonNull }?.jsonObject ?: continue
         details["boost_id"]?.jsonPrimitive?.longOrNull?.let { boostId ->
-            put("boost_id", boostId)
-            event["performed_by_id"]?.jsonPrimitive?.longOrNull?.let { put("boost_performed_by_id", it) }
-            details["boosted_event_id"]?.jsonPrimitive?.longOrNull?.let { put("boosted_event_id", it) }
-            details["boosted_event_type"]?.jsonPrimitive?.contentOrNull?.let { put("boosted_event_type", it) }
+            val boostedId = details["boosted_event_id"]
+            val boostedType = details["boosted_event_type"]
+            if (boostedId is JsonNull && boostedType is JsonNull) {
+                // A boost on the recording itself: both boosted_* members are explicit nulls.
+                put("recording_boost_id", boostId)
+                put("recording_boost_nulls", true)
+            } else {
+                put("boost_id", boostId)
+                event["performed_by_id"]?.jsonPrimitive?.longOrNull?.let { put("boost_performed_by_id", it) }
+                boostedId?.jsonPrimitive?.longOrNull?.let { put("boosted_event_id", it) }
+                boostedType?.jsonPrimitive?.contentOrNull?.let { put("boosted_event_type", it) }
+            }
         }
         details["column_id"]?.jsonPrimitive?.longOrNull?.let { put("moved_column_id", it) }
         details["previous_column_id"]?.jsonPrimitive?.longOrNull?.let { put("moved_previous_column_id", it) }

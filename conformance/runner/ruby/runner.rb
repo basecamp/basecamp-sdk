@@ -887,10 +887,16 @@ class OperationMapper
       next if details.nil?
 
       unless details["boost_id"].nil?
-        result["boost_id"] = details["boost_id"]
-        result["boost_performed_by_id"] = event["performed_by_id"] unless event["performed_by_id"].nil?
-        result["boosted_event_id"] = details["boosted_event_id"] unless details["boosted_event_id"].nil?
-        result["boosted_event_type"] = details["boosted_event_type"] unless details["boosted_event_type"].nil?
+        if details.key?("boosted_event_id") && details["boosted_event_id"].nil? && details["boosted_event_type"].nil?
+          # A boost on the recording itself: both boosted_* members are explicit nulls.
+          result["recording_boost_id"] = details["boost_id"]
+          result["recording_boost_nulls"] = true
+        else
+          result["boost_id"] = details["boost_id"]
+          result["boost_performed_by_id"] = event["performed_by_id"] unless event["performed_by_id"].nil?
+          result["boosted_event_id"] = details["boosted_event_id"] unless details["boosted_event_id"].nil?
+          result["boosted_event_type"] = details["boosted_event_type"] unless details["boosted_event_type"].nil?
+        end
       end
       result["moved_column_id"] = details["column_id"] unless details["column_id"].nil?
       result["moved_previous_column_id"] = details["previous_column_id"] unless details["previous_column_id"].nil?

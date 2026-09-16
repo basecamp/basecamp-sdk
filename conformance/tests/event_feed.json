@@ -1,7 +1,7 @@
 [
   {
     "name": "PollEvents decodes the poll envelope",
-    "description": "The account event feed's poll lane answers with a body envelope — `events`, `position`, and `next` while the walk continues — not a bare array and not a Link-header page. The three rows cover the shape's variants: a plain pointer with a null `performed_by_id` and no `details`; a delegated `boost.created` with a numeric `performed_by_id` and boost details; and a `card.moved` with column details. Every runner summarizes the DECODED page into flat scalars (a responseBody path is a top-level key only), and null/absence is asserted through boolean predicates because the SDKs disagree about presence but agree about null. No mock runner consumes queryParams and no assertion can pin a query string, so the dispatch fixes `since=now`.",
+    "description": "The account event feed's poll lane answers with a body envelope — `events`, `position`, and `next` while the walk continues — not a bare array and not a Link-header page. The four rows cover the shape's variants: a plain pointer with a null `performed_by_id` and no `details`; a delegated `boost.created` on an event, with a numeric `performed_by_id` and all three boost details; a `card.moved` with column details; and a `boost.created` on the recording itself, whose `boosted_event_id` and `boosted_event_type` are explicit nulls. Every runner summarizes the DECODED page into flat scalars (a responseBody path is a top-level key only), and null/absence is asserted through boolean predicates because the SDKs disagree about presence but agree about null. No mock runner consumes queryParams and no assertion can pin a query string, so the dispatch fixes `since=now`.",
     "operation": "PollEvents",
     "method": "GET",
     "path": "/events.json",
@@ -56,6 +56,22 @@
                 "column_id": 77,
                 "previous_column_id": 76
               }
+            },
+            {
+              "id": 1071915472,
+              "kind": "boost_created",
+              "action": "created",
+              "created_at": "2026-07-14T06:13:00.000Z",
+              "event_type": "boost.created",
+              "bucket_id": 2085958499,
+              "creator_id": 1049715947,
+              "performed_by_id": null,
+              "recording_id": 1069479766,
+              "details": {
+                "boost_id": 502,
+                "boosted_event_id": null,
+                "boosted_event_type": null
+              }
             }
           ],
           "position": "posAAA",
@@ -68,7 +84,7 @@
       { "type": "requestCount", "expected": 1 },
       { "type": "requestMethod", "expected": "GET" },
       { "type": "requestPath", "expected": "/999/events.json" },
-      { "type": "responseBody", "path": "event_count", "expected": 3 },
+      { "type": "responseBody", "path": "event_count", "expected": 4 },
       { "type": "responseBody", "path": "position", "expected": "posAAA" },
       { "type": "responseBody", "path": "has_next", "expected": true },
       { "type": "responseBody", "path": "first_event_id", "expected": 1071915468 },
@@ -81,7 +97,9 @@
       { "type": "responseBody", "path": "boosted_event_id", "expected": 1071915468 },
       { "type": "responseBody", "path": "boosted_event_type", "expected": "message.created" },
       { "type": "responseBody", "path": "moved_column_id", "expected": 77 },
-      { "type": "responseBody", "path": "moved_previous_column_id", "expected": 76 }
+      { "type": "responseBody", "path": "moved_previous_column_id", "expected": 76 },
+      { "type": "responseBody", "path": "recording_boost_id", "expected": 502 },
+      { "type": "responseBody", "path": "recording_boost_nulls", "expected": true }
     ],
     "tags": ["event-feed", "decode"]
   },

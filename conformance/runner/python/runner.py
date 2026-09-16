@@ -557,13 +557,18 @@ def _summarize_event_feed_page(page: dict[str, Any]) -> dict[str, Any]:
         if not details:
             continue
         if details.get("boost_id") is not None:
-            result["boost_id"] = details["boost_id"]
-            if event.get("performed_by_id") is not None:
-                result["boost_performed_by_id"] = event["performed_by_id"]
-            if details.get("boosted_event_id") is not None:
-                result["boosted_event_id"] = details["boosted_event_id"]
-            if details.get("boosted_event_type") is not None:
-                result["boosted_event_type"] = details["boosted_event_type"]
+            if "boosted_event_id" in details and details["boosted_event_id"] is None and details.get("boosted_event_type") is None:
+                # A boost on the recording itself: both boosted_* members are explicit nulls.
+                result["recording_boost_id"] = details["boost_id"]
+                result["recording_boost_nulls"] = True
+            else:
+                result["boost_id"] = details["boost_id"]
+                if event.get("performed_by_id") is not None:
+                    result["boost_performed_by_id"] = event["performed_by_id"]
+                if details.get("boosted_event_id") is not None:
+                    result["boosted_event_id"] = details["boosted_event_id"]
+                if details.get("boosted_event_type") is not None:
+                    result["boosted_event_type"] = details["boosted_event_type"]
         if details.get("column_id") is not None:
             result["moved_column_id"] = details["column_id"]
         if details.get("previous_column_id") is not None:

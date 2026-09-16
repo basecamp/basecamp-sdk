@@ -438,10 +438,16 @@ function summarizeEventFeedPage(page: {
     const details = event.details;
     if (!details) continue;
     if (details.boost_id != null) {
-      result.boost_id = details.boost_id;
-      if (event.performed_by_id != null) result.boost_performed_by_id = event.performed_by_id;
-      if (details.boosted_event_id != null) result.boosted_event_id = details.boosted_event_id;
-      if (details.boosted_event_type != null) result.boosted_event_type = details.boosted_event_type;
+      if (details.boosted_event_id === null && details.boosted_event_type === null) {
+        // A boost on the recording itself: both boosted_* members are explicit nulls.
+        result.recording_boost_id = details.boost_id;
+        result.recording_boost_nulls = true;
+      } else {
+        result.boost_id = details.boost_id;
+        if (event.performed_by_id != null) result.boost_performed_by_id = event.performed_by_id;
+        if (details.boosted_event_id != null) result.boosted_event_id = details.boosted_event_id;
+        if (details.boosted_event_type != null) result.boosted_event_type = details.boosted_event_type;
+      }
     }
     if (details.column_id != null) result.moved_column_id = details.column_id;
     if (details.previous_column_id != null) result.moved_previous_column_id = details.previous_column_id;

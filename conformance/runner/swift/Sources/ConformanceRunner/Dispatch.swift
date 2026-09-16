@@ -272,10 +272,16 @@ private func summarizeEventFeedPage(_ page: PollEventsResponseContent) -> JSON {
     for event in page.events {
         guard let details = event.details else { continue }
         if let boostId = details.boostId {
-            result["boost_id"] = .int(Int64(boostId))
-            if let performer = event.performedById { result["boost_performed_by_id"] = .int(Int64(performer)) }
-            if let boosted = details.boostedEventId { result["boosted_event_id"] = .int(Int64(boosted)) }
-            if let boostedType = details.boostedEventType { result["boosted_event_type"] = .string(boostedType) }
+            if details.boostedEventId == nil && details.boostedEventType == nil {
+                // A boost on the recording itself: both boosted_* members are explicit nulls.
+                result["recording_boost_id"] = .int(Int64(boostId))
+                result["recording_boost_nulls"] = .bool(true)
+            } else {
+                result["boost_id"] = .int(Int64(boostId))
+                if let performer = event.performedById { result["boost_performed_by_id"] = .int(Int64(performer)) }
+                if let boosted = details.boostedEventId { result["boosted_event_id"] = .int(Int64(boosted)) }
+                if let boostedType = details.boostedEventType { result["boosted_event_type"] = .string(boostedType) }
+            }
         }
         if let column = details.columnId { result["moved_column_id"] = .int(Int64(column)) }
         if let previous = details.previousColumnId { result["moved_previous_column_id"] = .int(Int64(previous)) }

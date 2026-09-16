@@ -552,15 +552,22 @@ func summarizeEventFeedPage(page *basecamp.EventFeedPage) map[string]interface{}
 			continue
 		}
 		if event.Details.BoostID != nil {
-			result["boost_id"] = *event.Details.BoostID
-			if event.PerformedByID != nil {
-				result["boost_performed_by_id"] = *event.PerformedByID
-			}
-			if event.Details.BoostedEventID != nil {
-				result["boosted_event_id"] = *event.Details.BoostedEventID
-			}
-			if event.Details.BoostedEventType != nil {
-				result["boosted_event_type"] = *event.Details.BoostedEventType
+			if event.Details.BoostedEventID == nil && event.Details.BoostedEventType == nil {
+				// A boost on the recording itself: both boosted_* members are
+				// explicit nulls on the wire.
+				result["recording_boost_id"] = *event.Details.BoostID
+				result["recording_boost_nulls"] = true
+			} else {
+				result["boost_id"] = *event.Details.BoostID
+				if event.PerformedByID != nil {
+					result["boost_performed_by_id"] = *event.PerformedByID
+				}
+				if event.Details.BoostedEventID != nil {
+					result["boosted_event_id"] = *event.Details.BoostedEventID
+				}
+				if event.Details.BoostedEventType != nil {
+					result["boosted_event_type"] = *event.Details.BoostedEventType
+				}
 			}
 		}
 		if event.Details.ColumnID != nil {

@@ -1311,15 +1311,21 @@ fn summarize_event_feed_page(page: &PollEventsResponseContent) -> Value {
             continue;
         };
         if let Some(boost_id) = details.boost_id {
-            summary["boost_id"] = json!(boost_id);
-            if let Some(performer) = event.performed_by_id {
-                summary["boost_performed_by_id"] = json!(performer);
-            }
-            if let Some(boosted) = details.boosted_event_id {
-                summary["boosted_event_id"] = json!(boosted);
-            }
-            if let Some(boosted_type) = &details.boosted_event_type {
-                summary["boosted_event_type"] = json!(boosted_type);
+            if details.boosted_event_id.is_none() && details.boosted_event_type.is_none() {
+                // A boost on the recording itself: both boosted_* members are explicit nulls.
+                summary["recording_boost_id"] = json!(boost_id);
+                summary["recording_boost_nulls"] = json!(true);
+            } else {
+                summary["boost_id"] = json!(boost_id);
+                if let Some(performer) = event.performed_by_id {
+                    summary["boost_performed_by_id"] = json!(performer);
+                }
+                if let Some(boosted) = details.boosted_event_id {
+                    summary["boosted_event_id"] = json!(boosted);
+                }
+                if let Some(boosted_type) = &details.boosted_event_type {
+                    summary["boosted_event_type"] = json!(boosted_type);
+                }
             }
         }
         if let Some(column) = details.column_id {
