@@ -401,7 +401,6 @@ function summarizeUpcoming(
   return summary;
 }
 
-/** Exposes representative decoded template-library fields as portable scalars. */
 type FeedEventRow = {
   id: number;
   event_type: string;
@@ -472,6 +471,7 @@ function summarizeInboxPage(page: {
   return result;
 }
 
+/** Exposes representative decoded template-library fields as portable scalars. */
 function summarizeTemplateLibrary(library: {
   bucket: { id: number };
   todoset: { id: number };

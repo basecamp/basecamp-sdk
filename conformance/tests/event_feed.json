@@ -1,7 +1,7 @@
 [
   {
     "name": "PollEvents decodes the poll envelope",
-    "description": "The account event feed's poll lane answers with a body envelope — `events`, `position`, and `next` while the walk continues — not a bare array and not a Link-header page. The three rows cover the shape's variants: a plain pointer with a null `performed_by_id` and no `details`; a delegated `boost.created` with a numeric `performed_by_id` and boost details; and a `card.moved` with column details. Every runner summarizes the DECODED page into flat scalars (a responseBody path is a top-level key only), and null/absence is asserted through boolean predicates because the six SDKs disagree about presence but agree about null. No mock runner consumes queryParams and no assertion can pin a query string, so the dispatch fixes `since=now`.",
+    "description": "The account event feed's poll lane answers with a body envelope — `events`, `position`, and `next` while the walk continues — not a bare array and not a Link-header page. The three rows cover the shape's variants: a plain pointer with a null `performed_by_id` and no `details`; a delegated `boost.created` with a numeric `performed_by_id` and boost details; and a `card.moved` with column details. Every runner summarizes the DECODED page into flat scalars (a responseBody path is a top-level key only), and null/absence is asserted through boolean predicates because the SDKs disagree about presence but agree about null. No mock runner consumes queryParams and no assertion can pin a query string, so the dispatch fixes `since=now`.",
     "operation": "PollEvents",
     "method": "GET",
     "path": "/events.json",

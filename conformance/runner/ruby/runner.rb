@@ -865,7 +865,6 @@ class OperationMapper
   # asked for.
   SEARCH_QUERY = "Leto"
 
-  # Exposes representative decoded template-library fields as portable scalars.
   # Flattens a poll page into top-level scalars; null and absence become boolean
   # predicates because a responseBody path is a top-level key only.
   def summarize_event_feed_page(page)
@@ -919,6 +918,7 @@ class OperationMapper
     result
   end
 
+  # Exposes representative decoded template-library fields as portable scalars.
   def summarize_template_library(library)
     {
       "bucket_id" => library.dig("bucket", "id"),
