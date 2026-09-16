@@ -6,6 +6,7 @@ package eventfeed_test
 import (
 	"context"
 	"errors"
+	"math"
 	"runtime"
 	"strings"
 	"sync"
@@ -165,6 +166,67 @@ func TestNewAcceptsCapacitiesAtTheCeiling(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestNewAllocationSizeDoesNotVaryWithCapacity is the MaxCapacity comment's
+// cost claim, written as an assertion. That comment justifies the ceiling by
+// naming where a configured capacity is actually spent — newDedupe sizes its
+// index map by it eagerly, on the first Events iteration — and that account
+// holds only while New itself spends nothing on it. An earlier wording said
+// both capacities were allocated the moment the connector was constructed;
+// nothing in the suite disagreed, and a reader caught it instead.
+//
+// Bytes rather than testing.AllocsPerRun's count, because the count cannot
+// carry this claim: sizing anything by the capacity — make([]byte, capacity)
+// in New — is ONE allocation whether the capacity is 1 or a million, so the
+// count is identical in exactly the case that must fail.
+//
+// The assertion is the invariance, not the size: the two ends of the
+// permitted range are compared against each other, so an unrelated allocation
+// added to New stays green while a New that began sizing anything by the
+// capacity does not.
+func TestNewAllocationSizeDoesNotVaryWithCapacity(t *testing.T) {
+	atOne := bytesAllocatedByNew(t, 1)
+	atCeiling := bytesAllocatedByNew(t, eventfeed.MaxCapacity)
+
+	if atOne == 0 {
+		t.Fatal("New allocated no measurable bytes: the construction was optimized away, so this test can no longer observe it")
+	}
+	if atCeiling != atOne {
+		t.Fatalf("New allocated %d bytes at capacity 1 and %d at the ceiling (%d): construction now sizes something by the capacity, which only the run is supposed to do", atOne, atCeiling, eventfeed.MaxCapacity)
+	}
+}
+
+// newSink keeps each constructed connector reachable, so the allocation being
+// measured cannot be optimized away.
+var newSink *eventfeed.Connector
+
+// bytesAllocatedByNew measures one New at one capacity. TotalAlloc is a
+// process-wide counter and this package runs connectors on their own
+// goroutines throughout its suite, so an unrelated allocation landing between
+// the two reads can only ADD to a measurement. The lowest of several is
+// therefore the floor, and the floor is what the two capacities are compared
+// at.
+func bytesAllocatedByNew(t *testing.T, capacity int) uint64 {
+	t.Helper()
+
+	minter := feedtest.NewMinter()
+	polls := feedtest.NewPolls()
+	lowest := uint64(math.MaxUint64)
+	for range 5 {
+		var before, after runtime.MemStats
+		runtime.ReadMemStats(&before)
+		c, err := eventfeed.New(testOrigin, "1", minter, polls,
+			eventfeed.WithDedupeCapacity(capacity),
+			eventfeed.WithLiveBufferCapacity(capacity))
+		runtime.ReadMemStats(&after)
+		if err != nil {
+			t.Fatalf("New at capacity %d: %v", capacity, err)
+		}
+		newSink = c
+		lowest = min(lowest, after.TotalAlloc-before.TotalAlloc)
+	}
+	return lowest
 }
 
 func TestNewValidConfigurations(t *testing.T) {
