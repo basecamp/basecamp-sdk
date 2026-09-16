@@ -130,8 +130,11 @@ with no signal that your argument was dropped. Read `.retryable` back after
 constructing rather than assuming the value you passed. Reaching for `ApiError`
 instead is not the remedy: it changes the error's identity, taking `code` from
 `rate_limit`/`network`/`limit_exceeded` to `api_error` and `exit_code` from
-5/6/10 to 7. (`retry_after` still reaches it through `**kwargs` — what it loses
-is being a declared parameter, so nothing type-checks it.)
+5/6/10 to 7. (`retry_after` still reaches `ApiError` through `**kwargs` and is
+carried. What it loses is specific to `RateLimitError`, which declares
+`retry_after` as a real parameter: on `ApiError` it is an undeclared passenger,
+so nothing type-checks it. `NetworkError` and `LimitExceededError` never
+declared it either.)
 
 ### Rust: new SDK
 

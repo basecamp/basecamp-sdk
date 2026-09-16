@@ -763,6 +763,14 @@ def _error_subclasses():
             # error.
             if sub.__module__ == "basecamp" or sub.__module__.startswith("basecamp."):
                 found.add(sub)
+            # Known limit, written down rather than papered over:
+            # `__subclasses__` sees what has been DEFINED, so a class minted
+            # inside a function body is absent until that function first runs.
+            # Nothing in the package does that today; if something starts to,
+            # this walk becomes order-dependent between running this file alone
+            # and running the suite, and `_EXPECTED_ERROR_SUBCLASSES` is what
+            # will say so.
+            #
             # Recurse unconditionally: a package class can sit under a
             # non-package one.
             found |= descendants(sub)
@@ -895,11 +903,18 @@ class TestRetryableKeywordDoesNotCollide:
            passed the repo as it stood against the v2 file, all 2218 tests of
            it. (That count and the 2219 quoted in
            :meth:`test_a_fixed_retryability_is_overwritten_unconditionally` are
-           two different suites a test apart, not one number drifting; both
-           were re-run on this head.) So the flag is crossed with
+           not one number drifting by one. They are two different suites: the
+           v2 ``test_errors.py`` holds 101 tests to this one's 103, and the
+           2219 is this suite with that single test deselected. Both were
+           re-run on this head rather than remembered.) So the flag is crossed with
            companion keywords and with a custom message, and classes whose
            retryability is DERIVED are probed at every value of the argument it
-           derives from.
+           derives from -- which is a property of ``_ERROR_VARIANTS``, a table
+           a human writes, so
+           :meth:`test_a_fixed_retryability_is_overwritten_unconditionally`
+           enforces it rather than trusting it: a constructor deriving the flag
+           from a declared argument must carry a per-variant expectation and
+           rows that reach more than one value of that argument.
 
         Item 3 is a NET, not a proof, and saying otherwise is how v2 got
         written. Crossing the flag with a set of companion VALUES cannot see a
@@ -940,6 +955,14 @@ class TestRetryableKeywordDoesNotCollide:
             # belongs here -- though see the docstring: a value set is a net,
             # not a proof, which is why the AST check below exists.
             {"http_status": 507},
+            # 500 is the status `ApiError`'s own reasoning names ("500 is
+            # retryable, 418 is not") and the arm `error_from_response` builds
+            # it at. It was missing, and `ApiError` is in neither
+            # `_FIXED_RETRYABILITY` nor the AST check below -- so for the
+            # caller-wins classes this sweep is the ONLY check, and
+            # `if kwargs.get("http_status") == 500: retryable = True` sat
+            # inside it with the whole suite green.
+            {"http_status": 500},
             {"retry_after": 5},
             {"hint": "h", "request_id": "r"},
             {"http_status": 429, "retry_after": 5, "hint": "h", "request_id": "r"},
@@ -970,6 +993,21 @@ class TestRetryableKeywordDoesNotCollide:
                 if isinstance(expected, dict):
                     expected = expected[label]
 
+                # The flag is passed on every probe below, which means none of
+                # them observes the DEFAULT. Flipping the base constructor's
+                # `retryable: bool = False` to `True` made every caller-wins
+                # error in the package silently retryable and left this whole
+                # file green; the one test in the repo that noticed was an
+                # unrelated Campfire cache test, by accident. So each row is
+                # also built with no flag at all.
+                assert cls(*args, **kwargs).retryable is (False if expected is None else expected), (
+                    f"{cls.__name__}({label!r}) built with no `retryable` at all answers "
+                    f"{cls(*args, **kwargs).retryable}, not "
+                    f"{False if expected is None else expected}. A class that fixes its "
+                    "retryability must answer its invariant; one that does not must answer the "
+                    "base default, which is False."
+                )
+
                 for companion in companions:
                     answers = {}
                     for passed in (True, False):
@@ -986,19 +1024,23 @@ class TestRetryableKeywordDoesNotCollide:
                         # draft of this note said that, and Rust is the
                         # counter-example it had not read.
                         #
-                        # The five that refuse the caller structurally:
-                        # TypeScript's `RecordingSummaryError` forces
-                        # `retryable: false` over the caller's options for the
-                        # whole family (`super(code, message, {...options,
-                        # retryable: false})`), and its
-                        # `DiscoverySelectionError` declares an options type of
+                        # The five put it out of the caller's reach in three
+                        # different ways, and they are worth telling apart --
+                        # one of them is what Python already does for its fixed
+                        # three. TypeScript FORCES the value for the composite
+                        # family (`super(code, message, {...options, retryable:
+                        # false})`, the same move as `kwargs["retryable"] =
+                        # False` here) and REFUSES it at the signature for
+                        # `DiscoverySelectionError`, whose options type is
                         # `cause` and `httpStatus` only; Ruby's
                         # `RecordingSummaryError#initialize(kind:, message:,
                         # code:, hint:)` and `DiscoverySelectionError#initialize
                         # (reason, message, http_status:)` take no `retryable:`
                         # keyword; Kotlin's `RecordingSummaryFailure` is an
                         # `internal constructor` with no such parameter, and its
-                        # `DiscoverySelection` passes `false` itself; Go models
+                        # `DiscoverySelection` passes `false` itself. Go and
+                        # Swift do not model retryability on these identities
+                        # AT ALL, which is a third thing again: Go models
                         # the composite identities as their own structs
                         # (`RecordingRoutingError`, `UnresolvedRecordingError`,
                         # `BucketMismatchError`,
@@ -1106,9 +1148,11 @@ class TestRetryableKeywordDoesNotCollide:
             kwargs["retryable"] = <expression not reading kwargs>
 
         It is deliberately a style rule and slightly stricter than
-        "unconditional": ``kwargs |= {"retryable": False}`` and an aliased
-        ``kw = kwargs; kw["retryable"] = False`` are both correct and both
-        rejected. The point is to keep the property *checkable* -- one
+        "unconditional": ``kwargs |= {"retryable": False}``, an aliased
+        ``kw = kwargs; kw["retryable"] = False``, and a subclass setting
+        ``self.retryable = False`` after ``super().__init__`` -- the form a
+        subclass author reaches for first -- are all correct and all rejected.
+        The point is to keep the property *checkable* -- one
         statement, one place, no second write for a condition to hide in -- so
         that the value sweep's job is tractable rather than open-ended. Writing
         the canonical form costs nothing; the alternatives cost a test that
@@ -1157,9 +1201,24 @@ class TestRetryableKeywordDoesNotCollide:
                 "constructor sets. The invariant belongs in the constructor's overwrite."
             )
 
+            # `inspect.getsource` calls `inspect.unwrap`, so a `functools.wraps`
+            # decorator hands this test the INNER function while the wrapper is
+            # what runs. A wrapper doing `self.retryable = True` after the
+            # constructor returned put a 507 back to retryable through
+            # `error_from_response` with the whole suite green -- the same
+            # hazard as the `vars(cls)` guard above, one indirection out.
+            assert not hasattr(cls.__init__, "__wrapped__"), (
+                f"{name}'s `__init__` is wrapped, so `inspect.getsource` reads the function inside "
+                "the decorator and not the one that runs. Whatever the wrapper does to `retryable` "
+                "is invisible here: put the invariant in the constructor itself."
+            )
             tree = ast.parse(textwrap.dedent(inspect.getsource(cls.__init__)))
             function = tree.body[0]
             assert isinstance(function, ast.FunctionDef), name
+            assert not function.decorator_list, (
+                f"{name}'s `__init__` carries a decorator, which can rewrite `retryable` after this "
+                "test's view of the constructor ends."
+            )
 
             canonical = [
                 stmt
@@ -1193,6 +1252,42 @@ class TestRetryableKeywordDoesNotCollide:
                 "shape to follow."
             )
 
+            # ...and if it DOES derive from a declared argument, that argument
+            # has to be swept at more than one value, or the derivation is a
+            # condition again -- just spelled as an expression rather than an
+            # `if`. `kwargs["retryable"] = retry_after is None or retry_after <
+            # 3600` and `= "certificate" not in message` are both single
+            # top-level statements that read no `kwargs`, and both passed
+            # everything else here: `_FIXED_RETRYABILITY` still said `True`
+            # unconditionally while the class had quietly become conditional.
+            # So a derived value forces the two things that make it visible: a
+            # per-variant expectation, and rows that actually reach both arms.
+            declared = {
+                p.arg
+                for p in (function.args.posonlyargs + function.args.args + function.args.kwonlyargs)
+                if p.arg != "self"
+            }
+            derived_from = sorted(
+                {node.id for node in ast.walk(canonical[0].value) if isinstance(node, ast.Name) and node.id in declared}
+            )
+            if derived_from:
+                expected = _FIXED_RETRYABILITY[name]
+                assert isinstance(expected, dict), (
+                    f"{name}'s retryability is derived from {derived_from}, so its row in "
+                    "`_FIXED_RETRYABILITY` must be a per-variant dict rather than one bool -- a "
+                    "single bool asserts the same answer at every value, which is what a derived "
+                    "value is not."
+                )
+                rows = _ERROR_VARIANTS.get(name, [])
+                for argument in derived_from:
+                    values = {repr(row_kwargs.get(argument)) for _label, _args, row_kwargs in rows}
+                    assert len(values) >= 2, (
+                        f"{name} derives its retryability from `{argument}`, and `_ERROR_VARIANTS` "
+                        f"builds it at {len(values)} value(s) of it. The sweep can only pin the "
+                        "arms it constructs: add a row per value, as `DeviceFlowError` has one per "
+                        "`reason`."
+                    )
+
     def test_code_and_message_still_refuse_across_the_whole_hierarchy(self):
         """The two collisions deliberately NOT absorbed, pinned so they stay deliberate.
 
@@ -1217,7 +1312,10 @@ class TestRetryableKeywordDoesNotCollide:
         classes by hand, so `AuthError` could have started absorbing a caller's
         ``code`` with every test in the repo still green -- the same
         partial-coverage mistake the sweep above went through three rounds of.
-        Every subclass is classified here, and the three sets are pinned.
+        Every subclass is classified here. For ``code`` all three sets are
+        named; for ``message`` the ``collides`` set is named and ``undeclared``
+        is asserted empty, so ``accepts`` is pinned as the complement -- the
+        same coverage, said exactly.
         """
         from basecamp.errors import ErrorCode
 
