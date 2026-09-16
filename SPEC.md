@@ -3665,7 +3665,17 @@ reasons — is server-owned and never client-validated: an unknown value forms a
 filter key and draws the server's filter 400 on the first poll. The
 capacity options are validated the same way: `dedupeCapacity` and `liveBufferCapacity`
 must be positive (there is no dedupe-disabled mode — a zero capacity would silently break
-the deduplicated-surface promise). A
+the deduplicated-surface promise) **and at most `EVENT_FEED_MAX_CAPACITY` = 1,000,000**
+`[static]`. That ceiling is a resource bound rather than a domain one, and it binds every
+SDK's construction-time validation, not the Go reference alone: a capacity is a sizing hint
+an implementation may honor eagerly — the reference sizes the dedupe index's map by it the
+moment a run starts — so a caller's typo, or a number that meant bytes rather than events,
+is an allocation the process cannot decline rather than a slow run. An SDK that accepts
+2,147,483,647 is not being more permissive, it is shipping a different contract. The same
+number is the conformance schema's `maximum` for both fields
+(`conformance/event-feed/schema.json`), so no fixture can ask for what the consumer surface
+refuses, and the Go loader's bound is the exported constant by declaration so the three
+cannot drift. A
 violation is a `usage`-coded construction error (Consumer Surface above) — zero wire
 attempts. Positions are filter-bound; changing filters starts a new checkpoint lineage (the
 server enforces this with 409).
@@ -4736,7 +4746,8 @@ The connector's constants live in Appendix A (the `EVENT_FEED_*` rows): handshak
 backoff base 1s, ×2, cap 60s, full-jitter (the same cap bounds `poll-retry`'s jitter draw;
 server-directed `Retry-After` is exempt from local caps per §7); server
 heartbeat cadence 3s; staleness 7500ms; authorization-failure threshold 3; dedupe capacity
-10,000 ids; live buffer capacity 10,000 events; ticket TTL ~120s (server-owned —
+10,000 ids; live buffer capacity 10,000 events; maximum capacity 1,000,000 (the inclusive
+ceiling both configurable capacities are validated against); ticket TTL ~120s (server-owned —
 `expires_in` is never used for client-side scheduling; expiry is arbitrated by the server
 and the connector always mints fresh); maximum inbound frame 1 MiB.
 
@@ -4870,6 +4881,7 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `EVENT_FEED_AUTH_FAILURE_THRESHOLD` | 3 | consecutive failures | §23 disconnect dispatch (one shared counter) |
 | `EVENT_FEED_DEDUPE_CAPACITY` | 10,000 | delivered keys (event ids on the account lane, addressing ids on the inbox) | §23 (configurable; default) |
 | `EVENT_FEED_LIVE_BUFFER_CAPACITY` | 10,000 | events | §23 (configurable; default; decoupled from the dedupe capacity; only event-bearing frames are buffered) |
+| `EVENT_FEED_MAX_CAPACITY` | 1,000,000 | events / delivered keys | §23 — inclusive ceiling on BOTH configurable capacities, refused at construction with the `usage` code; a resource bound (a capacity may be honored eagerly), not a domain one. Also `conformance/event-feed/schema.json`'s `maximum` for `liveBufferCapacity` and `dedupeCapacity`, and the Go tier-2 loader's bound by declaration |
 | `EVENT_FEED_TICKET_TTL` | ~120 | seconds | server-owned (`expires_in`; provisional until the merge-time gate); never used for client scheduling |
 | `EVENT_FEED_MAX_FRAME_BYTES` | 1,048,576 (1 MiB) | bytes | §23 security invariants |
 
