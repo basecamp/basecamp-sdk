@@ -461,12 +461,12 @@ extension Mentions {
         if let rails = envelope["_rails"] as? [String: Any] {
             guard rails["pur"] as? String == attachablePurpose else { return nil }
             guard let gid = rails["data"] as? String, !gid.isEmpty else { return nil }
-            return gid
+            return bomDecoded(gid)
         }
         // Older layout: {"gid" => gid, "purpose" => …, "expires_at" => …}.
         guard envelope["purpose"] as? String == attachablePurpose else { return nil }
         guard let gid = envelope["gid"] as? String, !gid.isEmpty else { return nil }
-        return gid
+        return bomDecoded(gid)
     }
 
     /// Parses `gid://<app>/Person/<id>` and returns the id.
@@ -664,6 +664,9 @@ private func jsonEnvelopeBytes(_ raw: [UInt8]) -> Data? {
     while index < scalars.count {
         let scalar = scalars[index]
         guard inString else {
+            // Outside a string a byte-order mark is a syntax error to Go's
+            // scanner — "invalid character '\u{FEFF}'" — wherever it sits.
+            if scalar == "\u{FEFF}" { return nil }
             if scalar == "\"" { inString = true }
             if scalar == "," {
                 // Go's scanner requires a value after a comma; Foundation does
@@ -685,14 +688,8 @@ private func jsonEnvelopeBytes(_ raw: [UInt8]) -> Data? {
             index += 1
             continue
         }
-        if scalar == "\u{FEFF}" {
-            // `JSONSerialization` eats a byte-order mark at the head of a string
-            // token; `encoding/json` keeps it. Written as its own escape it
-            // survives both, which is the ACCEPTING direction closed: an
-            // envelope keyed `"\u{FEFF}_rails"` is one Go reads as neither
-            // layout, and this read as a mention — on the write side too, where
-            // `markup(for:)` rendered a tag Go refuses to write.
-            out.append(contentsOf: "\\uFEFF".unicodeScalars)
+        if scalar == bomSentinelLead || scalar == "\u{FEFF}" {
+            out.append(contentsOf: bomEncoded(scalar))
             index += 1
             continue
         }
@@ -732,10 +729,60 @@ private func jsonEnvelopeBytes(_ raw: [UInt8]) -> Data? {
             index += 6
             continue
         }
+        // An ESCAPED mark decodes to the same scalar the parser then eats, so it
+        // takes the same substitution.
+        if value == 0xFEFF || value == 0xE000 {
+            out.append(contentsOf: bomEncoded(Unicode.Scalar(UInt32(value))!))
+            index += 6
+            continue
+        }
         out.append(contentsOf: scalars[index...(index + 5)])
         index += 6
     }
     return Data(String(out).utf8)
+}
+
+/// U+FEFF, written so that no JSON parser can silently remove it.
+///
+/// `JSONSerialization` eats a byte-order mark from a string it decodes, and
+/// `encoding/json` keeps it — so `{"\u{FEFF}_rails": …}` is an envelope Go reads
+/// as neither layout and this read as a mention, on the write side too, where
+/// `markup(for:)` rendered a tag Go refuses to write.
+///
+/// Escaping it as `\uFEFF` was the first fix and it was a BET: it holds on
+/// swift-corelibs-foundation and CI showed it does NOT hold on Darwin, which
+/// removes the mark from the escape as well. So the mark is not handed to the
+/// parser at all. It is encoded into private-use scalars — U+FEFF becomes
+/// U+E000 U+E001, and a literal U+E000 doubles to U+E000 U+E000 so the encoding
+/// stays reversible — and decoded again out of the one string this reads back.
+/// Nothing here depends on how a parser treats U+FEFF, which is the only form
+/// of this fix that can be verified from the platform I can run.
+private let bomSentinelLead: Unicode.Scalar = "\u{E000}"
+private let bomSentinelMark: Unicode.Scalar = "\u{E001}"
+
+private func bomEncoded(_ scalar: Unicode.Scalar) -> [Unicode.Scalar] {
+    scalar == "\u{FEFF}" ? [bomSentinelLead, bomSentinelMark] : [bomSentinelLead, bomSentinelLead]
+}
+
+/// The inverse, applied to the gid a decoded envelope carries so it is the
+/// bytes Go read rather than the bytes this had to smuggle past the parser.
+private func bomDecoded(_ text: String) -> String {
+    guard text.unicodeScalars.contains(bomSentinelLead) else { return text }
+    var out = String.UnicodeScalarView()
+    var scalars = Array(text.unicodeScalars)[...]
+    while let first = scalars.first {
+        if first == bomSentinelLead, scalars.count > 1 {
+            let second = scalars[scalars.startIndex + 1]
+            if second == bomSentinelMark || second == bomSentinelLead {
+                out.append(second == bomSentinelMark ? "\u{FEFF}" : bomSentinelLead)
+                scalars = scalars.dropFirst(2)
+                continue
+            }
+        }
+        out.append(first)
+        scalars = scalars.dropFirst()
+    }
+    return String(out)
 }
 
 /// The four bytes `encoding/json`'s scanner skips between tokens.

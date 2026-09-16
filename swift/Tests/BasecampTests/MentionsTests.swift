@@ -883,9 +883,15 @@ final class MentionsTests: XCTestCase {
     ///
     /// That made `{"\u{FEFF}_rails":…}` an envelope Go reads as neither layout
     /// and this read as a mention — the accepting direction, and it reached
-    /// `markup(for:)`, which rendered a tag Go refuses to write. Written back as
-    /// its own escape it survives both parsers, so the answer no longer depends
-    /// on which Foundation is underneath.
+    /// `markup(for:)`, which rendered a tag Go refuses to write.
+    ///
+    /// Writing it back as its own `\uFEFF` escape was the first fix, it passed
+    /// here, and CI failed it: Darwin's parser removes the mark from the escape
+    /// too. So the mark never reaches the parser now — it is carried through in
+    /// private-use scalars and decoded out again. The rows below are the ones
+    /// that failed on macOS and passed on Linux, which is the point of keeping
+    /// them: this is the one mechanism on this branch whose fix could not be
+    /// verified on the machine it was written on.
     func testAByteOrderMarkInTheEnvelopeIsNotEaten() {
         func sgid(_ payload: String) -> String {
             var encoded = Data(payload.utf8).base64EncodedString()
@@ -908,6 +914,32 @@ final class MentionsTests: XCTestCase {
             Mentions.personId(
                 fromAttachableSgid:
                     sgid("{\"_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"attachable\"}}")),
+            7)
+        // A mark inside the HOST is a gid Go still reads, because a host may
+        // carry any non-ASCII byte — so the substitution has to be reversible
+        // rather than merely refusing.
+        XCTAssertEqual(
+            Mentions.personId(
+                fromAttachableSgid:
+                    sgid(
+                        "{\"_rails\":{\"data\":\"gid://b\(bom)c3/Person/7\","
+                            + "\"pur\":\"attachable\"}}")),
+            7)
+        // A BOM OUTSIDE a string is a syntax error to Go's scanner.
+        for payload in [
+            "{\(bom)\"_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"attachable\"}}",
+            "{\"_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"attachable\"}\(bom)}",
+        ] {
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: sgid(payload)), payload.debugDescription)
+        }
+        // A private-use scalar is an ordinary character to both, and the
+        // encoding that carries the mark must not eat it.
+        XCTAssertEqual(
+            Mentions.personId(
+                fromAttachableSgid:
+                    sgid(
+                        "{\"x\":\"\u{E000}\u{E001}\",\"_rails\":{\"data\":"
+                            + "\"gid://b\u{E000}c3/Person/7\",\"pur\":\"attachable\"}}")),
             7)
         // A BOM in a field nothing reads is still not an error.
         XCTAssertEqual(
