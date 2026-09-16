@@ -42,9 +42,20 @@ func coercePersonID(obj map[string]any) {
 	if !ok {
 		return
 	}
-	_, err := strconv.ParseInt(idStr, 10, 64)
+	n, err := strconv.ParseInt(idStr, 10, 64)
 	if err == nil {
-		obj["id"] = json.Number(idStr) // numeric string — preserve as json.Number
+		// CANONICAL, not verbatim. The value goes back out through json.Marshal
+		// at the end of normalizeEmbeddedPeopleJSON, and the encoder validates a
+		// json.Number against the JSON NUMBER GRAMMAR, which ParseInt's grammar
+		// is wider than: a leading "+" and leading zeros are both fine for
+		// ParseInt and both invalid JSON. Holding the string verbatim therefore
+		// made the marshal fail, every caller fell back to the RAW body, and the
+		// raw body still has a JSON string where Person.ID is a plain int64 — so
+		// "+7", "007" and "0009223372036854775807" failed the whole response on
+		// this path while FlexibleInt64, reading the same bytes, reads 7, 7 and
+		// 9223372036854775807. Formatting what ParseInt returned is the same
+		// value in a form the encoder can write.
+		obj["id"] = json.Number(strconv.FormatInt(n, 10))
 		return
 	}
 	var numErr *strconv.NumError
