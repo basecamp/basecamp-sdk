@@ -834,11 +834,24 @@ function parseOperation(
   // consumer persists after accepting that page. Flattening the walk would
   // swallow every intermediate position and leave a crashed consumer with
   // nothing to resume from.
-  const paginationStyle = operation["x-basecamp-pagination"]?.style;
+  // Presence is tested explicitly rather than by truthiness, exactly as Swift
+  // does. A truthy guard exempts a present-but-falsy trait — `false`, `0`, `""` —
+  // from the refusal and reads it as unpaginated, which is the silent pass this
+  // branch exists to close. The declared type says this is always an object or
+  // absent, but the value comes from parsed JSON, so read it as unknown and
+  // narrow: absent and a literal null are unpaginated; anything else is
+  // declared, and a declared trait that is not an object has no style to accept.
+  const paginationValue: unknown = operation["x-basecamp-pagination"];
+  const paginationDeclared = paginationValue !== undefined && paginationValue !== null;
+  const paginationTrait =
+    typeof paginationValue === "object" && paginationValue !== null
+      ? (paginationValue as { style?: unknown; key?: unknown })
+      : undefined;
+  const paginationStyle = typeof paginationTrait?.style === "string" ? paginationTrait.style : undefined;
   // Only "link" and "cursor" are implemented. Anything else — a typo, or the
   // "page" style the trait used to advertise — must fail loudly: read as "not
   // paginated" it would silently ship a method that never walks.
-  if (operation["x-basecamp-pagination"] && paginationStyle !== "link" && paginationStyle !== "cursor") {
+  if (paginationDeclared && paginationStyle !== "link" && paginationStyle !== "cursor") {
     throw new Error(
       `${operationId}: unsupported pagination style ${JSON.stringify(paginationStyle)} (expected "link" or "cursor")`
     );
@@ -849,7 +862,8 @@ function parseOperation(
   // position}` into the item type — and several of those consumers never check
   // `hasPagination`. A cursor operation must be typed as its envelope, so the
   // key never reaches them rather than every consumer having to remember.
-  const paginationKey = paginationStyle === "link" ? operation["x-basecamp-pagination"]?.key : undefined;
+  const paginationKey =
+    paginationStyle === "link" && typeof paginationTrait?.key === "string" ? paginationTrait.key : undefined;
   const multipartField = operation["x-basecamp-multipart"]?.field;
 
   return {
@@ -1828,5 +1842,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 // the declared return type is only half of a wrapped-paginated signature —
 // nothing but the emitted method shows the `requestPaginatedWrapped` type
 // argument, and the two have to name the same element.
-export { generateExampleValue, setSchemas, buildReturnType, generateMethod };
-export type { Schema, ParsedOperation };
+export { generateExampleValue, setSchemas, buildReturnType, generateMethod, parseOperation };
+export type { Schema, ParsedOperation, Operation };
