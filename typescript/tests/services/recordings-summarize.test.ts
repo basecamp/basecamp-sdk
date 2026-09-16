@@ -1442,8 +1442,10 @@ describe("recordings.summarize", () => {
       // `usage` (exit 1) — and card 40 settled it as `usage`, non-retryable,
       // for every SDK:
       // https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
-      // `usage` is the one coarse code no HTTP response can produce, so this
-      // verdict can never be read back as a constituent read's own answer.
+      // `usage` is one of only three coarse codes no HTTP response can produce
+      // (with `network` and `ambiguous`), and the one of those three that also
+      // describes a call the SDK declined to complete, so this verdict can never
+      // be read back as a constituent read's own answer.
       expect((err as BasecampError).code).toBe("usage");
       expect((err as BasecampError).exitCode).toBe(1);
       // The other half of that decision, and the half a code change could

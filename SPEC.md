@@ -4779,24 +4779,42 @@ pinned `errorType` and said nothing about the code. Card 40 settled it:
 | `campfire_discovery_incomplete` | `usage` | 1 | no |
 | `bucket_mismatch` | `usage` in Python, Ruby, Kotlin, TypeScript; `not_found` in Rust | 1 / 2 | no |
 
-`usage` for incomplete discovery is the one coarse code no HTTP response can
-produce — the status mapping yields `auth_required`, `forbidden`, `not_found`,
-`rate_limit`, `validation`, `limit_exceeded` and `api_error`, never this one —
-so a verdict the composite reached on its own can never be read back as a
-constituent read's own answer, which is the property the composite exists to
-protect. Never `not_found`: nothing left unsearched may be reported absent.
-Retryability is a SEPARATE field and answers a different question: no verdict is
-retryable, because each is deterministic for the same account state and a retry
-loop would re-run the identical search forever. Go and Swift keep the verdict
-out of their error taxonomies and expose the classification beside it
-(`basecamp.RecordingSummaryCode`, `RecordingSummaryError.canonicalCode`), so a
-consumer of those SDKs gets the same answer without the verdict becoming an
-HTTP-shaped error. `bucket_mismatch` is the row still unsettled, and the two
-SDKs with no code slot leave it unclassified rather than settle it by default.
-The fixture pins the code alongside `errorType` on every identity it has a
-case for — `no_recording_type`, `recording_unresolved` and
-`campfire_discovery_incomplete` — which is what stops the next port diverging
-silently on those. The two with no case of their own are the gap that remains.
+`usage` for incomplete discovery is one of only THREE coarse codes no HTTP
+response can produce — the status mapping yields `auth_required`, `forbidden`,
+`not_found`, `rate_limit`, `validation`, `limit_exceeded` and `api_error`, and
+`network` and `ambiguous` are equally unreachable from a status. `usage` is the
+one of those three that ALSO describes a call the SDK declined to complete,
+which is why it and not the other two. A verdict the composite reached on its
+own therefore can never be read back as a constituent read's own answer, which
+is the property the composite exists to protect. Never `not_found`: nothing left
+unsearched may be reported absent.
+
+Retryability is a SEPARATE field and answers a different question: none of these
+five verdicts is retryable, because each is deterministic for the same account
+state and a retry loop would re-run the identical search forever. (Python ships
+a sixth composite identity, `campfire_index_load_aborted`, which IS retryable
+and is not a verdict: it reports a single-flight load abandoned by the caller
+that owned it, and the next caller loads again. It exists in no other port.)
+
+Go and Swift keep the verdict out of their error taxonomies and expose the
+classification beside it (`basecamp.RecordingSummaryCode`,
+`RecordingSummaryError.canonicalCode`), so a consumer of those SDKs gets the
+same answer without the verdict becoming an HTTP-shaped error.
+`bucket_mismatch` is the row still unsettled, and the two SDKs with no code slot
+leave it unclassified rather than settle it by default.
+
+**What the fixture pins, and what it does not.** The fixture pins the code
+alongside `errorType` on every identity it has a case for —
+`no_recording_type`, `recording_unresolved` and `campfire_discovery_incomplete`
+— which is what stops the next port diverging silently on those. Two things are
+deliberately NOT pinned there, and neither should be mistaken for covered.
+`unknown_recording_type` and `bucket_mismatch` have no case of their own. And
+RETRYABILITY is not expressible in this fixture at all: Go and Swift carry no
+retryable flag on a composite verdict — the sentinel and the enum have no such
+field — so an assertion on it could not be executed by two of the seven runners.
+It is pinned instead by a unit test in each of the five SDKs whose verdicts do
+carry the flag. A port that shipped one of these retryable would pass the shared
+suite; only its own tests would catch it.
 
 The behavioral contract worth restating across a port: the read for a type is
 exactly one generated operation and the pointer's bucket is checked against the

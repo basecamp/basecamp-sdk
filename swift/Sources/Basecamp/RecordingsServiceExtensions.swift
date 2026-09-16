@@ -284,31 +284,32 @@ public enum RecordingSummaryError: Error, Sendable, LocalizedError {
     /// `not_found` where Python, Ruby, Kotlin and TypeScript say `usage`, so it
     /// is left `nil` here rather than settled by an SDK that has no code slot
     /// to begin with.
-    public var canonicalCode: String? {
-        switch self {
-        // Refused from the caller's own arguments, before any request.
-        case .noRecordingType, .unknownRecordingType: return "usage"
-        // Every visible candidate answered 404: the line is not there.
-        case .recordingUnresolved: return "not_found"
-        // `usage` is the one coarse code no HTTP response can produce — the
-        // status mapping yields auth_required, forbidden, not_found,
-        // rate_limit, validation, limit_exceeded and api_error, never this one
-        // — so a verdict the composite reached on its own can never be read
-        // back as a constituent read's own answer. Never `not_found`: nothing
-        // left unsearched may be reported absent.
-        case .campfireDiscoveryIncomplete: return "usage"
-        case .bucketMismatch: return nil
-        }
-    }
+    public var canonicalCode: String? { classification?.code }
 
     /// The CLI exit status ``canonicalCode`` decides, and `nil` when this SDK
-    /// does not classify the verdict. Same table as ``BasecampError/exitCode``.
-    public var exitCode: Int? {
-        guard let code = canonicalCode else { return nil }
-        switch code {
-        case "usage": return 1
-        case "not_found": return 2
-        default: return nil
+    /// does not classify the verdict. Read from the same table, never derived
+    /// from the code a second time: a `default` arm over the code string would
+    /// answer `nil` — "not classified" — for a verdict this SDK classifies
+    /// perfectly well under a code the second switch forgot.
+    public var exitCode: Int? { classification?.exit }
+
+    /// The one table both accessors read. `nil` is "this SDK does not classify
+    /// this verdict", and the only such verdict is ``bucketMismatch(_:_:)``.
+    private var classification: (code: String, exit: Int)? {
+        switch self {
+        // Refused from the caller's own arguments, before any request.
+        case .noRecordingType, .unknownRecordingType: return ("usage", 1)
+        // Every visible candidate answered 404: the line is not there.
+        case .recordingUnresolved: return ("not_found", 2)
+        // `usage` is one of only THREE coarse codes no HTTP response can
+        // produce: the status mapping yields auth_required, forbidden,
+        // not_found, rate_limit, validation, limit_exceeded and api_error, and
+        // network and ambiguous are equally unreachable from a status. `usage`
+        // is the one of those three that also describes a call the SDK declined
+        // to complete, which is why it and not the other two. Never
+        // `not_found`: nothing left unsearched may be reported absent.
+        case .campfireDiscoveryIncomplete: return ("usage", 1)
+        case .bucketMismatch: return nil
         }
     }
 }

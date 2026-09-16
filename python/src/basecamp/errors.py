@@ -218,13 +218,16 @@ _COMPOSITE_CODE: dict[str, ErrorCode] = {
     # different answers: `usage`, non-retryable.
     # https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
     #
-    # `usage` is the one coarse code NO HTTP response can produce -- the status
-    # mapping yields `auth_required`, `forbidden`, `not_found`, `rate_limit`,
-    # `validation`, `limit_exceeded` and `api_error`, never this one -- so a
-    # verdict the composite reached on its own can never be read back as a
-    # constituent read's own answer, which is the property the composite exists
-    # to protect. This port previously took the residual `api_error`, which a
-    # caller could not tell from a 500 one of those reads returned.
+    # `usage` is one of only THREE coarse codes no HTTP response can produce:
+    # the status mapping yields `auth_required`, `forbidden`, `not_found`,
+    # `rate_limit`, `validation`, `limit_exceeded` and `api_error`, and
+    # `network` and `ambiguous` are equally unreachable from a status. `usage`
+    # is the one of those three that ALSO describes a call the SDK declined to
+    # complete, which is why it and not the other two. A verdict the composite
+    # reached on its own therefore can never be read back as a constituent
+    # read's own answer, which is the property the composite exists to protect.
+    # This port previously took the residual `api_error`, which a caller could
+    # not tell from a 500 one of those reads returned.
     #
     # Retryability is a SEPARATE field and keeps the answer this port already
     # had: NOT retryable, because both reasons -- too many visible campfires,

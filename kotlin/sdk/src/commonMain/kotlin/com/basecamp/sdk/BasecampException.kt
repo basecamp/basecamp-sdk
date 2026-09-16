@@ -359,10 +359,10 @@ sealed class BasecampException(
      * as the identity so the next port cannot diverge silently:
      * https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
      *
-     * The reasoning that won, stated rather than smoothed. Discovery stopping
-     * at its own bound is not a server fault,
-     * not an absence — `not_found` would say the line is not there, which is
-     * exactly what this verdict refuses to say — and not multiple matches.
+     * The reasoning that won, stated rather than smoothed. Discovery stopping at
+     * its own bound is not a server fault, not an absence — `not_found` would
+     * say the line is not there, which is exactly what this verdict refuses to
+     * say — and not multiple matches.
      * `usage` is chosen because no HTTP RESPONSE maps to it. [fromHttpStatus] can
      * produce `auth_required`, `forbidden`, `not_found`, `rate_limit`,
      * `validation`, `limit_exceeded` and `api_error`, and never this one — so

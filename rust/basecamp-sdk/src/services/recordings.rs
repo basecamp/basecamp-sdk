@@ -274,11 +274,13 @@ impl RecordingSummaryError {
     /// Incomplete discovery is `usage`, settled across every port on [card 40] after the
     /// merged ports shipped two different answers — this one said `api_error`, Kotlin said
     /// `usage`, and a caller got exit 7 from one SDK and exit 1 from another for the same
-    /// condition. `usage` is the one coarse code no HTTP response can produce:
+    /// condition. `usage` is one of only THREE coarse codes no HTTP response can produce:
     /// [`ErrorCode::from_status`] yields `auth_required`, `forbidden`, `not_found`,
-    /// `rate_limit`, `validation`, `limit_exceeded` and `api_error`, never this one, so a
-    /// verdict the composite reached on its own can never be read back as a constituent
-    /// read's own answer. It is explicitly not `not_found`, because nothing left unsearched
+    /// `rate_limit`, `validation`, `limit_exceeded` and `api_error`, and `network` and
+    /// `ambiguous` are equally unreachable from a status. `usage` is the one of those three
+    /// that also describes a call the SDK declined to complete, which is why it and not the
+    /// other two. A verdict the composite reached on its own therefore can never be read
+    /// back as a constituent read's own answer. It is explicitly not `not_found`, because nothing left unsearched
     /// may be reported absent. Retryability is a separate field and is unchanged: the
     /// [`Error`] built from this carries `retryable = false`, because both reasons are
     /// deterministic for the same account state and a retry loop would re-run the identical

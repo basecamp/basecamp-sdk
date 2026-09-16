@@ -110,15 +110,21 @@ var (
 // RecordingSummaryCode reports the canonical SPEC §6 code a Summarize verdict
 // is classified under, and whether this SDK classifies it at all.
 //
-// The verdicts above are sentinel errors with no code slot, and that stays
-// true: the identity is the sentinel, matched with errors.Is, and it is
-// deliberately not a member of §6's closed taxonomy, which describes HTTP
-// answers. But a CLI still has to choose an exit status for one, and until
-// this existed every consumer chose its own — which is how
-// campfire_discovery_incomplete came to exit 1 from the Kotlin SDK and 7 from
-// Python's for the same condition. Card 40 settled that value as usage and
-// this is where the Go side of it is written down; ExitCodeFor turns the
-// answer into the status.
+// Summarize's verdicts — the four sentinels above and
+// ErrCampfireDiscoveryIncomplete, declared with its typed error further down —
+// are sentinel errors with no code slot, and that stays true: the identity is
+// the sentinel, matched with errors.Is, and it is deliberately not a member of
+// §6's closed taxonomy, which describes HTTP answers. But a CLI still has to
+// choose an exit status for one, and until this existed every consumer chose
+// its own — which is how campfire_discovery_incomplete came to exit 1 from the
+// Kotlin SDK and 7 from Python's for the same condition. Card 40 settled that
+// value as usage and this is where the Go side of it is written down;
+// ExitCodeFor turns the answer into the status.
+//
+// CHECK ok. Discarding it — code, _ := RecordingSummaryCode(err) — yields ""
+// for anything unclassified, and ExitCodeFor("") is ExitAPI (7), which is the
+// exact answer this function exists to stop a consumer giving. The compiler
+// will not make you look, so the doc does.
 //
 // https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
 //
@@ -138,12 +144,15 @@ func RecordingSummaryCode(err error) (code string, ok bool) {
 		// Every visible candidate answered 404: the line is not there.
 		return CodeNotFound, true
 	case errors.Is(err, ErrCampfireDiscoveryIncomplete):
-		// usage is the one coarse code no HTTP response can produce — the
-		// status mapping yields auth_required, forbidden, not_found,
-		// rate_limit, validation, limit_exceeded and api_error, never this one
-		// — so a verdict the composite reached on its own can never be read
-		// back as a constituent read's own answer. Never not_found: nothing
-		// left unsearched may be reported absent.
+		// usage is one of only THREE coarse codes no HTTP response can
+		// produce: the status mapping yields auth_required, forbidden,
+		// not_found, rate_limit, validation, limit_exceeded and api_error, and
+		// network and ambiguous are equally unreachable from a status. usage is
+		// the one of those three that also describes a call the SDK declined to
+		// complete, which is why it and not the other two. A verdict the
+		// composite reached on its own therefore can never be read back as a
+		// constituent read's own answer. Never not_found: nothing left
+		// unsearched may be reported absent.
 		return CodeUsage, true
 	}
 	return "", false
