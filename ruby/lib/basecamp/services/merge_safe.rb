@@ -202,12 +202,19 @@ module Basecamp
       # replaces (<tt>(body[key] || []).map { |p| p["id"] }</tt>) has three ways
       # to go wrong on malformed data: a non-Array has no +map+ (or, for a Hash,
       # maps over its pairs), a non-Hash element raises TypeError on +[]+, and a
-      # non-Integer +id+ rides through verbatim into the full-replace PUT — the
+      # wrong-typed +id+ rides through verbatim into the full-replace PUT — the
       # same corruption as a wrong-typed string, one level down.
       #
-      # +true+/+false+ are refused explicitly: they are not Integers in Ruby, so
-      # +is_a?(Integer)+ already rejects them, but the message names them as ids
-      # rather than as an unexplained type error.
+      # What it must NOT do is refuse an id the reference ACCEPTS, which is the
+      # other half of the same defect and the one this guard had (#912). A
+      # person's id is the single field in the generated model the reference
+      # decodes flexibly, and +fieldsFromTodo+ appends what that produced with
+      # no filter of any kind — 0 included. The shapes are live rather than
+      # theoretical: across +spec/fixtures+, 3 of 7 +assignees+ people carry no
+      # +personable_type+, which is exactly what keeps {Basecamp::Http}'s
+      # pre-decode normalizer from having already turned their string ids into
+      # Integers. The rule itself lives in {Basecamp::Ids.person_from_wire},
+      # where the read path already reads one, so the two cannot drift.
       def writable_id_list(body, key, record:, escape:)
         value = body[key]
         return [] if value.nil?
@@ -225,7 +232,23 @@ module Basecamp
       end
 
       # Validates one element of an id-list field and returns its id.
+      #
+      # Three element shapes are accepted that a strict reading would refuse,
+      # each because the reference accepts it:
+      #
+      # * a +nil+ element is 0 — a JSON null in the array decodes to the
+      #   reference's zero Person, whose id is 0 and is appended like any other;
+      # * an element with NO "id" is 0, the zero value, with no error;
+      # * an element whose "id" is a String is whatever ParseInt makes of it,
+      #   and a String that is not a number at all is the system actor 0.
+      #
+      # An explicit <tt>"id" => nil</tt> is NOT the same as an absent one and
+      # still fails the read, which is why the absent case is tested with
+      # +key?+ rather than by asking for the value: see
+      # {Basecamp::Ids.person_from_wire} for the decoder line that splits them.
       def person_id(element, index, key, record:, escape:)
+        return 0 if element.nil?
+
         unless element.is_a?(Hash)
           raise malformed(
             "#{record} field #{key.inspect}[#{index}] is not an object: #{describe(element)}",
@@ -233,17 +256,12 @@ module Basecamp
           )
         end
 
-        id = element["id"]
+        return 0 unless element.key?("id")
+
+        id = Ids.person_from_wire(element["id"])
         if id.nil?
           raise malformed(
-            "#{record} field #{key.inspect}[#{index}] has no \"id\"",
-            format(RESEND_HINT, escape: escape)
-          )
-        end
-
-        unless id.is_a?(Integer)
-          raise malformed(
-            "#{record} field #{key.inspect}[#{index}].id is not an integer: #{describe(id)}",
+            "#{record} field #{key.inspect}[#{index}].id is not a person id: #{describe(element["id"])}",
             format(RESEND_HINT, escape: escape)
           )
         end

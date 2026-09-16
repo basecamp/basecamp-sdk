@@ -799,11 +799,12 @@ class SchedulesServiceTest < Minitest::Test
   [
     [ "a non-array", "nope", %(Schedule entry field "participants" is not an array) ],
     [ "a non-object element", [ 42 ], %(Schedule entry field "participants"[0] is not an object) ],
-    [ "an element with no id", [ { "name" => "Victor" } ], %(Schedule entry field "participants"[0] has no "id") ],
-    [ "an out of range id", [ { "id" => "18446744073709551616" } ],
-      %(Schedule entry field "participants"[0].id is not an integer) ],
-    [ "a float id", [ { "id" => 12.5 } ], %(Schedule entry field "participants"[0].id is not an integer) ],
-    [ "a boolean id", [ { "id" => true } ], %(Schedule entry field "participants"[0].id is not an integer) ]
+    [ "a boolean id", [ { "id" => true } ], %(Schedule entry field "participants"[0].id is not a person id) ],
+    [ "a null id", [ { "id" => nil } ], %(Schedule entry field "participants"[0].id is not a person id) ],
+    [ "a float id", [ { "id" => 12.5 } ], %(Schedule entry field "participants"[0].id is not a person id) ],
+    [ "an id beyond int64", [ { "id" => 2**63 } ], %(Schedule entry field "participants"[0].id is not a person id) ],
+    [ "an out of range string id", [ { "id" => "18446744073709551616" } ],
+      %(Schedule entry field "participants"[0].id is not a person id) ]
   ].each do |label, participants, message|
     define_method("test_update_entry_refuses_#{label.tr(" ", "_")}_in_participants") do
       captured = stub_entry_get_and_put(entry: full_entry("participants" => participants))
@@ -815,6 +816,37 @@ class SchedulesServiceTest < Minitest::Test
       assert_includes error.message, message
       assert_not_requested :put, ENTRY_URL
       assert_empty captured[:bodies]
+    end
+  end
+
+  # The other half of the same guard: a participant id the reference ACCEPTS
+  # must not be refused here. A person's id is the one field the generated model
+  # decodes flexibly, so a bare string id is the number it spells, a non-numeric
+  # sentinel is the system actor 0, an absent id is the zero value and a null
+  # ELEMENT is the zero Person. Measured through the reference's own EditEntry
+  # composite; an explicit <tt>"id" => nil</tt> is NOT absent and still fails the
+  # read, which is the row above.
+  [ [ "a bare string id", [ { "id" => "1049715914" } ], [ 1049715914 ] ],
+    [ "a plus-signed string id", [ { "id" => "+5" } ], [ 5 ] ],
+    [ "a sentinel id", [ { "id" => "basecamp" } ], [ 0 ] ],
+    [ "an element with no id", [ { "name" => "Victor" } ], [ 0 ] ],
+    [ "a null element", [ nil ], [ 0 ] ],
+    [ "one person and one system actor", [ { "id" => 7 }, { "id" => "basecamp" } ], [ 7, 0 ] ]
+  ].each do |label, participants, expected|
+    # The seed only reaches the wire on an explicit address, so the block
+    # re-addresses it with exactly what the guard read — the reference's
+    # `f.SetParticipantIDs(f.ParticipantIDs())`, which is how the oracle
+    # measured the projection at this site.
+    define_method("test_edit_entry_reads_#{label.tr(" ", "_")}_the_way_the_reference_does") do
+      captured = stub_entry_get_and_put(entry: full_entry("participants" => participants))
+
+      @account.schedules.edit_entry(entry_id: 789) do |e|
+        read_back = e.participant_ids
+        assert_equal expected, read_back
+        e.participant_ids = read_back
+      end
+
+      assert_equal expected, captured[:bodies].first["participant_ids"]
     end
   end
 

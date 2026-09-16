@@ -555,6 +555,12 @@ describe("TodosService", () => {
 
     const writableStrings = ["content", "description", "due_on", "starts_on"] as const;
     const idLists = ["assignees", "completion_subscribers"] as const;
+    // The response key each id list is read from, and the request key it is
+    // written back to.
+    const idListBodyKeys: Record<string, string> = {
+      assignees: "assignee_ids",
+      completion_subscribers: "completion_subscriber_ids",
+    };
 
     // Serve a GET carrying `body` and a PUT that records that it happened.
     // `body` is typed as MSW's own response-body type rather than `unknown`:
@@ -730,6 +736,95 @@ describe("TodosService", () => {
         // never turns into a partial update.
         expect(requests).toEqual(["GET"]);
       });
+
+      // A string id read the way the reference reads one. The pre-decode
+      // normalizer only reaches a person object carrying `personable_type`, and
+      // across `spec/fixtures` 3 of 7 `assignees` people do not — so this guard
+      // is the reader for those, and it has to agree with the walk about every
+      // one of them. Measured through the reference's own Update composite.
+      it.each([
+        ["a bare numeric string", "1049715914", 1049715914],
+        ["leading zeros", "007", 7],
+        ["a minus sign", "-5", -5],
+        ["a plus sign", "+5", 5], // which /^-?\d+$/ rejects and ParseInt accepts
+        ["the LocalPerson sentinel", "basecamp", 0],
+        ["an empty string", "", 0],
+        ["a leading space", " 12", 0], // Go trims nothing; Number(" 12") says 12
+        ["a hex literal", "0x10", 0],
+        ["a decimal point", "12.0", 0],
+        ["a numeric separator", "1_0", 0],
+        ["a fullwidth digit", "\uFF17", 0],
+        ["junk after uint64 max", "18446744073709551615x", 0], // syntax wins the scan
+      ])(
+        `update reads %s ${field} id the way the reference does`,
+        async (_label, rawId, expected) => {
+          let putBody: Record<string, unknown> = {};
+          server.use(
+            http.get(`${BASE_URL}/todos/42`, () =>
+              HttpResponse.json(fullTodo(42, { [field]: [{ id: rawId, name: "Jane" }] }) as JsonBodyType)
+            ),
+            http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+              putBody = (await request.json()) as Record<string, unknown>;
+              return HttpResponse.json(fullTodo(42) as JsonBodyType);
+            })
+          );
+
+          await client.todos.update(42, { content: "New title" });
+
+          expect(putBody[idListBodyKeys[field]]).toEqual([expected]);
+        }
+      );
+
+      // The RANGE refusal, which goes the other way from the SYNTAX one above
+      // and is decided one digit earlier: "…615x" is the system actor, "…616x"
+      // overflows inside the scan before the 'x' is reached and fails the read.
+      it.each([["9223372036854775808"], ["18446744073709551616x"]])(
+        `update refuses the ${field} id %s, whose digits overflow int64`,
+        async (rawId) => {
+          const requests: string[] = [];
+          serve(fullTodo(42, { [field]: [{ id: rawId, name: "Jane" }] }), requests);
+
+          const error = await rejection(client.todos.update(42, { content: "New title" }));
+          expectResponseError(
+            error,
+            new RegExp(`Todo field "${field}"\\[0\\]\\.id is not a person id`),
+            requests
+          );
+        }
+      );
+
+      // Two shapes the reference WRITES BACK rather than refusing, measured
+      // through its own Update composite: an element with no `id` is the zero
+      // value of the flexible decoder, and a null ELEMENT decodes to the zero
+      // `Person`. An explicit `"id": null` is neither — it reaches the decoder,
+      // whose number path fails on an empty buffer — which is why it stays in
+      // the refusal table above.
+      it.each([
+        ["an element with no id", [{ name: "Jane" }]],
+        ["a null element", [null]],
+      ])(
+        `update writes back %s in ${field} as the system actor 0`,
+        async (_label, people) => {
+          const requests: string[] = [];
+          let putBody: Record<string, unknown> = {};
+          server.use(
+            http.get(`${BASE_URL}/todos/42`, () => {
+              requests.push("GET");
+              return HttpResponse.json(fullTodo(42, { [field]: people }) as JsonBodyType);
+            }),
+            http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+              requests.push("PUT");
+              putBody = (await request.json()) as Record<string, unknown>;
+              return HttpResponse.json(fullTodo(42) as JsonBodyType);
+            })
+          );
+
+          await client.todos.update(42, { content: "New title" });
+
+          expect(requests).toEqual(["GET", "PUT"]);
+          expect(putBody[idListBodyKeys[field]]).toEqual([0]);
+        }
+      );
     }
 
     // One level up from the field guards: a successful GET can return a

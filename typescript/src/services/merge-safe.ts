@@ -31,6 +31,7 @@
  * intended end state for all of them.
  */
 import { Errors, truncateErrorMessage, type BasecampError } from "../errors.js";
+import { personIdNumber, scanPersonId } from "../person-id.js";
 
 const resendHint = (escape: string): string =>
   "The merge-safe update/edit resend this field verbatim, so a coerced or empty value " +
@@ -248,25 +249,66 @@ export function writableIdList(
     );
   }
   return value.map((element: unknown, index: number) => {
-    if (typeof element !== "object" || element === null || Array.isArray(element)) {
+    // A null element is 0, not a malformed one. The reference decodes a JSON
+    // null in this array into its zero `Person`, whose `Id` is 0, and
+    // `fieldsFromTodo` appends that like any other id — measured through the
+    // reference's own Update composite.
+    if (element === null) return 0;
+    if (typeof element !== "object" || Array.isArray(element)) {
       throw malformedResponse(
         `${opts.record} field "${key}"[${index}] is not an object: ${describeValue(element)}`,
         resendHint(opts.escape)
       );
     }
-    const id = (element as Record<string, unknown>)["id"];
-    if (id === undefined || id === null) {
+    const record = element as Record<string, unknown>;
+    // An ABSENT id is the zero value with no error, while an explicit null
+    // FAILS the read. The reference's flexible decoder is only called for a
+    // value that is there; for a JSON null it IS called, its number path leaves
+    // the buffer empty, and `ParseInt("")` fails. Two different answers, so the
+    // two cases cannot be tested together with `id == null`.
+    if (!("id" in record)) return 0;
+    const id = record["id"];
+    const refuse = (): never => {
       throw malformedResponse(
-        `${opts.record} field "${key}"[${index}] has no "id"`,
+        `${opts.record} field "${key}"[${index}].id is not a person id: ${describeValue(id)}`,
         resendHint(opts.escape)
       );
+    };
+    // A NUMBER id. `Number.isInteger` is the test rather than `typeof`: `1.5`
+    // and `NaN` are numbers and neither is a person id, and a boolean fails it
+    // outright, which is what we want — JavaScript would coerce `true` to 1
+    // downstream. `Number.isSafeInteger` is the second half and is the same
+    // judgment `personIdNumber` makes for a string: past 2^53 `JSON.parse` has
+    // already rounded, so the only honest answers are "unreadable" or a wrong
+    // id, and the reference refuses this row anyway once it is past int64.
+    if (typeof id === "number") return Number.isSafeInteger(id) ? id : refuse();
+    // A STRING id, which is the live case: BC3 serializes person ids as strings
+    // in some responses, and the pre-decode normalizer only reaches a person
+    // object that carries `personable_type` — across `spec/fixtures`, 3 of 7
+    // `assignees` people do not. The reference has no such gap, because it
+    // covers this site with a DECODER: `Person.Id` is `types.FlexibleInt64`,
+    // and `fieldsFromTodo` appends what that produced without filtering. Same
+    // grammar as the normalizer walk, so the two cannot disagree about a person
+    // depending on which of them saw it first.
+    if (typeof id === "string") {
+      const scan = scanPersonId(id);
+      // A SYNTAX refusal is the system actor, not an error: that is what the
+      // reference reads `"basecamp"` as, and the RANGE refusal beside it fails
+      // the read. Which one a string earns is decided inside the scan, so they
+      // cannot be told apart after the fact by looking at the string.
+      if (scan.kind === "syntax") return 0;
+      if (scan.kind === "range") return refuse();
+      // Outside ±(2^53 - 1) the number is already rounded, so refusing the ID
+      // is the local resolution `personIdNumber` documents — a residual
+      // divergence from a reference that answers in `int64`, recorded rather
+      // than papered over with a wrong id.
+      return personIdNumber(scan.value) ?? refuse();
     }
-    if (typeof id !== "number" || !Number.isInteger(id)) {
-      throw malformedResponse(
-        `${opts.record} field "${key}"[${index}].id is not an integer: ${describeValue(id)}`,
-        resendHint(opts.escape)
-      );
-    }
-    return id;
+    // Everything else is a decode failure at the reference, an explicit
+    // `"id": null` included: the flexible decoder IS called for a JSON null,
+    // its number path leaves the buffer empty, and `ParseInt("")` fails. An
+    // absent key never reaches here, and is 0 — the two cannot be tested
+    // together with `id == null`.
+    return refuse();
   });
 }

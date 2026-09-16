@@ -632,13 +632,15 @@ class TestMalformedResponseFields:
         [
             pytest.param("nobody", id="string"),
             pytest.param([42], id="non-object-element"),
-            pytest.param([{"name": "no id"}], id="missing-id"),
             pytest.param([{"id": True}], id="bool-id"),
+            pytest.param([{"id": None}], id="null-id"),
+            pytest.param([{"id": 2**63}], id="id-beyond-int64"),
             # A plain numeric string is NOT here any more, and was wrong to be:
             # the normalizer converts it before this guard sees it, and the
             # reference accepts it too (Go's generated `Person.Id` is
-            # `types.FlexibleInt64`). See
-            # `TestSyncEdit.test_a_participant_with_a_string_id_and_no_personable_type_still_seeds`.
+            # `types.FlexibleInt64`). The guard reads one directly now as well,
+            # for a person the normalizer never reached -- see
+            # `test_edit_reads_the_participant_ids_the_reference_reads`.
             #
             # A string past int64 still belongs here. The normalizer leaves it
             # exactly as it arrived -- that is the RANGE outcome, and the whole
@@ -655,6 +657,38 @@ class TestMalformedResponseFields:
 
         assert not put_route.called
         assert respx.calls.call_count == 1
+
+    # The other half of the same guard: a person id the reference ACCEPTS must
+    # not be refused here. A participant's id is read through the reference's
+    # flexible decoder, so a bare string id is the number it spells, a
+    # non-numeric sentinel is the system actor 0, and an absent id is the zero
+    # value — measured through the reference's own EditEntry composite.
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("participants", "expected"),
+        [
+            pytest.param([{"id": "1049715914"}], [1049715914], id="string-id"),
+            pytest.param([{"id": "+5"}], [5], id="plus-signed-string-id"),
+            pytest.param([{"id": "basecamp"}], [0], id="sentinel-id"),
+            pytest.param([{"name": "no id"}], [0], id="missing-id"),
+            pytest.param([None], [0], id="null-element"),
+        ],
+    )
+    def test_edit_reads_the_participant_ids_the_reference_reads(self, participants, expected):
+        _, put_route = _routes(_entry(participants=participants))
+
+        with _sync_schedules().edit_entry(entry_id=5001) as e:
+            # Writing back what the guard read is the ADDRESS, not a no-op: the
+            # carve-out reaches the wire only when the caller assigns it. It is
+            # the reference's ``f.SetParticipantIDs(f.ParticipantIDs())``, which
+            # is how the oracle measured the projection at this site. Held in a
+            # local so the read is asserted on its own.
+            read_back = e.participant_ids
+            assert read_back == expected
+            e.participant_ids = read_back
+
+        assert put_route.called
+        assert json.loads(put_route.calls[-1].request.content)["participant_ids"] == expected
 
     @respx.mock
     @pytest.mark.parametrize("value", [42, {"href": "x"}, True])
