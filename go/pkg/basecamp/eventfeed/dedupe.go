@@ -2,16 +2,19 @@ package eventfeed
 
 import "container/list"
 
-// DefaultDedupeCapacity is the default delivered-id LRU capacity
-// (EVENT_FEED_DEDUPE_CAPACITY, 10,000 event ids).
+// DefaultDedupeCapacity is the default delivered-key LRU capacity
+// (EVENT_FEED_DEDUPE_CAPACITY, 10,000 keys).
 const DefaultDedupeCapacity = 10_000
 
-// dedupe is a bounded LRU of actually-delivered event ids — never position
-// ordering (SPEC.md §23 "Dedupe"). Every delivery — poll page, drain, or
-// streaming — checks it before delivering and records the delivered id, so
-// poll-vs-push duplication is suppressed by id regardless of which lane
-// delivered first. A buffered live event with an id at or below the current
-// position is still delivered — it was never served by poll.
+// dedupe is a bounded LRU of actually-delivered keys in the lane's identity
+// — event ids on the account lane, addressing ids on the inbox lane
+// (Event.Key) — never position ordering (SPEC.md §23 "Dedupe"). Every
+// delivery — poll page, drain, or streaming — checks it before delivering
+// and records the delivered key, so poll-vs-push duplication is suppressed
+// by key regardless of which lane delivered first; on the inbox, one event
+// addressing the principal under two ids is two deliveries. A buffered live
+// event with a key at or below the current position is still delivered — it
+// was never served by poll.
 type dedupe struct {
 	capacity int
 	// order holds ids most-recently-DELIVERED first: a Seen hit is a

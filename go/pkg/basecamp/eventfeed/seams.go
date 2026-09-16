@@ -457,7 +457,9 @@ type Signal interface{ isSignal() }
 // poll-repairable, so overflow during the entry window invalidates
 // completeness — its disposition must be taken before any save.
 type BufferOverflow struct {
-	// DroppedIDs are the exact event ids dropped — "dropped" is unambiguous.
+	// DroppedIDs are the exact keys dropped, in the lane's identity — event
+	// ids on the account lane, addressing ids on the inbox lane (Event.Key);
+	// "dropped" is unambiguous.
 	DroppedIDs []int64
 	// DroppedCount is the number of events dropped.
 	DroppedCount int

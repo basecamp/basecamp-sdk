@@ -223,8 +223,9 @@ a script that wants the staleness firing itself writes `fireTimer`.
   client-side; every `expectConnect.url` is the immediately preceding mint's `url`,
   verbatim, query string included. A fresh ticket is minted on **every** reconnect
   pass — the connector never stores a mint URL across attempts.
-- **Dedupe tracks actually-delivered event ids** — never position ordering. A
-  buffered live event with an id ≤ the current position is still delivered (it was
+- **Dedupe tracks actually-delivered keys in the lane's identity** — event ids on the
+  account lane, addressing ids on the inbox lane — never position ordering. A
+  buffered live event with a key ≤ the current position is still delivered (it was
   never served by poll); discarding live ids at or below the position is a named
   mutant (fixture 20).
 - **The ownership cut** (present-class entries): after accepting the entry-poll
