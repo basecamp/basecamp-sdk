@@ -55,10 +55,11 @@ from tests.person_id_corpus import PERSON_ID_CORPUS
 #: `commentFromGenerated` sets it only when `Id != 0 || Name != ""`
 #: (go/pkg/basecamp/comments.go:364), so a syntax refusal -- or `"0"` -- with no
 #: name is dropped. With a name, Go gives `{"id": 0, "name": ...}`, which is what
-#: this port's label-free answer now matches. Python keeps `{"id": 0}` here where
-#: Go omits the creator; Ruby omits it, as Go does. That presence rule is a
-#: projection rule, not the id grammar, and predates this table -- it is left as
-#: it was rather than folded into a change about person ids.
+#: this port's label-free answer now matches. Python and TypeScript both keep
+#: `{"id": 0}` here where Go omits the creator; Ruby omits it, as Go does. That
+#: presence rule is a projection rule, not the id grammar, and predates this
+#: table -- it is left as it was rather than folded into a change about person
+#: ids.
 _FLEXIBLE_STRING_ROWS = [
     (
         raw,
