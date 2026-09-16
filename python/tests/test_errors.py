@@ -691,22 +691,32 @@ class TestRetryableKeywordDoesNotCollide:
         assert ApiError(retryable=True).retryable is True
         assert ApiError(retryable=False).retryable is False
 
-    def test_no_subclass_that_advertises_kwargs_raises_on_the_flag(self):
-        """The sweep, so a new subclass cannot reintroduce the shape.
+    def test_every_subclass_answers_the_flag_with_the_value_it_should(self):
+        """The sweep, so a new subclass can reintroduce neither the crash nor the wrong answer.
 
         The card that filed this named three classes because that is where its
         author looked. This walks the whole package instead: every
-        ``BasecampError`` subclass, not a list someone remembered to extend.
+        ``BasecampError`` descendant, not a list someone remembered to extend.
 
-        The rule it enforces is the contract each constructor advertises. A
-        constructor that takes ``retryable`` -- by declaring it, or by accepting
-        ``**kwargs`` and so telling callers and mypy alike that any base keyword
-        goes -- must not raise when one is passed. A constructor that takes
-        neither accepts only what it declares, and a stray keyword is refused
-        statically as well as at runtime; that is ordinary Python rather than an
-        error escaping the taxonomy, so it is exempt. The exempt set is pinned
-        by name below, so the sweep cannot be dodged by quietly dropping
-        ``**kwargs`` from a constructor.
+        Two things are pinned, and the first version of this test pinned only
+        the first. **That the flag does not raise**: a constructor advertising
+        ``retryable`` -- by declaring it, or by accepting ``**kwargs`` and so
+        telling callers and mypy alike that the keyword is legal -- must accept
+        it. **And that it answers with the right value**: an earlier version
+        asserted only ``isinstance(error.retryable, bool)``, which is true of
+        every possible answer, so regressing all six overwrite sites to
+        ``kwargs.setdefault`` -- "honour the caller", the semantics this change
+        rejects on the merits -- left it green. #888's own commit message is a
+        three-iteration post-mortem of a sweep in this file that swept nothing;
+        this is the same mistake one register down, and ``_FIXED_RETRYABILITY``
+        below is the fix: a per-class expected value, and every class must be
+        in it or in the caller-wins set.
+
+        A constructor that advertises the keyword NOWHERE is exempt: a stray
+        one is "unexpected keyword argument", refused by mypy as well as at
+        runtime, which is ordinary Python rather than an error escaping the
+        taxonomy. The exempt set is pinned by name so the sweep cannot be
+        dodged by dropping ``**kwargs`` from a constructor.
         """
         import importlib
         import inspect
@@ -721,13 +731,17 @@ class TestRetryableKeywordDoesNotCollide:
         def descendants(cls):
             found = set()
             for sub in cls.__subclasses__():
-                found.add(sub)
+                # Only this package's own errors. `__subclasses__` sees every
+                # subclass that has been IMPORTED, so without this filter an
+                # error class defined at module scope in any other test file
+                # joins the walk -- green under `pytest tests/test_errors.py`
+                # and red under the whole suite.
+                if sub.__module__.startswith("basecamp."):
+                    found.add(sub)
                 found |= descendants(sub)
             return found
 
-        # Constructor arguments for the subclasses that require them. A new
-        # subclass with required arguments fails the baseline below by name,
-        # which is the tripwire doing its job: add its arguments here.
+        # Constructor arguments for the subclasses that require them.
         required = {
             "NoRecordingTypeError": ((), {"routing_key": "boost.created"}),
             "UnknownRecordingTypeError": ((), {"routing_key": "x.y"}),
@@ -744,15 +758,68 @@ class TestRetryableKeywordDoesNotCollide:
             "RecordingRoutingError": (("m",), {}),
         }
 
-        subclasses = sorted(descendants(BasecampError), key=lambda c: c.__name__)
-        assert len(subclasses) >= 23, f"the sweep found only {len(subclasses)} subclasses; it has stopped finding them"
+        # The classes that FIX their retryability, and to what. Everything else
+        # fixes none, so the caller's value is the value -- `ApiError` being the
+        # one that matters, since that is how `error_from_response` tells a 500
+        # from a 418. `DeviceFlowError` derives it from `reason`, and the
+        # arguments above give it `transport`, the one retryable reason.
+        fixed = {
+            "RateLimitError": True,
+            "NetworkError": True,
+            "LimitExceededError": False,
+            "CampfireDiscoveryIncompleteError": False,
+            "CampfireIndexLoadAbortedError": True,
+            "DeviceFlowError": True,
+        }
 
-        exempt, swept = [], []
+        # Every error this package defines. Spelled out rather than counted: a
+        # floor only catches removals once, and `>= n` cannot see a class that
+        # arrives and another that leaves. Both directions force a decision.
+        expected_subclasses = {
+            "AmbiguousError",
+            "ApiError",
+            "AuthError",
+            "BucketMismatchError",
+            "CampfireDiscoveryIncompleteError",
+            "CampfireIndexLoadAbortedError",
+            "DeviceFlowError",
+            "DiscoverySelectionError",
+            "ForbiddenError",
+            "LimitExceededError",
+            "NetworkError",
+            "NoRecordingTypeError",
+            "NotFoundError",
+            "OAuthError",
+            "PeopleConfirmationRequiredError",
+            "RateLimitError",
+            "RecordingRoutingError",
+            "RecordingUnresolvedError",
+            "UnknownRecordingTypeError",
+            "UsageError",
+            "ValidationError",
+            "WebhookVerificationError",
+            "_IssuerBindingError",
+        }
+
+        subclasses = sorted(descendants(BasecampError), key=lambda c: c.__name__)
+        assert {c.__name__ for c in subclasses} == expected_subclasses, (
+            "the set of BasecampError subclasses changed. A new one needs a row in "
+            "`fixed` (or a deliberate place in the caller-wins set) and a name here."
+        )
+
+        exempt, caller_wins = [], []
         for cls in subclasses:
             args, kwargs = required.get(cls.__name__, ((), {}))
-            # Baseline: the class builds at all, so a failure below is the flag
-            # and not the arguments.
-            cls(*args, **kwargs)
+            try:
+                # Baseline: the class builds at all, so a failure below is the
+                # flag and not the arguments.
+                cls(*args, **kwargs)
+            except TypeError as exc:
+                pytest.fail(
+                    f"{cls.__name__} could not be constructed for the sweep ({exc}). "
+                    f"Add its constructor arguments to the `required` map in this test."
+                )
+
             parameters = inspect.signature(cls.__init__).parameters
             advertised = "retryable" in parameters or any(
                 p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values()
@@ -760,13 +827,30 @@ class TestRetryableKeywordDoesNotCollide:
             if not advertised:
                 exempt.append(cls.__name__)
                 continue
-            swept.append(cls.__name__)
+
+            answers = {}
             for passed in (True, False):
-                error = cls(*args, **{**kwargs, "retryable": passed})
-                assert isinstance(error.retryable, bool), cls.__name__
+                # Must not raise: that is the defect this change fixes.
+                answers[passed] = cls(*args, **{**kwargs, "retryable": passed}).retryable
+
+            if cls.__name__ in fixed:
+                invariant = fixed[cls.__name__]
+                assert answers == {True: invariant, False: invariant}, (
+                    f"{cls.__name__} fixes retryable={invariant}, but a caller moved it: {answers}. "
+                    "Overwrite the keyword -- never setdefault, which honours the caller instead."
+                )
+            else:
+                assert answers == {True: True, False: False}, (
+                    f"{cls.__name__} fixes no retryability, so the caller's value should be the "
+                    f"value, but it answered {answers}. If it should fix one, add it to `fixed`."
+                )
+                caller_wins.append(cls.__name__)
 
         assert exempt == ["WebhookVerificationError"], (
             f"the set of constructors that advertise no retryable changed: {exempt}. "
             "Dropping `**kwargs` from a constructor removes it from this sweep."
         )
-        assert len(swept) >= 22, f"the sweep only checked {len(swept)} constructors"
+        assert set(fixed) | set(caller_wins) | set(exempt) == expected_subclasses, (
+            "every subclass must be classified: it fixes retryability, or the caller's value wins, "
+            "or it advertises the keyword nowhere."
+        )

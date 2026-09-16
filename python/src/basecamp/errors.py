@@ -163,10 +163,13 @@ class LimitExceededError(BasecampError):
     def __init__(self, message: str = "Account limit reached", **kwargs: Any):
         # Overwrite, for the reason spelled out on `RateLimitError`. The
         # docstring above is the invariant: no amount of backoff frees storage,
-        # so a caller cannot talk this one into being retryable. Honouring the
-        # flag here would put a retry loop into a spin against a full disk --
-        # precisely the failure this class exists to prevent, which is why the
-        # 507 arm of `error_from_response` is decided before the 5xx arms.
+        # so a caller cannot talk this one into being retryable, and the 507 arm
+        # of `error_from_response` is decided before the 5xx arms for the same
+        # reason. The loop that would spin against a full disk is a CONSUMER's,
+        # not this SDK's -- `_http`/`_async_http` catch only
+        # `(RateLimitError, NetworkError, ApiError)`, so a 507 never reaches
+        # `_is_retryable_error` here. `.retryable` is a public answer that
+        # consumers act on, which is what makes it worth defending.
         kwargs["retryable"] = False
         super().__init__(message, code=ErrorCode.LIMIT_EXCEEDED, **kwargs)
 
