@@ -577,8 +577,9 @@ abstract class BaseService(
      * A second mapped type would be a second cause type they would
      * each have to learn, so anything that is a decode failure is made to speak
      * this one *where it is raised* instead — see
-     * [com.basecamp.sdk.serialization.FlexibleLongSerializer], whose numeric
-     * conversion would otherwise leak a [NumberFormatException].
+     * [com.basecamp.sdk.serialization.FlexibleLongSerializer], which reads an id
+     * with a scan that returns a verdict rather than with a numeric conversion
+     * that would raise a [NumberFormatException] for this catch to miss.
      *
      * Two classes stay unmapped on purpose: [NullPointerException] and
      * [IllegalArgumentException]. Catching either would swallow every `!!` and

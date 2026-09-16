@@ -14,6 +14,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class FlexibleLongSerializerTest {
     private val json = Json { ignoreUnknownKeys = true }
@@ -43,13 +44,20 @@ class FlexibleLongSerializerTest {
     }
 
     /**
-     * An UNQUOTED bad number, which takes the other branch: `JsonPrimitive.long`
-     * is `content.toLong()`, so it raises [NumberFormatException] where the
-     * quoted branch above raises [SerializationException] by hand. A
-     * `KSerializer` that reports a decode failure in a type kotlinx does not use
-     * for decode failures escapes everything downstream that recognizes one —
-     * the SDK's SPEC §6 mapping (#604), the §18 composites' re-hint, and the
-     * conformance runner's fixture-body policy, all of which read that type.
+     * An UNQUOTED bad number, which takes the other branch, and the TYPE of the
+     * refusal, which is what this test is for. A `KSerializer` that reports a
+     * decode failure in a type kotlinx does not use for decode failures escapes
+     * everything downstream that recognizes one — the SDK's SPEC §6 mapping
+     * (#604), the §18 composites' re-hint, and the conformance runner's
+     * fixture-body policy, all of which read that type.
+     *
+     * It used to be possible to break: the branch read the literal through
+     * `JsonPrimitive.long` and caught the [NumberFormatException] that raises,
+     * so removing the catch leaked the numeric type. The catch is gone because
+     * the call is: the path now runs Go's own scan, which returns a verdict
+     * rather than throwing one, so there is no foreign exception left to convert.
+     * The guarantee is therefore structural — but it is still the guarantee, so
+     * it stays pinned here rather than being assumed from the shape of the code.
      */
     @Test
     fun rejectsUnquotedFractionalAndOverflowNumbersAsSerializationFailures() {
@@ -360,6 +368,177 @@ class FlexibleLongSerializerTest {
             json,
         )
         assertTrue(refused.contains("\"kept\""), "a range refusal must not touch system_label")
+    }
+
+    // The NUMBER path: an unquoted literal where a person id belongs.
+    //
+    // It has only TWO outcomes, and that is the point. The sentinel belongs to
+    // the quoted path alone — "basecamp" is a string — so a bare literal is
+    // either an integer in range or a malformed body. Answering 0 for one is not
+    // a neutral failure: 0 is the SYSTEM ACTOR (LocalPerson, "basecamp",
+    // "campfire"), on the one field that says who acted.
+    //
+    // Before this corpus existed the path diverged from Go on 7 of the 25 rows
+    // below, all in the accepting direction:
+    //
+    //   - `[7]`, `[]`, `{"a":7}`, `{}` fell off the end of `deserialize` to a
+    //     trailing `return 0L`. Go decodes the number path into a `json.Number`
+    //     through `encoding/json`, and neither shape unmarshals into one, so both
+    //     fail the read there.
+    //   - `1e3` and `1E3` read 1000 through `JsonPrimitive.long`, which in
+    //     kotlinx 1.11.0 accepts an exponent. `json.Number.Int64()` is
+    //     `strconv.ParseInt(text, 10, 64)` on the token verbatim, which does not.
+    //   - `007` read 7. It is not valid JSON at all: `json.Unmarshal` scans the
+    //     document for validity before it calls any `UnmarshalJSON`, so the whole
+    //     read fails in Go. kotlinx's number lexer is lenient about token shape
+    //     and hands the literal through, so the grammar check has to be here.
+    //
+    // `+7`, `null`, `true`, `7.5` and both int64 boundaries were already right,
+    // and are pinned so the fix cannot drift off them.
+    private data class BareCase(val literal: String, val outcome: IdOutcome, val value: Long = 0L)
+
+    private val bareNumberCorpus = listOf(
+        BareCase("7", IdOutcome.VALUE, 7),
+        BareCase("-7", IdOutcome.VALUE, -7),
+        BareCase("0", IdOutcome.VALUE, 0),
+        // Valid JSON, and `ParseInt` reads it as zero.
+        BareCase("-0", IdOutcome.VALUE, 0),
+        // Not a float anywhere in this path: 2^53 and its neighbours are real
+        // int64 ids, and a conversion through Double would round them.
+        BareCase("9007199254740991", IdOutcome.VALUE, 9007199254740991),
+        BareCase("9007199254740992", IdOutcome.VALUE, 9007199254740992),
+        BareCase("9007199254740993", IdOutcome.VALUE, 9007199254740993),
+        BareCase("9223372036854775807", IdOutcome.VALUE, 9223372036854775807),
+        BareCase("-9223372036854775808", IdOutcome.VALUE, Long.MIN_VALUE),
+        // Range: the token is well formed and does not fit 64 bits.
+        BareCase("9223372036854775808", IdOutcome.REFUSED),
+        BareCase("-9223372036854775809", IdOutcome.REFUSED),
+        BareCase("99999999999999999999999", IdOutcome.REFUSED),
+        // Not integer tokens. `1e3` is the one that read 1000.
+        BareCase("1e3", IdOutcome.REFUSED),
+        BareCase("1E3", IdOutcome.REFUSED),
+        BareCase("1e100", IdOutcome.REFUSED),
+        BareCase("7.5", IdOutcome.REFUSED),
+        BareCase("1.0", IdOutcome.REFUSED),
+        BareCase("-0.0", IdOutcome.REFUSED),
+        // Shapes kotlinx's lenient number lexer admits and JSON's grammar does
+        // not, so the reference never gets them as far as `ParseInt` — which
+        // would have taken both.
+        BareCase("007", IdOutcome.REFUSED),
+        BareCase("-007", IdOutcome.REFUSED),
+        BareCase("+7", IdOutcome.REFUSED),
+        // Literals that are not numbers at all. `null` is NOT the absent id —
+        // see [anAbsentIdNeverReachesThisSerializer].
+        BareCase("null", IdOutcome.REFUSED),
+        BareCase("true", IdOutcome.REFUSED),
+        BareCase("false", IdOutcome.REFUSED),
+        // Not primitives at all: the rows that answered the system actor.
+        BareCase("[7]", IdOutcome.REFUSED),
+        BareCase("[]", IdOutcome.REFUSED),
+        BareCase("""{"a":7}""", IdOutcome.REFUSED),
+        BareCase("{}", IdOutcome.REFUSED),
+    )
+
+    @Test
+    fun theNumberPathReadsEveryBareLiteralAsGoDoes() {
+        for (case in bareNumberCorpus) {
+            val body = """{"id": ${case.literal}}"""
+            when (case.outcome) {
+                IdOutcome.VALUE -> assertEquals(
+                    case.value,
+                    json.decodeFromString<Wrapper>(body).id,
+                    "bare ${case.literal}",
+                )
+
+                IdOutcome.REFUSED -> assertFailsWith<SerializationException>(
+                    "bare ${case.literal} must fail the read, not answer the system actor",
+                ) { json.decodeFromString<Wrapper>(body) }
+
+                // The sentinel is the quoted path's alone. A row claiming one
+                // here would mean someone taught this path to invent an actor.
+                IdOutcome.SENTINEL -> fail("the number path has no sentinel outcome")
+            }
+        }
+    }
+
+    /**
+     * The same verdicts through the wrapper path, as `BaseService` runs it. The
+     * normalizer only rewrites a STRING id, so every row here reaches the
+     * decoder untouched — which is the property worth pinning: a malformed
+     * embedded person fails the read rather than being normalized into one.
+     */
+    @Test
+    fun theNumberPathIsTheSameThroughTheNormalizer() {
+        for (case in bareNumberCorpus) {
+            val body = """{"creator":{"id": ${case.literal},"name":"x","personable_type":"User"}}"""
+            val normalized = normalizePersonIds(body, json)
+            when (case.outcome) {
+                IdOutcome.VALUE -> {
+                    val creator = json.decodeFromString<CreatorEnvelope>(normalized).creator
+                    assertEquals(case.value, creator.id, "normalized bare ${case.literal}")
+                    assertNull(creator.systemLabel, "a bare literal never earns a system_label")
+                }
+
+                IdOutcome.REFUSED -> assertFailsWith<SerializationException>(
+                    "the wrapper path must fail the read for bare ${case.literal}",
+                ) { json.decodeFromString<CreatorEnvelope>(normalized) }
+
+                IdOutcome.SENTINEL -> fail("the number path has no sentinel outcome")
+            }
+        }
+    }
+
+    /**
+     * A `null` id is not an absent one, and the two differ in the reference for a
+     * reason worth restating: `encoding/json` calls `UnmarshalJSON` for a null,
+     * so `FlexibleInt64`'s number path decodes it into an empty `json.Number` and
+     * `ParseInt("")` fails — `{"id": null}` FAILS THE READ. A missing key never
+     * reaches the decoder at all and is the zero value with no error. A plain
+     * `int64` field has no `UnmarshalJSON`, so json handles its null itself and
+     * both are 0; only a flexible field tells them apart.
+     * `ruby/lib/basecamp/ids.rb`'s `person_from_wire` documents that asymmetry,
+     * measured through the real decode path.
+     *
+     * Kotlin gets the null half right by a different route (the literal's text is
+     * "null", which is not an integer token) and is pinned above. The absent half
+     * it does NOT match, and the divergence is in the model rather than here:
+     * `Person.id` is a required field with no default, so an absent id is a
+     * `MissingFieldException` where Go reads 0. That is a decode failure — a
+     * `SerializationException`, so `BaseService` still renders it as a
+     * malformed body — which means the divergence is in the REFUSING direction:
+     * the SDK declines to invent a person rather than naming actor 0. Pinned as
+     * measured, not as wished, so a reader finds the difference instead of
+     * discovering it.
+     */
+    @Test
+    fun anAbsentIdNeverReachesThisSerializer() {
+        val failure = assertFailsWith<SerializationException> {
+            json.decodeFromString<Person>("""{"name":"x"}""")
+        }
+        assertContains(failure.message!!, "id")
+
+        val nulled = assertFailsWith<SerializationException> {
+            json.decodeFromString<Person>("""{"id": null,"name":"x"}""")
+        }
+        assertContains(nulled.message!!, "null")
+    }
+
+    /**
+     * The refusal names the SHAPE, never its content. An id that arrives as an
+     * object is an embedded person, and an embedded person carries a name and an
+     * email address; this message reaches logs through the SPEC §6 malformed-body
+     * error.
+     */
+    @Test
+    fun theRefusalForAnObjectIdDoesNotCarryItsContents() {
+        val failure = assertFailsWith<SerializationException> {
+            json.decodeFromString<Wrapper>("""{"id": {"email_address":"person@example.com"}}""")
+        }
+        assertFalse(
+            failure.message!!.contains("person@example.com"),
+            "the decode failure must not quote the body: ${failure.message}",
+        )
+        assertContains(failure.message!!, "object")
     }
 
     @Serializable
