@@ -574,7 +574,7 @@ func newLiveBuffer(capacity int, onChange func(int)) *liveBuffer {
 func (b *liveBuffer) add(ev Event) []int64 {
 	var dropped []int64
 	for b.size >= b.capacity {
-		dropped = append(dropped, b.events[b.head].ID)
+		dropped = append(dropped, b.events[b.head].Key())
 		b.events[b.head] = Event{}
 		b.head = (b.head + 1) % len(b.events)
 		b.size--
@@ -759,7 +759,7 @@ func newLoop(runCtx context.Context, cfg *config, hooks testHooks) *loop {
 		dedupe: newDedupe(cfg.dedupeCapacity),
 	}
 	// Built once; identical bytes on every (re)connection and retransmit.
-	l.identifier = subscribeIdentifier(cfg.filters)
+	l.identifier = subscribeIdentifier(cfg.lane, cfg.filters)
 	l.subscribeFrame = subscribeCommand(l.identifier)
 	l.catchUp = l.runCatchUp
 	return l
@@ -1550,7 +1550,7 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 		if f.identifier != l.identifier {
 			return cycleOutcome{}, false
 		}
-		ev, derr := decodeMessageEvent(f.message)
+		ev, derr := decodeLiveEvent(l.cfg.lane, f.message)
 		if derr != nil {
 			// Invalid-frame class, decode shape: same socket-failure
 			// disposition as the parse shape.
@@ -2001,7 +2001,18 @@ func (l *loop) checkpointKey() CheckpointKey {
 		AccountID:         l.cfg.accountID,
 		ConsumerNamespace: l.cfg.consumerNamespace,
 		FilterKey:         l.cfg.filters.FilterKey(),
+		Lane:              laneKeyName(l.cfg.lane),
 	}
+}
+
+// laneKeyName is the checkpoint identity's lane component: empty for the
+// account lane (its flat key is the four-element form), the lane's name
+// otherwise.
+func laneKeyName(lane Lane) string {
+	if lane == AccountLane {
+		return ""
+	}
+	return lane.String()
 }
 
 // loadCheckpoint runs the store's load exactly once, on the first iteration

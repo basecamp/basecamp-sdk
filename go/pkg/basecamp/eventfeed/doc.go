@@ -15,10 +15,15 @@
 // policy and its WebSocket transport, and the deterministic fakes the
 // conformance harness drives.
 //
+// The connector consumes either of the feed's two resources, selected by
+// WithLane: the account-wide feed (the default), or the principal's inbox of
+// addressed items, where the delivered Event carries its Addressing and the
+// addressing id is the lane's identity for dedupe and positioning.
+//
 // ONE piece is still to land, and it is what keeps the package from running
 // against the live API out of the box: the Layer-1 adapters over the
-// generated CreateStreamTicket and PollEvents operations that back the
-// TicketMinter and PollSource seams. Until they exist the package ships no
+// generated CreateStreamTicket, PollEvents and PollInbox operations that
+// back the TicketMinter and PollSource seams. Until they exist the package ships no
 // implementation of those two seams, and a host that wants the live feed
 // supplies its own over the generated operations — a supported path, and
 // the one the seam contracts are written for, not a workaround. Two
@@ -31,8 +36,8 @@
 //
 // The connector performs no wire I/O of its own. Every HTTP exchange reaches
 // the wire through a seam backed by a generated operation: TicketMinter
-// (CreateStreamTicket) and PollSource (PollEvents), each call one
-// fully-governed generated call. Time flows through the injected Clock,
+// (CreateStreamTicket) and PollSource (PollEvents on the account lane,
+// PollInbox on the inbox lane), each call one fully-governed generated call. Time flows through the injected Clock,
 // persistence through CheckpointStore, and the WebSocket through
 // CableTransport — whose dial of the mint's URL, verbatim, is the one
 // sanctioned non-HTTP wire act the connector owns. CableTransport and Clock

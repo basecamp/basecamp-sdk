@@ -9,8 +9,9 @@ import (
 
 // The seam interfaces (SPEC.md §23 "Seam Contracts") isolate the connector
 // from wire I/O, time, and persistence. Layer-1 adapters over the generated
-// CreateStreamTicket/PollEvents operations plug in at TicketMinter and
-// PollSource; one seam call is one fully-governed generated call — the
+// CreateStreamTicket and PollEvents (account lane) or PollInbox (inbox lane)
+// operations plug in at TicketMinter and PollSource; one seam call is one
+// fully-governed generated call — the
 // generated operation keeps its full SPEC §7 contract (retry budget, backoff,
 // Retry-After) inside the seam, and the connector never adds a second
 // per-request retry layer. Clock is defined in clock.go; CheckpointStore in
@@ -125,7 +126,10 @@ type Cursor struct {
 // bind to response headers: the X-Feed-Position and Link rel="next" response
 // headers merely echo Position and Next.
 type PollPage struct {
-	// Events are the page's rows, in strict event-id order.
+	// Events are the page's rows, in strict order of the lane's identity:
+	// event id on the account lane; addressing id on the inbox lane, where
+	// each row carries its Addressing (the adapter maps an item onto an
+	// Event).
 	Events []Event
 	// Position is the durable position after this page — the only thing that
 	// ever advances the checkpoint.
@@ -136,7 +140,8 @@ type PollPage struct {
 }
 
 // PollSource serves poll pages. Each call is one fully-governed generated
-// PollEvents call.
+// call of the lane's operation: PollEvents on the account lane, PollInbox on
+// the inbox lane.
 type PollSource interface {
 	// Poll fetches one page at cursor under filters. ctx is the cancellation
 	// channel: triggered on close, caller cancellation, and any teardown of
@@ -160,11 +165,13 @@ const (
 	// another). The parsing algorithm yields only positive values, so
 	// RetryAfter is always > 0; it is waited exactly, cap-exempt.
 	PollThrottled
-	// PollPositionInvalid — 400-position: re-enter since=<last poll-served
-	// id> (or a present-class entry with none).
+	// PollPositionInvalid — 400 with reason invalid_position (or, from a
+	// server that sends no reason, the position message): re-enter
+	// since=<last poll-served id> (or a present-class entry with none).
 	PollPositionInvalid
-	// PollFilterInvalid — 400-filter → Terminal(filter_invalid); Msg carries
-	// the server's message naming the offending list, verbatim.
+	// PollFilterInvalid — 400 with reason invalid_filter (or, from a server
+	// that sends no reason, any other message) → Terminal(filter_invalid);
+	// Msg carries the server's message naming the offending list, verbatim.
 	PollFilterInvalid
 	// PollFilterChanged — 409: PositionDigest and FiltersDigest set (the
 	// body's two sides); discard the held position, re-enter since=.
@@ -218,7 +225,10 @@ type PollError struct {
 	Kind PollErrorKind
 	// RetryAfter is the server-directed wait, when present (throttled).
 	RetryAfter time.Duration
-	// EpochAfterID is the 410 body's epoch_after_id (gone only).
+	// EpochAfterID is the 410 body's epoch_after_id (gone only). The inbox's
+	// 410 carries none — its fence is the retention window and its resume
+	// re-enters at since=0 — so on the inbox lane this is 0, the fixed
+	// value for none, and nothing renders it as an id.
 	EpochAfterID int64
 	// ResumeURL is the 410 body's resume URL (gone only).
 	ResumeURL string
@@ -449,7 +459,9 @@ type Signal interface{ isSignal() }
 // poll-repairable, so overflow during the entry window invalidates
 // completeness — its disposition must be taken before any save.
 type BufferOverflow struct {
-	// DroppedIDs are the exact event ids dropped — "dropped" is unambiguous.
+	// DroppedIDs are the exact keys dropped, in the lane's identity — event
+	// ids on the account lane, addressing ids on the inbox lane (Event.Key);
+	// "dropped" is unambiguous.
 	DroppedIDs []int64
 	// DroppedCount is the number of events dropped.
 	DroppedCount int
@@ -457,10 +469,12 @@ type BufferOverflow struct {
 
 func (BufferOverflow) isSignal() {}
 
-// FeedGap reports a 410: the feed's history before EpochAfterID is gone. A
-// 410 never silently auto-continues.
+// FeedGap reports a 410: the held position fell behind what the lane still
+// serves — the feed's epoch (EpochAfterID names it) or the inbox's retention
+// window (no epoch; EpochAfterID is 0). A 410 never silently auto-continues.
 type FeedGap struct {
-	// EpochAfterID is the 410 body's epoch_after_id.
+	// EpochAfterID is the 410 body's epoch_after_id; 0 on the inbox lane,
+	// whose 410 carries none (the fence is the retention window).
 	EpochAfterID int64
 	// ResumeURL is the server-provided resume URL (it preserves the
 	// canonical filter set).

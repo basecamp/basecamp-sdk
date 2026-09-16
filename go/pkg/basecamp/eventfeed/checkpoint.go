@@ -9,12 +9,15 @@ import (
 	"unicode/utf8"
 )
 
-// CheckpointKey is the durable checkpoint identity — all four fields, always
+// CheckpointKey is the durable checkpoint identity — all five fields, always
 // (SPEC.md §23 "Checkpoint Identity"). Server positions are bound to
 // {account, filter set} but carry no consumer identity; two independent
 // consumers in one account would otherwise share a lineage and silently skip
 // each other's work. Origin is included because the SDK supports configurable
-// base URLs.
+// base URLs, and Lane because an inbox position is never interchangeable
+// with a feed position: a store keyed by the first four would let an account
+// lineage and an inbox lineage under one namespace and filter set overwrite
+// each other.
 type CheckpointKey struct {
 	// Origin is the canonicalized API base origin (CanonicalOrigin).
 	Origin string
@@ -27,12 +30,22 @@ type CheckpointKey struct {
 	// FilterKey is "srv2-" + the bare 16-hex server digest
 	// (Filters.FilterKey).
 	FilterKey string
+	// Lane names the feed resource when it is not the account feed — "inbox"
+	// for InboxLane, empty for AccountLane. Inbox positions are bound to the
+	// principal and never interchangeable with feed positions, so the two
+	// lanes are two lineages even under one origin, account, namespace and
+	// filter set. Empty for the account lane so its flat key is unchanged.
+	Lane string
 }
 
 // FlatKey renders the identity as the compact RFC 8259 JSON array of the four
 // strings — e.g.
 //
 //	["https://3.basecampapi.com","5951425","openclaw","srv2-9f2ab04e5c11d3a7"]
+//
+// — with the lane as a fifth element only when it is set:
+//
+//	["https://3.basecampapi.com","5951425","openclaw","srv2-9f2ab04e5c11d3a7","inbox"]
 //
 // JSON escaping removes all delimiter ambiguity: no bespoke path-joining, no
 // percent-encoding. This is the flat key the file store (and any store keyed
@@ -47,6 +60,10 @@ func (k CheckpointKey) FlatKey() string {
 	writeJSONString(&b, k.ConsumerNamespace)
 	b.WriteByte(',')
 	writeJSONString(&b, k.FilterKey)
+	if k.Lane != "" {
+		b.WriteByte(',')
+		writeJSONString(&b, k.Lane)
+	}
 	b.WriteByte(']')
 	return b.String()
 }
@@ -65,6 +82,17 @@ func (k CheckpointKey) FlatKey() string {
 func checkIdentityText(field, s string) error {
 	if !utf8.ValidString(s) {
 		return usageError(field + " must be valid UTF-8")
+	}
+	return nil
+}
+
+// checkLaneName admits the lane component's two spellings — empty for the
+// account lane, the inbox lane's name — and nothing else: a key naming a
+// lane the package never writes is not a foreign lineage to look past, it
+// is a malformed key, at construction and in a stored file alike.
+func checkLaneName(lane string) error {
+	if lane != "" && lane != laneKeyName(InboxLane) {
+		return usageError("checkpoint lane must be empty or the inbox lane")
 	}
 	return nil
 }

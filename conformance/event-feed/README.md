@@ -223,8 +223,9 @@ a script that wants the staleness firing itself writes `fireTimer`.
   client-side; every `expectConnect.url` is the immediately preceding mint's `url`,
   verbatim, query string included. A fresh ticket is minted on **every** reconnect
   pass — the connector never stores a mint URL across attempts.
-- **Dedupe tracks actually-delivered event ids** — never position ordering. A
-  buffered live event with an id ≤ the current position is still delivered (it was
+- **Dedupe tracks actually-delivered keys in the lane's identity** — event ids on the
+  account lane, addressing ids on the inbox lane — never position ordering. A
+  buffered live event with a key ≤ the current position is still delivered (it was
   never served by poll); discarding live ids at or below the position is a named
   mutant (fixture 20).
 - **The ownership cut** (present-class entries): after accepting the entry-poll
@@ -321,6 +322,8 @@ revoked-mint threshold).
 | 29 | `29-checkpoint-save-failure-continues.json` | save Failed → feed continues and a SUBSEQUENT save is attempted (exact store-call script: no save circuit breaker) |
 | 30 | `30-continuation-redirect-cross-origin.json` | validated same-origin `next` answering 302 + cross-origin Location → Terminal(`invalid_continuation`); zero foreign egress holds by construction of the seam here, and proving it against a real redirect is ASSIGNED to Layer 1, whose adapters are still pending, tracked in #819 — see the row-15 note |
 | 31 | `31-post-snapshot-straggler-below-served-id.json` | post-snapshot straggler with an id BELOW the entry page's served id delivered live; the re-push of that served id still suppressed |
+| 32 | `32-inbox-lane-dedupes-by-addressing-id.json` | the inbox lane: `inbox: true` + `reasons` on the subscription; `{items, position, next}` pages; two items over one event both deliver; an addressing id re-served by the repair poll after its live delivery is suppressed; delivered ids are addressing ids |
+| 33 | `33-inbox-gap-410-retention-resume.json` | the inbox's 410 is the retention window: accepted, the resume URL (`since=0`, the earliest retained item) is followed as a position-resume entry and its page saves on acceptance |
 | 34 | `34-filter-changed-409-reenters-at-the-present.json` | 409 with both digests → `Observer.filterConflict` (digests pinned) before `Observer.positionRejected(filter_changed)`; the held position is discarded and the walk re-enters at `since=now` (present-class, no poll-served id) |
 
 **Hostile-URL coverage note (stated author's choice, per the PR-1 review):** the
@@ -350,21 +353,25 @@ reason via a constant, not the literal.
 | Poll body envelope keys `events` / `position` / `next` | 1 | every fixture serving a 200 poll: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 26, 29, 30, 31 (mechanically derived from the fixture files; re-derive when the set changes) |
 | Mint response body `{ticket, expires_in, url}`, status 200 | 1 | every fixture with `expectMint` (all but 28) |
 | Subscribe identifier literals: channel `EventsChannel`, param spellings `types`/`buckets`/`creators`/`performers`/`exclude_performers`/`actor_types`, comma-joined values | 1 | channel: every `expectSubscribe`; `types` spelling: 01 (its `expectSubscribe` pins `params` explicitly, single-valued); `buckets`/`creators` spellings + comma-joining: no PR-2 fixture — pinned at PR-4 (fixture 15, whose retransmit case also pins byte-identity of the identifier) |
+| Inbox envelope keys `items` / `position` / `next`; item keys `addressing_id` / `reason` / `addressed_at` / `event` (event in the poll row's shape) | 1 | 32, 33 |
+| Inbox subscription identifier: `inbox` as a JSON boolean plus `reasons`; an inbox subscription replaces the account streams for its connection | 1 (spelling) / 2 (replacement) | 32 (spelling); replacement unpinned — the driver serves one subscription per connection either way |
+| Inbox 410 = the position fell behind the 30-day retention window; `resume` re-enters at `since=0`, the earliest retained item (exactly-once continuation for a stale position) | 2 | 33 |
+| Inbox is agents-only: a non-agent principal's poll answers 403, which rides the shared authorization counter | 2 | unpinned at tier 2 (the 401/403 poll variant already covers the counter; which principals the server admits is not a connector behavior) |
 | 409 body: all three keys `error` / `position_digest` / `filters_digest` required; digest values bare 16-hex (no `srv2-` prefix), `error` content unconstrained | 1 | 34 (served, both digests forwarded to the connector and pinned on Observer.filterConflict); the tier-1 dispatch case additionally owns the wire pin |
-| 410 body keys `epoch_after_id` / `resume` | 1 | 16, 23, 25, 27 |
+| 410 body keys `epoch_after_id` / `resume` | 1 | 16, 23, 25, 27 (feed, with `epoch_after_id`); 33 (inbox, `resume` only) |
 | 400 position-vs-filter discriminating bodies (verbatim transcript shapes) | 1 | no PR-2 fixture — pinned at PR-4 (tier 1 additionally owns it when `PollEvents` lands); the schema's 400 variant requires a verbatim body and this table is its source of truth |
 | srv2 digest vectors (eleven-vector table) + canonicalization algorithm | 1 (vectors) / 2 (algorithm) | sibling family `conformance/event-feed-digest/` |
 | Maximum inbound frame (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB), transport-enforced during the read | SDK-owned constant; enforcement seam-contractual | no PR-2 fixture — tier 3 + a later raw-bounds fixture |
 | Filter raw bounds: a filter list of > 1,000 elements or > 16 KB → filter 400 | 2 | unreachable through validated construction (the client caps at 100 ids); recorded, unpinned |
 | `since=now` / bare entry mints the cursor at the newest visible id; an empty entry page positions above an in-flight lower id N | 2 | 19, 20 |
 | Safety-horizon bound: position-relative, best-effort, ~30s — never wall-clock | 2 | premise of 19/20 (not directly assertable client-side; the entry-boundary fixtures encode its consequence) |
-| Frozen-head `next` predicate: absent `next` = the walk reached its head | 2 | every fixture whose walk ends on a 200 page without `next`: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 29, 31 (mechanically derived; re-derive when the set changes) |
+| Frozen-head `next` predicate: absent `next` = the walk reached its head | 2 | every fixture whose walk ends on a 200 page without `next`: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 29, 31, 32, 33 (mechanically derived; re-derive when the set changes) |
 | 410 `resume` re-enters at the epoch (`since=<epoch_after_id>`, in served history — a position-resume entry) with the canonical filter set preserved | 2 | 16 (resume URL followed verbatim); 27 (hostile variant) |
 | 400-position / 409 re-entry semantics (`since=<last poll-served id>`, present-class fallback) | 2 | 34 (409, present-class fallback); the 400-position and poll-served-id variants remain PR-4's |
 | Ticket statelessness + ~120s TTL (server-owned `expires_in`) | 2 | 05 (TTL-advance premise; `expires_in` never schedules anything) |
 | 3-second server heartbeat cadence (input to the 7500ms staleness policy) | 2 | no PR-2 fixture — PR 4 (staleness fixture 08) |
 | Subscribe retransmit contract (identical absorbed, different rejected) | 2 | no PR-2 fixture — PR 4 (fixture 15) |
-| Push payload 11-key shape — the poll row's nine (`performed_by_id` present, null for a direct action) plus the transport-only `actor_type` and `visible_to_clients` (push carries them, poll rows omit them), and an optional `details` object for the types that publish one | 2 | schema-enforced on every `serve message` (11 keys) and every poll envelope row (9 keys, `actor_type` and `visible_to_clients` forbidden) |
+| Push payload 11-key shape — the poll row's nine (`performed_by_id` present, null for a direct action) plus the transport-only `actor_type` and `visible_to_clients` (push carries them, poll rows omit them), and an optional `details` object for the types that publish one | 2 | schema-enforced on every `serve message` (11 keys) and every poll row on either lane (9 keys, `actor_type` and `visible_to_clients` forbidden — an inbox item's event included, since the generated `FeedEvent` carries neither and an adapter over the generated operation could not deliver them); an inbox item FRAME's event is push-shaped: the two transport keys are accepted when present and may be absent, never a present null |
 
 ## Deliberate tier-2 slack (tier-3/PR-4 ownership)
 

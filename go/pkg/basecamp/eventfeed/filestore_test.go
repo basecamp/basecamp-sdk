@@ -265,7 +265,8 @@ func TestFileCheckpointStore_DuplicateKeysAreFailed(t *testing.T) {
 }
 
 // Every key in the store must be a canonical FlatKey — the compact JSON
-// array of exactly four strings the package itself writes. Corruption that
+// array of four strings the package itself writes, five with an inbox
+// lineage's lane. Corruption that
 // turns a lineage's key into some other valid JSON string used to decode
 // cleanly and surface as MISSING, silently entering at the present and
 // skipping history; a malformed key is corruption, and corruption is Failed.
@@ -274,7 +275,9 @@ func TestFileCheckpointStore_MalformedKeysAreFailedNotMissing(t *testing.T) {
 	for _, tc := range []struct{ name, storedKey string }{
 		{"not an array", `"garbage"`},
 		{"three elements", `"[\"a\",\"b\",\"c\"]"`},
-		{"five elements", `"[\"a\",\"b\",\"c\",\"d\",\"e\"]"`},
+		{"six elements", `"[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\"]"`},
+		{"empty lane element", `"[\"a\",\"b\",\"c\",\"d\",\"\"]"`},
+		{"unknown lane element", `"[\"a\",\"b\",\"c\",\"d\",\"inboxx\"]"`},
 		{"non-string element", `"[\"a\",\"b\",\"c\",4]"`},
 		{"non-compact spelling", `"[ \"a\",\"b\",\"c\",\"d\"]"`},
 	} {
@@ -287,6 +290,32 @@ func TestFileCheckpointStore_MalformedKeysAreFailedNotMissing(t *testing.T) {
 			}
 		})
 	}
+	t.Run("a key naming an unknown lane is usage, on Load and Save", func(t *testing.T) {
+		path := storePath(t)
+		bad := key
+		bad.Lane = "inboxx"
+		var te *TerminalError
+		if _, _, err := NewFileCheckpointStore(path).Load(context.Background(), bad); !errors.As(err, &te) || te.Reason != ReasonUsage {
+			t.Errorf("Load(unknown lane) = %v, want a usage-coded error", err)
+		}
+		if err := NewFileCheckpointStore(path).Save(context.Background(), bad, "pos-1"); !errors.As(err, &te) || te.Reason != ReasonUsage {
+			t.Errorf("Save(unknown lane) = %v, want a usage-coded error", err)
+		}
+	})
+	t.Run("an inbox lineage's key is a valid foreign key", func(t *testing.T) {
+		path := storePath(t)
+		inbox := key
+		inbox.Lane = "inbox"
+		writeStoreFile(t, path, "{"+strconv.Quote(inbox.FlatKey())+`:"pos-9"}`)
+		position, ok, err := NewFileCheckpointStore(path).Load(context.Background(), key)
+		if err != nil || ok || position != "" {
+			t.Errorf("Load(account key) = (%q, %v, %v), want Missing beside an inbox lineage", position, ok, err)
+		}
+		position, ok, err = NewFileCheckpointStore(path).Load(context.Background(), inbox)
+		if err != nil || !ok || position != "pos-9" {
+			t.Errorf("Load(inbox key) = (%q, %v, %v), want the inbox lineage's position", position, ok, err)
+		}
+	})
 	t.Run("another lineage's valid key is still Missing", func(t *testing.T) {
 		path := storePath(t)
 		other := storeKey("other-namespace")

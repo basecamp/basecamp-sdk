@@ -889,6 +889,15 @@ valid UTF-8. Either violation is a `ReasonUsage` construction error with zero wi
 attempts.
 
 `Events` is single-shot: consuming it twice yields one `ReasonUsage` error element.
+
+The same connector consumes the principal's **inbox** — the low-noise lane of items that
+addressed the agent (mentions, assignments, subscriptions, watches, pings, boosts) — with
+`eventfeed.WithLane(eventfeed.InboxLane)` and a `PollSource` over the inbox endpoint.
+Every delivered event then carries `ev.Addressing` (the item id, the reason, when), and
+the connector deduplicates and positions by that item id, since one event can address
+you for several reasons. Filter it with `Filters{Reasons: ...}` (plus `Types` and
+`Buckets` as narrowing); the account lane's other dimensions are refused at construction
+there. The inbox serves agent principals only.
 `Close` stops the feed without draining, and cancelling the context, calling `Close`, or
 breaking out of the loop all end iteration with **no** error element — a clean stop, and
 the feed is resumable by design.
@@ -904,8 +913,10 @@ straight after `Close` can race the prior run's last save.
 ### Checkpointing
 
 `FileCheckpointStore` is the built-in `CheckpointStore`: one JSON file holding every
-lineage's position, keyed by the four-part checkpoint identity (origin, account,
-consumer namespace, filter key). It writes temp-file-plus-rename at 0600, and it is safe
+lineage's position, keyed by the five-part checkpoint identity (origin, account,
+consumer namespace, filter key, lane — the lane is empty on the account feed and `inbox`
+on the inbox, since the two lanes' positions are never interchangeable and a store keyed
+by four would let them overwrite each other). It writes temp-file-plus-rename at 0600, and it is safe
 for concurrent use within one process but deliberately not across processes. A store
 requires `WithConsumerNamespace` — two independent consumers in one account must not
 share a lineage — and changing filters starts a new lineage, because positions are
@@ -924,7 +935,8 @@ and the feed continues.
 
 A semantic signal is a condition that changes what the feed can promise, and there are
 exactly two: `BufferOverflow` (the live buffer dropped events, naming the exact ids) and
-`FeedGap` (a 410 — history before `EpochAfterID` is gone). The handler registered with
+`FeedGap` (a 410 — history before `EpochAfterID` is gone; on the inbox lane, whose 410
+carries no epoch, `EpochAfterID` is 0 and the fence is the retention window). The handler registered with
 `WithSignalHandler` is invoked exactly once per signal, synchronously, on your own
 execution context, and returns `Accept` or `Terminate`.
 

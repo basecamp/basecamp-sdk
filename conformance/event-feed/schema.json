@@ -229,6 +229,293 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "required": [
+              "lane"
+            ],
+            "properties": {
+              "lane": {
+                "const": "inbox"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "steps": {
+            "items": {
+              "properties": {
+                "expectPoll": {
+                  "properties": {
+                    "respond": {
+                      "properties": {
+                        "body": {
+                          "not": {
+                            "required": [
+                              "events"
+                            ]
+                          }
+                        }
+                      },
+                      "allOf": [
+                        {
+                          "if": {
+                            "required": [
+                              "status"
+                            ],
+                            "properties": {
+                              "status": {
+                                "const": 410
+                              }
+                            }
+                          },
+                          "then": {
+                            "properties": {
+                              "body": {
+                                "not": {
+                                  "required": [
+                                    "epoch_after_id"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "query": {
+                      "allOf": [
+                        {
+                          "not": {
+                            "anyOf": [
+                              {
+                                "required": [
+                                  "creators"
+                                ]
+                              },
+                              {
+                                "required": [
+                                  "performers"
+                                ]
+                              },
+                              {
+                                "required": [
+                                  "exclude_performers"
+                                ]
+                              },
+                              {
+                                "required": [
+                                  "actor_types"
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "properties": {
+                            "exact": {
+                              "not": {
+                                "anyOf": [
+                                  {
+                                    "required": [
+                                      "creators"
+                                    ]
+                                  },
+                                  {
+                                    "required": [
+                                      "performers"
+                                    ]
+                                  },
+                                  {
+                                    "required": [
+                                      "exclude_performers"
+                                    ]
+                                  },
+                                  {
+                                    "required": [
+                                      "actor_types"
+                                    ]
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "serve": {
+                  "not": {
+                    "required": [
+                      "event"
+                    ]
+                  }
+                },
+                "expectSubscribe": {
+                  "required": [
+                    "inbox"
+                  ],
+                  "properties": {
+                    "params": {
+                      "not": {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "creators"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "performers"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "exclude_performers"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "actor_types"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "expectGap": {
+                  "properties": {
+                    "epochAfterId": {
+                      "const": 0
+                    }
+                  }
+                },
+                "expectSignal": {
+                  "if": {
+                    "properties": {
+                      "kind": {
+                        "const": "feedGap"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "epochAfterId": {
+                        "const": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "An inbox scenario serves {items, position, next} pages and item frames: an `events` envelope or a bare `event` frame is the account feed's shape and cannot certify the inbox lane. An inbox subscribe expectation carries `inbox: true` and none of the account feed's other dimensions. A poll-query pin (subset or exact) names only the inbox's dimensions. An inbox 410 carries no epoch_after_id, and the gap it raises carries epochAfterId 0 — the fixed value for none."
+      },
+      "else": {
+        "properties": {
+          "steps": {
+            "items": {
+              "properties": {
+                "expectPoll": {
+                  "properties": {
+                    "respond": {
+                      "properties": {
+                        "body": {
+                          "not": {
+                            "required": [
+                              "items"
+                            ]
+                          }
+                        }
+                      },
+                      "allOf": [
+                        {
+                          "if": {
+                            "required": [
+                              "status"
+                            ],
+                            "properties": {
+                              "status": {
+                                "const": 410
+                              }
+                            }
+                          },
+                          "then": {
+                            "properties": {
+                              "body": {
+                                "required": [
+                                  "epoch_after_id"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "query": {
+                      "allOf": [
+                        {
+                          "not": {
+                            "required": [
+                              "reasons"
+                            ]
+                          }
+                        },
+                        {
+                          "properties": {
+                            "exact": {
+                              "not": {
+                                "required": [
+                                  "reasons"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "serve": {
+                  "not": {
+                    "required": [
+                      "item"
+                    ]
+                  }
+                },
+                "expectSubscribe": {
+                  "not": {
+                    "required": [
+                      "inbox"
+                    ]
+                  },
+                  "properties": {
+                    "params": {
+                      "not": {
+                        "required": [
+                          "reasons"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "An account scenario serves {events, position, next} pages and event frames: an `items` envelope or an `item` frame is the inbox lane's shape. An account subscribe expectation carries neither `inbox` nor a reasons param. A poll-query pin (subset or exact) never names reasons. An account-lane 410 carries epoch_after_id."
+      }
     }
   ],
   "$defs": {
@@ -309,6 +596,24 @@
             "pattern": "^[^,\\s\"']+$"
           },
           "description": "Filter: actor kinds (opt-in, never a default). The vocabulary is server-owned and never client-validated, like types: agent and person today, and a scenario may name an unknown one to draw the filter 400."
+        },
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^,\\s\"']+$"
+          },
+          "description": "Filter: inbox addressing reasons (the inbox lane's own dimension; construction refuses it on the account lane). The vocabulary is server-owned and never client-validated, like types: mentioned, assigned, subscribed, watched, pinged and boosted today, and a scenario may name an unknown one to draw the filter 400."
+        },
+        "lane": {
+          "enum": [
+            "account",
+            "inbox"
+          ],
+          "description": "The feed resource the connector consumes. Absent means account. On the inbox lane the poll seam is the generated PollInbox operation, every delivered element is an item (its ids in expectDelivered/finally.delivered are ADDRESSING ids), the live subscription carries `inbox: true`, and only types/buckets/reasons may be configured."
         },
         "position": {
           "type": "string",
@@ -403,7 +708,56 @@
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "lane": {
+                "const": "inbox"
+              }
+            },
+            "required": [
+              "lane"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "creators"
+                  ]
+                },
+                {
+                  "required": [
+                    "performers"
+                  ]
+                },
+                {
+                  "required": [
+                    "exclude_performers"
+                  ]
+                },
+                {
+                  "required": [
+                    "actorTypes"
+                  ]
+                }
+              ]
+            },
+            "description": "The inbox lane filters by reasons, types and buckets only; construction refuses the account feed's other dimensions there."
+          },
+          "else": {
+            "not": {
+              "required": [
+                "reasons"
+              ]
+            },
+            "description": "reasons is an inbox-lane dimension; construction refuses it on the account feed."
+          }
+        }
+      ]
     },
     "step": {
       "type": "object",
@@ -752,10 +1106,9 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "frame",
-            "event"
+            "frame"
           ],
-          "description": "Correlated broadcast carrying one push-payload event. All 9 payload keys required — push rows carry visible_to_clients; strict decoders must never trip on fixture data.",
+          "description": "Correlated broadcast carrying one push-payload event (the account lane, all 11 payload keys required — push rows carry actor_type and visible_to_clients) or one inbox item (the inbox lane; `item`, never both); strict decoders must never trip on fixture data.",
           "properties": {
             "frame": {
               "const": "message"
@@ -765,8 +1118,23 @@
             },
             "identifier": {
               "type": "string"
+            },
+            "item": {
+              "$ref": "#/$defs/inboxLiveItem"
             }
-          }
+          },
+          "oneOf": [
+            {
+              "required": [
+                "event"
+              ]
+            },
+            {
+              "required": [
+                "item"
+              ]
+            }
+          ]
         },
         {
           "type": "object",
@@ -835,7 +1203,7 @@
           "type": "object",
           "additionalProperties": false,
           "minProperties": 1,
-          "description": "Comma-joined filter values as identifier params (class-1 spellings: types/buckets/creators/performers/exclude_performers/actor_types).",
+          "description": "Comma-joined filter values as identifier params (class-1 spellings: types/buckets/creators/performers/exclude_performers/actor_types; reasons on the inbox lane).",
           "properties": {
             "types": {
               "type": "string",
@@ -860,12 +1228,20 @@
             "actor_types": {
               "type": "string",
               "minLength": 1
+            },
+            "reasons": {
+              "type": "string",
+              "minLength": 1
             }
           }
         },
         "identicalToPrevious": {
           "const": true,
           "description": "Additionally requires BYTE-identity with the previous subscribe on this connection (the retransmit-absorption case). Only `true` is valid — a false would assert nothing."
+        },
+        "inbox": {
+          "const": true,
+          "description": "The inbox lane's subscription: the identifier carries `inbox` as a JSON boolean (not a string param) right after the channel key. Only `true` is valid — absence means the account streams."
         }
       }
     },
@@ -941,6 +1317,10 @@
             "actor_types": {
               "type": "string",
               "minLength": 1
+            },
+            "reasons": {
+              "type": "string",
+              "minLength": 1
             }
           }
         },
@@ -987,6 +1367,10 @@
                 "actor_types": {
                   "type": "string",
                   "minLength": 1
+                },
+                "reasons": {
+                  "type": "string",
+                  "minLength": 1
                 }
               }
             }
@@ -1003,13 +1387,20 @@
           "required": [
             "body"
           ],
-          "description": "Successful page. Absent `next` means the walk reached its frozen head.",
+          "description": "Successful page: the feed's {events, position, next} or, on the inbox lane, {items, position, next}. Absent `next` means the walk reached its frozen head.",
           "properties": {
             "status": {
               "const": 200
             },
             "body": {
-              "$ref": "#/$defs/pollEnvelope"
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/pollEnvelope"
+                },
+                {
+                  "$ref": "#/$defs/inboxEnvelope"
+                }
+              ]
             }
           }
         },
@@ -1111,7 +1502,6 @@
               "type": "object",
               "additionalProperties": false,
               "required": [
-                "epoch_after_id",
                 "resume"
               ],
               "properties": {
@@ -1121,7 +1511,8 @@
                 "epoch_after_id": {
                   "type": "integer",
                   "minimum": 0,
-                  "maximum": 9223372036854775807
+                  "maximum": 9223372036854775807,
+                  "description": "The feed's epoch (required on the account lane, forbidden on the inbox lane, whose 410 carries none)."
                 },
                 "resume": {
                   "type": "string",
@@ -1239,7 +1630,9 @@
         },
         "created_at": {
           "type": "string",
-          "minLength": 1
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
         },
         "bucket_id": {
           "type": "integer",
@@ -1307,7 +1700,9 @@
         },
         "created_at": {
           "type": "string",
-          "minLength": 1
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
         },
         "bucket_id": {
           "type": "integer",
@@ -1328,10 +1723,9 @@
           "maximum": 9223372036854775807
         },
         "actor_type": {
-          "enum": [
-            "agent",
-            "person"
-          ]
+          "type": "string",
+          "minLength": 1,
+          "description": "The actor's kind — agent or person today; a server-owned vocabulary the connector never client-validates on the way in, so any non-empty string is admitted."
         },
         "recording_id": {
           "type": "integer",
@@ -1619,7 +2013,7 @@
       "required": [
         "exact"
       ],
-      "description": "Cumulative, exact, ordered delivered-id assertion. The driver waits until the delivered sequence equals `exact`; a sequence that can no longer equal it (overshoot, wrong order, a duplicate delivery) fails. {\"exact\": []} is the non-vacuous nothing-delivered-yet assertion.",
+      "description": "Cumulative, exact, ordered delivered-id assertion — event ids on the account lane, ADDRESSING ids on the inbox lane (the lane's identity). The driver waits until the delivered sequence equals `exact`; a sequence that can no longer equal it (overshoot, wrong order, a duplicate delivery) fails. {\"exact\": []} is the non-vacuous nothing-delivered-yet assertion.",
       "properties": {
         "exact": {
           "type": "array",
@@ -1793,6 +2187,243 @@
           }
         }
       ]
+    },
+    "inboxItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "addressing_id",
+        "reason",
+        "addressed_at",
+        "event"
+      ],
+      "description": "One polled inbox item — the lane's unit of delivery and identity. The same event can address the principal for several reasons and each is its own item, so drivers deliver, deduplicate and position by addressing_id. The nested event is the poll row (nine required keys, no transport keys: the generated FeedEvent carries none).",
+      "properties": {
+        "addressing_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^,\\s\"']+$",
+          "description": "Why the item addressed the principal — server-owned vocabulary."
+        },
+        "addressed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
+        },
+        "event": {
+          "$ref": "#/$defs/inboxItemEvent"
+        }
+      }
+    },
+    "inboxItemEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "event_type",
+        "action",
+        "created_at",
+        "bucket_id",
+        "creator_id",
+        "performed_by_id",
+        "recording_id"
+      ],
+      "description": "An inbox item's event: the poll row's nine required keys and an optional details object, and — as on the account feed's poll rows — neither actor_type nor visible_to_clients: the generated FeedEvent carries neither, so an adapter over the generated operation cannot deliver them.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
+        },
+        "bucket_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "creator_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "performed_by_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "recording_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "details": {
+          "type": "object",
+          "description": "Type-specific detail object, forwarded verbatim (card.moved: column_id / previous_column_id; boost.created: boost_id / boosted_event_id / boosted_event_type). Present only for the types that publish one."
+        }
+      }
+    },
+    "inboxEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "position"
+      ],
+      "description": "The inbox lane's page: items (oldest first, strict item-id order), position, next — the same envelope contract as the feed's with `items` in place of `events`.",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/inboxItem"
+          }
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The only thing that ever advances the checkpoint. Use {{POS:n}}."
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Continuation URL, bound to this walk, never persisted. Use {{NEXT:n}} for same-origin; hostile fixtures use literal foreign origins."
+        }
+      }
+    },
+    "inboxItemLiveEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "event_type",
+        "action",
+        "created_at",
+        "bucket_id",
+        "creator_id",
+        "performed_by_id",
+        "recording_id"
+      ],
+      "description": "A live inbox item's event, as an item FRAME carries it: the poll row's nine required keys and an optional details object, plus the push transport keys actor_type and visible_to_clients accepted when present (never a present null) — the shape the cable decoder preserves.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
+        },
+        "bucket_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "creator_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "performed_by_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "recording_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "details": {
+          "type": "object",
+          "description": "Type-specific detail object, forwarded verbatim (card.moved: column_id / previous_column_id; boost.created: boost_id / boosted_event_id / boosted_event_type). Present only for the types that publish one."
+        },
+        "actor_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The actor's kind — agent or person today; a server-owned vocabulary the connector never client-validates on the way in, so any non-empty string is admitted."
+        },
+        "visible_to_clients": {
+          "type": "boolean"
+        }
+      }
+    },
+    "inboxLiveItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "addressing_id",
+        "reason",
+        "addressed_at",
+        "event"
+      ],
+      "description": "One live inbox item, as an item frame carries it: the same addressing as a polled item around an event that may also carry the push transport keys.",
+      "properties": {
+        "addressing_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^,\\s\"']+$",
+          "description": "Why the item addressed the principal — server-owned vocabulary."
+        },
+        "addressed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
+        },
+        "event": {
+          "$ref": "#/$defs/inboxItemLiveEvent"
+        }
+      }
     }
   }
 }

@@ -1,0 +1,153 @@
+{
+  "name": "33-inbox-gap-410-retention-resume",
+  "description": "The inbox lane's 410 is the retention window, not the epoch: the held position fell behind the 30-day retention, and the accepting handler follows the provided resume URL — the server's re-entry at since=0, the earliest retained item, which a stale position has seen none of — as a position-resume entry, saving its page on acceptance. Same signal, same handler contract, same class as the feed's 410 (fixture 16); what differs is what the fence means — and that the inbox's 410 body carries no epoch_after_id, so the gap's epochAfterId is 0, the fixed value for none.",
+  "config": {
+    "lane": "inbox",
+    "position": "{{POS:0}}",
+    "signalDisposition": {
+      "feedGap": "accept"
+    }
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel",
+        "inbox": true
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}"
+        },
+        "respond": {
+          "status": 410,
+          "body": {
+            "error": "position behind retention",
+            "resume": "{{API_ORIGIN}}/inbox.json?since=0"
+          }
+        }
+      }
+    },
+    {
+      "expectGap": {
+        "epochAfterId": 0
+      }
+    },
+    {
+      "expectSignal": {
+        "kind": "feedGap",
+        "epochAfterId": 0,
+        "resumeUrl": "{{API_ORIGIN}}/inbox.json?since=0"
+      }
+    },
+    {
+      "expectHandlerInvocations": {
+        "exact": [
+          {
+            "kind": "feedGap",
+            "disposition": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "expectPoll": {
+        "url": "{{API_ORIGIN}}/inbox.json?since=0",
+        "respond": {
+          "status": 200,
+          "body": {
+            "items": [
+              {
+                "addressing_id": 41,
+                "reason": "boosted",
+                "addressed_at": "2026-08-01T12:00:01Z",
+                "event": {
+                  "id": 7000,
+                  "kind": "boost_created",
+                  "event_type": "boost.created",
+                  "action": "created",
+                  "created_at": "2026-08-01T12:00:00Z",
+                  "bucket_id": 2,
+                  "creator_id": 3,
+                  "performed_by_id": null,
+                  "recording_id": 900
+                }
+              }
+            ],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [
+          41
+        ]
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": {
+      "exact": [
+        41
+      ]
+    },
+    "checkpoints": {
+      "exact": [
+        "{{POS:1}}"
+      ]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open",
+    "handlerInvocations": {
+      "exact": [
+        {
+          "kind": "feedGap",
+          "disposition": "accept"
+        }
+      ]
+    }
+  }
+}

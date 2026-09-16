@@ -4076,7 +4076,8 @@ RECORD BufferOverflow
 END
 
 RECORD FeedGap
-  epoch_after_id : Integer
+  epoch_after_id : Integer   -- 0 on the inbox lane, whose 410 carries none: the fixed
+                             -- value for "no epoch"; the inbox's fence is its retention
   resume_url     : String
 END
 
@@ -4113,13 +4114,15 @@ events), deliberately decoupled from the dedupe capacity.
 
 ### Dedupe `[conformance]`
 
-The connector keeps a bounded LRU (default 10,000 entries) of **actually-delivered event
-ids** — never position ordering. The rule is symmetric across lanes: **every delivery —
-poll page, drain, or streaming — checks the LRU before delivering and records the
-delivered id.** Poll-vs-push duplication is expected in both directions (pushes arrive
-instantly and polls re-serve the same events once they clear the safety horizon; a repair
-poll can equally re-serve what streaming already delivered), so duplicates are suppressed
-by id regardless of which lane delivered first.
+The connector keeps a bounded LRU (default 10,000 entries) of **actually-delivered keys
+in the lane's identity** — event ids on the account lane, addressing ids on the inbox lane
+(`Event.key()`; The Inbox Lane below) — never position ordering. The rule is symmetric
+across lanes: **every delivery — poll page, drain, or streaming — checks the LRU before
+delivering and records the delivered key.** Poll-vs-push duplication is expected in both
+directions (pushes arrive instantly and polls re-serve the same events once they clear the
+safety horizon; a repair poll can equally re-serve what streaming already delivered), so
+duplicates are suppressed by key regardless of which lane delivered first; on the inbox,
+one event addressing the principal under two ids is two deliveries.
 
 Two sharp edges, pinned:
 
@@ -4194,7 +4197,8 @@ END
 
 INTERFACE PollSource
   poll(cursor: Cursor, filters: Filters, cancellation) → PollPage
-  -- One fully-governed generated PollEvents call; `cancellation` as on TicketMinter —
+  -- One fully-governed generated call of the LANE's operation: PollEvents on the account
+  -- lane, PollInbox on the inbox lane (The Inbox Lane below); `cancellation` as on TicketMinter —
   -- triggered on close(), caller cancellation, AND any teardown of the attempt the call
   -- belongs to (mid-walk socket failure, staleness, a terminal): a superseded poll must
   -- not stall reconnection or return into a disposed attempt. Prompt return required.
@@ -4215,7 +4219,9 @@ END
 
 RECORD PollPage         -- the body envelope IS the contract; never bind to response headers
                         -- (X-Feed-Position and Link rel="next" merely echo position/next)
-  events   : List<Event>
+  events   : List<Event> -- in strict order of the lane's identity: event id on the account
+                        -- lane; addressing id on the inbox lane, each row carrying its
+                        -- Addressing (the inbox adapter maps an item onto an Event)
   position : String     -- the ONLY thing that ever advances the checkpoint
   next     : String?    -- continuation URL; absent = the walk reached its frozen head.
                         -- Bound to that walk; NEVER persisted.
@@ -4227,7 +4233,11 @@ END
 -- The adapter maps every §6/§7 outcome of the generated call onto exactly one kind:
 -- 429/503 and §7-retryable outcomes exhausted inside the seam → throttled(retry_after)
 -- when the last response carried a parsed Retry-After, at ANY status, else transient;
--- the feed's 400/409/410 matrix → its four kinds; 401/403 (after the seam's own token
+-- the poll lanes' 400/409/410 matrix → its four kinds: the 400 keyed by its `reason`
+-- (`invalid_position` → position_invalid, `invalid_filter` → filter_invalid) and, when the
+-- server sent none, by the only signal it gives — its message — never by guessing; the
+-- 409 → filter_changed; the two 410 shapes → gone, with the feed's epoch or the inbox's
+-- none (0); 401/403 (after the seam's own token
 -- refresh and retry budget) → unauthorized; a 3xx whose Location fails the per-hop
 -- same-origin/no-downgrade validation (auto-follow is disabled — Continuation and
 -- Resume URL Validation) → redirect_refused, carrying the refused Location redacted to
@@ -4297,6 +4307,9 @@ RECORD CheckpointKey
   account_id         : String
   consumer_namespace : String   -- required whenever a store is configured
   filter_key         : String   -- "srv2-" + bare server digest
+  lane               : String   -- "" on the account lane, "inbox" on the inbox lane: inbox
+                                -- positions are never interchangeable with feed positions,
+                                -- so one namespace and filter set are two lineages across lanes
 END
 ```
 
@@ -4477,8 +4490,10 @@ backoff a hard failure rather than a heuristic.
 
 ### Checkpoint Identity `[conformance]`
 
-Checkpoint identity is `{origin, account_id, consumer_namespace, filter_key}` — all four,
-always:
+Checkpoint identity is `{origin, account_id, consumer_namespace, filter_key, lane}` — all
+five, always (a custom store that keys by the first four collides an account lineage with
+an inbox lineage under one namespace and filter set, and the two overwrite each other's
+positions):
 
 - Server positions are bound to `{account, filter set}` but carry **no consumer identity**;
   two independent consumers in one account would otherwise share a lineage and silently
@@ -4554,8 +4569,9 @@ the doc calls them stable):
 | `reasons=mentioned,assigned&performers=9&types=comment.created` | `{"performers":[9],"reasons":["assigned","mentioned"],"types":["comment.created"]}` | `99b78eea305639b8` |
 
 The one built-in store is a file store: a single JSON file keyed by the compact RFC 8259
-JSON array of the four identity strings — e.g.
-`["https://3.basecampapi.com","5951425","openclaw","srv2-9f2ab04e5c11d3a7"]` — written
+JSON array of the identity strings — the four, e.g.
+`["https://3.basecampapi.com","5951425","openclaw","srv2-9f2ab04e5c11d3a7"]`, with the
+lane as a fifth element only when it is set (`…,"inbox"]`) — written
 atomically (temp + rename, 0600), documented as single-process (a server-side advisory
 checkpoint API is deliberately deferred until a multi-host connector needs a shared
 cursor). No `delete` method exists: after a 409 the connector re-enters via `since=` and
@@ -4580,6 +4596,7 @@ ships off.
 | Concern (default) | Go option | TS field | Python / Ruby kwarg | Kotlin / Swift parameter | Rust builder |
 |---|---|---|---|---|---|
 | Filters (none) | `WithFilters` | `filters?` | `filters` | `filters` | `filters` |
+| Lane (account; also inbox — The Inbox Lane below) | `WithLane` | `lane?` | `lane` | `lane` | `lane` |
 | Entry mode (resume: stored position if any, else present; also present / beginning / after(id) / at-position(token)) | `WithStart` | `start?` | `start` | `start` | `start` |
 | Cable transport (default WebSocket impl) | `WithTransport` | `transport?` | `transport` | `transport` | `transport` |
 | Clock (system monotonic) | `WithClock` | `clock?` | `clock` | `clock` | `clock` |
@@ -4644,6 +4661,73 @@ heartbeat cadence 3s; staleness 7500ms; authorization-failure threshold 3; dedup
 `expires_in` is never used for client-side scheduling; expiry is arbitrated by the server
 and the connector always mints fresh); maximum inbound frame 1 MiB.
 
+### The Inbox Lane `[conformance]`
+
+`GET /inbox.json` is the principal's **addressed items** — the low-noise "someone
+addressed you" lane, its own resource rather than a filter over the account feed, served
+to **agent principals only** (any other principal's polls answer `403`). The connector
+consumes it with the same protocol as the account feed, selected by the lane option, and
+everything in this section holds unless a row below says otherwise:
+
+- **Identity is the addressing id.** An item is a first-class delivery: the same event can
+  address the principal for several reasons, and each reason is its own item. The lane
+  deduplicates by `addressing_id`, never by event id — the feed's rule would discard every
+  reason but one — and the same key positions the reset cursor (`since` walks item ids
+  there), names the ids in a `BufferOverflow` signal, and is what `Event.key()` returns.
+  Every delivered event carries an `Addressing {addressing_id, reason, addressed_at}`;
+  account-lane events carry none.
+
+```
+RECORD Addressing
+  addressing_id : Integer   -- the item id: the lane's identity and its strict order
+  reason        : String    -- mentioned | assigned | subscribed | watched | pinged | boosted
+  addressed_at  : String    -- ISO 8601
+END
+```
+
+- **Dimensions.** The inbox filters by `reasons`, narrowed by `types` and `buckets`, and
+  nothing else: `creators`, `performers`, `exclude_performers` and `actor_types` are
+  refused at construction on the inbox lane (a `usage` error), as `reasons` is on the
+  account lane. Items are never self-addressed, so the lane needs no loop guard. The srv2
+  digest is the same scheme with `reasons` as its own dimension; inbox positions are bound
+  to the account, the principal and the filter set and are never interchangeable with feed
+  positions, so the checkpoint identity carries the lane — `flat_key` gains a fifth element
+  `"inbox"`, and the account lane's four-element key is unchanged. The principal is not a
+  key component: the connector performs no wire I/O with which to learn who it is, so the
+  consumer namespace carries that identity — two principals sharing one store need two
+  namespaces, exactly as two consumers do — and the seam's `unauthorized` kind (below) is
+  what a position minted for another principal draws.
+- **The live subscription** is `EventsChannel` with `"inbox":true` — a JSON boolean, right
+  after the channel key — plus `types`, `buckets` and `reasons` in that fixed order:
+  `{"channel":"EventsChannel","inbox":true[,"types":"a,b"][,"buckets":"1,2"][,"reasons":"mentioned"]}`.
+  An inbox subscription replaces the account streams for its connection rather than adding
+  to them. Each live frame is one item in the poll shape — the four envelope keys around an
+  event decoded to the poll row's contract (the nine keys both lanes carry required; the
+  push-only transport fields accepted when present). A frame that is not an item is the
+  invalid-frame class's decode shape, as on the account lane.
+- **The poll envelope** is `{items, position, next}` — `items` in place of `events`, oldest
+  first in strict item-id order; the `PollSource` seam is unchanged, and an inbox adapter
+  (over the generated `PollInbox` operation) maps each item onto an `Event` with its
+  `Addressing` set. `since=0` replays the earliest items still retained (30 days);
+  `since=now` and `position=` behave as on the feed.
+- **410 is the retention window**, not the epoch: the position fell behind the retained
+  backlog, and `resume` re-enters at `since=0`, the earliest retained item — exactly-once
+  continuation for a stale position that has seen none of it. Same `FeedGap` signal, same
+  handler contract, same position-resume class as the feed's 410 (Entry Boundary); the
+  default terminal's message names the retention window rather than the epoch.
+- **403** for a non-agent principal is the seam's `unauthorized` kind and rides the shared
+  authorization counter to Terminal(`authorization_failed`): a person's token on the inbox
+  lane is a configuration error the connector cannot distinguish from a revoked one on the
+  wire, and three cycles surface it.
+- **Brakes.** Agent-to-agent delivery on the inbox carries server-side brakes the
+  connector neither sees nor compensates for — a per-account delivery budget, a circuit
+  breaker on runs of agent-performed deliveries, an operator kill switch. A braked event is
+  counted, not delivered; a quiet inbox under a burst is that, not a connector fault.
+
+Required tier-2 coverage: the subscription spelling and the `items` envelope, delivery of
+two items over one event with a repeated addressing id suppressed across the poll and live
+lanes, and the accepted retention 410 followed as a position-resume entry (fixtures 32/33).
+
 ### Verification
 
 Verification is three tiers with disjoint responsibilities:
@@ -4705,7 +4789,7 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `EVENT_FEED_PING_INTERVAL` | 3 | seconds | server heartbeat cadence (bc3; provisional until the merge-time gate); input to `EVENT_FEED_STALE_AFTER` |
 | `EVENT_FEED_STALE_AFTER` | 7500 | milliseconds | §23 — two missed 3s heartbeats + 25% grace; SDK-pinned detection policy |
 | `EVENT_FEED_AUTH_FAILURE_THRESHOLD` | 3 | consecutive failures | §23 disconnect dispatch (one shared counter) |
-| `EVENT_FEED_DEDUPE_CAPACITY` | 10,000 | event ids | §23 (configurable; default) |
+| `EVENT_FEED_DEDUPE_CAPACITY` | 10,000 | delivered keys (event ids on the account lane, addressing ids on the inbox) | §23 (configurable; default) |
 | `EVENT_FEED_LIVE_BUFFER_CAPACITY` | 10,000 | events | §23 (configurable; default; decoupled from the dedupe capacity; only event-bearing frames are buffered) |
 | `EVENT_FEED_TICKET_TTL` | ~120 | seconds | server-owned (`expires_in`; provisional until the merge-time gate); never used for client scheduling |
 | `EVENT_FEED_MAX_FRAME_BYTES` | 1,048,576 (1 MiB) | bytes | §23 security invariants |

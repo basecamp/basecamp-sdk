@@ -46,6 +46,8 @@ type scenarioConfig struct {
 	Performers        []int64  `json:"performers"`
 	ExcludePerformers []int64  `json:"exclude_performers"`
 	ActorTypes        []string `json:"actorTypes"`
+	Reasons           []string `json:"reasons"`
+	Lane              string   `json:"lane"`
 	Position          string   `json:"position"`
 	// The five durations are THREE-STATE because presence is meaning twice
 	// over: a plain int64 read an explicit zero as "absent, use the
@@ -188,6 +190,7 @@ type serveStep struct {
 	Reason     string          `json:"reason"`
 	Reconnect  *bool           `json:"reconnect"`
 	Event      json.RawMessage `json:"event"`
+	Item       json.RawMessage `json:"item"`
 	Text       string          `json:"text"`
 }
 
@@ -198,6 +201,7 @@ type serverCloseStep struct {
 
 type expectSubscribeStep struct {
 	Channel             string            `json:"channel"`
+	Inbox               *bool             `json:"inbox"`
 	Params              map[string]string `json:"params"`
 	IdenticalToPrevious *bool             `json:"identicalToPrevious"`
 }
@@ -220,8 +224,18 @@ type pollRespond struct {
 
 type pollEnvelope struct {
 	Events   []json.RawMessage `json:"events"`
+	Items    []json.RawMessage `json:"items"`
 	Position string            `json:"position"`
 	Next     string            `json:"next"`
+}
+
+// inboxItemRow is the inbox lane's envelope row: the addressing around a
+// poll-shaped event.
+type inboxItemRow struct {
+	AddressingID int64           `json:"addressing_id"`
+	Reason       string          `json:"reason"`
+	AddressedAt  string          `json:"addressed_at"`
+	Event        json.RawMessage `json:"event"`
 }
 
 type pollEventRow struct {
@@ -790,10 +804,16 @@ func validateServe(s *serveStep) error {
 		}
 		return nil
 	case "message":
-		if len(s.Event) == 0 {
-			return fmt.Errorf("a message frame needs an event")
+		switch {
+		case len(s.Event) > 0 && len(s.Item) > 0:
+			return fmt.Errorf("a message frame carries an event or an item, not both")
+		case len(s.Item) > 0:
+			return validateInboxItem(s.Item)
+		case len(s.Event) > 0:
+			return validatePushEvent(s.Event)
+		default:
+			return fmt.Errorf("a message frame needs an event or an item")
 		}
-		return validatePushEvent(s.Event)
 	case "raw":
 		return nil
 	default:
@@ -826,6 +846,40 @@ func validatePushEvent(raw json.RawMessage) error {
 		"visible_to_clients", "details")
 }
 
+// validateInboxItem pins the inbox item envelope — addressing_id, reason,
+// addressed_at, event — with the nested event in the poll row's shape (the
+// two transport-only push keys accepted when present).
+func validateInboxItem(raw json.RawMessage) error {
+	keys, err := objectKeys(raw)
+	if err != nil {
+		return err
+	}
+	for _, key := range []string{"addressing_id", "reason", "addressed_at", "event"} {
+		if _, ok := keys[key]; !ok {
+			return fmt.Errorf("inbox item is missing required key %q", key)
+		}
+	}
+	if err := allowedKeys("inbox item", keys, "addressing_id", "reason", "addressed_at", "event"); err != nil {
+		return err
+	}
+	eventKeys, err := objectKeys(keys["event"])
+	if err != nil {
+		return fmt.Errorf("inbox item event: %w", err)
+	}
+	for _, key := range []string{
+		"id", "kind", "event_type", "action", "created_at",
+		"bucket_id", "creator_id", "performed_by_id", "recording_id",
+	} {
+		if _, ok := eventKeys[key]; !ok {
+			return fmt.Errorf("inbox item event is missing required key %q", key)
+		}
+	}
+	return allowedKeys("inbox item event", eventKeys,
+		"id", "kind", "event_type", "action", "created_at",
+		"bucket_id", "creator_id", "performed_by_id", "actor_type", "recording_id",
+		"visible_to_clients", "details")
+}
+
 // decodePollQuery decodes expectPoll.query into its subset/exact form.
 func decodePollQuery(step *expectPollStep) error {
 	if step.URL == "" && len(step.Query) == 0 {
@@ -853,7 +907,7 @@ func decodePollQuery(step *expectPollStep) error {
 	for name := range params {
 		switch name {
 		case "position", "since", "types", "buckets", "creators",
-			"performers", "exclude_performers", "actor_types":
+			"performers", "exclude_performers", "actor_types", "reasons":
 		default:
 			return fmt.Errorf("unknown query param %q", name)
 		}
@@ -1288,6 +1342,13 @@ var placeholderPattern = regexp.MustCompile(`\{\{([A-Z_]+)(?::(\d+))?\}\}`)
 // unknown placeholder fails the fixture rather than surviving into a URL.
 func substitutePlaceholders(raw []byte, h *scenarioHarness) ([]byte, error) {
 	var failure error
+	var laneOf struct {
+		Config struct {
+			Lane string `json:"lane"`
+		} `json:"config"`
+	}
+	_ = json.Unmarshal(raw, &laneOf)
+	lane := laneOf.Config.Lane
 	out := placeholderPattern.ReplaceAllFunc(raw, func(token []byte) []byte {
 		groups := placeholderPattern.FindSubmatch(token)
 		name := string(groups[1])
@@ -1305,7 +1366,12 @@ func substitutePlaceholders(raw []byte, h *scenarioHarness) ([]byte, error) {
 		case "POS":
 			return []byte(fmt.Sprintf("pos-%d", index))
 		case "NEXT":
-			return []byte(fmt.Sprintf("%s/events.json?continuation=%d", h.apiOrigin, index))
+			// A continuation continues the lane's own operation.
+			route := "events.json"
+			if lane == "inbox" {
+				route = "inbox.json"
+			}
+			return []byte(fmt.Sprintf("%s/%s?continuation=%d", h.apiOrigin, route, index))
 		default:
 			if failure == nil {
 				failure = fmt.Errorf("unknown placeholder %s", token)

@@ -18,8 +18,8 @@ import (
 
 // FileCheckpointStore is the one built-in CheckpointStore: a single JSON file
 // holding every lineage's durable position, keyed by CheckpointKey.FlatKey —
-// the compact RFC 8259 JSON array of the four identity strings (SPEC.md §23
-// "Checkpoint Identity"), e.g.
+// the compact RFC 8259 JSON array of the identity strings — four, or five
+// with the inbox lane (SPEC.md §23 "Checkpoint Identity"), e.g.
 //
 //	{
 //	  "[\"https://3.basecampapi.com\",\"5951425\",\"openclaw\",\"srv2-9f2ab04e5c11d3a7\"]": "…"
@@ -270,10 +270,14 @@ func (s *FileCheckpointStore) Load(_ context.Context, key CheckpointKey) (string
 		{"checkpoint account id", key.AccountID},
 		{"checkpoint consumer namespace", key.ConsumerNamespace},
 		{"checkpoint filter key", key.FilterKey},
+		{"checkpoint lane", key.Lane},
 	} {
 		if err := checkIdentityText(in.field, in.value); err != nil {
 			return "", false, err
 		}
+	}
+	if err := checkLaneName(key.Lane); err != nil {
+		return "", false, err
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -333,11 +337,15 @@ func (s *FileCheckpointStore) Save(_ context.Context, key CheckpointKey, positio
 		{"checkpoint account id", key.AccountID},
 		{"checkpoint consumer namespace", key.ConsumerNamespace},
 		{"checkpoint filter key", key.FilterKey},
+		{"checkpoint lane", key.Lane},
 		{"checkpoint position", position},
 	} {
 		if err := checkIdentityText(in.field, in.value); err != nil {
 			return err
 		}
+	}
+	if err := checkLaneName(key.Lane); err != nil {
+		return err
 	}
 
 	s.mu.Lock()
@@ -513,14 +521,15 @@ func (s *FileCheckpointStore) read() (map[string]string, bool, error) {
 }
 
 // isCanonicalFlatKey reports whether k is exactly the form FlatKey writes:
-// the compact JSON array of four strings, in the package's own encoding. The
-// round-trip is the whole check — parse, re-encode with the same writer,
-// compare — so any spelling Save could not have produced (extra whitespace,
-// a different escape of the same text, the wrong arity or types) is
-// malformed by construction.
+// the compact JSON array of four strings — five with the lane, for an inbox
+// lineage — in the package's own encoding. The round-trip is the whole check
+// — parse, re-encode with the same writer, compare — so any spelling Save
+// could not have produced (extra whitespace, a different escape of the same
+// text, the wrong arity or types, an empty fifth element) is malformed by
+// construction.
 func isCanonicalFlatKey(k string) bool {
 	var parts []string
-	if err := json.Unmarshal([]byte(k), &parts); err != nil || len(parts) != 4 {
+	if err := json.Unmarshal([]byte(k), &parts); err != nil || len(parts) < 4 || len(parts) > 5 {
 		return false
 	}
 	rebuilt := CheckpointKey{
@@ -528,6 +537,12 @@ func isCanonicalFlatKey(k string) bool {
 		AccountID:         parts[1],
 		ConsumerNamespace: parts[2],
 		FilterKey:         parts[3],
+	}
+	if len(parts) == 5 {
+		if checkLaneName(parts[4]) != nil {
+			return false
+		}
+		rebuilt.Lane = parts[4]
 	}
 	return rebuilt.FlatKey() == k
 }
