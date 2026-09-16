@@ -607,6 +607,17 @@ extension Mentions {
         guard path[..<modelEnd].elementsEqual("Person".utf8) else { return nil }
 
         let rawId = path[(modelEnd + 1)...]
+        // The id must be DIGITS, not merely something a parse accepts. This walk
+        // and the `id > 0` below are the reference's own shape at this site
+        // (`go/pkg/basecamp/mentions.go:252-258`), and they are deliberately
+        // NOT the rule the flexible id reader applies. `ParseInt` takes a
+        // leading `+`; the reference refuses anything outside `0...9` before it
+        // parses at all, so `gid://bc3/Person/+77` names nobody in Go. Dropping
+        // the walk to share ``parsePersonID(_:)`` would name person 77 here —
+        // the accepting direction, on the read helper, and the `+77` defect
+        // PR #886 closed. Two rules, one module, deliberately: neither may be
+        // hoisted into the other. ``parsePersonID(_:)`` carries the same note
+        // facing this way.
         guard !rawId.isEmpty, rawId.allSatisfy({ $0 >= asciiZero && $0 <= asciiNine }) else { return nil }
         guard let id = Int(String(decoding: rawId, as: UTF8.self)), id > 0 else { return nil }
         return id
