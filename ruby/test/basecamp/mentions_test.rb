@@ -103,6 +103,36 @@ class MentionsTest < Minitest::Test
     assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("/Person/42"))
   end
 
+  # THE SIGN, which is the one shape this rule and the flexible id reader answer
+  # differently about a real person.
+  #
+  # The reference walks the bytes and refuses anything outside 0..9 BEFORE it
+  # parses (go/pkg/basecamp/mentions.go:252-256), so "+7" names nobody here —
+  # while Basecamp::Ids.parse_int, which is strconv.ParseInt whole, reads it as
+  # 7. Two rules, deliberately, and this test is the half that was missing: every
+  # other gid case above is refused by the digit walk AND by the parse behind it,
+  # so dropping the walk left them all green while gid://bc3/Person/+7 began
+  # naming person 7. That is the +77 defect PR #886 closed, in the accepting
+  # direction, on the field that decides WHO a mention names.
+  def test_refuses_a_signed_person_id_that_parse_int_would_accept
+    [ "+7", "-7", "+007", "+9223372036854775807", "-9223372036854775808" ].each do |raw|
+      assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Person/#{raw}")),
+        "gid://bc3/Person/#{raw} must name nobody, however readable #{raw.inspect} is to ParseInt"
+    end
+  end
+
+  # And the walk is NOT simply stricter: leading zeros carry no magnitude, so
+  # they pass it and resolve. A reader who "hardens" the rule by refusing them
+  # diverges from the reference just as surely as one who loosens it, so the
+  # agreeing half is pinned too — otherwise the test above could be satisfied by
+  # refusing too much.
+  def test_accepts_a_zero_padded_person_id
+    { "007" => 7, "010" => 10, "0009223372036854775807" => 9223372036854775807 }.each do |raw, id|
+      assert_equal id, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Person/#{raw}")),
+        "gid://bc3/Person/#{raw} resolves; leading zeros are not a refusal"
+    end
+  end
+
   def test_refuses_undecodable_and_oversized_sgids
     assert_nil Basecamp::Mentions.person_id_from_sgid(nil)
     assert_nil Basecamp::Mentions.person_id_from_sgid("")
