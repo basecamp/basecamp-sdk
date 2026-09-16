@@ -56,26 +56,39 @@ def decoded_array(value: Any, what: str) -> list[Any]:
 
 
 def decoded_envelope_array(envelope: dict[str, Any], key: str, what: str) -> list[Any]:
-    """A REQUIRED array member of a wrapped-pagination envelope.
+    """The ITEMS member of a wrapped-pagination envelope, read as required.
 
     Stricter than :func:`decoded_array`, and deliberately. SPEC §6 "Statusless
-    ``api_error`` for a malformed 2xx body" settles this one shape for every SDK:
-    a wrapped-pagination response is decoded in two halves — the items array on
-    every page, and the first page's remaining members — and *an absent or
-    wrong-typed member of the envelope is a malformed body and not an empty
-    result*, because BC3 writes these envelopes unconditionally.
+    ``api_error`` for a malformed 2xx body" settles this shape for every SDK:
+    *an absent or wrong-typed member of the envelope is a malformed body and not
+    an empty result*, because BC3 writes these envelopes unconditionally.
 
     So the null-is-empty rule stops at the envelope's door. It governs a bare
-    array body, where Go's `json.Unmarshal` and the wire contract agree that a
-    null list is no rows; it does not govern a member that the server always
-    writes, where absence or null means the body did not arrive intact. The
-    three typed-decoder SDKs get this from their decoders — Rust's `events` is a
-    bare `Vec<TimelineEvent>`, Kotlin's wrapper reader throws on an absent
-    member, Swift's `guard let` does the same — and Python has to check.
+    array body, where Go's ``json.Unmarshal`` and the wire contract agree that a
+    null list is no rows; it does not govern a member the server always writes,
+    where absence means the body did not arrive intact. Conflating the two hands
+    the caller a 2xx-shaped result with silently empty items — the
+    loud-crash-for-a-silent-wrong-answer trade this module exists to refuse.
 
-    Conflating the two would hand the caller a 2xx-shaped result whose items are
-    silently empty and whose sibling members are missing: the loud-crash-for-a-
-    silent-wrong-answer trade this module exists to refuse.
+    **Scope, stated rather than implied.** §6 describes the decode in two halves,
+    the items array on every page *and the first page's remaining members*. This
+    reader is the first half only. The sibling members — ``person`` on
+    ``GetPersonProgress``, the one operation §6 names — are still copied through
+    unvalidated by the paginator above, so an envelope carrying items but no
+    ``person`` is accepted here and surfaces as a ``KeyError`` at the caller.
+    That half needs the required-member names, which live in the OpenAPI schema
+    and would have to reach the primitive through the generator the way Swift's
+    and Kotlin's do; it is a separate change and is not made here. Do not read
+    this function as closing it.
+
+    **On null.** §6 says "absent or wrong-typed" and is silent on ``null``; this
+    reads a null member as wrong-typed. That is a deliberate divergence from Go,
+    whose ``json.Unmarshal`` leaves a null member at its zero value without
+    error. It follows the SDKs that already decode this shape through types:
+    Rust's ``events`` is a bare ``Vec<TimelineEvent>`` with no ``serde(default)``,
+    Kotlin's ``requiredMember`` passes ``JsonNull`` on to a decode that throws,
+    and Swift's ``guard let`` clears an ``NSNull`` that then fails the cast. No
+    SDK reads a null envelope member as an empty listing.
     """
     if key not in envelope:
         raise ApiError(f"{what} is absent from the response envelope")

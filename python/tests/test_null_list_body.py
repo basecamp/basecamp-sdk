@@ -18,6 +18,18 @@ which is the loud-crash-for-a-silent-wrong-answer trade this file exists to
 refuse. So the bare-array sites follow Go, the envelope sites follow §6, and each
 site's rows are derived from what the reference does AT THAT SITE.
 
+Two boundaries of that, stated because they are easier to assume than to check.
+§6 describes the decode in two halves and only the FIRST — the items array — is
+covered here; the envelope's sibling members (``person`` on ``GetPersonProgress``)
+are still copied through unvalidated, so a body carrying items but no ``person``
+is accepted and fails at the caller. Closing that needs the required-member names
+to reach the primitive from the OpenAPI schema, and is not this change. And
+``_paginate_key`` gets the strict rule by analogy rather than by §6, which names
+``GetPersonProgress`` — i.e. ``_paginate_wrapped`` — as the only such operation:
+the keyed primitive reads the same shape, has no generated caller to disagree
+with, and two sibling primitives quietly disagreeing about one wire shape is
+worse than one of them being stricter than its spec paragraph requires.
+
 Measured against the real reference, not asserted from memory. A linked Go oracle
 calling ``encoding/json`` through the generated parsers
 (``ParseGetProgressReportResponse`` for the array shape,
@@ -64,7 +76,7 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client
-from basecamp._decoding import decoded_array, decoded_object
+from basecamp._decoding import decoded_array, decoded_envelope_array, decoded_object
 from basecamp.errors import ApiError
 
 _ACCOUNT_URL = "https://3.basecampapi.com/12345"
@@ -156,6 +168,26 @@ class TestDecodeHelpers:
         with pytest.raises(ApiError, match="was not an object"):
             decoded_object(value, "the body")
 
+    def test_a_present_items_member_decodes_to_itself(self):
+        assert decoded_envelope_array({"events": [{"id": 1}]}, "events", "the list") == [{"id": 1}]
+
+    def test_an_empty_items_member_decodes_to_no_rows(self):
+        assert decoded_envelope_array({"events": []}, "events", "the list") == []
+
+    def test_an_absent_items_member_is_malformed(self):
+        """The branch that separates this reader from ``decoded_array``: absence
+        is not emptiness when the server writes the member unconditionally."""
+        with pytest.raises(ApiError, match="is absent from the response envelope"):
+            decoded_envelope_array({"person": {"id": 9}}, "events", "the list")
+
+    @pytest.mark.parametrize("value", _NOT_AN_ARRAY_UNDER_KEY)
+    def test_a_present_non_array_items_member_is_malformed(self, value):
+        """``null`` is in this list. §6 says "absent or wrong-typed" and is silent
+        on null; reading it as wrong-typed is the deliberate Go divergence, and it
+        is the answer Rust, Swift and Kotlin already give."""
+        with pytest.raises(ApiError, match="was not an array"):
+            decoded_envelope_array({"events": value}, "events", "the list")
+
 
 class TestPaginateNullBody:
     """``_paginate`` — bare-array pages. Live through every plain list operation."""
@@ -197,10 +229,17 @@ class TestPaginateNullBody:
     @respx.mock
     def test_null_on_a_later_page_keeps_the_earlier_pages(self):
         url = f"{_ACCOUNT_URL}/projects.json"
-        respx.get(url, params={"page": "2"}).mock(return_value=_json(None))
-        respx.get(url).mock(return_value=_json([{"id": 1}], _link_to(f"{url}?page=2")))
+        page2 = respx.get(url, params={"page": "2"}).mock(return_value=_json(None))
+        page1 = respx.get(url).mock(return_value=_json([{"id": 1}], _link_to(f"{url}?page=2")))
 
-        assert list(_account().projects.list()) == [{"id": 1}]
+        result = _account().projects.list()
+
+        # Both pages have to have been fetched, or page 1 alone satisfies the
+        # assertion below and the row passes without ever reaching the arm it
+        # exists to exercise.
+        assert page1.call_count == 1
+        assert page2.call_count == 1
+        assert list(result) == [{"id": 1}]
 
     @respx.mock
     def test_wrong_typed_later_page_fails_the_read(self):
@@ -244,13 +283,15 @@ class TestAsyncPaginateNullBody:
     @respx.mock
     async def test_null_on_a_later_page_keeps_the_earlier_pages(self):
         url = f"{_ACCOUNT_URL}/projects.json"
-        respx.get(url, params={"page": "2"}).mock(return_value=_json(None))
-        respx.get(url).mock(return_value=_json([{"id": 1}], _link_to(f"{url}?page=2")))
+        page2 = respx.get(url, params={"page": "2"}).mock(return_value=_json(None))
+        page1 = respx.get(url).mock(return_value=_json([{"id": 1}], _link_to(f"{url}?page=2")))
 
         client = AsyncClient(access_token="test-token")
         result = await client.for_account("12345").projects.list()
         await client.close()
 
+        assert page1.call_count == 1
+        assert page2.call_count == 1
         assert list(result) == [{"id": 1}]
 
     @pytest.mark.asyncio
