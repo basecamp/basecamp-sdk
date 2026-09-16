@@ -3198,10 +3198,12 @@ walk-end page without `next`, the 400 with and without `reason` plus the 409 and
 410 on the feed, the inbox envelope decode and its one-page answer to a continuation (a
 relative `Link: rel="next"` served beside `next`, one request), the agents-only bodyless
 403, the reasoned 400 and the retention 410 on the inbox, and the bodyless mint with its
-401. The feed's envelope case serves a continuation too and asserts one request, so both
-cursor lanes (§8) go red if a walk is ever generated — by the request count where the
-method's return type survives the change, and at the runner's compile in the typed SDKs
-where it does not. The connector's
+401. The feed's envelope case serves a continuation too and asserts one request. If either
+lane were flipped to the link style, these two cases go red on the request count in
+TypeScript, Python, Ruby and a Link-following Go wrapper, and at the runner's compile in
+Kotlin and Swift, whose generated return type changes. Rust's generated link-style method
+fetches one page and leaves the walk to the caller, so its runner stays green; the Rust
+route-table test (`guarantees.rs`) is what pins these two lanes to the cursor style there. The connector's
 own family stays under `conformance/event-feed/`.
 
 ### Provenance `[manual]`
