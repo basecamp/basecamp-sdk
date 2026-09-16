@@ -150,6 +150,40 @@ class IdsTest < Minitest::Test
     end
   end
 
+  def test_a_digit_run_is_bounded_before_it_is_converted
+    # Every reader used to run to_i and then range-check the result, so a digit
+    # run from a response body or from rich text built an arbitrarily large
+    # Integer first — 5,000,000 digits measured at 2.5 seconds each, on a path
+    # where a body may be 50 MB and five readers may see the same value.
+    #
+    # An int64 is at most 19 digits, so a longer magnitude is out of range by
+    # LENGTH. Asserted on the answers rather than on a clock, because a timing
+    # assertion is flaky and would not catch a bound that is fast and wrong.
+    assert_equal 19, Basecamp::Ids::MAX_DIGITS
+
+    # The boundary itself still converts, either side of it still answers.
+    assert_equal MAX, Basecamp::Ids.bounded_decimal(MAX.to_s)
+    assert_equal MIN, Basecamp::Ids.bounded_decimal(MIN.to_s)
+    assert_equal :overflow, Basecamp::Ids.bounded_decimal((MAX + 1).to_s)
+    assert_equal :overflow, Basecamp::Ids.bounded_decimal((MIN - 1).to_s)
+
+    # LEADING ZEROS carry no magnitude, so a long run of them is still in range
+    # — a length check that did not strip them first would refuse this.
+    assert_equal 7, Basecamp::Ids.bounded_decimal("#{"0" * 100}7")
+    assert_equal 0, Basecamp::Ids.bounded_decimal("0" * 100)
+    assert_equal MAX, Basecamp::Ids.bounded_decimal("#{"0" * 50}#{MAX}")
+
+    # And the three verdicts stay distinct, because two callers need to tell
+    # "not a number" from "too big": one zeroes the first and refuses the
+    # second, the other raises different errors for each.
+    assert_equal :not_decimal, Basecamp::Ids.bounded_decimal("basecamp")
+    assert_equal :not_decimal, Basecamp::Ids.bounded_decimal("+7", signed: false)
+    assert_equal 7, Basecamp::Ids.bounded_decimal("+7")
+
+    # A run far past the bound answers without building the number.
+    assert_equal :overflow, Basecamp::Ids.bounded_decimal("9" * 1_000_000)
+  end
+
   def test_the_two_wire_readers_disagree_only_where_the_reference_does
     # The whole reason both exist. A digit string is an id for a person and a
     # decode failure everywhere else, and that asymmetry is the reference's.

@@ -27,7 +27,39 @@ module Basecamp
     MAX = (2**63) - 1
     MIN = -(2**63)
 
+    # The most digits a signed 64-bit value can carry, so a longer run is out of
+    # range without converting it.
+    MAX_DIGITS = MAX.to_s.length
+
     module_function
+
+    # A decimal string as an Integer, :overflow when it is out of range, or
+    # :not_decimal when it is not one.
+    #
+    # BOUNDED LEXICALLY BEFORE CONVERTING, which is the whole point. Every
+    # caller used to run to_i and then range-check the result, so a digit run
+    # from a response body or from rich text built an arbitrarily large Integer
+    # first — 5,000,000 digits measured at 2.5 seconds, and a body may be 50 MB.
+    # An int64 is at most #{MAX_DIGITS} digits, so anything longer is out of
+    # range and can be rejected by LENGTH. Leading zeros are stripped before
+    # that test, since they carry no magnitude.
+    #
+    # Five call sites had this shape and a review found three; the other two
+    # were the caller-argument reader and the sgid decoder, which is the one fed
+    # by rich text other people wrote.
+    #
+    # @param value [String]
+    # @param signed [Boolean] whether a leading "+" or "-" is allowed
+    def bounded_decimal(value, signed: true)
+      digits = value.b
+      return :not_decimal unless digits.match?(signed ? /\A[-+]?\d+\z/n : /\A\d+\z/n)
+
+      magnitude = digits.sub(/\A[-+]/, "").sub(/\A0+(?=\d)/, "")
+      return :overflow if magnitude.length > MAX_DIGITS
+
+      parsed = digits.to_i
+      parsed.between?(MIN, MAX) ? parsed : :overflow
+    end
 
     # @param value [Object] the id as the caller supplied it
     # @param name [String] the argument's name, for the error message
@@ -38,8 +70,12 @@ module Basecamp
       # Matched on BYTES: a String carrying invalid UTF-8 makes the regexp
       # engine raise ArgumentError, and an id that is not a number is a usage
       # error naming the argument, not an exception out of a public method.
-      digits = value.b if value.is_a?(String)
-      id ||= digits.to_i if digits&.match?(/\A\d+\z/n)
+      if id.nil? && value.is_a?(String)
+        parsed = bounded_decimal(value, signed: false)
+        raise UsageError.new("#{name} is out of range: #{value.inspect}") if parsed == :overflow
+
+        id = parsed unless parsed == :not_decimal
+      end
       raise UsageError.new("#{name} must be an integer, got #{value.inspect}") if id.nil?
       raise UsageError.new("#{name} is out of range: #{value.inspect}") unless id.between?(MIN, MAX)
 
@@ -118,11 +154,11 @@ module Basecamp
       return nil if value.nil?
       return nil unless value.is_a?(String)
 
-      digits = value.b
-      return 0 unless digits.match?(/\A[-+]?\d+\z/n)
+      parsed = bounded_decimal(value)
+      return 0 if parsed == :not_decimal
+      return nil if parsed == :overflow
 
-      parsed = digits.to_i
-      parsed.between?(MIN, MAX) ? parsed : nil
+      parsed
     end
   end
 end

@@ -47,14 +47,19 @@ module Basecamp
     # this silently substituting a sentinel.
     def self.coerce_person_id(obj)
       raw = obj["id"]
-      unless raw.b.match?(/\A[-+]?\d+\z/n)
+      # Bounded before conversion: this runs over EVERY decoded response, and a
+      # body may be 50 MB, so a long digit run built an arbitrarily large
+      # Integer here before anything decided to discard it.
+      parsed = Ids.bounded_decimal(raw)
+      case parsed
+      when :not_decimal
         obj["system_label"] = raw
         obj["id"] = 0
-        return
+      when :overflow
+        nil # left as the string, for the reader to refuse
+      else
+        obj["id"] = parsed
       end
-
-      value = raw.b.to_i
-      obj["id"] = value if value.between?(Ids::MIN, Ids::MAX)
     end
 
     # @param config [Config] configuration settings

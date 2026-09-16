@@ -409,8 +409,11 @@ module Basecamp
       # Bounded like Go's ParseInt(rawID, 10, 64): an id past that range is not
       # a Basecamp person id, and reporting a bignum as a mentioned person would
       # carry it into a projection and into the write side's identity check.
-      id = raw_id.to_i
-      id.positive? && id <= MAX_PERSON_ID ? id : nil
+      # Bounded before conversion. This is the site fed by rich text other
+      # people wrote, so an unbounded digit run here is the most exposed of the
+      # five that had this shape.
+      id = Ids.bounded_decimal(raw_id, signed: false)
+      id.is_a?(Integer) && id.positive? && id <= MAX_PERSON_ID ? id : nil
     end
 
     # Renders the +<bc-attachment>+ that mentions a person, from their
@@ -489,11 +492,8 @@ module Basecamp
       # own treatment of a signed integer-shaped person id differs between the
       # digit walk, this decoder, and the wrapper path, and this method
       # implements THIS one: the people-read field typed as the flexible int.
-      digits = id.b
-      return nil unless digits.match?(/\A[-+]?\d+\z/n)
-
-      value = digits.to_i
-      value.between?(Ids::MIN, Ids::MAX) ? value : nil
+      parsed = Ids.bounded_decimal(id)
+      parsed.is_a?(Integer) ? parsed : nil
     end
 
     # Returns content that mentions each of the given people, for posting as a
