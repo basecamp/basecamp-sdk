@@ -23,10 +23,17 @@ wrong-typed body was **silently accepted and turned into fabricated rows**. All
 of them now answer in the SDK's taxonomy: a statusless, non-retryable `ApiError`
 — except a null body at a bare-array site, which is an empty listing.
 
-This reaches **every list operation in the SDK**, sync and async. Measured, not
-recalled: the "before" column throughout is this SDK running against `main` at
-`d57bcf1d`, observed by swapping that commit's pagination primitives into the
-worktree and driving each shape.
+This reaches **every list operation in the SDK**, sync and async. Every cell of
+both tables below is generated, not typed: `python/scripts/measure_list_body_migration.py`
+builds a scratch copy of the package for each of two revisions and drives every
+body shape through a real operation against both. Re-run it rather than editing
+the tables:
+
+    python scripts/measure_list_body_migration.py --base d57bcf1d --head 8dca9025
+
+`d57bcf1d` is `main` before this change; `8dca9025` is the change. Neither column
+reads a working tree, so the numbers are reproducible by anyone with the two
+SHAs.
 
 **The 60 paginated list operations** and **the 9 unpaginated ones** take the same
 change. Measured on `bookmarks.list_my_bookmarks` and `folders.list_folders`
