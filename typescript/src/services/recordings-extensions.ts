@@ -314,9 +314,22 @@ export class CampfireDiscoveryIncompleteError extends RecordingSummaryError {
 /**
  * A read whose bucket disagrees with the pointer.
  *
- * `api_error`, not `usage`: the disagreeing value came off the wire (SPEC §6,
- * "Statusless `api_error` for a malformed 2xx body" — classification is by
- * origin, not by value).
+ * `usage`: the pointer named a bucket the recording is not in, which is the
+ * caller's argument being wrong rather than the API misbehaving. This doc
+ * comment argued the opposite — `api_error`, citing SPEC §6's statusless rule —
+ * for as long as the code said so, and went on saying it after the code
+ * changed, which is the half of a rename that editor hover and generated API
+ * docs actually show a consumer.
+ *
+ * The ports on `main` that have a code slot do NOT agree here, and the
+ * disagreement is bigger than the value: `exitCode` derives from the code, so
+ * this identity exits 1 in Python and Kotlin (`usage`) and 2 in Rust
+ * (`not_found`, "the recording the pointer names is not where it was looked
+ * for"). Go and Swift keep the composite's verdicts out of the taxonomy
+ * entirely. This port follows the majority and the reasoning it can defend —
+ * the pointer is the caller's — and the split is recorded rather than smoothed
+ * over, in the README table and in {@link https://github.com/basecamp/basecamp-sdk/pull/884 | the port's PR},
+ * because no one port can settle it.
  */
 export class BucketMismatchError extends RecordingSummaryError {
   readonly ref: RecordingRef;
@@ -326,14 +339,19 @@ export class BucketMismatchError extends RecordingSummaryError {
   constructor(ref: RecordingRef, bucketId: number) {
     super(
       "bucket_mismatch",
-      // `usage`, not `api_error`: the pointer named a bucket the recording is
-      // not in, which is the caller's argument being wrong rather than the API
-      // misbehaving. Checked against the ports already on `main` rather than
-      // argued from first principles — Python's `_COMPOSITE_CODE` and Kotlin's
-      // `recordingSummaryCode` both map this identity to `usage`, and the code
-      // is a CLOSED taxonomy a consumer branches on, so a seventh answer here
-      // would be a divergence no fixture can catch: the fixture pins
-      // `errorType`, which is `kind`, and says nothing about the code.
+      // Surveyed across every merged port rather than argued from first
+      // principles — and the first version of this survey read two of the
+      // three that have a code slot, which is how it came to describe them as
+      // agreeing. Python's `_COMPOSITE_CODE` and Kotlin's
+      // `recordingSummaryCode` map this identity to `usage`; Rust's
+      // `RecordingSummaryError::code` maps it to `not_found`. Two to one, and
+      // `usage` is the one whose reasoning this port can defend: the pointer is
+      // the caller's.
+      //
+      // The code is a CLOSED taxonomy a consumer branches on, and the fixture
+      // pins `errorType` — this `kind` — and says nothing about the code, which
+      // is exactly why three ports could diverge without a single case failing
+      // anywhere.
       "usage",
       `recording is not in the requested bucket: recording ${ref.recordingId} is in bucket ${bucketId}, not ${ref.bucketId}`,
     );
@@ -1807,23 +1825,33 @@ const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,]\d+)?(
  * `T3:04:05Z` as `T03:04:05Z`. The conformance runner compares instants rather
  * than strings — but only for the forms its own regex admits, and these are not
  * all of them. Six FAMILIES of accepted spelling render differently here than in
- * Go, counted by rule rather than by example, because an earlier version of
- * this paragraph counted one rule twice and missed another:
+ * Go, counted by rule and measured one spelling at a time, because the previous
+ * two attempts at this list both counted a rule by one of its examples:
  *
- * - a comma fraction (`,5`), which Go re-renders as `.5`;
+ * - **the fraction, normalized** — not "a comma becomes a dot", which is how
+ *   this was written and is one example of it. Go re-renders `.500Z` as `.5Z`,
+ *   `.000000000Z` as `Z`, and `,50Z` as `.5Z`: trailing zeros go, an all-zero
+ *   fraction goes entirely, and the separator is incidental;
  * - a single-digit hour (`T3:`), re-rendered `T03:`, with or without an offset;
- * - an offset hour of 24 (`+24:00`, and its unnamed twin `-24:00`), which Go's
- *   ENCODER then refuses outright, its own range being [0,23];
+ * - an offset hour of 24 (`+24:00`, and its twin `-24:00`), which Go's ENCODER
+ *   then refuses outright, its own range being [0,23];
  * - an offset minute of 60 that stays within the hour (`+00:60` → `+01:00`);
  * - an offset minute of 60 that CARRIES (`+23:60` → hour 24), which Go decodes
- *   and then cannot marshal at all — the case the `+24:00` entry describes,
- *   reached by a spelling the `+00:60` entry would have you believe merely
- *   normalizes;
- * - and the zero instant's own year range, where Go emits `0001-01-01T…`.
+ *   and then cannot marshal at all;
+ * - a zero offset (`+00:00`, `-00:00`), which Go re-renders as `Z`.
  *
- * The runner's `sameInstant` sends all of them to exact string comparison,
- * though not all for the same reason: `T3:` and `,5` fail its regex, while the
- * offset forms match it and fail its `Date.parse` guard. Nothing in the fixture carries one — checked, every
+ * Where each one lands in the runner differs, and "all of them fall back to
+ * exact string comparison" — the previous claim — is false for two. `T3:` and a
+ * comma fail `sameInstant`'s regex; the offset-24 and carry forms match it and
+ * fail its `Date.parse` guard; a normalized fraction reaches its
+ * `fractionalDigits` comparison, which is the one that would actually FAIL a
+ * fixture carrying `.500Z`; and a zero offset compares EQUAL, so that family is
+ * genuinely invisible rather than merely unexercised.
+ *
+ * The zero instant is not on this list and was: `0001-01-01T00:00:00Z` is what
+ * Go emits and what this returns, it round-trips identically, and it passes the
+ * runner's regex, its `isRealTimestamp` year clause and `Date.parse`. A list of
+ * things that differ is the wrong place for the one value both sides agree on. Nothing in the fixture carries one — checked, every
  * `updated_at` there is canonical — so the difference is invisible in practice
  * rather than by construction.
  *

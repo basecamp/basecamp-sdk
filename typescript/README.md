@@ -554,9 +554,9 @@ try {
 |--------|--------|---------|
 | `no_recording_type` | `usage` | The event type names no recording type (`boost.*`). No request was made. |
 | `unknown_recording_type` | `usage` | Neither type spelling is in the routing table. No request was made. |
-| `recording_unresolved` | `not_found` | A chat line was found under no Campfire you can currently see. |
-| `campfire_discovery_incomplete` | `api_error` | Candidates were left unsearched, so nothing can be reported absent. (Python agrees; Kotlin maps this one to `usage` — a disagreement between merged ports, not this port's to settle.) |
-| `bucket_mismatch` | `usage` | The read returned a recording from a different bucket than the pointer named — the caller's argument, not the API misbehaving. Matches Python and Kotlin. |
+| `recording_unresolved` | `not_found` | A chat line was found under no Campfire you can currently see. Unanimous across Python, Kotlin and Rust. |
+| `campfire_discovery_incomplete` | `api_error` | Candidates were left unsearched, so nothing can be reported absent. Python and Rust agree; Kotlin maps this one to `usage`. |
+| `bucket_mismatch` | `usage` | The read returned a recording from a different bucket than the pointer named — the caller's argument, not the API misbehaving. The merged ports split: `usage` in Python and Kotlin (exit 1), `not_found` in Rust (exit 2). Go and Swift keep these verdicts out of the taxonomy. |
 
 Any other failure is the constituent read's own error, unchanged: a candidate
 Campfire answering 401, 403 or 5xx stops the search and surfaces as that error

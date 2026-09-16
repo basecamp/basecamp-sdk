@@ -380,17 +380,15 @@ describe("recordings.summarize", () => {
       // string alone is a name; the exit status is what a script branches on.
       expect((err as BasecampError).exitCode).toBe(1);
 
-      // The other four identities' codes, from the same cross-SDK table:
-      // `recording_unresolved` is `not_found` in Python and Kotlin both, the
-      // two routing refusals are `usage` everywhere, and
-      // `campfire_discovery_incomplete` is `api_error` here and in Python
-      // while Kotlin maps it to `usage` — a disagreement between two merged
-      // ports that this port cannot settle unilaterally, recorded here so the
-      // next reader sees it rather than discovering it.
+      // The other identities' codes, ASSERTED rather than described: the
+      // comment here used to promise four and check one, which is the same
+      // claim-wider-than-the-guard this branch has spent the night closing.
+      // The cross-SDK reading behind each is in the README table.
       const routing = await client.recordings
         .summarize({ bucketId: BUCKET, recordingId: 1 })
         .catch((e: unknown) => e);
       expect((routing as BasecampError).code).toBe("usage");
+      expect((routing as BasecampError).exitCode).toBe(1);
       expect((err as BucketMismatchError).bucketId).toBe(OTHER_BUCKET);
       // Statusless: the transport succeeded, so no status describes the verdict.
       expect((err as BucketMismatchError).httpStatus).toBeUndefined();
@@ -1415,7 +1413,11 @@ describe("recordings.summarize", () => {
       expect(unresolved.campfireIds).toEqual([60, 70]);
       expect(unresolved.refreshed).toBe(false);
       // Statelessly distinguishable from a read's own 404: same code, no status.
+      // The code is unanimous across Python, Kotlin and Rust, and exit 2 is
+      // what a script sees — asserted because the code name is a label and the
+      // status is the consequence.
       expect(unresolved.code).toBe("not_found");
+      expect(unresolved.exitCode).toBe(2);
       expect(unresolved.httpStatus).toBeUndefined();
     });
 
@@ -1435,6 +1437,12 @@ describe("recordings.summarize", () => {
 
       expect(err).toBeInstanceOf(CampfireDiscoveryIncompleteError);
       expect((err as CampfireDiscoveryIncompleteError).kind).toBe("campfire_discovery_incomplete");
+      // The code and the status it decides. Python and Rust agree on
+      // `api_error`; Kotlin maps this identity to `usage`, so the exit status
+      // differs between merged ports (7 against 1) and this assertion is what
+      // makes this port's side of that split checkable.
+      expect((err as BasecampError).code).toBe("api_error");
+      expect((err as BasecampError).exitCode).toBe(7);
       expect((err as CampfireDiscoveryIncompleteError).reason).toBe(
         `the candidate budget of ${MAX_CAMPFIRE_CANDIDATES} was spent before the account listing was consulted`,
       );
