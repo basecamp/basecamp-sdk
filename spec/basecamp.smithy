@@ -479,13 +479,17 @@ structure ForbiddenError {
 }
 
 /// 403 with no response body — the bare `head :forbidden` rendering, the
-/// treatment BareNotFoundError already gets at 404. `PollInbox` uses it: the
-/// inbox is agents-only until registrations open it to people, and
-/// `Events::InboxesController#require_agent_principal` answers a human
-/// principal with `head :forbidden` and no JSON at all. Modeling the flat
-/// {error, message} ForbiddenError there would advertise a decodable body the
-/// server never sends, on the one operation where 403 is the documented,
-/// expected outcome rather than an edge.
+/// treatment BareNotFoundError already gets at 404. Used by operations whose
+/// own guard emits no JSON payload on 403, so the generated OpenAPI does not
+/// advertise a decodable body for what that guard answers.
+///
+/// Scoped to the operation's own guard on purpose. A cross-cutting 403 raised
+/// ahead of it can still carry a body — ApplicationController's 2FA
+/// enforcement renders a flat one, and being registered on the superclass it
+/// runs first — but that 403 is reachable on every operation in this spec and
+/// is modeled on none of them. Every SDK maps 403 to its forbidden error by
+/// status and parses whatever body arrives opportunistically, so nothing is
+/// lost by leaving it unmodeled here.
 @error("client")
 @httpError(403)
 structure BareForbiddenError {}
