@@ -1,0 +1,117 @@
+{
+  "name": "34-filter-changed-409-reenters-at-the-present",
+  "description": "A held position minted for a different filter set: the poll answers 409 with position_digest and filters_digest (class-1 keys, bare srv2 hex), Observer.filterConflict fires with both digests BEFORE Observer.positionRejected(filter_changed), the held position is discarded and the walk re-enters at since=now — a present-class entry, since no id has been poll-served on this lineage — whose page is held through the drain and then saved. Row 19 of the state table; the 409 pin the family README deferred to this fixture.",
+  "config": {
+    "types": [
+      "message.created"
+    ],
+    "position": "{{POS:0}}"
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel",
+        "params": {
+          "types": "message.created"
+        }
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}",
+          "types": "message.created"
+        },
+        "respond": {
+          "status": 409,
+          "body": {
+            "error": "Positions are bound to the filter set they were minted for. Acknowledge the filter change by re-entering with since=<id> or since=now.",
+            "position_digest": "5d0b83594d8e5630",
+            "filters_digest": "38b223c13c89dc89"
+          }
+        }
+      }
+    },
+    {
+      "expectFilterConflict": {
+        "positionDigest": "5d0b83594d8e5630",
+        "filtersDigest": "38b223c13c89dc89"
+      }
+    },
+    {
+      "expectPositionRejected": {
+        "kind": "filter_changed"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "exact": {
+            "since": "now",
+            "types": "message.created"
+          }
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 1,
+    "connectCount": 1,
+    "pollCount": 2,
+    "delivered": {
+      "exact": []
+    },
+    "checkpoints": {
+      "exact": [
+        "{{POS:1}}"
+      ]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open"
+  }
+}

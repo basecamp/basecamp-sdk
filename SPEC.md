@@ -3224,7 +3224,26 @@ is shared:
   which keeps hosts and tests deterministic.
 - **`close()`** is idempotent and callable from any context: it abandons, never drains.
   Undelivered buffered events are abandoned — the next run re-serves from the last **usable**
-  checkpoint (see the exclusion under Entry Boundary).
+  checkpoint (see the exclusion under Entry Boundary). Cancellation is visible before it
+  returns; it does **not** wait for the run to unwind, because every consumer callback runs
+  on the run's own execution context and waiting there would deadlock on the caller.
+- **`close()` does not order a second connector over the same checkpoint store, and cannot.**
+  A save decided just before the close is still written after it. That is intended: the
+  position was accepted and its events delivered before the close, so dropping the write
+  would silently re-deliver them. **The save therefore runs under a context detached from
+  the run's cancellation** — carrying the run's context values, but not its cancellation.
+  Passing the live run context instead makes the guarantee conditional on the store: one
+  that ignores its context writes anyway, and one that honors it — which this contract
+  permits, and says nothing against — sees a cancelled context and drops the position. The
+  trade is explicit: a store that blocks indefinitely delays the run's exit, and therefore
+  `wait()`, rather than being released by `close()`. That is bounded by the store's own
+  behavior, where a dropped position is unbounded re-delivery with nothing recording it. **`wait()`** is the quiescence point — it blocks
+  until the run has exited, after which no save can be in flight. A consumer that owns the
+  iteration needs nothing extra, since the iteration terminating is the same guarantee.
+  Await termination — or `wait()` — before opening a second connector over the same store.
+  `wait()` is not callable from anything the run is waiting on — a consumer callback, or a
+  seam, store, or clock implementation the run is synchronously awaiting — for the reason
+  `close()` does not wait.
 - A consumer break takes the identical teardown path; the in-flight page's checkpoint is
   **not** saved.
 - All Observer callbacks fire on the consumer's execution context, never concurrently with a
@@ -3443,6 +3462,59 @@ Draining is Terminal(`protocol_fatal`) immediately (the state-generic rule under
 Disconnect Dispatch) — the drain is not completed, the held entry position is NOT saved,
 and no `caught_up` is announced; only recoverable failures defer.
 
+**A socket outcome observed while a poll seam call is in flight is deferred to the page
+boundary, and the wait for that call is bounded by DETECTION WINDOW + GRACE PHASE.** This
+is transition 21 in CatchingUp, the only state that holds a wire call open across a socket
+event, and it is normative for every SDK.
+
+The deferral itself is the finish-the-page ordering the rest of §23 already states: the
+in-flight page is accepted, delivered and saved, and only then is the socket's outcome
+dispatched. It applies to **every** socket outcome, and that expressly includes a staleness
+expiry — a socket that goes silently half-open produces no frame and no read error, so its
+expiry is the only evidence there will ever be, and an implementation whose in-flight-poll
+wait does not observe `staleness` cannot detect that socket at all. Disposing the attempt
+where the expiry is observed is NOT conformant: it strands the deliveries and the save of a
+page the server had already served.
+
+The two intervals bound the whole sequence, and their sum is the worst case:
+
+- **Detection window** — `EVENT_FEED_STALE_AFTER`, the staleness window, measured from the
+  last inbound frame. It is what decides the socket is dead, under the ordinary evaluation
+  rule: a firing superseded by a frame the reader took first, or one whose window
+  overlapped a blocked hand-off, is not evidence and must not be deferred.
+- **Grace phase** — one further `EVENT_FEED_STALE_AFTER`, measured from the deferral, after
+  which the seam call is abandoned to the deferred outcome's teardown (the teardown
+  cancels it — Seam-Call Semantics). It is a **deadline read from the clock at the instant
+  of deferral**, not a window, and it carries two immunities that are the point of naming
+  it:
+  - **Immune to frame resets.** A frame arriving inside the phase re-arms `staleness` in
+    the ordinary way and MUST NOT move the deadline. The phase bounds how long the
+    connector waits for an abandoned call, which is unrelated to whether the peer is still
+    talking.
+  - **Immune to suspension.** The full-queue suspension rule below rests on a full queue
+    proving the peer is outrunning a connector that is still consuming. This is the one
+    wait that deliberately stops consuming — an outcome already occupies the single
+    deferral slot — so the premise is false here by construction, and a suspended
+    evaluation MUST NOT extend the phase.
+
+An implementation may wake as often as it likes and from whatever source it has; wakes may
+be early or late, and the deadline is what decides. In particular this introduces **no new
+timer kind**: the six kinds and the per-state exact timer sets are both unchanged, and an
+implementation that re-arms `staleness` purely to obtain a wake keeps CatchingUp's set at
+{`staleness`}.
+
+**"Observed" means handed to the state machine, and the boundary is normative.** A frame
+the transport reader has taken off the socket but not yet handed over is not observed, and
+no implementation is required to find it. That is not a tolerance granted for convenience:
+making it observable requires the read to complete inside a critical section the scan can
+enter, and the read blocks indefinitely on a quiet socket, so the lock deadlocks the drain
+against a peer that simply stopped talking. Sampling a flag the reader sets after its read
+does not close it either — the flag is published after the read returns, and the scan reads
+it after its own check of the queue, so a frame can arrive and the flag clear between the
+two. What every implementation MUST cover is everything handed over, **plus the one frame a
+blocked hand-off is holding** — the reader is a single goroutine, so there is exactly one,
+and it is why the scan's budget is pump depth + 1 rather than pump depth.
+
 ### Disconnect Dispatch `[conformance]`
 
 Action Cable's `disconnect` is a **text frame**, not a WebSocket close frame, and stock
@@ -3494,7 +3566,10 @@ Two dispatch clarifications, pinned:
   map-marshaled so any retransmit is byte-identical. Subscription parameters mirror the
   poll filters with the same caps; `self` is resolved by the caller (Consumer Surface). The server absorbs identical
   retransmits and rejects different ones.
-- Subscribe is sent on each `welcome` received. Confirm/reject correlation is exact string
+- Subscribe is sent on the `welcome` that opens each connection — Action Cable sends exactly
+  one, before any other frame; a later frame of that type is liveness only, never a second
+  handshake (a mid-connection resubscribe would race the one already confirmed). Confirm/reject
+  correlation is exact string
   equality against the connector's identifier; frames carrying other identifiers are
   ignored.
 - Ping parsing accepts both `{"type":"ping"}` and `{"type":"ping","message":<epoch>}`.
@@ -3563,13 +3638,16 @@ section states honestly rather than papers over.
 
 **Present-class entries, defined.** The amendment below applies to every entry whose
 cursor resolves at the server's present head — the class, used by this name throughout
-this section and the state table: the zero Cursor (bare present entry); `since="now"`; a
-410 reset's resume URL (the server documents it as `since=now` with the canonical filter
-set preserved); and a 400-position/409 re-entry that falls back to the present because no
-poll-served id exists (the reset cursor is poll-lane-only — a live-delivered id never
-positions a re-entry). Entries positioned in served history — `position=`,
-`since=<id>`, `since=0` — are **position-resume class** and keep the unamended per-page
-save discipline.
+this section and the state table: the zero Cursor (bare present entry); `since="now"`;
+and a 400-position/409 re-entry that falls back to the present because no poll-served id
+exists (the reset cursor is poll-lane-only — a live-delivered id never positions a
+re-entry). Entries positioned in served history — `position=`, `since=<id>`, `since=0`,
+and a 410 reset's `resume` URL (the server documents it as re-entering **at the epoch**
+with the canonical filter set preserved, so the servable history above the fence is not
+skipped; the inbox lane's re-enters at `since=0`, the earliest retained item) — are
+**position-resume class** and keep the unamended per-page save discipline: every event
+between such an entry and the present is poll-served, so nothing behind it depends on
+the live buffer.
 
 **Entry sequencing (present-class entries only):** hold the entry poll's returned
 position → take the **ownership cut** → fix the snapshot → drain-and-accept → only then
@@ -3647,7 +3725,7 @@ SignalHandler : (Signal) → Accept | Terminate
   for a 410 gap. An unhandled semantic signal cannot disappear, and **a 410 never silently
   auto-continues**.
 - **Accept on `FeedGap`** resumes via the provided resume URL (it preserves the canonical
-  filter set). **Accept on `BufferOverflow`** means the consumer owns the acknowledged
+  filter set and re-enters at the epoch — a position-resume entry, Entry Boundary above). **Accept on `BufferOverflow`** means the consumer owns the acknowledged
   incompleteness — and acceptance is not license to skip retained deliveries (the
   conjunctive invariant above still gates the `save`).
 - **A registered handler is invoked exactly once per semantic signal, synchronously, on the
@@ -3758,25 +3836,31 @@ INTERFACE PollSource
   -- triggered on close(), caller cancellation, AND any teardown of the attempt the call
   -- belongs to (mid-walk socket failure, staleness, a terminal): a superseded poll must
   -- not stall reconnection or return into a disposed attempt. Prompt return required.
+  -- The connector's own side of that is bounded rather than trusting: an outcome observed
+  -- while the call is in flight is awaited for the grace phase and then abandoned to the
+  -- teardown (detection window + grace phase, under the state machine above).
 END
 
 RECORD Cursor           -- exactly one field set; the zero Cursor is the bare present entry
   position : String?    -- resume/repair token (in-memory authoritative within a run;
                         -- durable via write-through when saves succeed)
-  since    : String?    -- "now", "0", or a decimal event id
+  since    : String?    -- "now", "0", or a decimal event id (a signed 64-bit integer on
+                        -- the wire; out of range draws the position 400, not an empty page)
   page_url : String?    -- absolute URL: a `next` continuation OR a 410 resume URL.
                         -- Same-origin + no-downgrade validated BEFORE any poll call
                         -- (Continuation and Resume URL Validation)
 END
 
 RECORD PollPage         -- the body envelope IS the contract; never bind to response headers
+                        -- (X-Feed-Position and Link rel="next" merely echo position/next)
   events   : List<Event>
   position : String     -- the ONLY thing that ever advances the checkpoint
   next     : String?    -- continuation URL; absent = the walk reached its frozen head.
                         -- Bound to that walk; NEVER persisted.
 END
 -- Poll errors carry a kind: transient | throttled(retry_after) | position_invalid |
--- filter_invalid(server message) | filter_changed | gone(epoch_after_id, resume_url) |
+-- filter_invalid(server message) | filter_changed(position_digest, filters_digest) |
+-- gone(epoch_after_id, resume_url) |
 -- unauthorized | redirect_refused(location_origin) | unrecoverable(error).
 -- The adapter maps every §6/§7 outcome of the generated call onto exactly one kind:
 -- 429/503 and §7-retryable outcomes exhausted inside the seam → throttled(retry_after)
@@ -4093,12 +4177,23 @@ ships off.
 | Signal handler (none ⇒ default-terminal) | `WithSignalHandler` | `signalHandler?` | `signal_handler` | `signalHandler` | `signal_handler` |
 | Observer (none) | `WithObserver` | `observer?` | `observer` | `observer` | `observer` |
 
+The two lifecycle methods take each language's native spelling of the same two acts: Go
+`Close()` / `Wait()`, TypeScript `close()` / `wait()`, Python and Ruby `close` / `wait`,
+Kotlin `close()` / `join()`, Swift `close()` / `wait()`. Where the language's streaming
+idiom already exposes the run's completion — a Kotlin `Job`, a Swift `Task` — that handle
+IS `wait()` and no second method is added; what must exist is a way to observe the run's
+exit that is not `close()`.
+
 The Observer is a struct of optional callbacks in the `httptrace.ClientTrace` style —
 extensible without breaking implementers: `connecting(attempt, delay)`, `connected()`,
 `confirmed()`, `disconnected(reason, error)`, `catch_up_started(cursor)`,
 `page_delivered(count, position)`, `checkpoint(position)` (after that page's events were
 accepted), `checkpoint_save_failed(error)`, `caught_up()`, `gap(epoch_after_id,
-resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
+resume_url)`, `position_rejected(kind)`, `filter_conflict(position_digest, filters_digest)`
+(a 409's two bare srv2 digests — the one the refused position was minted for and the one
+the request's filters hashed to; a `filters_digest` that differs from the SDK's own
+`Filters.digest()` for the same set means the local canonicalization has drifted from the
+server's), `stale_connection(since_last_frame)`,
 `buffer_overflow(dropped_count)`. All are observability-only; none carries a disposition.
 
 ### Security Invariants `[static]`
@@ -4108,8 +4203,11 @@ resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
   Values Are Never Rendered" names. A dial failure names the policy class it violated
   from a closed vocabulary, never any component of the URL, and never chains the
   transport's own error where a caller or runtime would render it. Poll and resume URLs
-  are not credentials — polls authenticate with the bearer header — so `gap(resume_url)`
-  and `catch_up_started(cursor)` carry them whole.
+  are not credentials — polls authenticate with the bearer header — but they are
+  server-chosen text arriving on a logging surface, so `gap(resume_url)` and
+  `catch_up_started(cursor)` carry them reduced to their origin (a fixed placeholder for a
+  cross-origin or unparsable one); the `FeedGap` signal hands the handler the resume URL
+  whole, since its disposition is a decision about which URL to follow.
 - **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) and
   bound/truncate any error rendering of frame contents (§9's `MAX_ERROR_MESSAGE_LENGTH`
   applies).

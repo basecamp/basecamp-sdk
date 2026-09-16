@@ -47,14 +47,22 @@
           "body": {
             "error": "position expired",
             "epoch_after_id": 100,
-            "resume": "{{API_ORIGIN}}/events.json?since=now"
+            "resume": "{{API_ORIGIN}}/events.json?since=100"
           }
         }
       }
     },
     {
       "expectGap": {
-        "epochAfterId": 100
+        "epochAfterId": 100,
+        "resumeUrl": "{{API_ORIGIN}}"
+      }
+    },
+    {
+      "expectSignal": {
+        "kind": "feedGap",
+        "epochAfterId": 100,
+        "resumeUrl": "{{API_ORIGIN}}/events.json?since=100"
       }
     },
     {

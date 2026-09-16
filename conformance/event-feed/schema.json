@@ -484,6 +484,25 @@
         "expectDisconnectedInvalidFrame": {
           "const": true,
           "description": "Rendezvous: Observer.disconnected fired carrying the invalid-frame indication. Only `true` is valid — a falsy value would assert nothing."
+        },
+        "expectFilterConflict": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "positionDigest",
+            "filtersDigest"
+          ],
+          "description": "Rendezvous: Observer.filter_conflict fired with exactly these two bare srv2 digests (the 409 body's position_digest and filters_digest). Shares one ordered ledger with expectPositionRejected, so placing it before expectPositionRejected(filter_changed) pins that the conflict callback precedes the rejection it explains.",
+          "properties": {
+            "positionDigest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "filtersDigest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            }
+          }
         }
       }
     },
@@ -1466,6 +1485,11 @@
         "epochAfterId": {
           "type": "integer",
           "minimum": 0
+        },
+        "resumeUrl": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What Observer.gap received as its URL argument: the resume URL reduced to its origin ({{API_ORIGIN}} for a same-origin resume) or the fixed placeholder `[cross-origin URL]` — never the whole URL, which only the FeedGap signal carries (expectSignal.resumeUrl)."
         }
       }
     },
@@ -1527,6 +1551,11 @@
             "epochAfterId": {
               "type": "integer",
               "minimum": 0
+            },
+            "resumeUrl": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The resume URL the FeedGap record carried — whole, as the handler receives it (Observer.gap carries only its origin). Use {{API_ORIGIN}}/... for a same-origin resume; hostile fixtures use their literal foreign URL."
             }
           }
         }
