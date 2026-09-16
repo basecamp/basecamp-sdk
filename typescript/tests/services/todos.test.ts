@@ -737,11 +737,11 @@ describe("TodosService", () => {
         expect(requests).toEqual(["GET"]);
       });
 
-      // A string id read the way the reference reads one. The pre-decode
-      // normalizer only reaches a person object carrying `personable_type`, and
-      // across `spec/fixtures` 3 of 7 `assignees` people do not — so this guard
-      // is the reader for those, and it has to agree with the walk about every
-      // one of them. Measured through the reference's own Update composite.
+      // A string id read the way the reference reads one, through the whole
+      // composite. On a base whose walk already covers this key these pass
+      // whether or not the guard reads strings — the unit tests in
+      // merge-safe.test.ts are the ones that pin the guard itself. Measured
+      // through the reference's own Update composite.
       it.each([
         ["a bare numeric string", "1049715914", 1049715914],
         ["leading zeros", "007", 7],

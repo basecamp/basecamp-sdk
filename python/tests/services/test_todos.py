@@ -568,10 +568,10 @@ class TestMalformedResponseFields:
     # Measured through the reference's own todos Update composite: a Person's id
     # is the one field the generated model decodes flexibly (types.FlexibleInt64
     # via Person.Id), and `fieldsFromTodo` appends whatever that produced with no
-    # filter at all. The BC3 shapes that reach here are real: across
-    # spec/fixtures, 3 of 7 `assignees` people carry no `personable_type`, which
-    # is exactly what keeps the pre-decode normalizer from having already turned
-    # their string ids into numbers.
+    # filter at all. These ids reach this guard exactly as BC3 sent them whenever
+    # the pre-decode normalizer did not find the person first — and which people
+    # it finds is the walk's rule, not this guard's: 3 of 7 `assignees` people
+    # in spec/fixtures omit the `personable_type` marker it keys on.
     @respx.mock
     @pytest.mark.parametrize(
         ("raw_id", "expected"),

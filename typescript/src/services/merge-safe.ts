@@ -282,14 +282,14 @@ export function writableIdList(
     // already rounded, so the only honest answers are "unreadable" or a wrong
     // id, and the reference refuses this row anyway once it is past int64.
     if (typeof id === "number") return Number.isSafeInteger(id) ? id : refuse();
-    // A STRING id, which is the live case: BC3 serializes person ids as strings
-    // in some responses, and the pre-decode normalizer only reaches a person
-    // object that carries `personable_type` — across `spec/fixtures`, 3 of 7
-    // `assignees` people do not. The reference has no such gap, because it
-    // covers this site with a DECODER: `Person.Id` is `types.FlexibleInt64`,
-    // and `fieldsFromTodo` appends what that produced without filtering. Same
-    // grammar as the normalizer walk, so the two cannot disagree about a person
-    // depending on which of them saw it first.
+    // A STRING id. BC3 serializes person ids as strings in some responses, and
+    // this reader must not lean on the pre-decode normalizer having converted
+    // one: which keys that walk covers is the walk's rule, and it is being held
+    // to the reference's own positional surfaces. The reference has no gap
+    // here either way, because it covers this site with a DECODER — `Person.Id`
+    // is `types.FlexibleInt64`, and `fieldsFromTodo` appends what that produced
+    // without filtering. Same grammar as the walk, so the two cannot disagree
+    // about a person depending on which of them saw it first.
     if (typeof id === "string") {
       const scan = scanPersonId(id);
       // A SYNTAX refusal is the system actor, not an error: that is what the

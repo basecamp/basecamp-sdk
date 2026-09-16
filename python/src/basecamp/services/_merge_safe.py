@@ -39,6 +39,11 @@ from basecamp._person_id import Refusal, parse_int64
 from basecamp._security import truncate as _truncate
 from basecamp.errors import ApiError
 
+# The wire's person id is an `int64`. Named here rather than imported, because
+# `basecamp._person_id` keeps its own copies private to its scan.
+_INT64_MIN = -(2**63)
+_INT64_MAX = 2**63 - 1
+
 _RESEND_HINT = (
     "The merge-safe update/edit resend this field verbatim, so a coerced or empty value "
     "would overwrite the current one. Use {escape} to write the record deliberately."
@@ -229,14 +234,14 @@ def _person_id_from_wire(value: object) -> int | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, int):
-        # Bounded by the same scan rather than by a second copy of the int64
-        # constants: `str` of a Python `int` is always exactly the grammar
-        # `parse_int64` reads, so an id outside int64 comes back as a RANGE
-        # refusal — which is what the reference's decoder does with a JSON
-        # number that big, and Python's arbitrary-precision `int` would
-        # otherwise have sailed through.
-        parsed = parse_int64(str(value))
-        return parsed if isinstance(parsed, int) else None
+        # A direct range check, not `parse_int64(str(value))`. Routing it
+        # through the scan would avoid naming the bounds twice, but `str` of an
+        # `int` past 4300 digits raises a raw ValueError under Python's
+        # default int-string limit — and, where a host has lifted that limit,
+        # is quadratic. Python's arbitrary-precision `int` is the reason a check
+        # is needed at all: the reference's decoder refuses a JSON number past
+        # int64, and without this it would sail through into the PUT.
+        return value if _INT64_MIN <= value <= _INT64_MAX else None
     if isinstance(value, str):
         parsed = parse_int64(value)
         if parsed is Refusal.SYNTAX:
@@ -259,14 +264,21 @@ def writable_id_list(body: dict[str, Any], key: str, *, record: str, escape: str
     string, one level down.
 
     What it must NOT do is refuse an id the reference accepts, which is the
-    other half of the same defect and the one this guard had (#912). The
+    other half of the same defect and the one this guard had (#913). The
     reference reads each element through the generated ``Person``, whose ``Id``
     is the flexible decoder, and ``fieldsFromTodo`` appends what that produced
     with no filter of any kind — 0 included. So a string id, an absent id and a
     null ELEMENT are all values the reference writes back, and refusing them
-    failed calls BC3 answers: across ``spec/fixtures`` 3 of 7 ``assignees``
-    people carry no ``personable_type``, which is what keeps the pre-decode
-    normalizer from having already turned their string ids into numbers.
+    fails a call the reference completes.
+
+    It must not lean on the pre-decode normalizer having reached the person
+    first. Which people that walk finds is the walk's rule — the reference's own
+    positional pass covers ``creator`` and ``participants`` and nothing else —
+    and a person it did not find arrives here exactly as BC3 sent it. How often
+    that is a string the fixtures cannot say: none of the person objects in
+    ``spec/fixtures`` carries a string id. What they do show is that the marker
+    the ``personable_type`` pass keys on is often missing — 3 of 7 ``assignees``
+    people omit it.
 
     Per-element shapes and where each comes from:
 

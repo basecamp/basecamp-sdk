@@ -206,15 +206,21 @@ module Basecamp
       # same corruption as a wrong-typed string, one level down.
       #
       # What it must NOT do is refuse an id the reference ACCEPTS, which is the
-      # other half of the same defect and the one this guard had (#912). A
+      # other half of the same defect and the one this guard had (#913). A
       # person's id is the single field in the generated model the reference
       # decodes flexibly, and +fieldsFromTodo+ appends what that produced with
-      # no filter of any kind — 0 included. The shapes are live rather than
-      # theoretical: across +spec/fixtures+, 3 of 7 +assignees+ people carry no
-      # +personable_type+, which is exactly what keeps {Basecamp::Http}'s
-      # pre-decode normalizer from having already turned their string ids into
-      # Integers. The rule itself lives in {Basecamp::Ids.person_from_wire},
-      # where the read path already reads one, so the two cannot drift.
+      # no filter of any kind — 0 included.
+      #
+      # It must not lean on {Basecamp::Http}'s pre-decode normalizer having
+      # reached the person first. Which people that walk finds is the walk's
+      # rule — the reference's positional pass covers +creator+ and
+      # +participants+ and nothing else — and a person it did not find arrives
+      # here exactly as BC3 sent it. How often that is a String the fixtures
+      # cannot say (none of the person objects in +spec/fixtures+ carries one);
+      # what they show is that the marker the +personable_type+ pass keys on is
+      # often missing, on 3 of 7 +assignees+ people. The rule itself lives in
+      # {Basecamp::Ids.person_from_wire}, where the read path already reads one,
+      # so the two cannot drift.
       def writable_id_list(body, key, record:, escape:)
         value = body[key]
         return [] if value.nil?

@@ -447,10 +447,10 @@ class TodosServiceTest < Minitest::Test
     # The other half of the same guard. Measured through the reference's own
     # todos Update composite: Person#id is the one field the generated model
     # decodes flexibly, and fieldsFromTodo appends what that produced with no
-    # filter at all. These shapes are live — across spec/fixtures, 3 of 7
-    # `assignees` people carry no `personable_type`, which is what keeps the
-    # pre-decode normalizer from having already turned their string ids into
-    # Integers.
+    # filter at all. These ids reach the guard exactly as BC3 sent them whenever
+    # the pre-decode normalizer did not find the person first, and which people
+    # it finds is the walk's rule, not the guard's: 3 of 7 `assignees` people in
+    # spec/fixtures omit the `personable_type` marker it keys on.
     { "1049715914" => 1049715914,          # the live case: a bare numeric string
       "007" => 7,                          # ParseInt takes leading zeros at base 10
       "-5" => -5,

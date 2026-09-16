@@ -1,13 +1,15 @@
 /**
  * Go's `strconv.ParseInt(s, 10, 64)` over a person id, written out.
  *
- * Two places in this SDK turn a person id that arrived as a JSON STRING into a
- * number, and they answer to the same Go line: the pre-decode normalizer in
+ * Three places in this SDK turn a person id that arrived as a JSON STRING into
+ * a number, and they answer to the same Go line: the pre-decode normalizer in
  * `services/base.ts` stands where `coercePersonID` stands
  * (`go/pkg/basecamp/normalize.go:45`), and the read-side comparison in
- * `services/mentions.ts` stands where `FlexibleInt64` stands
- * (`go/pkg/types/flexible_int64.go:34`). Both call {@link scanPersonId}, so the
- * rule cannot drift into two rules that disagree about the same string.
+ * `services/mentions.ts` and the merge-safe id-list guard in
+ * `services/merge-safe.ts` stand where `FlexibleInt64` stands
+ * (`go/pkg/types/flexible_int64.go:34`). All of them call
+ * {@link scanPersonId}, so the rule cannot drift into rules that disagree about
+ * the same string.
  *
  * Do not reach for `Number()`, `parseInt()`, or a `^-?\d+$` test in their place.
  * Each is wrong in a direction that matters and the three are wrong differently:
