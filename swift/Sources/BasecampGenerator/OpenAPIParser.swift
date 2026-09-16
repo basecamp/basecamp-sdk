@@ -209,7 +209,14 @@ func parseOperation(
     // swallow every intermediate position and leave a crashed consumer with
     // nothing to resume from.
     let paginationExt = operation["x-basecamp-pagination"] as? [String: Any]
-    let hasPagination = (paginationExt?["style"] as? String) == "link"
+    let paginationStyle = paginationExt?["style"] as? String
+    // Only "link" and "cursor" are implemented. Anything else — a typo, or the
+    // "page" style the trait used to advertise — must fail loudly: read as "not
+    // paginated" it would silently ship a method that never walks.
+    if paginationExt != nil, paginationStyle != "link", paginationStyle != "cursor" {
+        fatalError("\(operationId): unsupported pagination style \(paginationStyle ?? "nil") (expected \"link\" or \"cursor\")")
+    }
+    let hasPagination = paginationStyle == "link"
     let paginationKey = paginationExt?["key"] as? String
 
     // Note: wrapped pagination (paginationKey != nil) does NOT force returnsArray.

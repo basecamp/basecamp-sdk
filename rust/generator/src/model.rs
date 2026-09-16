@@ -104,7 +104,7 @@ pub(crate) struct Operation {
     /// flag that opens SPEC §7's Gate 2 for a POST.
     pub(crate) idempotent: bool,
     pub(crate) readonly: bool,
-    pub(crate) pagination: Option<Pagination>,
+    pub(crate) pagination: PaginationMode,
     pub(crate) retry: Retry,
     pub(crate) write: Option<WriteSemantics>,
     pub(crate) deprecated: Option<String>,
@@ -148,6 +148,32 @@ pub(crate) enum Response {
 pub(crate) struct Pagination {
     pub(crate) key: Option<String>,
     pub(crate) total_count_header: Option<String>,
+}
+
+/// How an operation pages, kept as three states rather than `Option<Pagination>`
+/// so that "pages by cursor" cannot be confused with "does not page".
+///
+/// Only `Link` is auto-paginated: the generated method follows
+/// `Link: rel="next"` and flattens the walk. `Cursor` is declared for the route
+/// catalogue and the behavior model and generates no walk at all -- each call
+/// answers one page carrying its own position, and flattening would swallow
+/// every one of them. Collapsing `Cursor` into `None` would make the shipped
+/// catalogue say a cursor operation answers once, which is the opposite of true.
+pub(crate) enum PaginationMode {
+    None,
+    Link(Pagination),
+    Cursor { key: Option<String> },
+}
+
+impl PaginationMode {
+    /// The link-walk parameters, and only those: every auto-pagination decision
+    /// in the emitters asks this rather than "is anything declared".
+    pub(crate) fn link(&self) -> Option<&Pagination> {
+        match self {
+            Self::Link(pagination) => Some(pagination),
+            _ => None,
+        }
+    }
 }
 
 #[allow(clippy::struct_field_names)] // `retry_on` is the model's own key
@@ -678,10 +704,17 @@ fn response_of(operation: &Value, naming: &Naming) -> Result<Response, String> {
     Err(format!("{} has no 2xx response", operation["operationId"]))
 }
 
-fn pagination(operation: &Value, semantics: &Value) -> Result<Option<Pagination>, String> {
+fn pagination(operation: &Value, semantics: &Value) -> Result<PaginationMode, String> {
     let extension = &operation["x-basecamp-pagination"];
     if extension.is_null() {
-        return Ok(None);
+        return Ok(PaginationMode::None);
+    }
+    // Style first, so an unsupported one is named as what it is. Checking the
+    // behavior model first would answer "missing from behavior-model.json" for
+    // a style that was never going to be accepted either way.
+    let style = extension["style"].as_str();
+    if !matches!(style, Some("link" | "cursor")) {
+        return Err(format!("unsupported pagination style {style:?}"));
     }
     if semantics["pagination"].is_null() {
         return Err(format!(
@@ -700,13 +733,12 @@ fn pagination(operation: &Value, semantics: &Value) -> Result<Option<Pagination>
     // consumer persists after accepting that page. Flattening the walk would
     // swallow every intermediate position and leave a crashed consumer with
     // nothing to resume from.
-    match extension["style"].as_str() {
-        Some("link") => {}
-        Some("cursor") => return Ok(None),
-        other => return Err(format!("unsupported pagination style {other:?}")),
+    let key = extension["key"].as_str().map(str::to_string);
+    if style == Some("cursor") {
+        return Ok(PaginationMode::Cursor { key });
     }
-    Ok(Some(Pagination {
-        key: extension["key"].as_str().map(str::to_string),
+    Ok(PaginationMode::Link(Pagination {
+        key,
         total_count_header: extension["totalCountHeader"].as_str().map(str::to_string),
     }))
 }

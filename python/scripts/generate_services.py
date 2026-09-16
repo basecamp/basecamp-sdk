@@ -511,7 +511,15 @@ def parse_operation(
     # swallow every intermediate position and leave a crashed consumer with
     # nothing to resume from.
     pagination = operation.get("x-basecamp-pagination")
-    has_pagination = (pagination or {}).get("style") == "link"
+    pagination_style = (pagination or {}).get("style")
+    # Only "link" and "cursor" are implemented. Anything else -- a typo, or the
+    # "page" style the trait used to advertise -- must fail loudly: read as "not
+    # paginated" it would silently ship a method that never walks.
+    if pagination is not None and pagination_style not in ("link", "cursor"):
+        raise ValueError(
+            f"{operation_id}: unsupported pagination style {pagination_style!r} (expected 'link' or 'cursor')"
+        )
+    has_pagination = pagination_style == "link"
     pagination_key = (pagination or {}).get("key")
 
     return {

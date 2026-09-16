@@ -37,11 +37,21 @@ list RetryStatusCodes {
 @trait(selector: "operation")
 @specificationExtension(as: "x-basecamp-pagination")
 structure basecampPagination {
-    /// Pagination style: "link" (Link header RFC5988), "cursor", or "page"
+    /// Pagination style, and only the two the generators implement:
+    ///
+    /// "link"   — RFC 5988 `Link: rel="next"`. The generated method follows the
+    ///            chain and flattens the walk into one array.
+    /// "cursor" — one call answers one page, which carries its own opaque
+    ///            position. Never walked: flattening would swallow every
+    ///            position, and a position is the only thing a consumer can
+    ///            resume from.
+    ///
+    /// Every generator rejects any other value rather than reading it as "not
+    /// paginated", which would silently ship a method that never walks. A
+    /// third style ("page", with a page-number query parameter) was documented
+    /// here for a long time and implemented nowhere; it was removed rather than
+    /// left as a promise. Add it back with an implementation, not before.
     style: String
-
-    /// Name of the query parameter for page number (if style is "page")
-    pageParam: String
 
     /// Name of the response header containing total count
     totalCountHeader: String

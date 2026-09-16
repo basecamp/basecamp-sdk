@@ -56,7 +56,8 @@ pub(crate) fn wrapped_items<'m>(
     operation: &Operation,
     model: &'m Model,
 ) -> Result<Option<(&'m str, String)>, String> {
-    let (Some(pagination), Response::Json(response)) = (&operation.pagination, &operation.response)
+    let (Some(pagination), Response::Json(response)) =
+        (operation.pagination.link(), &operation.response)
     else {
         return Ok(None);
     };

@@ -109,6 +109,14 @@ pub enum Pagination {
         /// The header carrying the collection's total size.
         total_count_header: Option<&'static str>,
     },
+    /// Cursor pages: one call answers one page, which carries its own opaque
+    /// position. The SDK never walks these — flattening the pages would swallow
+    /// every position, and a position is the only thing a consumer can resume
+    /// from. Follow the continuation the body names.
+    Cursor {
+        /// The response member holding the page's items.
+        key: Option<&'static str>,
+    },
 }
 
 /// SPEC §18 write semantics for a replace-style operation.

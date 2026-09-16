@@ -202,6 +202,12 @@ class OperationParser(private val api: OpenApiParser) {
         // swallow every intermediate position and leave a crashed consumer with
         // nothing to resume from.
         val paginationStyle = operation["x-basecamp-pagination"]?.jsonObject?.get("style")?.jsonPrimitive?.content
+        // Only "link" and "cursor" are implemented. Anything else -- a typo, or
+        // the "page" style the trait used to advertise -- must fail loudly: read
+        // as "not paginated" it would silently ship a method that never walks.
+        require(operation["x-basecamp-pagination"] == null || paginationStyle in setOf("link", "cursor")) {
+            "$operationId: unsupported pagination style $paginationStyle (expected \"link\" or \"cursor\")"
+        }
         val hasPagination = paginationStyle == "link"
         val paginationKey = operation["x-basecamp-pagination"]?.jsonObject?.get("key")?.jsonPrimitive?.content
 

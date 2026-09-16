@@ -79,11 +79,17 @@ fn the_mini_model_renders_the_golden_output() {
     let _ = fs::remove_dir_all(&scratch);
 }
 
-/// A copy of the mini model with one edit applied to `openapi.json`, generated into a
-/// scratch directory; answers the generator's stderr on failure.
-fn refusal(edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value)) -> String {
+/// A copy of the mini model with one edit applied, in a scratch directory ready
+/// to generate from. The single place that knows which files the mini model is
+/// made of -- `refusal` and `acceptance` both build on it, so a fourth input
+/// cannot reach one and miss the other.
+fn prepared(
+    edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value),
+    kind: &str,
+) -> PathBuf {
     let root = std::env::temp_dir().join(format!(
-        "basecamp-sdk-generator-refusal-{}-{:?}-{}",
+        "basecamp-sdk-generator-{}-{}-{:?}-{}",
+        kind,
         std::process::id(),
         std::thread::current().id(),
         rand_suffix()
@@ -112,63 +118,37 @@ fn refusal(edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value)) ->
         root.join("rust/generator/names.toml"),
     )
     .unwrap();
-    let output = generate(&root, &root.join("out"));
-    let _ = fs::remove_dir_all(&root);
-    assert!(
-        !output.status.success(),
-        "the generator should have refused"
-    );
-    String::from_utf8_lossy(&output.stderr).into_owned()
+    root
 }
 
-/// A copy of the mini model with one edit applied, generated into a scratch
-/// directory; answers the generated file at `relative`. The mirror of
-/// `refusal`: for edits the generator must ACCEPT, where the question is what
-/// it emitted rather than what it said.
+/// Generated from an edit the generator must REFUSE; answers its stderr.
+fn refusal(edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value)) -> String {
+    let root = prepared(edit, "refusal");
+    let output = generate(&root, &root.join("out"));
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let refused = output.status.success();
+    let _ = fs::remove_dir_all(&root);
+    assert!(!refused, "the generator should have refused");
+    stderr
+}
+
+/// Generated from an edit the generator must ACCEPT; answers the file at
+/// `relative`. The mirror of `refusal`, for edits where the question is what
+/// was emitted rather than what was said. Cleanup happens before the assert so
+/// a failure does not leave the scratch directory behind.
 fn acceptance(
     edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value),
     relative: &str,
 ) -> String {
-    let root = std::env::temp_dir().join(format!(
-        "basecamp-sdk-generator-acceptance-{}-{:?}-{}",
-        std::process::id(),
-        std::thread::current().id(),
-        rand_suffix()
-    ));
-    let _ = fs::remove_dir_all(&root);
-    fs::create_dir_all(root.join("rust/generator")).unwrap();
-    let mini = fixtures().join("mini");
-    let mut openapi: serde_json::Value =
-        serde_json::from_str(&fs::read_to_string(mini.join("openapi.json")).unwrap()).unwrap();
-    let mut behavior: serde_json::Value =
-        serde_json::from_str(&fs::read_to_string(mini.join("behavior-model.json")).unwrap())
-            .unwrap();
-    edit(&mut openapi, &mut behavior);
-    fs::write(
-        root.join("openapi.json"),
-        serde_json::to_string_pretty(&openapi).unwrap(),
-    )
-    .unwrap();
-    fs::write(
-        root.join("behavior-model.json"),
-        serde_json::to_string_pretty(&behavior).unwrap(),
-    )
-    .unwrap();
-    fs::copy(
-        mini.join("rust/generator/names.toml"),
-        root.join("rust/generator/names.toml"),
-    )
-    .unwrap();
+    let root = prepared(edit, "acceptance");
     let out = root.join("out");
     let output = generate(&root, &out);
-    assert!(
-        output.status.success(),
-        "the generator should have accepted: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let rendered = fs::read_to_string(out.join(relative)).unwrap();
+    let rendered = fs::read_to_string(out.join(relative)).ok();
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let accepted = output.status.success();
     let _ = fs::remove_dir_all(&root);
-    rendered
+    assert!(accepted, "the generator should have accepted: {stderr}");
+    rendered.unwrap_or_else(|| panic!("{relative} was not generated"))
 }
 
 fn rand_suffix() -> u64 {
@@ -279,15 +259,76 @@ fn the_cursor_style_generates_a_single_page_rather_than_a_flattening_walk() {
     );
 }
 
+// The catalogue is the half that is easy to get wrong: collapsing cursor into
+// "no pagination" makes the shipped route table say a paginated operation
+// answers once, which is the opposite of true.
 #[test]
-fn an_unknown_pagination_style_is_still_refused() {
-    let stderr = refusal(|openapi, _| {
+fn the_cursor_style_reaches_the_route_catalogue_as_cursor_not_as_none() {
+    let routes = acceptance(
+        |openapi, _| {
+            openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+                ["style"] = serde_json::json!("cursor");
+        },
+        "routes.rs",
+    );
+
+    // Scoped to the one route the edit touched -- the fixture has another
+    // Link-paginated operation and several unpaginated ones, so a whole-file
+    // match would prove nothing.
+    let route = routes
+        .split("pub static ")
+        .find(|block| block.starts_with("GET_WIDGET_PROGRESS:"))
+        .expect("the edited route is in the catalogue");
+
+    assert!(
+        route.contains("Pagination::Cursor"),
+        "the catalogue must name the cursor mode: {route}"
+    );
+    assert!(
+        route.contains(r#"key: Some("events")"#),
+        "the cursor entry must carry the page's items key: {route}"
+    );
+    assert!(
+        !route.contains("Pagination::None"),
+        "a cursor operation is paginated; the catalogue must not say it answers once: {route}"
+    );
+    assert!(
+        !route.contains("Pagination::Link"),
+        "a cursor operation must not be catalogued as a Link walk: {route}"
+    );
+}
+
+#[test]
+fn a_style_that_is_not_link_or_cursor_is_refused() {
+    // Two cases that differ: "page" is a style the trait advertised for years
+    // and nothing implemented, and a typo is what actually happens. Both must
+    // fail loudly rather than read as "not paginated", which would ship a
+    // method that silently never walks.
+    for style in ["page", "linkk", "Link", ""] {
+        let stderr = refusal(move |openapi, _| {
+            openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+                ["style"] = serde_json::json!(style);
+        });
+        assert!(
+            stderr.contains("unsupported pagination style"),
+            "style {style:?} must be refused by name: {stderr}"
+        );
+    }
+}
+
+// The style is checked before the behavior model, so an unsupported style is
+// reported as what it is rather than sending the reader off to regenerate a
+// behavior model that was never the problem.
+#[test]
+fn an_unsupported_style_is_named_even_when_the_behavior_model_is_silent() {
+    let stderr = refusal(|openapi, behavior| {
         openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
             ["style"] = serde_json::json!("page");
+        behavior["operations"]["GetWidgetProgress"]["pagination"] = serde_json::Value::Null;
     });
     assert!(
         stderr.contains("unsupported pagination style"),
-        "widening the match must not widen it to everything: {stderr}"
+        "the style is the problem, not the behavior model: {stderr}"
     );
 }
 

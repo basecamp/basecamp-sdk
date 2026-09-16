@@ -36,7 +36,7 @@ pub(crate) fn render_service(service: &Service, model: &Model) -> Result<String,
     if service
         .operations
         .iter()
-        .any(|operation| operation.pagination.is_some())
+        .any(|operation| operation.pagination.link().is_some())
     {
         out.push_str("use crate::pagination::Page;\n");
     }
@@ -255,7 +255,7 @@ fn uses_types(operation: &Operation) -> bool {
 }
 
 fn return_type(operation: &Operation) -> String {
-    match (&operation.response, operation.pagination.is_some()) {
+    match (&operation.response, operation.pagination.link().is_some()) {
         (Response::Empty, _) => "()".into(),
         (Response::Json(name), true) => format!("Page<{name}>"),
         (Response::Json(name), false) => name.clone(),
@@ -263,7 +263,7 @@ fn return_type(operation: &Operation) -> String {
 }
 
 fn send_method(operation: &Operation) -> &'static str {
-    match (&operation.response, operation.pagination.is_some()) {
+    match (&operation.response, operation.pagination.link().is_some()) {
         (Response::Empty, _) => "send_unit",
         (Response::Json(_), true) => "send_page",
         (Response::Json(_), false) => "send",

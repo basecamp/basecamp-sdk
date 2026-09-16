@@ -18,7 +18,6 @@ interface RetryConfig {
 
 interface PaginationConfig {
   style: "link" | "cursor" | "page";
-  pageParam?: string;
   totalCountHeader?: string;
   maxPageSize?: number;
   key?: string;
@@ -115,7 +114,6 @@ export interface RetryConfig {
 
 export interface PaginationConfig {
   style: "link" | "cursor" | "page";
-  pageParam?: string;
   totalCountHeader?: string;
   maxPageSize?: number;
   key?: string;

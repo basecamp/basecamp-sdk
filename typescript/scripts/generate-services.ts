@@ -831,6 +831,14 @@ function parseOperation(
   // swallow every intermediate position and leave a crashed consumer with
   // nothing to resume from.
   const paginationStyle = operation["x-basecamp-pagination"]?.style;
+  // Only "link" and "cursor" are implemented. Anything else — a typo, or the
+  // "page" style the trait used to advertise — must fail loudly: read as "not
+  // paginated" it would silently ship a method that never walks.
+  if (operation["x-basecamp-pagination"] && paginationStyle !== "link" && paginationStyle !== "cursor") {
+    throw new Error(
+      `${operationId}: unsupported pagination style ${JSON.stringify(paginationStyle)} (expected "link" or "cursor")`
+    );
+  }
   const hasPagination = paginationStyle === "link";
   const paginationKey = operation["x-basecamp-pagination"]?.key;
   const multipartField = operation["x-basecamp-multipart"]?.field;

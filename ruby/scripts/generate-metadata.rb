@@ -62,7 +62,6 @@ class MetadataExtractor
     if (pagination = operation['x-basecamp-pagination'])
       metadata['pagination'] = {
         'style' => pagination['style'],
-        'pageParam' => pagination['pageParam'],
         'totalCountHeader' => pagination['totalCountHeader'],
         'maxPageSize' => pagination['maxPageSize']
       }.compact
