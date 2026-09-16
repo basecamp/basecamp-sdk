@@ -295,6 +295,45 @@ func TestLivePolls_ErrorMatrix(t *testing.T) {
 	}
 }
 
+// TestLivePolls_RefusesAContinuationWhoseQueryDoesNotParse: a `next` whose
+// query holds a malformed pair would have that pair silently dropped by
+// url.URL.Query — and if it is `position`, the re-issued poll becomes a bare
+// present entry that skips the history it was following.
+func TestLivePolls_RefusesAContinuationWhoseQueryDoesNotParse(t *testing.T) {
+	f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		jsonResponse(w, 200, `{"events":[],"position":"posBBB"}`)
+	})
+	next := f.server.URL + "/99999/events.json?position=pos%ZZ&types=message.created"
+	_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{PageURL: next}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollUnrecoverable {
+		t.Fatalf("error = %v, want unrecoverable", err)
+	}
+	if f.requests.Load() != 0 {
+		t.Fatalf("requests = %d, want none for a continuation that does not parse whole", f.requests.Load())
+	}
+	if strings.Contains(pe.Error(), "pos%ZZ") {
+		t.Fatalf("PollError renders the continuation: %s", pe.Error())
+	}
+}
+
+func TestLivePolls_GateRefusalsAreTransient(t *testing.T) {
+	f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		jsonResponse(w, 200, `{"events":[],"position":"p"}`)
+	})
+	// The seam's mapping is exercised directly: a gate refusal never reaches
+	// the wire, so there is no response to script.
+	for _, sentinel := range []error{basecamp.ErrCircuitOpen, basecamp.ErrBulkheadFull, basecamp.ErrRateLimited} {
+		if kind := eventfeed.ExportMapPollErrorKind(sentinel); kind != eventfeed.PollTransient {
+			t.Errorf("%v mapped to %s, want transient", sentinel, kind)
+		}
+		if kind := eventfeed.ExportMapMintErrorKind(sentinel); kind != eventfeed.MintTransient {
+			t.Errorf("%v mapped to %s, want transient", sentinel, kind)
+		}
+	}
+	_ = f
+}
+
 func TestLivePolls_InboxItems(t *testing.T) {
 	f := newLiveFixture(t, eventfeed.InboxLane, func(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, 200, `{"items":[{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-07-14T06:10:00Z","event":{"id":101,"kind":"comment_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"comment.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":900}}],"position":"ipos-1"}`)
@@ -316,6 +355,17 @@ func TestLivePolls_InboxItems(t *testing.T) {
 	if len(page.Events) != 1 || page.Events[0].Addressing == nil || page.Events[0].Addressing.ID != 991 ||
 		page.Events[0].Addressing.Reason != "mentioned" || page.Events[0].Key() != 991 || page.Events[0].ID != 101 {
 		t.Fatalf("items = %+v, want one item keyed by addressing id 991 over event 101", page.Events)
+	}
+}
+
+func TestLivePolls_RefusesAnInboxItemMissingItsEnvelope(t *testing.T) {
+	f := newLiveFixture(t, eventfeed.InboxLane, func(w http.ResponseWriter, r *http.Request) {
+		jsonResponse(w, 200, `{"items":[{"reason":"mentioned","addressed_at":"2026-07-14T06:10:00Z","event":{"id":101,"kind":"comment_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"comment.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":900}}],"position":"ipos-1"}`)
+	})
+	_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Since: "0"}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollUnrecoverable {
+		t.Fatalf("error = %v, want unrecoverable for an item with no addressing_id", err)
 	}
 }
 

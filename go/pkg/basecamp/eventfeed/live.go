@@ -248,16 +248,38 @@ func mapMintError(err error, hop *refusedHop) error {
 	}
 }
 
-// isTransportFailure reports an error the HTTP stack produced on the way to
-// or from the server — a url.Error or a net.Error — as opposed to one the
-// generated call produced from a response it received.
+// isTransportFailure reports an error that says nothing about the response
+// — the HTTP stack failed on the way to or from the server (a url.Error or a
+// net.Error), or the client's own resilience gate refused to send at all
+// (the circuit breaker, bulkhead or rate limiter, which recover on their
+// own clocks) — as opposed to one the generated call produced from a
+// response it received.
 func isTransportFailure(err error) bool {
+	if errors.Is(err, basecamp.ErrCircuitOpen) || errors.Is(err, basecamp.ErrBulkheadFull) || errors.Is(err, basecamp.ErrRateLimited) {
+		return true
+	}
 	var urlErr *url.Error
 	if errors.As(err, &urlErr) {
 		return true
 	}
 	var netErr net.Error
 	return errors.As(err, &netErr)
+}
+
+// checkContinuationQuery refuses a continuation or resume URL whose query does
+// not parse whole. url.URL.Query silently drops a malformed pair, and if that
+// pair is `position` the re-issued operation becomes a bare present entry —
+// a walk that commits a new head while skipping the history it was following.
+// The URL is server-supplied text, so the error names nothing of it.
+func checkContinuationQuery(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return errors.New("eventfeed: the continuation URL does not parse")
+	}
+	if _, err := url.ParseQuery(u.RawQuery); err != nil {
+		return errors.New("eventfeed: the continuation URL's query does not parse whole")
+	}
+	return nil
 }
 
 // livePolls is the PollSource over PollEvents or PollInbox.
@@ -279,6 +301,9 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 		// A validated continuation or resume URL: the same operation,
 		// re-issued with the query the server wrote into it. Only the query
 		// is read; the connector validated the origin before this call.
+		if err := checkContinuationQuery(cursor.PageURL); err != nil {
+			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
+		}
 		parsed, err := basecamp.PollEventsOptionsFromURL(cursor.PageURL)
 		if err != nil {
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
@@ -318,6 +343,9 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filters) (PollPage, error) {
 	var opts *basecamp.PollInboxOptions
 	if cursor.PageURL != "" {
+		if err := checkContinuationQuery(cursor.PageURL); err != nil {
+			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
+		}
 		parsed, err := basecamp.PollInboxOptionsFromURL(cursor.PageURL)
 		if err != nil {
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
@@ -342,6 +370,11 @@ func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filter
 	}
 	events := make([]Event, 0, len(page.Items))
 	for _, item := range page.Items {
+		// The envelope's own required members, before the event's: a zero
+		// addressing id would become the lane's dedupe and reset key.
+		if item.AddressingID < 1 || item.Reason == "" || item.AddressedAt.IsZero() {
+			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: fmt.Errorf("eventfeed: inbox item %d is missing a required member", item.AddressingID)}
+		}
 		ev, err := eventFromFeed(item.Event)
 		if err != nil {
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}

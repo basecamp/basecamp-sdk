@@ -148,6 +148,25 @@ func ExportSubscribeFrame(f Filters) []byte {
 	return subscribeCommand(subscribeIdentifier(AccountLane, f))
 }
 
+// ExportMapPollErrorKind exposes the poll seam's error classification for an
+// error that never reached the wire.
+func ExportMapPollErrorKind(err error) PollErrorKind {
+	var pe *PollError
+	if errors.As(mapPollError(err, &refusedHop{}), &pe) {
+		return pe.Kind
+	}
+	return 0
+}
+
+// ExportMapMintErrorKind is ExportMapPollErrorKind for the mint seam.
+func ExportMapMintErrorKind(err error) MintErrorKind {
+	var me *MintError
+	if errors.As(mapMintError(err, &refusedHop{}), &me) {
+		return me.Kind
+	}
+	return 0
+}
+
 // ExportInboxSubscribeFrame is ExportSubscribeFrame for the inbox lane.
 func ExportInboxSubscribeFrame(f Filters) []byte {
 	return subscribeCommand(subscribeIdentifier(InboxLane, f))
