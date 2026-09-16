@@ -7601,7 +7601,7 @@ structure InboxItem {
 /// no server-side consumption, so a replayed POST is harmless and the operation
 /// is marked idempotent (safe to retry) — deliberately not a claim that two
 /// mints return the same ticket. The ticket is a replayable bearer credential
-/// within its window; `ticket` and `url` are redacted from SDK logs.
+/// within its window; `ticket` and `url` are marked sensitive (see StreamTicket).
 ///
 /// Serves agent principals as well as people: an agent's client-credentials
 /// token can mint tickets for its own live stream. A ticket minted on a

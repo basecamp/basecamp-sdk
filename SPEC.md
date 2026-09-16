@@ -3153,8 +3153,12 @@ renders a document as `String?`, which cannot decode an object, and unknown memb
 future type are dropped by every decoder rather than failing it. `InboxItem` —
 `addressing_id` (the dedupe key: one event can address a principal for several reasons),
 `reason`, `addressed_at`, `event: FeedEvent`. The mint returns `{ticket, expires_in, url}`
-with `ticket` and `url` marked `@sensitive`, so every SDK's log redaction covers them;
-`url` is connected to verbatim (Hard Rule 2).
+with `ticket` and `url` marked `@sensitive`: that records both members in
+`behavior-model.json`'s `redaction` map and renders them as Rust's `SensitiveString`, and —
+as for every PII member carrying the same trait — leaves the other SDKs' string types alone.
+What keeps the credential out of logs is that no SDK renders a response body in its logs or
+hooks, and the connector's §9 projection rule (origin only, never the ticket); `url` is
+connected to verbatim (Hard Rule 2).
 
 **Typed error bodies.** 409 carries `position_digest` and `filters_digest` (bare 16-hex
 srv2 digests); 410 carries `resume` — an absolute re-entry URL with the canonical filters
