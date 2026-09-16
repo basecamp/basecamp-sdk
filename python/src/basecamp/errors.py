@@ -123,12 +123,28 @@ class ForbiddenError(BasecampError):
 
 class RateLimitError(BasecampError):
     def __init__(self, message: str = "Rate limited", *, retry_after: int | None = None, **kwargs: Any):
-        super().__init__(message, code=ErrorCode.RATE_LIMIT, retryable=True, retry_after=retry_after, **kwargs)
+        # Overwrite -- never setdefault, and never a fixed `retryable=`
+        # alongside `**kwargs` -- so a caller passing the flag GETS the
+        # invariant instead of colliding with it. The same shape the composite's
+        # two errors and `DeviceFlowError` already use, and for the same reason:
+        # forwarding `**kwargs` beside a fixed keyword made
+        # `RateLimitError(retryable=False)` raise a bare `TypeError` about
+        # duplicate keyword arguments -- from outside this SDK's taxonomy, so
+        # `except BasecampError` could not catch it, while the `**kwargs: Any`
+        # signature (and mypy reading it) said the call was legal.
+        #
+        # A 429 is retryable: SPEC section 6, and the whole point of the class.
+        kwargs["retryable"] = True
+        super().__init__(message, code=ErrorCode.RATE_LIMIT, retry_after=retry_after, **kwargs)
 
 
 class NetworkError(BasecampError):
     def __init__(self, message: str = "Connection failed", **kwargs: Any):
-        super().__init__(message, code=ErrorCode.NETWORK, retryable=True, **kwargs)
+        # Overwrite, for the reason spelled out on `RateLimitError`. A transport
+        # failure is retryable -- the same call that `DeviceFlowError` makes from
+        # its `transport` reason.
+        kwargs["retryable"] = True
+        super().__init__(message, code=ErrorCode.NETWORK, **kwargs)
 
 
 class ApiError(BasecampError):
@@ -145,7 +161,14 @@ class LimitExceededError(BasecampError):
     """
 
     def __init__(self, message: str = "Account limit reached", **kwargs: Any):
-        super().__init__(message, code=ErrorCode.LIMIT_EXCEEDED, retryable=False, **kwargs)
+        # Overwrite, for the reason spelled out on `RateLimitError`. The
+        # docstring above is the invariant: no amount of backoff frees storage,
+        # so a caller cannot talk this one into being retryable. Honouring the
+        # flag here would put a retry loop into a spin against a full disk --
+        # precisely the failure this class exists to prevent, which is why the
+        # 507 arm of `error_from_response` is decided before the 5xx arms.
+        kwargs["retryable"] = False
+        super().__init__(message, code=ErrorCode.LIMIT_EXCEEDED, **kwargs)
 
 
 class AmbiguousError(BasecampError):

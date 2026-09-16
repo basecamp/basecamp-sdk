@@ -622,3 +622,151 @@ class TestCompositeIdentities:
             CampfireDiscoveryIncompleteError(bucket_id=1, recording_id=2, reason="r", retryable=False).retryable
             is False
         )
+
+
+class TestRetryableKeywordDoesNotCollide:
+    """A fixed ``retryable`` must CONSUME the caller's keyword, not collide with it.
+
+    ``RateLimitError(retryable=False)``, ``NetworkError(retryable=False)`` and
+    ``LimitExceededError(retryable=True)`` each raised a bare ``TypeError``
+    about duplicate keyword arguments: the constructor forwarded ``**kwargs``
+    beside a fixed ``retryable=``. That is an error from outside this SDK's
+    taxonomy -- ``except BasecampError`` does not catch it, and ``except
+    Exception`` cannot tell it from a bug -- raised on a call the ``**kwargs:
+    Any`` signature, and mypy reading that signature, both said was legal.
+
+    The answer is the one the composite's two errors and ``DeviceFlowError``
+    already use: overwrite, so the caller gets the class invariant. ``ApiError``
+    honours the caller instead, and is not an exception to the rule but the
+    other half of it -- it fixes no retryability (500 is retryable, 418 is not),
+    so there is nothing for a caller's value to contradict.
+    """
+
+    def test_the_three_accept_the_flag_and_yield_their_invariant(self):
+        from basecamp.errors import LimitExceededError
+
+        for passed in (True, False):
+            assert RateLimitError(retryable=passed).retryable is True
+            assert NetworkError(retryable=passed).retryable is True
+            # Never retryable: no amount of backoff frees storage. A caller who
+            # could flip this would put a retry loop into a spin against a full
+            # disk.
+            assert LimitExceededError(retryable=passed).retryable is False
+
+    def test_everything_previously_accepted_is_unchanged(self):
+        # The other direction, which is what makes this a widening rather than a
+        # change: every call that worked before still works, with the same
+        # values. Each of these is a call `error_from_response` itself makes.
+        from basecamp.errors import LimitExceededError
+
+        rate = RateLimitError("slow down", retry_after=7, http_status=429, hint="h", request_id="r")
+        assert (rate.code, rate.retryable, rate.retry_after) == (ErrorCode.RATE_LIMIT, True, 7)
+        assert (rate.http_status, rate.hint, rate.request_id) == (429, "h", "r")
+        assert str(rate) == "slow down"
+
+        network = NetworkError("no route", hint="check the network")
+        assert (network.code, network.retryable, network.hint) == (ErrorCode.NETWORK, True, "check the network")
+        assert str(network) == "no route"
+
+        limit = LimitExceededError("out of storage", http_status=507, hint="h")
+        assert (limit.code, limit.retryable, limit.http_status) == (ErrorCode.LIMIT_EXCEEDED, False, 507)
+        assert str(limit) == "out of storage"
+
+        # Defaults, too -- the no-argument form each class documents.
+        assert (RateLimitError().retryable, NetworkError().retryable, LimitExceededError().retryable) == (
+            True,
+            True,
+            False,
+        )
+
+        # And the classification `error_from_response` derives, which is where
+        # a flipped invariant would actually be felt.
+        assert error_from_response(429, b"").retryable is True
+        assert error_from_response(507, b"").retryable is False
+
+    def test_api_error_still_honours_a_caller_that_sets_the_flag(self):
+        # The half of the rule that is NOT overwrite. ApiError fixes no
+        # retryability, so the caller's value is the value -- which is how
+        # `error_from_response` tells a 500 from a 418.
+        assert ApiError(retryable=True).retryable is True
+        assert ApiError(retryable=False).retryable is False
+
+    def test_no_subclass_that_advertises_kwargs_raises_on_the_flag(self):
+        """The sweep, so a new subclass cannot reintroduce the shape.
+
+        The card that filed this named three classes because that is where its
+        author looked. This walks the whole package instead: every
+        ``BasecampError`` subclass, not a list someone remembered to extend.
+
+        The rule it enforces is the contract each constructor advertises. A
+        constructor that takes ``retryable`` -- by declaring it, or by accepting
+        ``**kwargs`` and so telling callers and mypy alike that any base keyword
+        goes -- must not raise when one is passed. A constructor that takes
+        neither accepts only what it declares, and a stray keyword is refused
+        statically as well as at runtime; that is ordinary Python rather than an
+        error escaping the taxonomy, so it is exempt. The exempt set is pinned
+        by name below, so the sweep cannot be dodged by quietly dropping
+        ``**kwargs`` from a constructor.
+        """
+        import importlib
+        import inspect
+        import pkgutil
+
+        import basecamp
+        from basecamp.errors import BasecampError
+
+        for module in pkgutil.walk_packages(basecamp.__path__, "basecamp."):
+            importlib.import_module(module.name)
+
+        def descendants(cls):
+            found = set()
+            for sub in cls.__subclasses__():
+                found.add(sub)
+                found |= descendants(sub)
+            return found
+
+        # Constructor arguments for the subclasses that require them. A new
+        # subclass with required arguments fails the baseline below by name,
+        # which is the tripwire doing its job: add its arguments here.
+        required = {
+            "NoRecordingTypeError": ((), {"routing_key": "boost.created"}),
+            "UnknownRecordingTypeError": ((), {"routing_key": "x.y"}),
+            "BucketMismatchError": ((), {"bucket_id": 1, "recording_id": 2, "requested_bucket_id": 3}),
+            "RecordingUnresolvedError": ((), {"bucket_id": 1, "recording_id": 2, "campfire_ids": []}),
+            "CampfireDiscoveryIncompleteError": ((), {"bucket_id": 1, "recording_id": 2, "reason": "r"}),
+            "PeopleConfirmationRequiredError": (("m",), {"people": []}),
+            "OAuthError": (("auth", "m"), {}),
+            "DiscoverySelectionError": (("issuer_mismatch", "m"), {}),
+            "DeviceFlowError": (("transport", "m"), {}),
+            "_IssuerBindingError": (("m",), {}),
+            "UsageError": (("m",), {}),
+            # No __init__ of its own: it inherits the base's, message and all.
+            "RecordingRoutingError": (("m",), {}),
+        }
+
+        subclasses = sorted(descendants(BasecampError), key=lambda c: c.__name__)
+        assert len(subclasses) >= 23, f"the sweep found only {len(subclasses)} subclasses; it has stopped finding them"
+
+        exempt, swept = [], []
+        for cls in subclasses:
+            args, kwargs = required.get(cls.__name__, ((), {}))
+            # Baseline: the class builds at all, so a failure below is the flag
+            # and not the arguments.
+            cls(*args, **kwargs)
+            parameters = inspect.signature(cls.__init__).parameters
+            advertised = "retryable" in parameters or any(
+                p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values()
+            )
+            if not advertised:
+                exempt.append(cls.__name__)
+                continue
+            swept.append(cls.__name__)
+            for passed in (True, False):
+                error = cls(*args, **{**kwargs, "retryable": passed})
+                assert isinstance(error.retryable, bool), cls.__name__
+
+        assert exempt == ["WebhookVerificationError"], (
+            f"the set of constructors that advertise no retryable changed: {exempt}. "
+            "Dropping `**kwargs` from a constructor removes it from this sweep."
+        )
+        assert len(swept) >= 22, f"the sweep only checked {len(swept)} constructors"
