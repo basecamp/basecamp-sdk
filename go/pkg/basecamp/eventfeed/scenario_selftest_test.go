@@ -449,7 +449,7 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 		},
 		{
 			name:   "a push event missing a payload key",
-			script: `{"name":"x","description":"d","steps":[{"serve":{"frame":"message","event":{"id":1,"kind":"m","event_type":"t","action":"a","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":4}}}],"finally":{"state":"closed"}}`,
+			script: `{"name":"x","description":"d","steps":[{"serve":{"frame":"message","event":{"id":1,"kind":"m","event_type":"t","action":"a","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":4}}}],"finally":{"state":"closed"}}`,
 			wants:  "visible_to_clients",
 		},
 		{

@@ -17,9 +17,9 @@ import (
 // cursor comes from: a 410's is the resume URL the SERVER provided, gated
 // behind the FeedGap semantic signal; a 400-position's and a 409's is the
 // poll-lane-only reset cursor below. All three restart the entry boundary —
-// the walk drops any held position and re-takes the ownership cut on the new
-// entry — because a re-entry IS an entry; only the positions already saved
-// survive it.
+// the walk drops any held position and, where the new entry is
+// present-class, re-takes the ownership cut on it — because a re-entry IS an
+// entry; only the positions already saved survive it.
 //
 // A re-entry re-polls IMMEDIATELY: §23 models rows 17/18/19 as CatchingUp
 // self-loops with no wait of their own (only transients and throttles take
@@ -77,6 +77,17 @@ func (l *loop) reenterWalk(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 	case PollGone:
 		return l.recoverGone(at, pe)
 	case PollFilterChanged:
+		// The 409 body names both sides of the conflict — the digest the
+		// refused position was minted for and the digest of the filters this
+		// request presented — and the observer is the only place they reach
+		// a host: the re-entry below is the same whatever they say, so they
+		// are diagnostics, not disposition. A filters_digest that differs
+		// from Filters.Digest() for the same set is the one that matters —
+		// it means the local srv2 canonicalization has drifted from the
+		// server's.
+		if l.cfg.observer.FilterConflict != nil {
+			l.cfg.observer.FilterConflict(pe.PositionDigest, pe.FiltersDigest)
+		}
 		// Transition 19: the held position is DISCARDED before the re-entry.
 		// Its lineage belongs to a filter set that is not this connector's, so
 		// it can never be resumed from again — an attempt torn down before the
@@ -139,23 +150,25 @@ func (l *loop) recoverGone(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 				Msg:    "the 410 carried no resume URL to continue from",
 			}}, true
 		}
-		// The resume URL is a present-class entry (the server documents it as
-		// since=now with the canonical filter set preserved), so the entry
-		// boundary's hold-then-save discipline governs the pages it serves —
-		// and the old cursor is unusable, which is precisely the durability
-		// boundary the invariant's exclusion names. Unusable means DISCARDED,
-		// not merely superseded: leaving it in memory would let a socket torn
-		// down before the resume poll's first page re-select it on the next
-		// connection, drawing the same 410 and re-invoking a gap handler that
-		// has already been asked and has already answered Accept. The resume
-		// URL takes its place as latched reconnect state so the accepted
-		// present-class reset is what continues.
+		// The resume URL is a POSITION-RESUME entry: the server documents it
+		// as re-entering at the epoch (the inbox's at since=0, the earliest
+		// retained item) with the canonical filter set preserved, so the
+		// servable history above the fence is not skipped — an entry
+		// positioned in served history, where every event between the fence
+		// and the present is poll-served and the unamended per-page save
+		// discipline applies. The old cursor is unusable, which is precisely
+		// the durability boundary the invariant's exclusion names. Unusable
+		// means DISCARDED, not merely superseded: leaving it in memory would
+		// let a socket torn down before the resume poll's first page
+		// re-select it on the next connection, drawing the same 410 and
+		// re-invoking a gap handler that has already been asked and has
+		// already answered Accept. The resume URL takes its place as latched
+		// reconnect state so the accepted reset is what continues.
 		l.position = ""
-		l.reentry = &reentryCursor{cursor: Cursor{PageURL: pe.ResumeURL}, presentClass: true}
+		l.reentry = &reentryCursor{cursor: Cursor{PageURL: pe.ResumeURL}}
 		return walkStep{
-			cursor:       l.reentry.cursor,
-			presentClass: true,
-			reentry:      true,
+			cursor:  l.reentry.cursor,
+			reentry: true,
 		}, cycleOutcome{}, false
 	}
 	// Terminate, or no handler: the typed terminal, and no save — the error

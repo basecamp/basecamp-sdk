@@ -813,11 +813,18 @@ import (
 //	Poll(ctx, cursor, filters) (eventfeed.PollPage, error)  // PollEvents
 var minter eventfeed.TicketMinter
 var polls eventfeed.PollSource
+var agentPersonID int64 // the acting principal's own person id
 
 ctx := context.Background()
 
 feed, err := eventfeed.New("https://3.basecampapi.com", "5951425", minter, polls,
-    eventfeed.WithFilters(eventfeed.Filters{Types: []string{"message.created"}}),
+    eventfeed.WithFilters(eventfeed.Filters{
+        Types: []string{"message.created"},
+        // The loop guard for an agent that acts on what it hears: its own
+        // performances excluded by id (the server's `self` literal, resolved
+        // by the caller — the connector takes ids only).
+        ExcludePerformers: []int64{agentPersonID},
+    }),
     eventfeed.WithCheckpointStore(eventfeed.NewFileCheckpointStore("/var/lib/myapp/feed.json")),
     eventfeed.WithConsumerNamespace("myapp"),
     eventfeed.WithSignalHandler(func(sig eventfeed.Signal) eventfeed.Disposition {

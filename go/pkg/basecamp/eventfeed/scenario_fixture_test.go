@@ -42,6 +42,9 @@ type scenarioConfig struct {
 	Types                  []string          `json:"types"`
 	Buckets                []int64           `json:"buckets"`
 	Creators               []int64           `json:"creators"`
+	Performers             []int64           `json:"performers"`
+	ExcludePerformers      []int64           `json:"exclude_performers"`
+	ActorTypes             []string          `json:"actorTypes"`
 	Position               string            `json:"position"`
 	ConfirmationDeadlineMs int               `json:"confirmationDeadlineMs"`
 	RepairPollBaseMs       int               `json:"repairPollBaseMs"`
@@ -173,14 +176,16 @@ type pollEnvelope struct {
 }
 
 type pollEventRow struct {
-	ID          int64  `json:"id"`
-	Kind        string `json:"kind"`
-	EventType   string `json:"event_type"`
-	Action      string `json:"action"`
-	CreatedAt   string `json:"created_at"`
-	BucketID    int64  `json:"bucket_id"`
-	CreatorID   int64  `json:"creator_id"`
-	RecordingID int64  `json:"recording_id"`
+	ID            int64           `json:"id"`
+	Kind          string          `json:"kind"`
+	EventType     string          `json:"event_type"`
+	Action        string          `json:"action"`
+	CreatedAt     string          `json:"created_at"`
+	BucketID      int64           `json:"bucket_id"`
+	CreatorID     int64           `json:"creator_id"`
+	PerformedByID *int64          `json:"performed_by_id"`
+	RecordingID   int64           `json:"recording_id"`
+	Details       json.RawMessage `json:"details"`
 }
 
 type goneBody struct {
@@ -582,10 +587,11 @@ func validateServe(s *serveStep) error {
 	}
 }
 
-// validatePushEvent pins the 9-key push payload: a fixture's event body is
-// forwarded to the connector VERBATIM, so the driver only checks that the
-// contract's keys are all present (the schema requires them; a driver that
-// never looked would let a rewritten fixture through).
+// validatePushEvent pins the 11-key push payload (plus the optional details
+// object): a fixture's event body is forwarded to the connector VERBATIM, so
+// the driver only checks that the contract's keys are all present (the
+// schema requires them; a driver that never looked would let a rewritten
+// fixture through).
 func validatePushEvent(raw json.RawMessage) error {
 	keys, err := objectKeys(raw)
 	if err != nil {
@@ -593,7 +599,8 @@ func validatePushEvent(raw json.RawMessage) error {
 	}
 	for _, key := range []string{
 		"id", "kind", "event_type", "action", "created_at",
-		"bucket_id", "creator_id", "recording_id", "visible_to_clients",
+		"bucket_id", "creator_id", "performed_by_id", "actor_type", "recording_id",
+		"visible_to_clients",
 	} {
 		if _, ok := keys[key]; !ok {
 			return fmt.Errorf("push event is missing required key %q", key)
@@ -601,7 +608,8 @@ func validatePushEvent(raw json.RawMessage) error {
 	}
 	return allowedKeys("push event", keys,
 		"id", "kind", "event_type", "action", "created_at",
-		"bucket_id", "creator_id", "recording_id", "visible_to_clients")
+		"bucket_id", "creator_id", "performed_by_id", "actor_type", "recording_id",
+		"visible_to_clients", "details")
 }
 
 // decodePollQuery decodes expectPoll.query into its subset/exact form.

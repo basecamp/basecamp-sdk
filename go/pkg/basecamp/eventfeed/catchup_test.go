@@ -24,8 +24,9 @@ import (
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp/eventfeed/feedtest"
 )
 
-// pollEvent builds one poll-lane row: the eight always-present keys, and no
-// visible_to_clients (poll rows omit it — the presence asymmetry).
+// pollEvent builds one poll-lane row: the nine always-present keys
+// (performed_by_id null — a direct action), and neither actor_type nor
+// visible_to_clients (poll rows omit both — the presence asymmetry).
 func pollEvent(id int64) eventfeed.Event {
 	return eventfeed.Event{
 		ID:          id,
@@ -99,7 +100,7 @@ func TestCatchUpWalkCheckpointsAfterEachPage(t *testing.T) {
 	store.Stored("pos-0")
 	h := storedHarness(t, store)
 	h.minter.ScriptTicket(ticket(1))
-	next := testOrigin + "/999/events.json?after=102"
+	next := testOrigin + "/999/events.json?position=102"
 	h.polls.ScriptPage(eventfeed.PollPage{
 		Events:   []eventfeed.Event{pollEvent(101), pollEvent(102)},
 		Position: "pos-1",
@@ -410,7 +411,7 @@ func TestCheckpointSaveFailureContinues(t *testing.T) {
 	}
 	h := storedHarness(t, store, eventfeed.WithObserver(obs))
 	h.minter.ScriptTicket(ticket(1))
-	next := testOrigin + "/999/events.json?after=101"
+	next := testOrigin + "/999/events.json?position=101"
 	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(101)}, Position: "pos-1", Next: next})
 	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(102)}, Position: "pos-2"})
 	h.start()
@@ -440,7 +441,7 @@ func TestHostileContinuationIsTerminal(t *testing.T) {
 	h.polls.ScriptPage(eventfeed.PollPage{
 		Events:   []eventfeed.Event{pollEvent(101)},
 		Position: "pos-1",
-		Next:     "https://attacker.example.com/999/events.json?after=101&token=secret",
+		Next:     "https://attacker.example.com/999/events.json?position=101&token=secret",
 	})
 	h.start()
 
@@ -483,7 +484,7 @@ func TestContinuationValidation(t *testing.T) {
 		{"protocol downgrade", "http://3.basecampapi.com/999/events.json"},
 		{"foreign port", "https://3.basecampapi.com:8443/999/events.json"},
 		{"non-http scheme", "file:///etc/passwd"},
-		{"relative", "/999/events.json?after=101"},
+		{"relative", "/999/events.json?position=101"},
 		// Authority is not hostname: ":443" is a nonempty url.Host with an
 		// empty hostname. CanonicalOrigin already reads Hostname(), so this
 		// takes the terminal path; the case is here so it stays that way.
@@ -513,7 +514,7 @@ func TestContinuationValidation(t *testing.T) {
 	t.Run("same-origin continuation is followed", func(t *testing.T) {
 		h := newHarness(t)
 		h.minter.ScriptTicket(ticket(1))
-		next := testOrigin + "/999/events.json?after=101&filter=x"
+		next := testOrigin + "/999/events.json?position=101&filter=x"
 		h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(101)}, Position: "pos-1", Next: next})
 		h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(102)}, Position: "pos-2"})
 		h.start()
@@ -750,7 +751,7 @@ func TestSocketFailureMidWalk(t *testing.T) {
 	h := storedHarness(t, store)
 	h.minter.ScriptTicket(ticket(1))
 	h.minter.ScriptTicket(ticket(2))
-	next := testOrigin + "/999/events.json?after=101"
+	next := testOrigin + "/999/events.json?position=101"
 	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(101)}, Position: "pos-1", Next: next})
 	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollTransient, Err: errors.New("502")})
 	h.start()
@@ -1696,7 +1697,7 @@ func TestProtocolFatalBehindADeferredRecoverableOutranksIt(t *testing.T) {
 			name: "page boundary",
 			opts: []eventfeed.Option{eventfeed.WithLiveBufferCapacity(1)},
 			arm: func(h *harness) {
-				h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1", Next: testOrigin + "/999/events.json?after=1"})
+				h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1", Next: testOrigin + "/999/events.json?position=1"})
 				h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-2"})
 			},
 			wedge:     func(conn *feedtest.Conn) { conn.Serve(framePing()) },
@@ -2013,7 +2014,7 @@ func TestPollPageWithNoPositionIsMalformed(t *testing.T) {
 		store.Stored("pos-0")
 		h := storedHarness(t, store)
 		h.minter.ScriptTicket(ticket(1))
-		next := testOrigin + "/999/events.json?after=101"
+		next := testOrigin + "/999/events.json?position=101"
 		h.polls.ScriptPage(eventfeed.PollPage{
 			Events:   []eventfeed.Event{pollEvent(101)},
 			Position: "pos-1",
@@ -2270,7 +2271,7 @@ func TestStalenessDuringAnInFlightPollFinishesThePage(t *testing.T) {
 	var mu sync.Mutex
 	var ages []time.Duration
 	h, deferral := staleDeferralHarness(t, store, &ages, &mu)
-	next := testOrigin + "/999/events.json?after=101"
+	next := testOrigin + "/999/events.json?position=101"
 	h.polls.ScriptPage(eventfeed.PollPage{
 		Events:   []eventfeed.Event{pollEvent(101)},
 		Position: "pos-1",
@@ -3552,7 +3553,7 @@ func TestParkedFatalSurvivesALateGraceWakeAtThePageBoundary(t *testing.T) {
 	// A reconnecting connector ends at Terminal(mint_failed) with two mint
 	// calls; a correct one at Terminal(protocol_fatal) with one.
 	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
-	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1", Next: testOrigin + "/999/events.json?after=1"})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1", Next: testOrigin + "/999/events.json?position=1"})
 	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-2"})
 	h.drainHandled()
 	deferral := &deferralWatch{ch: make(chan struct{}, 4)}
@@ -3682,7 +3683,7 @@ func TestExpiredStalenessAtThePageBoundaryOutranksAQueuedOverflow(t *testing.T) 
 	})
 	h.minter.ScriptTicket(ticket(1))
 	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
-	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1", Next: testOrigin + "/999/events.json?after=1"})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1", Next: testOrigin + "/999/events.json?position=1"})
 	h.drainHandled()
 	var once sync.Once
 	h.polls.OnCall(func(feedtest.PollCall) {

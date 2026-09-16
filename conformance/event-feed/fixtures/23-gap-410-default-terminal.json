@@ -47,7 +47,7 @@
           "body": {
             "error": "position expired",
             "epoch_after_id": 100,
-            "resume": "{{API_ORIGIN}}/events.json?since=now"
+            "resume": "{{API_ORIGIN}}/events.json?since=100"
           }
         }
       }

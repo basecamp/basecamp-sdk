@@ -99,9 +99,10 @@ func gonePoll(resume string) error {
 
 // TestFeedGapAcceptedResumesViaProvidedURL is fixture 16: a 410 with an
 // accepting handler fires Observer.Gap, invokes the handler exactly once, and
-// re-enters via the URL the SERVER provided — verbatim, and as a present-class
-// entry, so the resume page's position is held until the admitted straggler
-// has been delivered.
+// re-enters via the URL the SERVER provided — verbatim, and as a
+// position-resume entry (the URL re-enters at the epoch, in served history),
+// so the resume page's position saves as the page is accepted and the
+// admitted live event drains after it.
 func TestFeedGapAcceptedResumesViaProvidedURL(t *testing.T) {
 	store := feedtest.NewStore()
 	store.Stored("pos-0")
@@ -114,7 +115,7 @@ func TestFeedGapAcceptedResumesViaProvidedURL(t *testing.T) {
 		eventfeed.WithSignalHandler(ledger.handler),
 		eventfeed.WithObserver(obs))
 	h.minter.ScriptTicket(ticket(1))
-	resume := testOrigin + "/999/events.json?since=now"
+	resume := testOrigin + "/999/events.json?since=100"
 	h.polls.ScriptError(gonePoll(resume))
 	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
 	h.start()
@@ -132,7 +133,7 @@ func TestFeedGapAcceptedResumesViaProvidedURL(t *testing.T) {
 	if len(gaps) != 1 || gaps[0] != fmt.Sprintf("gap 100 %s", testOrigin) {
 		t.Fatalf("Observer.Gap = %v, want exactly one firing carrying the epoch and the resume URL's ORIGIN", gaps)
 	}
-	if strings.Contains(gaps[0], "?") || strings.Contains(gaps[0], "since=now") {
+	if strings.Contains(gaps[0], "?") || strings.Contains(gaps[0], "since=100") {
 		t.Errorf("Observer.Gap = %q, which retains the resume URL's query", gaps[0])
 	}
 	assertInvocations(t, ledger.invocations(), "feedGap/accept")
@@ -154,10 +155,12 @@ func TestFeedGapAcceptedResumesViaProvidedURL(t *testing.T) {
 	if calls[1].Cursor != (eventfeed.Cursor{PageURL: resume}) {
 		t.Fatalf("re-entry cursor = %+v, want the provided resume URL verbatim", calls[1].Cursor)
 	}
-	// The resume is a present-class entry: the held position saves only after
-	// the buffered straggler is delivered. A position-resume treatment would
-	// save first and fail this ledger.
-	assertLedger(t, h.ledger(), []string{"event 41", "save pos-1"})
+	// The resume is a position-resume entry: the page saves on acceptance and
+	// the buffered live event drains after it. A present-class treatment
+	// would hold the save behind the drain and fail this ledger — and the
+	// resume URL is the server's re-entry at the epoch, so a straggler behind
+	// it is poll-repairable, unlike one behind a present entry.
+	assertLedger(t, h.ledger(), []string{"save pos-1", "event 41"})
 	assertPositions(t, store.Saves(), "pos-1")
 	if conn.Closed() {
 		t.Fatal("an accepted gap continues the feed on the same socket")
@@ -180,7 +183,7 @@ func TestFeedGapDefaultTerminal(t *testing.T) {
 		Gap: func(int64, string) { gaps++ },
 	}))
 	h.minter.ScriptTicket(ticket(1))
-	resume := testOrigin + "/999/events.json?since=now"
+	resume := testOrigin + "/999/events.json?since=100"
 	h.polls.ScriptError(gonePoll(resume))
 	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"}) // never reached
 	base := runtime.NumGoroutine()
@@ -223,7 +226,7 @@ func TestFeedGapHandlerTerminate(t *testing.T) {
 	ledger := &signalLedger{give: eventfeed.Terminate}
 	h := storedHarness(t, store, eventfeed.WithSignalHandler(ledger.handler))
 	h.minter.ScriptTicket(ticket(1))
-	resume := testOrigin + "/999/events.json?since=now"
+	resume := testOrigin + "/999/events.json?since=100"
 	h.polls.ScriptError(gonePoll(resume))
 	h.start()
 
@@ -264,7 +267,7 @@ func TestFeedGapAcceptedHostileResumeIsInvalidContinuation(t *testing.T) {
 	ledger := &signalLedger{give: eventfeed.Accept}
 	h := storedHarness(t, store, eventfeed.WithSignalHandler(ledger.handler))
 	h.minter.ScriptTicket(ticket(1))
-	h.polls.ScriptError(gonePoll("https://attacker.example.com/999/events.json?since=now&token=secret"))
+	h.polls.ScriptError(gonePoll("https://attacker.example.com/999/events.json?since=100&token=secret"))
 	h.start()
 
 	conn := h.driveToSubscribed()
@@ -417,7 +420,7 @@ func TestRepairWalkBuffersLiveFramesAndDrainsThem(t *testing.T) {
 	store.Stored("pos-0")
 	h := storedHarness(t, store)
 	h.minter.ScriptTicket(ticket(1))
-	next := testOrigin + "/999/events.json?after=91"
+	next := testOrigin + "/999/events.json?position=91"
 	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
 	h.polls.ScriptPage(eventfeed.PollPage{
 		Events:   []eventfeed.Event{pollEvent(91)},
@@ -468,7 +471,7 @@ func TestPositionInvalidReEntersAtLastPollServedID(t *testing.T) {
 		PositionRejected: func(kind eventfeed.PollErrorKind) { rejected = append(rejected, kind) },
 	}))
 	h.minter.ScriptTicket(ticket(1))
-	next := testOrigin + "/999/events.json?after=102"
+	next := testOrigin + "/999/events.json?position=102"
 	h.polls.ScriptPage(eventfeed.PollPage{
 		Events:   []eventfeed.Event{pollEvent(101), pollEvent(102)},
 		Position: "pos-1",
@@ -575,12 +578,20 @@ func TestFilterChangedDiscardsTheHeldPosition(t *testing.T) {
 	store := feedtest.NewStore()
 	store.Stored("pos-0")
 	var rejected []eventfeed.PollErrorKind
+	var conflicts []string
 	h := storedHarness(t, store, eventfeed.WithObserver(eventfeed.Observer{
 		PositionRejected: func(kind eventfeed.PollErrorKind) { rejected = append(rejected, kind) },
+		FilterConflict: func(positionDigest, filtersDigest string) {
+			conflicts = append(conflicts, positionDigest+"/"+filtersDigest)
+		},
 	}))
 	h.minter.ScriptTicket(ticket(1))
 	h.minter.ScriptTicket(ticket(2))
-	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollFilterChanged})
+	h.polls.ScriptError(&eventfeed.PollError{
+		Kind:           eventfeed.PollFilterChanged,
+		PositionDigest: "38b223c13c89dc89",
+		FiltersDigest:  "44136fa355b3678a",
+	})
 	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollTransient, Err: errors.New("502")})
 	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
 	h.start()
@@ -610,6 +621,11 @@ func TestFilterChangedDiscardsTheHeldPosition(t *testing.T) {
 	}
 	if len(rejected) != 1 || rejected[0] != eventfeed.PollFilterChanged {
 		t.Fatalf("Observer.PositionRejected = %v, want one filter_changed", rejected)
+	}
+	// The 409 body's two digests reach the host through the observer, once,
+	// as data: the re-entry above is the same whatever they say.
+	if len(conflicts) != 1 || conflicts[0] != "38b223c13c89dc89/44136fa355b3678a" {
+		t.Fatalf("Observer.FilterConflict = %v, want exactly one firing with the body's two digests", conflicts)
 	}
 	assertPositions(t, store.Saves(), "pos-1")
 }
@@ -657,7 +673,7 @@ func TestPollRetryIndexGrowsAndResets(t *testing.T) {
 	transient := func() error {
 		return &eventfeed.PollError{Kind: eventfeed.PollTransient, Err: errors.New("502")}
 	}
-	next := testOrigin + "/999/events.json?after=101"
+	next := testOrigin + "/999/events.json?position=101"
 	h.polls.ScriptError(transient()) // k=1
 	h.polls.ScriptError(transient()) // k=2
 	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(101)}, Position: "pos-1", Next: next})
@@ -696,7 +712,7 @@ func TestResetCursorSurvivesAReconnect(t *testing.T) {
 	h := storedHarness(t, store)
 	h.minter.ScriptTicket(ticket(1))
 	h.minter.ScriptTicket(ticket(2))
-	next := testOrigin + "/999/events.json?after=101"
+	next := testOrigin + "/999/events.json?position=101"
 	h.polls.ScriptPage(eventfeed.PollPage{
 		Events:   []eventfeed.Event{pollEvent(101)},
 		Position: "pos-1",
@@ -739,7 +755,7 @@ func TestResetCursorSurvivesAReconnect(t *testing.T) {
 // connection's entry selects, drawing the same 410 and re-invoking a gap
 // handler that has already been asked and has already answered Accept. The
 // accepted resume URL takes its place until a page replaces it, so the
-// present-class reset the consumer accepted is what actually continues.
+// reset the consumer accepted is what actually continues.
 func TestAcceptedGapResumeSurvivesAReconnect(t *testing.T) {
 	store := feedtest.NewStore()
 	store.Stored("pos-0")
@@ -747,7 +763,7 @@ func TestAcceptedGapResumeSurvivesAReconnect(t *testing.T) {
 	h := storedHarness(t, store, eventfeed.WithSignalHandler(ledger.handler))
 	h.minter.ScriptTicket(ticket(1))
 	h.minter.ScriptTicket(ticket(2))
-	resume := testOrigin + "/999/events.json?since=now"
+	resume := testOrigin + "/999/events.json?since=100"
 	h.polls.ScriptError(gonePoll(resume))
 	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollTransient, Err: errors.New("502")})
 	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
@@ -810,7 +826,7 @@ func TestCatchUpStartedRedactsTheLatchedResumeURL(t *testing.T) {
 	h.minter.ScriptTicket(ticket(1))
 	h.minter.ScriptTicket(ticket(2))
 	const secret = "resume-token-do-not-log"
-	resume := testOrigin + "/999/events.json?since=now&t=" + secret
+	resume := testOrigin + "/999/events.json?since=100&t=" + secret
 	h.polls.ScriptError(gonePoll(resume))
 	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollUnauthorized})
 	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})

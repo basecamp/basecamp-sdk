@@ -429,6 +429,8 @@ func frameMessageCreatedAt(identifier string, id int64, createdAt string) []byte
 		"created_at":         createdAt,
 		"bucket_id":          2,
 		"creator_id":         3,
+		"performed_by_id":    nil,
+		"actor_type":         "person",
 		"recording_id":       900,
 		"visible_to_clients": false,
 	}

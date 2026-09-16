@@ -276,7 +276,7 @@ reason via a constant, not the literal.
 | `since=now` / bare entry mints the cursor at the newest visible id; an empty entry page positions above an in-flight lower id N | 2 | 19, 20 |
 | Safety-horizon bound: position-relative, best-effort, ~30s — never wall-clock | 2 | premise of 19/20 (not directly assertable client-side; the entry-boundary fixtures encode its consequence) |
 | Frozen-head `next` predicate: absent `next` = the walk reached its head | 2 | every fixture whose walk ends on a 200 page without `next`: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 29 (mechanically derived; re-derive when the set changes) |
-| 410 `resume` re-enters at `since=now` with the canonical filter set preserved | 2 | 16 (resume URL followed verbatim); 27 (hostile variant) |
+| 410 `resume` re-enters at the epoch (`since=<epoch_after_id>`, in served history — a position-resume entry) with the canonical filter set preserved | 2 | 16 (resume URL followed verbatim); 27 (hostile variant) |
 | 400-position / 409 re-entry semantics (`since=<last poll-served id>`, present-class fallback) | 2 | no PR-2 fixture — pinned at PR-4 |
 | Ticket statelessness + ~120s TTL (server-owned `expires_in`) | 2 | 05 (TTL-advance premise; `expires_in` never schedules anything) |
 | 3-second server heartbeat cadence (input to the 7500ms staleness policy) | 2 | no PR-2 fixture — PR 4 (staleness fixture 08) |

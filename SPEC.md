@@ -3635,13 +3635,16 @@ section states honestly rather than papers over.
 
 **Present-class entries, defined.** The amendment below applies to every entry whose
 cursor resolves at the server's present head — the class, used by this name throughout
-this section and the state table: the zero Cursor (bare present entry); `since="now"`; a
-410 reset's resume URL (the server documents it as `since=now` with the canonical filter
-set preserved); and a 400-position/409 re-entry that falls back to the present because no
-poll-served id exists (the reset cursor is poll-lane-only — a live-delivered id never
-positions a re-entry). Entries positioned in served history — `position=`,
-`since=<id>`, `since=0` — are **position-resume class** and keep the unamended per-page
-save discipline.
+this section and the state table: the zero Cursor (bare present entry); `since="now"`;
+and a 400-position/409 re-entry that falls back to the present because no poll-served id
+exists (the reset cursor is poll-lane-only — a live-delivered id never positions a
+re-entry). Entries positioned in served history — `position=`, `since=<id>`, `since=0`,
+and a 410 reset's `resume` URL (the server documents it as re-entering **at the epoch**
+with the canonical filter set preserved, so the servable history above the fence is not
+skipped; the inbox lane's re-enters at `since=0`, the earliest retained item) — are
+**position-resume class** and keep the unamended per-page save discipline: every event
+between such an entry and the present is poll-served, so nothing behind it depends on
+the live buffer.
 
 **Entry sequencing (present-class entries only):** hold the entry poll's returned
 position → take the **ownership cut** → fix the snapshot → drain-and-accept → only then
@@ -3719,7 +3722,7 @@ SignalHandler : (Signal) → Accept | Terminate
   for a 410 gap. An unhandled semantic signal cannot disappear, and **a 410 never silently
   auto-continues**.
 - **Accept on `FeedGap`** resumes via the provided resume URL (it preserves the canonical
-  filter set). **Accept on `BufferOverflow`** means the consumer owns the acknowledged
+  filter set and re-enters at the epoch — a position-resume entry, Entry Boundary above). **Accept on `BufferOverflow`** means the consumer owns the acknowledged
   incompleteness — and acceptance is not license to skip retained deliveries (the
   conjunctive invariant above still gates the `save`).
 - **A registered handler is invoked exactly once per semantic signal, synchronously, on the
@@ -3838,20 +3841,23 @@ END
 RECORD Cursor           -- exactly one field set; the zero Cursor is the bare present entry
   position : String?    -- resume/repair token (in-memory authoritative within a run;
                         -- durable via write-through when saves succeed)
-  since    : String?    -- "now", "0", or a decimal event id
+  since    : String?    -- "now", "0", or a decimal event id (a signed 64-bit integer on
+                        -- the wire; out of range draws the position 400, not an empty page)
   page_url : String?    -- absolute URL: a `next` continuation OR a 410 resume URL.
                         -- Same-origin + no-downgrade validated BEFORE any poll call
                         -- (Continuation and Resume URL Validation)
 END
 
 RECORD PollPage         -- the body envelope IS the contract; never bind to response headers
+                        -- (X-Feed-Position and Link rel="next" merely echo position/next)
   events   : List<Event>
   position : String     -- the ONLY thing that ever advances the checkpoint
   next     : String?    -- continuation URL; absent = the walk reached its frozen head.
                         -- Bound to that walk; NEVER persisted.
 END
 -- Poll errors carry a kind: transient | throttled(retry_after) | position_invalid |
--- filter_invalid(server message) | filter_changed | gone(epoch_after_id, resume_url) |
+-- filter_invalid(server message) | filter_changed(position_digest, filters_digest) |
+-- gone(epoch_after_id, resume_url) |
 -- unauthorized | redirect_refused(location_origin) | unrecoverable(error).
 -- The adapter maps every §6/§7 outcome of the generated call onto exactly one kind:
 -- 429/503 and §7-retryable outcomes exhausted inside the seam → throttled(retry_after)
@@ -4180,7 +4186,11 @@ extensible without breaking implementers: `connecting(attempt, delay)`, `connect
 `confirmed()`, `disconnected(reason, error)`, `catch_up_started(cursor)`,
 `page_delivered(count, position)`, `checkpoint(position)` (after that page's events were
 accepted), `checkpoint_save_failed(error)`, `caught_up()`, `gap(epoch_after_id,
-resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
+resume_url)`, `position_rejected(kind)`, `filter_conflict(position_digest, filters_digest)`
+(a 409's two bare srv2 digests — the one the refused position was minted for and the one
+the request's filters hashed to; a `filters_digest` that differs from the SDK's own
+`Filters.digest()` for the same set means the local canonicalization has drifted from the
+server's), `stale_connection(since_last_frame)`,
 `buffer_overflow(dropped_count)`. All are observability-only; none carries a disposition.
 
 ### Security Invariants `[static]`

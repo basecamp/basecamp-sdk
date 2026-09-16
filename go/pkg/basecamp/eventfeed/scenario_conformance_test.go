@@ -536,6 +536,15 @@ func derivedQuery(call *pollCall) map[string]string {
 	if len(call.filters.Creators) > 0 {
 		query["creators"] = joinIDs(call.filters.Creators)
 	}
+	if len(call.filters.Performers) > 0 {
+		query["performers"] = joinIDs(call.filters.Performers)
+	}
+	if len(call.filters.ExcludePerformers) > 0 {
+		query["exclude_performers"] = joinIDs(call.filters.ExcludePerformers)
+	}
+	if len(call.filters.ActorTypes) > 0 {
+		query["actor_types"] = strings.Join(call.filters.ActorTypes, ",")
+	}
 	return query
 }
 
@@ -1106,14 +1115,16 @@ func pollPageFrom(body json.RawMessage) (pollOutcome, error) {
 			return pollOutcome{}, fmt.Errorf("poll event created_at: %w", err)
 		}
 		page.Events = append(page.Events, eventfeed.Event{
-			ID:          row.ID,
-			Kind:        row.Kind,
-			EventType:   row.EventType,
-			Action:      row.Action,
-			CreatedAt:   createdAt,
-			BucketID:    row.BucketID,
-			CreatorID:   row.CreatorID,
-			RecordingID: row.RecordingID,
+			ID:            row.ID,
+			Kind:          row.Kind,
+			EventType:     row.EventType,
+			Action:        row.Action,
+			CreatedAt:     createdAt,
+			BucketID:      row.BucketID,
+			CreatorID:     row.CreatorID,
+			PerformedByID: row.PerformedByID,
+			RecordingID:   row.RecordingID,
+			Details:       row.Details,
 		})
 	}
 	return pollOutcome{page: page}, nil

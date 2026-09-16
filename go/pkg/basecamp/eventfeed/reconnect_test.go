@@ -382,7 +382,7 @@ func TestWalkFailureBetweenPages(t *testing.T) {
 		h := storedHarness(t, store)
 		h.minter.ScriptTicket(ticket(1))
 		h.minter.ScriptTicket(ticket(2))
-		next := testOrigin + "/999/events.json?after=101"
+		next := testOrigin + "/999/events.json?position=101"
 		h.polls.ScriptPage(eventfeed.PollPage{
 			Events:   []eventfeed.Event{pollEvent(101)},
 			Position: "pos-1",

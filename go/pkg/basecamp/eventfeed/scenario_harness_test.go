@@ -665,9 +665,12 @@ func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector
 		eventfeed.WithCheckpointStore(h),
 		eventfeed.WithConsumerNamespace(scenarioNamespace),
 		eventfeed.WithFilters(eventfeed.Filters{
-			Types:    cfg.Types,
-			Buckets:  cfg.Buckets,
-			Creators: cfg.Creators,
+			Types:             cfg.Types,
+			Buckets:           cfg.Buckets,
+			Creators:          cfg.Creators,
+			Performers:        cfg.Performers,
+			ExcludePerformers: cfg.ExcludePerformers,
+			ActorTypes:        cfg.ActorTypes,
 		}),
 		eventfeed.WithObserver(eventfeed.Observer{
 			Gap:                  func(epochAfterID int64, _ string) { h.recordGap(epochAfterID) },

@@ -30,7 +30,7 @@
           "body": {
             "error": "position expired",
             "epoch_after_id": 100,
-            "resume": "https://attacker.example.com/events.json?since=now"
+            "resume": "https://attacker.example.com/events.json?since=100"
           }
         }
       }

@@ -111,7 +111,9 @@ type Cursor struct {
 	// Position is the durable resume/repair token (in-memory authoritative
 	// within a run; durable via write-through when saves succeed).
 	Position string
-	// Since is "now", "0", or a decimal event id.
+	// Since is "now", "0", or a decimal event id — a signed 64-bit integer
+	// on the wire; a value outside that range draws the position 400, not
+	// an empty page. On the inbox lane it is an item (addressing) id.
 	Since string
 	// PageURL is an absolute URL: a `next` continuation or a 410 resume URL.
 	// Same-origin + no-downgrade validated before any poll call; never
@@ -120,7 +122,8 @@ type Cursor struct {
 }
 
 // PollPage is one poll-lane page. The body envelope is the contract — never
-// bind to response headers.
+// bind to response headers: the X-Feed-Position and Link rel="next" response
+// headers merely echo Position and Next.
 type PollPage struct {
 	// Events are the page's rows, in strict event-id order.
 	Events []Event
@@ -562,6 +565,11 @@ type Observer struct {
 	Gap func(epochAfterID int64, resumeURL string)
 	// PositionRejected fires on a 400-position or 409 re-entry.
 	PositionRejected func(kind PollErrorKind)
+	// FilterConflict fires on a 409, before PositionRejected(filter_changed),
+	// with the body's two digests: the srv2 digest the refused position was
+	// minted for, and the digest of the filters this request presented.
+	// Observability only — the re-entry is the same either way.
+	FilterConflict func(positionDigest, filtersDigest string)
 	// StaleConnection fires when staleness tears a socket down.
 	StaleConnection func(sinceLastFrame time.Duration)
 	// BufferOverflow fires when the live buffer drops events — observability
