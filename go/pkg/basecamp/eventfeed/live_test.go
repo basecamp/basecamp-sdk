@@ -526,16 +526,21 @@ func TestLivePolls_AContinuationOutOfOrderIsMalformed(t *testing.T) {
 			jsonResponse(w, 200, `{"events":[{"id":101,`+row+`}],"position":"pos-2"}`)
 		}
 	})
-	page, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+	polls := f.live.Polls()
+	page, err := polls.Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
 	if err != nil || page.Next == "" {
 		t.Fatalf("first page = %+v, %v", page, err)
 	}
-	_, err = f.live.Polls().Poll(context.Background(), eventfeed.Cursor{PageURL: page.Next}, eventfeed.Filters{})
+	// A second connector's source over the same binding walks on its own.
+	if _, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-fresh"}, eventfeed.Filters{}); err != nil {
+		t.Fatalf("another source's fresh walk: %v", err)
+	}
+	_, err = polls.Poll(context.Background(), eventfeed.Cursor{PageURL: page.Next}, eventfeed.Filters{})
 	var pe *eventfeed.PollError
 	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollUnrecoverable {
 		t.Fatalf("continuation error = %v, want unrecoverable for a row behind the previous page", err)
 	}
-	if _, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-fresh"}, eventfeed.Filters{}); err != nil {
+	if _, err := polls.Poll(context.Background(), eventfeed.Cursor{Position: "pos-fresh"}, eventfeed.Filters{}); err != nil {
 		t.Fatalf("a fresh cursor after the refused continuation: %v", err)
 	}
 }
@@ -665,6 +670,22 @@ func TestLivePolls_DetailsMatchThePushLaneByteForByte(t *testing.T) {
 			page, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
 			if err != nil || len(page.Events) != 1 || page.Events[0].Details != nil {
 				t.Fatalf("Poll = %+v, %v; want one event with no details", page, err)
+			}
+		})
+	}
+	for name, details := range map[string]string{
+		"invalid utf-8":         `{"note":"\xff"}`,
+		"lone surrogate escape": `{"note":"\ud800"}`,
+	} {
+		t.Run(name+" is refused as the push lane refuses it", func(t *testing.T) {
+			body := strings.Replace(row, `{"boost_id":5,"boosted_event_id":null,"boosted_event_type":null,"future_member":{"nested":[1,"two",null]}}`, details, 1)
+			f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+				jsonResponse(w, 200, `{"events":[`+body+`],"position":"pos-1"}`)
+			})
+			_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+			var pe *eventfeed.PollError
+			if !errors.As(err, &pe) || pe.Kind != eventfeed.PollUnrecoverable {
+				t.Fatalf("error = %v, want unrecoverable", err)
 			}
 		})
 	}
@@ -967,6 +988,8 @@ func TestNewLiveValidatesAndConnects(t *testing.T) {
 		"nonnumeric id":  {cfg, "abc", eventfeed.AccountLane},
 		"userinfo base":  {&basecamp.Config{BaseURL: "https://user:s3cret-leak@api.example.test"}, "1", eventfeed.AccountLane},
 		"invalid utf-8":  {&basecamp.Config{BaseURL: "https://exa\xffmple.test"}, "1", eventfeed.AccountLane},
+		"dot segments":   {&basecamp.Config{BaseURL: "https://api.example.test/api/../v1"}, "1", eventfeed.AccountLane},
+		"doubled slash":  {&basecamp.Config{BaseURL: "https://api.example.test/api//v1"}, "1", eventfeed.AccountLane},
 		"no origin":      {&basecamp.Config{BaseURL: "/s3cret-leak"}, "1", eventfeed.AccountLane},
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -55,7 +56,6 @@ type Live struct {
 	origin    string
 	accountID string
 	lane      Lane
-	polls     *livePolls
 }
 
 // NewLive builds the seams for accountID on lane over a basecamp.Client
@@ -100,20 +100,25 @@ func NewLive(cfg *basecamp.Config, tokens basecamp.TokenProvider, accountID stri
 	}
 	opts := make([]basecamp.ClientOption, 0, len(clientOpts)+1)
 	opts = append(opts, clientOpts...)
+	// The guard is anchored at the base URL's path, so that path must be
+	// the one the generated client resolves routes beneath: a dot segment
+	// or a doubled slash would resolve to a different prefix than the one
+	// recorded here, and the guard would miss the seams' own calls.
 	basePath := "/"
-	if u, err := url.Parse(cfg.BaseURL); err == nil && strings.Trim(u.Path, "/") != "" {
+	if u, _ := url.Parse(cfg.BaseURL); u != nil && strings.Trim(u.Path, "/") != "" {
+		if clean := path.Clean(u.Path); clean != strings.TrimSuffix(u.Path, "/") || strings.Contains(u.Path, "//") {
+			return nil, usageError("the base URL path must be canonical: no dot segments, no doubled slashes")
+		}
 		basePath = "/" + strings.Trim(u.Path, "/") + "/"
 	}
 	opts = append(opts, basecamp.WithTransportWrapper(redirectGuardWrapper{basePath: basePath}))
 	client := basecamp.NewClient(cfg, tokens, opts...)
-	svc := client.ForAccount(accountID).EventFeed()
 	return &Live{
 		client:    client,
-		svc:       svc,
+		svc:       client.ForAccount(accountID).EventFeed(),
 		origin:    origin,
 		accountID: accountID,
 		lane:      lane,
-		polls:     &livePolls{svc: svc, lane: lane},
 	}, nil
 }
 
@@ -128,9 +133,10 @@ func (l *Live) Origin() string { return l.origin }
 func (l *Live) Minter() TicketMinter { return &liveMinter{svc: l.svc} }
 
 // Polls is the PollSource seam over PollEvents (AccountLane) or PollInbox
-// (InboxLane) — one source per binding, so a walk's order is held across
-// its pages.
-func (l *Live) Polls() PollSource { return l.polls }
+// (InboxLane). Each call is a fresh source with its own walk state — one
+// per connector, so a walk's order is held across its pages and two
+// connectors over one binding never read each other's.
+func (l *Live) Polls() PollSource { return &livePolls{svc: l.svc, lane: l.lane} }
 
 // Connect builds the Connector over these seams: New with this binding's
 // origin, account and lane, plus opts. The lane is the binding's — the seams
@@ -700,8 +706,11 @@ func eventFromFeed(fe basecamp.FeedEvent) (Event, error) {
 		RecordingID:   fe.RecordingID,
 	}
 	if trimmed := bytes.TrimSpace(fe.Details); len(trimmed) > 0 && !bytes.Equal(trimmed, []byte("null")) {
-		if !isJSONObject(trimmed) {
-			return Event{}, fmt.Errorf("eventfeed: poll row %d carries details that are not an object", fe.ID)
+		// The push decoder's rule for the same bytes: an object, valid
+		// UTF-8, no lone surrogate escape — so both lanes deliver the same
+		// document or refuse the same one.
+		if !isJSONObject(trimmed) || !utf8.Valid(trimmed) || hasLoneSurrogateEscape(trimmed) {
+			return Event{}, fmt.Errorf("eventfeed: poll row %d carries details that are not a well-formed object", fe.ID)
 		}
 		ev.Details = json.RawMessage(slices.Clone(trimmed))
 	}
