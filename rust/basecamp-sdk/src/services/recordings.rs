@@ -268,8 +268,18 @@ impl RecordingSummaryError {
     /// The taxonomy member this reason is reported under.
     ///
     /// Routing refusals are `usage`: the pointer names no read, and nothing was sent.
-    /// "Unresolved" and a bucket mismatch are `not_found`: the recording the pointer names
-    /// is not where it was looked for.
+    /// "Unresolved" is `not_found`: every visible candidate answered 404, so the recording
+    /// the pointer names is not where it was looked for.
+    ///
+    /// A bucket mismatch is `usage`, settled across every port on [card 41] after this port
+    /// shipped `not_found` where Python, Ruby, Kotlin and TypeScript shipped `usage` — exit
+    /// 2 against exit 1 for the same condition. `not_found` says the recording is not there,
+    /// which is false: the read FOUND it, in another bucket, and returned it, so nothing is
+    /// absent. What failed is the caller's pointer, which named a bucket the recording is
+    /// not in, and that is what `usage` means everywhere else in the taxonomy. The majority
+    /// agreed, but the argument is what settles it.
+    ///
+    /// [card 41]: https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308966794
     ///
     /// Incomplete discovery is `usage`, settled across every port on [card 40] after the
     /// merged ports shipped two different answers — this one said `api_error`, Kotlin said
@@ -291,10 +301,9 @@ impl RecordingSummaryError {
         match self {
             RecordingSummaryError::NoRecordingType { .. }
             | RecordingSummaryError::UnknownRecordingType { .. }
+            | RecordingSummaryError::BucketMismatch { .. }
             | RecordingSummaryError::CampfireDiscoveryIncomplete { .. } => ErrorCode::Usage,
-            RecordingSummaryError::Unresolved(_) | RecordingSummaryError::BucketMismatch { .. } => {
-                ErrorCode::NotFound
-            }
+            RecordingSummaryError::Unresolved(_) => ErrorCode::NotFound,
         }
     }
 }
@@ -1396,7 +1405,10 @@ mod tests {
             found_in: 9,
         }
         .into();
-        assert_eq!(mismatch.code(), ErrorCode::NotFound);
+        // `usage`, settled on card 41: the read found the recording, in another
+        // bucket, and returned it -- what failed is the caller's pointer.
+        assert_eq!(mismatch.code(), ErrorCode::Usage);
+        assert!(!mismatch.is_retryable());
         assert!(matches!(
             RecordingSummaryError::of(&mismatch),
             Some(RecordingSummaryError::BucketMismatch { found_in: 9, .. })

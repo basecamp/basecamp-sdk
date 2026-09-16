@@ -5,8 +5,12 @@ module Basecamp
   # from the one the pointer named, so a pointer from one project can never
   # resolve to a recording in another.
   #
-  # +code+ is +usage+: the read succeeded and the API answered honestly; it is
-  # the caller's pointer that disagreed with it.
+  # +code+ is +usage+ with +retryable+ false, settled across every port on
+  # card 41[https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308966794] after
+  # Rust shipped +not_found+ where this port and three others shipped +usage+.
+  # The read succeeded and the API answered honestly — it FOUND the recording,
+  # in another bucket, and returned it, so nothing is absent and +not_found+
+  # would be a false claim. It is the caller's pointer that disagreed with it.
   class BucketMismatchError < RecordingSummaryError
     KIND = "bucket_mismatch"
 

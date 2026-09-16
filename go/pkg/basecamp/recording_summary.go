@@ -128,17 +128,24 @@ var (
 //
 // https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
 //
-// It answers only for the identities the seven ports agree on, which is what
-// makes it a shared contract rather than one more port's taste.
-// ErrBucketMismatch is not one of them: Rust classifies it not_found where
-// Python, Ruby, Kotlin and TypeScript say usage, so it is left unclassified
-// here rather than settled by the SDK that has no code slot to begin with. A
-// caller that reaches it gets ok == false and decides for itself, exactly as
-// every caller did before.
+// It answers for every verdict Summarize produces, and each row is one the
+// seven ports agree on — which is what makes it a shared contract rather than
+// one more port's taste. ok is false for anything that is not one of them: a
+// read that failed on its own terms is classified by Error.Code like any other
+// SDK failure.
+//
+// ErrBucketMismatch was the last row to be settled, on card 41, after Rust
+// classified it not_found where Python, Ruby, Kotlin and TypeScript said usage.
+// https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308966794
 func RecordingSummaryCode(err error) (code string, ok bool) {
 	switch {
 	case errors.Is(err, ErrNoRecordingType), errors.Is(err, ErrUnknownRecordingType):
 		// Refused from the caller's own arguments, before any request.
+		return CodeUsage, true
+	case errors.Is(err, ErrBucketMismatch):
+		// Not not_found: the read FOUND the recording, in another bucket, and
+		// returned it, so nothing is absent. What failed is the caller's
+		// pointer, which named a bucket the recording is not in.
 		return CodeUsage, true
 	case errors.Is(err, ErrRecordingUnresolved):
 		// Every visible candidate answered 404: the line is not there.

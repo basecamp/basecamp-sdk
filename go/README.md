@@ -696,14 +696,16 @@ its own:
 
 ```go
 if code, ok := basecamp.RecordingSummaryCode(err); ok {
-    os.Exit(basecamp.ExitCodeFor(code)) // usage (1) for routing refusals and
-                                        // incomplete discovery; not_found (2)
-                                        // for an unresolved chat line
+    os.Exit(basecamp.ExitCodeFor(code)) // usage (1) for every verdict but one;
+                                        // not_found (2) for an unresolved chat
+                                        // line, the only one that reports an
+                                        // absence
 }
 ```
 
-`ok` is false for `ErrBucketMismatch`, whose classification the ports have not
-settled, and for anything that is not one of these verdicts.
+`ok` is false for anything that is not one of these verdicts — a read that
+failed on its own terms carries its own `Code`. Read it: discarding it gives you
+`""`, and `ExitCodeFor("")` is 7.
 
 The routed set is deliberate, not exhaustive. By event type, any action on
 these subjects routes to the subject's read; by recording type, exactly these

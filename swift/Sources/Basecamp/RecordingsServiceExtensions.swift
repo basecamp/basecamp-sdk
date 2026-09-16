@@ -265,8 +265,7 @@ public enum RecordingSummaryError: Error, Sendable, LocalizedError {
 
     public var errorDescription: String? { message }
 
-    /// The canonical SPEC §6 code this verdict is CLASSIFIED under, and `nil`
-    /// when this SDK does not classify it.
+    /// The canonical SPEC §6 code this verdict is CLASSIFIED under.
     ///
     /// The verdict itself stays out of ``BasecampError``: the identity is this
     /// enum, matched by `case`, and §6's taxonomy describes HTTP answers, which
@@ -278,27 +277,31 @@ public enum RecordingSummaryError: Error, Sendable, LocalizedError {
     ///
     /// <https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086>
     ///
-    /// It answers only for the identities the seven ports agree on, which is
-    /// what makes it a shared contract rather than one more port's taste.
-    /// ``bucketMismatch(_:_:)`` is not one of them: Rust classifies it
-    /// `not_found` where Python, Ruby, Kotlin and TypeScript say `usage`, so it
-    /// is left `nil` here rather than settled by an SDK that has no code slot
-    /// to begin with.
-    public var canonicalCode: String? { classification?.code }
+    /// Every verdict has a row, and each row is one the seven ports agree on —
+    /// which is what makes it a shared contract rather than one more port's
+    /// taste. ``bucketMismatch(_:_:)`` was the last to be settled, on card 41,
+    /// after Rust classified it `not_found` where Python, Ruby, Kotlin and
+    /// TypeScript said `usage`.
+    ///
+    /// <https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308966794>
+    public var canonicalCode: String { classification.code }
 
-    /// The CLI exit status ``canonicalCode`` decides, and `nil` when this SDK
-    /// does not classify the verdict. Read from the same table, never derived
-    /// from the code a second time: a `default` arm over the code string would
-    /// answer `nil` — "not classified" — for a verdict this SDK classifies
-    /// perfectly well under a code the second switch forgot.
-    public var exitCode: Int? { classification?.exit }
+    /// The CLI exit status ``canonicalCode`` decides. Read from the same table,
+    /// never derived from the code a second time: a `default` arm over the code
+    /// string would answer the wrong thing for a code the second switch had not
+    /// been taught.
+    public var exitCode: Int { classification.exit }
 
-    /// The one table both accessors read. `nil` is "this SDK does not classify
-    /// this verdict", and the only such verdict is ``bucketMismatch(_:_:)``.
-    private var classification: (code: String, exit: Int)? {
+    /// The one table both accessors read. Total over the enum, so a verdict
+    /// added later must be classified here or the compiler refuses the build.
+    private var classification: (code: String, exit: Int) {
         switch self {
         // Refused from the caller's own arguments, before any request.
         case .noRecordingType, .unknownRecordingType: return ("usage", 1)
+        // Not `not_found`: the read FOUND the recording, in another bucket, and
+        // returned it, so nothing is absent. What failed is the caller's
+        // pointer, which named a bucket the recording is not in (card 41).
+        case .bucketMismatch: return ("usage", 1)
         // Every visible candidate answered 404: the line is not there.
         case .recordingUnresolved: return ("not_found", 2)
         // `usage` is one of only THREE coarse codes no HTTP response can
@@ -309,7 +312,6 @@ public enum RecordingSummaryError: Error, Sendable, LocalizedError {
         // to complete, which is why it and not the other two. Never
         // `not_found`: nothing left unsearched may be reported absent.
         case .campfireDiscoveryIncomplete: return ("usage", 1)
-        case .bucketMismatch: return nil
         }
     }
 }
