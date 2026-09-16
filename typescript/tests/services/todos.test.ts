@@ -678,10 +678,17 @@ describe("TodosService", () => {
         );
       });
 
-      // The ID lists are resent in full, so a string, float, boolean or null
-      // id would be written as the complete assignee set.
+      // The ID lists are resent in full, so a float, boolean or null id would
+      // be written as the complete assignee set.
+      //
+      // A STRING id is no longer on this list, and its absence is the fix, not
+      // an oversight: BC3 serializes person ids as strings on some payloads, and
+      // `generated.Person.Id` is a `types.FlexibleInt64`, so the reference reads
+      // `"100"` as person 100 and completes the update. The normalizer now
+      // converts it before this guard ever sees it — see the positive case
+      // below. Refusing it here was a merge-safe update blocked by data BC3
+      // controls, not a malformed body.
       it.each([
-        ["string", "100"],
         ["float", 10.5],
         ["NaN", Number.NaN],
         ["null", null],
@@ -692,6 +699,27 @@ describe("TodosService", () => {
 
         const error = await rejection(client.todos.update(42, { content: "New title" }));
         expectResponseError(error, new RegExp(`Todo field "${field}"\\[0\\]`), requests);
+      });
+
+      it(`update completes when BC3 serializes a ${field} id as a string`, async () => {
+        // The other half of the row removed above, and the reason it was
+        // removed. "007" is person 7 to `strconv.ParseInt`, so the normalizer
+        // writes 7 and the merge-safe PUT carries it — where this used to
+        // refuse the response outright and the update never happened.
+        let putBody: Record<string, unknown> = {};
+        server.use(
+          http.get(`${BASE_URL}/todos/42`, () =>
+            HttpResponse.json(fullTodo(42, { [field]: [{ id: "007", name: "Jane" }] }))
+          ),
+          http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+            putBody = (await request.json()) as Record<string, unknown>;
+            return HttpResponse.json(fullTodo());
+          })
+        );
+
+        await client.todos.update(42, { content: "New title" });
+        const sentKey = field === "assignees" ? "assignee_ids" : "completion_subscriber_ids";
+        expect(putBody[sentKey]).toEqual([7]);
       });
     }
 

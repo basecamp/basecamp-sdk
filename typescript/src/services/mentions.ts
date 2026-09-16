@@ -84,15 +84,57 @@ import type { Person } from "../generated/services/people.js";
  * Every `<bc-attachment>` in the text counts, including one inside a
  * `<blockquote>`: BC3 notifies quoted mentions too, so the read matches what
  * the server does with the write.
+ *
+ * @throws {BasecampError} `api_error` when the text mentions a person whose id
+ * is a valid `int64` past `Number.MAX_SAFE_INTEGER`, which no `number[]` can
+ * report. It is a REFUSAL, deliberately, and not the silent skip the sentence
+ * above would otherwise have been lying about.
+ *
+ * The count is the whole answer here, which is what makes this site different
+ * from the normalizer in `base.ts`. There, an unrepresentable id is left in the
+ * body as its original string: nothing else in the response is harmed, and the
+ * caller can see exactly which field it was. Here the return type is `number[]`
+ * — there is no string to leave and no room to say "and one more I could not
+ * name". Dropping it silently would make a short list indistinguishable from a
+ * genuinely shorter text, on a value that feeds `mentioned_person_ids` and
+ * decides who gets notified: measured against the reference, a text naming
+ * `7, 9007199254740991, 9007199254740992, 9007199254740993,
+ * 9223372036854775807, 0009223372036854775807` gave Go 5 ids and Ruby 5, and
+ * gave this 2, with no error. Under-reporting a set is the one failure a caller
+ * cannot detect, because the evidence it would need is the thing that was
+ * dropped. A throw names the id in its message, so the caller learns what it
+ * cannot have, and can catch it.
+ *
+ * Both alternatives were weighed and cost more. Rounding the id to the nearest
+ * `number` reports a DIFFERENT person, which is worse than reporting none.
+ * Returning the representable ids and exposing the rest through a second
+ * function or an options bag grows the public surface for an event BC3's own
+ * ids — around 1e9 — never produce today; the choice here is only about which
+ * failure the SDK makes on the day one does.
+ *
+ * An id past `int64` is NOT this case: `strconv.ParseInt` raises, Go's
+ * `PersonIDFromSGID` answers "not a person" (`go/pkg/basecamp/mentions.go:257-259`),
+ * and so does this — skipped silently, exactly as the reference skips it.
  */
 export function mentionedPersonIds(richText: string): number[] {
   const ids: number[] = [];
   const seen = new Set<number>();
   for (const sgid of bcAttachmentSGIDs(richText)) {
-    const id = personIdFromSGID(sgid);
-    if (id === undefined || seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
+    const mentioned = parsePersonSGID(sgid);
+    if (mentioned.kind === "none") continue;
+    if (mentioned.kind === "unrepresentable") {
+      throw Errors.apiError(
+        `rich text mentions person ${mentioned.rawId}, whose id does not fit a JavaScript number`,
+        undefined,
+        {
+          hint: "ids beyond 2^53 cannot be reported as numbers; read the mention through the sgid itself",
+          retryable: false,
+        },
+      );
+    }
+    if (seen.has(mentioned.id)) continue;
+    seen.add(mentioned.id);
+    ids.push(mentioned.id);
   }
   return ids;
 }
@@ -360,8 +402,33 @@ function isOptionalPort(port: string): boolean {
  * boundary in the module comment).
  */
 export function personIdFromSGID(sgid: string): number | undefined {
+  const parsed = parsePersonSGID(sgid);
+  return parsed.kind === "person" ? parsed.id : undefined;
+}
+
+/**
+ * What an sgid names, with the one case {@link personIdFromSGID}'s
+ * `number | undefined` cannot spell kept apart.
+ *
+ * `undefined` there means two unrelated things: "this is not a mention" — not a
+ * Person gid, an undecodable envelope, a `+7` the digit walk refuses, a
+ * non-positive id, a magnitude past `int64` — and "this IS a mention, of a
+ * person whose id a `number` cannot carry". Go never has to separate them
+ * because it returns an `int64`; here the second case is a real mention that
+ * cannot be reported, and {@link mentionedPersonIds} has to refuse rather than
+ * drop it. The exported signature is unchanged and so is every answer it gives:
+ * this only lets one caller in this file ask a sharper question.
+ */
+type MentionedPerson =
+  | { readonly kind: "person"; readonly id: number }
+  | { readonly kind: "unrepresentable"; readonly rawId: string }
+  | { readonly kind: "none" };
+
+const NOT_A_MENTION: MentionedPerson = { kind: "none" };
+
+function parsePersonSGID(sgid: string): MentionedPerson {
   const gid = globalIDFromSGID(sgid);
-  if (gid === undefined) return undefined;
+  if (gid === undefined) return NOT_A_MENTION;
 
   // A GlobalID is `gid://<app>/<Model>/<id>`, optionally with a query — BC3
   // mints `gid://bc3/Person/1049715915?expires_in=`. The query and fragment are
@@ -374,24 +441,34 @@ export function personIdFromSGID(sgid: string): number | undefined {
   // was wrong in both halves.
   const hash = gid.indexOf("#");
   const beforeFragment = hash < 0 ? gid : gid.slice(0, hash);
-  if (CONTROL_BYTE.test(beforeFragment)) return undefined;
-  if (hash >= 0 && !hasValidEscapes(gid.slice(hash + 1))) return undefined;
+  if (CONTROL_BYTE.test(beforeFragment)) return NOT_A_MENTION;
+  if (hash >= 0 && !hasValidEscapes(gid.slice(hash + 1))) return NOT_A_MENTION;
 
   const parsed = GID_URL.exec(gid);
-  if (parsed === null) return undefined;
-  if (!isParsableHost(parsed[1] ?? "")) return undefined;
+  if (parsed === null) return NOT_A_MENTION;
+  if (!isParsableHost(parsed[1] ?? "")) return NOT_A_MENTION;
   const path = percentDecodePath(parsed[2] ?? "");
-  if (path === undefined) return undefined;
+  if (path === undefined) return NOT_A_MENTION;
   const separator = path.indexOf("/", 1);
-  if (separator < 0) return undefined;
+  if (separator < 0) return NOT_A_MENTION;
   const model = path.slice(1, separator);
   const rawId = path.slice(separator + 1);
-  if (model !== "Person" || rawId === "" || !/^[0-9]+$/.test(rawId)) return undefined;
-  const id = Number(rawId);
+  if (model !== "Person" || rawId === "" || !/^[0-9]+$/.test(rawId)) return NOT_A_MENTION;
+  // Go parses the walked digits with `strconv.ParseInt(rawID, 10, 64)` and then
+  // refuses `id <= 0` (`go/pkg/basecamp/mentions.go:257-259`), so `scanPersonId`
+  // stands in for ParseInt here — NOT as the rule (the digit walk above is the
+  // rule, and it is the half that differs from the other two sites), but as the
+  // same int64 bound Go applies after it. `Number(rawId)` was the old spelling
+  // and gave every one of these answers too; it just could not tell a magnitude
+  // past int64, which is not a mention in Go either, from a real person past
+  // 2^53, which is.
+  const scan = scanPersonId(rawId);
+  if (scan.kind !== "value" || scan.value <= 0n) return NOT_A_MENTION;
+  const id = personIdNumber(scan.value);
   // A BC3 person id is well inside the safe range; one that is not cannot be
   // reported as a number without rounding it into a different person.
-  if (!Number.isSafeInteger(id) || id <= 0) return undefined;
-  return id;
+  if (id === undefined) return { kind: "unrepresentable", rawId };
+  return { kind: "person", id };
 }
 
 /**

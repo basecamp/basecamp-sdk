@@ -130,6 +130,69 @@ function isJSONObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * Every property name the spec types as a `Person`, singly or as a list.
+ *
+ * DERIVED, NOT CHOSEN. `tests/services/person-id-normalization.test.ts`
+ * recomputes this map from `src/generated/openapi-stripped.json` — every
+ * property whose schema is `#/components/schemas/Person`, or an array of it —
+ * and fails when the two disagree. A spec that gains a Person-valued key
+ * therefore fails the build here rather than silently going un-normalized, and
+ * the guard is the point: this list is the second one of its kind, the first
+ * (`creator` and `participants`, and nothing else) was wrong from the day it
+ * was written, and this one went stale within the hour — `performed_by` on
+ * `Event` and `WebhookEvent` arrived with the account event feed while the
+ * branch was rebasing, and the check named it before anyone read the diff.
+ *
+ * It was wrong because it copied the wrong reference mechanism. Go has TWO ways
+ * a person id becomes a number, and only one of them is the normalizer:
+ * `generated.Person.Id` is a `types.FlexibleInt64`
+ * (`go/pkg/generated/client.gen.go:2367`, the only one in the whole generated
+ * model), so EVERY `Person`-typed field converts at decode, wherever it sits.
+ * `normalizeEmbeddedPeopleJSON` exists only for the WRAPPER paths —
+ * notifications, gauges, todos — whose `basecamp.Person.ID` is a plain `int64`
+ * and so has no decoder to convert it. `creator`/`participants` is that
+ * wrapper's list, not the model's; porting it as if it were the model's left
+ * `assignees`, `subscribers` and `completion_subscribers` un-normalized, and
+ * `writableIdList` (`merge-safe.ts`) then refused the string — a merge-safe
+ * todo update blocked by data BC3 controls.
+ *
+ * TypeScript has no decoder at all, so the normalizer has to stand in for both
+ * of Go's mechanisms, which is why the set is the SPEC's Person-valued keys
+ * rather than the wrapper's two. Two knock-on differences from Go's decoder
+ * path, both additive and both deliberate: a syntax refusal writes a
+ * `system_label` here where Go's generated decoder drops the label (Go's own
+ * note, `go/pkg/basecamp/todos.go:68-77`, tells callers on that path to use
+ * `personable_type` instead — this SDK keeps the richer of Go's two behaviours);
+ * and a RANGE refusal leaves the string here where `FlexibleInt64` fails the
+ * read outright (`go/pkg/types/flexible_int64.go:43`), the same residual
+ * {@link personIdNumber} argues, since nothing downstream here can fail a read
+ * that already returned.
+ *
+ * The arity is carried too, and honoured, because both of Go's mechanisms carry
+ * it: the wrapper pass asserts `.(map[string]any)` for the creator and `[]any`
+ * for participants (`go/pkg/basecamp/normalize.go:85-95`), and the decoder is
+ * typed — `Assignees []Person` refuses a non-array outright. An object under
+ * `assignees` is a malformed body to the reference, not a person, and this does
+ * not invent one there. No key in the spec is both shapes, and the drift check
+ * pins that too, so a key that becomes both fails here rather than quietly
+ * picking one.
+ */
+export const PERSON_VALUED_KEYS: ReadonlyMap<string, "object" | "array"> = new Map([
+  ["approver", "object"],
+  ["assignees", "array"],
+  ["booster", "object"],
+  ["completer", "object"],
+  ["completion_subscribers", "array"],
+  ["creator", "object"],
+  ["granted", "array"],
+  ["participants", "array"],
+  ["performed_by", "object"],
+  ["person", "object"],
+  ["revoked", "array"],
+  ["subscribers", "array"],
+] as const);
+
+/**
  * Normalizes Person-shaped objects in API responses.
  *
  * The BC3 API conflates real Person records (numeric id) with system actors
@@ -140,41 +203,44 @@ function isJSONObject(value: unknown): value is Record<string, unknown> {
  *
  * 1. **By `personable_type`** (`normalizePersonIds`, `:16-29`) — any object at
  *    any depth carrying that key.
- * 2. **By structural position** (`normalizeEmbeddedPersonIds`, `:83-104`) — the
- *    `creator` object and each element of the `participants` array, on any
- *    object at any depth, WHETHER OR NOT it has a `personable_type`.
+ * 2. **By structural position** — every key in {@link PERSON_VALUED_KEYS}, on
+ *    any object at any depth, WHETHER OR NOT it has a `personable_type`. Go
+ *    spells this one twice over: `normalizeEmbeddedPersonIds` (`:83-104`) for
+ *    the wrapper paths' `creator`/`participants`, and `FlexibleInt64` at decode
+ *    for every other `Person`-typed field. The set is derived from the spec and
+ *    drift-checked; see {@link PERSON_VALUED_KEYS} for why it is not the
+ *    wrapper's two names.
  *
- * The second pass is not redundant and Go's comment says why (`:78-82`):
- * embedded creator/participants people frequently omit `personable_type`, so
- * the first pass skips exactly the payloads the second exists to fix. Missing it
- * was observable in this SDK and in no other: every other port has a runtime
- * decoder behind the normalizer — Kotlin's `FlexibleLongSerializer`, Swift's
- * `FlexibleInt`, Rust's `flexible_i64`, Python's `_decoded_flexible_int64`,
- * Ruby's `person_from_wire` — that converts the string at read time whichever
- * pass did or did not touch it. TypeScript has none, so an un-normalized
- * `creator.id` reached the caller as the STRING `"007"` in a field typed
- * `number`, where the reference and the other five give `7`. It also made the
- * one honest string this normalizer does leave behind — the unrepresentable
- * large id — unreadable as a signal, because `typeof person.id === "string"`
- * could equally mean "nobody looked at this".
+ * The second way in is not redundant and Go's comment says why (`:78-82`):
+ * embedded people frequently omit `personable_type`, so the first way skips
+ * exactly the payloads the second exists to fix. Missing it was observable in
+ * this SDK and in no other: every other port has a runtime decoder behind the
+ * normalizer — Kotlin's `FlexibleLongSerializer`, Swift's `FlexibleInt`, Rust's
+ * `flexible_i64`, Python's `_decoded_flexible_int64`, Ruby's `person_from_wire`
+ * — that converts the string at read time whichever pass did or did not touch
+ * it. TypeScript has none, so an un-normalized `creator.id` reached the caller
+ * as the STRING `"007"` in a field typed `number`, where the reference and the
+ * other five give `7`. It also made the one honest string this normalizer does
+ * leave behind — the unrepresentable large id — unreadable as a signal, because
+ * `typeof person.id === "string"` could equally mean "nobody looked at this".
  *
- * ONE walk here where Go runs two, and the two are equivalent because
- * {@link coercePersonId} is idempotent and both passes apply it unchanged.
+ * ONE walk here where Go runs two passes, and they are equivalent because
+ * {@link coercePersonId} is idempotent and every pass applies it unchanged.
  * After JSON.parse the body is a tree, so each node is reached once per pass;
- * the set of coerced nodes is the union of "has personable_type" and "is a
- * creator/participant of its parent", identical either way; and a node in both
- * sets is coerced twice in both schemes, which is a no-op the second time
+ * the set of coerced nodes is the union of "has personable_type" and "sits
+ * under a Person-valued key of its parent", identical either way; and a node in
+ * both sets is coerced twice in both schemes, which is a no-op the second time
  * (`id` is no longer a string) or the same leave-in-place decision on the same
  * string. Only the order differs, and idempotence is what makes order not
  * matter. Doing it in one pass rather than two keeps this off a second full
  * walk of every response body.
  *
- * One deliberate breadth difference from the reference, pre-dating the second
- * pass: Go runs `normalizeEmbeddedPeopleJSON` on the notification, gauge and
- * todo paths specifically, while this runs on every response body. That is
- * wider, never narrower, and it is wider in the accepting direction — a string
- * id Go would only coerce on those paths is coerced here everywhere, rather
- * than reaching a `number`-typed field as a string.
+ * One deliberate breadth difference from the reference, pre-dating all of this:
+ * Go runs `normalizeEmbeddedPeopleJSON` on the notification, gauge and todo
+ * paths specifically, while this runs on every response body. That is wider,
+ * never narrower, and it is wider in the accepting direction — a string id Go
+ * would coerce on those paths and DECODE everywhere else is coerced here
+ * everywhere, rather than reaching a `number`-typed field as a string.
  */
 function normalizePersonIds(obj: unknown): void {
   if (!obj || typeof obj !== "object") return;
@@ -183,20 +249,23 @@ function normalizePersonIds(obj: unknown): void {
     return;
   }
   const rec = obj as Record<string, unknown>;
-  // Pass 1's test: the key's presence, whatever its value (`:19`).
+  // The first way in: the key's presence, whatever its value (`:19`).
   if ("personable_type" in rec) coercePersonId(rec);
-  // Pass 2's: a `creator` that is an object and a `participants` that is an
-  // array, each element of it an object. Go's type assertions skip anything
-  // else — a `creator: "me"` or a `participants: {}` is not a person (`:85-95`).
-  if (isJSONObject(rec.creator)) coercePersonId(rec.creator);
-  if (Array.isArray(rec.participants)) {
-    for (const participant of rec.participants) {
-      if (isJSONObject(participant)) coercePersonId(participant);
+  for (const [key, val] of Object.entries(rec)) {
+    // The second: a Person-valued key holding the shape the spec gives it.
+    // Go's type assertions skip anything else — a `creator: "me"` or a
+    // `participants: {}` is not a person (`:85-95`), and neither is a list
+    // element that is not an object.
+    const arity = PERSON_VALUED_KEYS.get(key);
+    if (arity === "object") {
+      if (isJSONObject(val)) coercePersonId(val);
+    } else if (arity === "array" && Array.isArray(val)) {
+      for (const element of val) {
+        if (isJSONObject(element)) coercePersonId(element);
+      }
     }
-  }
-  // Both passes then recurse through every child, so a creator nested under a
-  // comment under an event is reached at whatever depth it sits (`:96-102`).
-  for (const val of Object.values(rec)) {
+    // Then recurse through every child, so a creator nested under a comment
+    // under an event is reached at whatever depth it sits (`:96-102`).
     if (typeof val === "object" && val !== null) normalizePersonIds(val);
   }
 }

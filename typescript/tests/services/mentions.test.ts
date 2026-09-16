@@ -601,6 +601,55 @@ describe("mentionedPersonIds", () => {
     expect(perAmpersand).toBeGreaterThanOrEqual(1);
   });
 
+  it("refuses a text whose mention names an id no number can carry", () => {
+    // The read side's residual, made visible instead of silent. Measured
+    // against the reference: this text names five people to Go and five to
+    // Ruby, and named TWO here with no error, because three of the ids are
+    // past 2^53 and were dropped on the floor. A short list is
+    // indistinguishable from a shorter text, and it feeds
+    // `mentioned_person_ids`, which decides who gets notified — so the drop
+    // had to become something a caller can see. The id is named in the
+    // message; rounding it would have reported a different person.
+    const mention = (raw: string): string => attachment(legacySGID(`gid://bc3/Person/${raw}`));
+    const text = [
+      mention("7"),
+      mention("9007199254740991"),
+      mention("9007199254740992"),
+      mention("9007199254740993"),
+      mention("9223372036854775807"),
+      mention("0009223372036854775807"),
+    ].join("");
+
+    const err = (() => {
+      try {
+        mentionedPersonIds(text);
+        return undefined;
+      } catch (e: unknown) {
+        return e;
+      }
+    })();
+    expect(err).toBeInstanceOf(BasecampError);
+    expect((err as BasecampError).code).toBe("api_error");
+    expect((err as BasecampError).message).toMatch(/9007199254740992/);
+
+    // The two it can carry are still read, when nothing unreadable is present.
+    expect(mentionedPersonIds(mention("7") + mention("9007199254740991"))).toEqual([
+      7, 9007199254740991,
+    ]);
+  });
+
+  it("skips an id past int64 silently, because the reference skips it too", () => {
+    // NOT the case above. `strconv.ParseInt` raises on a magnitude past int64,
+    // Go's PersonIDFromSGID answers "not a person"
+    // (go/pkg/basecamp/mentions.go:257-259), and a non-mention is not something
+    // to refuse a whole text over. The two are one digit apart in the same
+    // direction, and only the int64 bound separates them.
+    const mention = (raw: string): string => attachment(legacySGID(`gid://bc3/Person/${raw}`));
+    expect(mentionedPersonIds(mention("9223372036854775808"))).toEqual([]);
+    expect(mentionedPersonIds(mention("99999999999999999999999"))).toEqual([]);
+    expect(() => mentionedPersonIds(mention("9223372036854775807"))).toThrow(BasecampError);
+  });
+
   it("stops at an unterminated comment or tag rather than guessing", () => {
     const sgid = personSGID(VICTOR);
     expect(mentionedPersonIds(`<div><!-- ${attachment(sgid)}`)).toEqual([]);
