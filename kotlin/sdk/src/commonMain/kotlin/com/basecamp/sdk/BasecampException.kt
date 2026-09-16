@@ -347,7 +347,7 @@ sealed class BasecampException(
      * |---------------------------------|-------------|-----|
      * | `no_recording_type`             | `usage`     | refused from the caller's own arguments, before any request |
      * | `unknown_recording_type`        | `usage`     | same |
-     * | `bucket_mismatch`               | `usage`     | the pointer's bucket and the recording's disagree |
+     * | `bucket_mismatch`               | `usage`     | the read FOUND the recording, in another bucket — nothing is absent, so not `not_found`; the caller's pointer is what failed (card 41) |
      * | `recording_unresolved`          | `not_found` | every visible candidate answered 404 |
      * | `campfire_discovery_incomplete` | `usage`     | see below |
      *

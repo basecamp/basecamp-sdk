@@ -211,6 +211,10 @@ _COMPOSITE_CODE: dict[str, ErrorCode] = {
     "no_recording_type": ErrorCode.USAGE,
     "unknown_recording_type": ErrorCode.USAGE,
     # The pointer names a bucket the recording is not in -- also the caller's.
+    # Settled across every port on card 41 after Rust shipped `not_found` here:
+    # the read FOUND the recording, in another bucket, and returned it, so
+    # nothing is absent and `not_found` would be a false claim.
+    # https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308966794
     "bucket_mismatch": ErrorCode.USAGE,
     # Every visible candidate answered 404: the recording is not there.
     "recording_unresolved": ErrorCode.NOT_FOUND,

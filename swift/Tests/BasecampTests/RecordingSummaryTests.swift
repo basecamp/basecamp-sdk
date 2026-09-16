@@ -549,9 +549,10 @@ final class RecordingSummaryTests: XCTestCase {
     /// card 40.
     func testEachVerdictCarriesTheCodeAndExitStatusItSettledOn() {
         let ref = RecordingRef(bucketId: 1, recordingId: 2, eventType: "chat.line.created")
-        let classified: [(RecordingSummaryError, String?, Int?)] = [
+        let classified: [(RecordingSummaryError, String, Int)] = [
             (.noRecordingType(ref), "usage", 1),
             (.unknownRecordingType(ref), "usage", 1),
+            (.bucketMismatch(ref, 9), "usage", 1),
             (
                 .recordingUnresolved(
                     UnresolvedRecording(
@@ -578,17 +579,9 @@ final class RecordingSummaryTests: XCTestCase {
             XCTAssertEqual(error.canonicalCode, code, error.message)
             XCTAssertEqual(error.exitCode, exit, error.message)
             XCTAssertTrue(
-                canonical.contains(error.canonicalCode ?? ""),
-                "\(error.canonicalCode ?? "nil") is outside SPEC §6's closed taxonomy")
+                canonical.contains(error.canonicalCode),
+                "\(error.canonicalCode) is outside SPEC §6's closed taxonomy")
         }
-
-        // bucket_mismatch is deliberately UNCLASSIFIED: the merged ports
-        // disagree (Rust says not_found where Python, Ruby, Kotlin and
-        // TypeScript say usage), and the SDK with no code slot is not the one
-        // to settle it.
-        let mismatch = RecordingSummaryError.bucketMismatch(ref, 9)
-        XCTAssertNil(mismatch.canonicalCode)
-        XCTAssertNil(mismatch.exitCode)
     }
 
     // MARK: - Helpers

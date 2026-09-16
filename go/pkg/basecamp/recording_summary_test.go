@@ -1842,6 +1842,7 @@ func TestRecordingSummaryCode_PerIdentity(t *testing.T) {
 	}{
 		{"no_recording_type", &RecordingRoutingError{Err: ErrNoRecordingType}, CodeUsage, ExitUsage},
 		{"unknown_recording_type", &RecordingRoutingError{Err: ErrUnknownRecordingType}, CodeUsage, ExitUsage},
+		{"bucket_mismatch", &BucketMismatchError{Ref: RecordingRef{BucketID: 1, RecordingID: 2}, BucketID: 9}, CodeUsage, ExitUsage},
 		{"recording_unresolved", &UnresolvedRecordingError{BucketID: 1, RecordingID: 2}, CodeNotFound, ExitNotFound},
 		{"campfire_discovery_incomplete", &CampfireDiscoveryIncompleteError{BucketID: 1, RecordingID: 2, Reason: "r"}, CodeUsage, ExitUsage},
 	}
@@ -1864,13 +1865,6 @@ func TestRecordingSummaryCode_PerIdentity(t *testing.T) {
 	wrapped := fmt.Errorf("while admitting an event: %w", &CampfireDiscoveryIncompleteError{BucketID: 1, RecordingID: 2, Reason: "r"})
 	if code, ok := RecordingSummaryCode(wrapped); !ok || code != CodeUsage {
 		t.Errorf("wrapped verdict: got (%q, %v), want (%q, true)", code, ok, CodeUsage)
-	}
-
-	// bucket_mismatch is deliberately UNCLASSIFIED: the merged ports disagree
-	// (Rust says not_found where Python, Ruby, Kotlin and TypeScript say
-	// usage), and the SDK with no code slot is not the one to settle it.
-	if code, ok := RecordingSummaryCode(&BucketMismatchError{}); ok {
-		t.Errorf("bucket_mismatch: got %q classified; want it left to the caller until the ports agree", code)
 	}
 
 	// A read that failed on its own terms is not a composite verdict at all.

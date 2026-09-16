@@ -364,20 +364,20 @@ describe("recordings.summarize", () => {
 
       expect(err).toBeInstanceOf(BucketMismatchError);
       expect((err as BucketMismatchError).kind).toBe("bucket_mismatch");
-      // The CODE too, and pinned against the ports already on `main` rather
-      // than against this port's own taste: Python's `_COMPOSITE_CODE` and
-      // Kotlin's `recordingSummaryCode` both map this identity to `usage` —
-      // the pointer named a bucket the recording is not in, which is the
-      // caller's argument, not the API misbehaving. The fixture pins
-      // `errorType` (this `kind`) and says nothing about the code, so nothing
-      // but a cross-SDK check catches a seventh answer here.
+      // The CODE too. Settled for every SDK on card 41 after Rust shipped
+      // `not_found` where this port and three others shipped `usage`:
+      // https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308966794
+      // `not_found` says the recording is not there, which is false — the read
+      // FOUND it, in another bucket, and returned it. The shared fixture now
+      // pins this code per identity, so a seventh answer fails a case rather
+      // than needing a cross-SDK check to notice it.
       expect((err as BasecampError).code).toBe("usage");
+      expect((err as BasecampError).retryable).toBe(false);
       expect((err as BasecampError).httpStatus).toBeUndefined();
-      // The code's observable consequence, which is what a divergence would
-      // actually cost: `exitCode` derives from it, so this verdict exited 7
-      // ("API error") where Python's and Kotlin's exit 1 — a CLI reporting an
-      // outage for a caller's own bad pointer. Asserted here because the code
-      // string alone is a name; the exit status is what a script branches on.
+      // The code's observable consequence, which is what a divergence actually
+      // costs: `exitCode` derives from it, so this verdict exited 2 in Rust
+      // where it exits 1 here. Asserted because the code string alone is a
+      // name; the exit status is what a script branches on.
       expect((err as BasecampError).exitCode).toBe(1);
 
       // The other identities' codes, ASSERTED rather than described: the

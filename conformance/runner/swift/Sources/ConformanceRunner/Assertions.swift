@@ -115,11 +115,10 @@ private func compositeHopIsOnContract(
 struct SemanticError {
     let type: String
     let message: String
-    /// The canonical SPEC §6 code the SDK classifies this verdict under, and
-    /// nil when it classifies it as nothing. Taken from the SDK rather than
-    /// from a table here, so a fixture pinning the code pins what a consumer
-    /// of the SDK would read.
-    let code: String?
+    /// The canonical SPEC §6 code the SDK classifies this verdict under. Taken
+    /// from the SDK rather than from a table here, so a fixture pinning the
+    /// code pins what a consumer of the SDK would read.
+    let code: String
 }
 
 /// Maps the Swift SDK's composite error onto that shared vocabulary.
@@ -515,11 +514,7 @@ func evaluateAssertions(
             // of the closed taxonomy, so a fixture still cannot satisfy a
             // canonical code with a semantic name.
             if let semanticError, assertion.type == "errorCode" {
-                guard let actual = semanticError.code else {
-                    return .fail(
-                        "Expected error code \"\(expected)\", but this SDK classifies "
-                            + "\"\(semanticError.type)\" under no canonical code")
-                }
+                let actual = semanticError.code
                 // The claim that `canonicalCode` only ever returns a member of
                 // the closed taxonomy is CHECKED here rather than trusted: a
                 // composite that minted a name of its own would otherwise

@@ -345,15 +345,17 @@ export class CampfireDiscoveryIncompleteError extends RecordingSummaryError {
  * changed, which is the half of a rename that editor hover and generated API
  * docs actually show a consumer.
  *
- * The ports on `main` that have a code slot do NOT agree here, and the
- * disagreement is bigger than the value: `exitCode` derives from the code, so
- * this identity exits 1 in Python and Kotlin (`usage`) and 2 in Rust
- * (`not_found`, "the recording the pointer names is not where it was looked
- * for"). Go and Swift keep the composite's verdicts out of the taxonomy
- * entirely. This port follows the majority and the reasoning it can defend —
- * the pointer is the caller's — and the split is recorded rather than smoothed
- * over, in the README table and in {@link https://github.com/basecamp/basecamp-sdk/pull/884 | the port's PR},
- * because no one port can settle it.
+ * The ports on `main` did NOT agree here, and the disagreement was bigger than
+ * the value: `exitCode` derives from the code, so this identity exited 1 in
+ * Python, Ruby, Kotlin and this port (`usage`) and 2 in Rust (`not_found`, "the
+ * recording the pointer names is not where it was looked for"). Settled for
+ * every SDK on {@link https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308966794 | card 41} as `usage`, and on the
+ * argument rather than the four-to-one majority: `not_found` says the recording
+ * is not there, which is false — the read FOUND it, in another bucket, and
+ * returned it. Nothing is absent. What failed is the caller's pointer.
+ *
+ * The shared fixture now pins the code alongside the identity, which is what
+ * let three ports reach three answers here with every case green.
  */
 export class BucketMismatchError extends RecordingSummaryError {
   readonly ref: RecordingRef;
@@ -363,19 +365,10 @@ export class BucketMismatchError extends RecordingSummaryError {
   constructor(ref: RecordingRef, bucketId: number) {
     super(
       "bucket_mismatch",
-      // Surveyed across every merged port rather than argued from first
-      // principles — and the first version of this survey read two of the
-      // three that have a code slot, which is how it came to describe them as
-      // agreeing. Python's `_COMPOSITE_CODE` and Kotlin's
-      // `recordingSummaryCode` map this identity to `usage`; Rust's
-      // `RecordingSummaryError::code` maps it to `not_found`. Two to one, and
-      // `usage` is the one whose reasoning this port can defend: the pointer is
-      // the caller's.
-      //
-      // The code is a CLOSED taxonomy a consumer branches on, and the fixture
-      // pins `errorType` — this `kind` — and says nothing about the code, which
-      // is exactly why three ports could diverge without a single case failing
-      // anywhere.
+      // Settled for every SDK on card 41; see the class doc above for the
+      // argument. The fixture now pins this code per identity, so a port that
+      // reaches a different answer can no longer do so with a green suite —
+      // which is exactly how three ports came to diverge here.
       "usage",
       `recording is not in the requested bucket: recording ${ref.recordingId} is in bucket ${bucketId}, not ${ref.bucketId}`,
     );

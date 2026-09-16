@@ -697,7 +697,12 @@ async fn a_read_from_another_bucket_is_refused() {
             ..
         })
     ));
-    assert_eq!(error.code(), ErrorCode::NotFound);
+    // `usage`, settled on card 41 after this port shipped `not_found` where the
+    // other four shipped `usage`: the read FOUND the recording, in another
+    // bucket, and returned it, so nothing is absent. What failed is the
+    // caller's pointer.
+    assert_eq!(error.code(), ErrorCode::Usage);
+    assert!(!error.is_retryable());
 }
 
 #[tokio::test]
