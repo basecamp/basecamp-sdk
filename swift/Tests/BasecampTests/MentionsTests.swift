@@ -881,10 +881,20 @@ final class MentionsTests: XCTestCase {
         XCTAssertEqual(decoded("a&Tab;b"), ["a\u{09}b"])
         XCTAssertEqual(Mentions.personIds(in: "<bc-attachment sgid=\"\(p)-&NewLine;-sig\"></bc-attachment>"), [])
 
-        // And the invariant that makes the whole class impossible rather than
-        // this one row correct: no name in Go's table expands to nothing, so an
-        // empty value means the format ate it.
+        // And the whole table against one number that came from Go rather than
+        // from here. A count is satisfied by 2,229 rows of anything — it was,
+        // while `NewLine;` was empty — and a hand-picked sample only covers what
+        // someone thought to pick. This is an FNV-1a of every row, name and
+        // value, in byte order, computed by running each of Go's 2,229 names
+        // through `html.UnescapeString` and hashing the result. It is not
+        // derived from `entityTable`, which is what makes it evidence: any wrong
+        // expansion anywhere moves it.
         XCTAssertEqual(entityTable.count, 2229)
+        XCTAssertEqual(
+            entityTableFingerprint(), 0x3502_2B4E_D371_2543,
+            "the table is no longer the one html.UnescapeString produces")
+        // Kept beside it because a fingerprint says THAT something moved and
+        // these say what: the two rows a line-oriented format destroys.
         XCTAssertFalse(entityTable.values.contains(""), "a row whose value the format destroyed")
         XCTAssertEqual(entityTable["NewLine;"], "\u{0A}")
         XCTAssertEqual(entityTable["Tab;"], "\u{09}")
@@ -893,6 +903,30 @@ final class MentionsTests: XCTestCase {
         // the content already mentions this person, so Go adds nothing.
         let content = "<bc-attachment sgid=\"\(p)--&not\"></bc-attachment>"
         XCTAssertEqual(try Mentions.adding([person(42, "\(p)--\u{AC}")], to: content), content)
+    }
+
+
+    /// FNV-1a over every row of ``entityTable``, name and value, NUL-separated,
+    /// in byte order — the same walk the Go side takes over
+    /// `html.UnescapeString`'s answers.
+    private func entityTableFingerprint() -> UInt64 {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        func mix(_ bytes: some Sequence<UInt8>) {
+            for byte in bytes {
+                hash ^= UInt64(byte)
+                hash = hash &* 0x100_0000_01b3
+            }
+        }
+        let sorted = entityTable.sorted {
+            Array($0.key.utf8).lexicographicallyPrecedes(Array($1.key.utf8))
+        }
+        for (name, value) in sorted {
+            mix(name.utf8)
+            mix([0])
+            mix(value.utf8)
+            mix([0])
+        }
+        return hash
     }
 
     /// A byte-order mark at the head of a JSON string is a byte Go keeps and

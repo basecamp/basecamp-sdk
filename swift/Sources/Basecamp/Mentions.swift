@@ -900,24 +900,30 @@ private func decodeUnpaddedBase64(_ value: [UInt8]) -> Data? {
     return Data(base64Encoded: Data(padded))
 }
 
-/// Decodes the HTML character references that can appear in an attribute value.
+/// Decodes the HTML character references that can appear in an attribute value,
+/// against Go's WHOLE table.
 ///
-/// Narrower than Go's `html.UnescapeString`, and narrow along a line that cannot
-/// change an outcome. The value this is applied to is an `attachable_sgid` — so
-/// after the decode it is trimmed, split on the last `--`, and base64-decoded.
-/// Only two kinds of reference can change what that produces:
+/// It was once a 41-row subset, on an argument that is worth keeping because it
+/// was carefully made, checked, and wrong. The argument: the value this is
+/// applied to is an `attachable_sgid`, so after the decode it is trimmed, split
+/// on the last `--` and base64-decoded, and only two kinds of reference can
+/// change what that produces — one expanding to a base64-alphabet character, and
+/// one expanding to WHITESPACE, which the trim then erases. Every other
+/// reference expands to something the alphabet does not contain, so the envelope
+/// fails to decode whether it was expanded or left verbatim: same answer,
+/// reached differently.
 ///
-///   * one that expands to a character the base64 alphabet contains, and
-///   * one that expands to WHITESPACE, because the trim then erases it — which
-///     is how `sgid="&nbspBAh7…"` names a person in Go and would name nobody
-///     under a table that did not know `&nbsp`.
+/// That is true of the DECODE. It is false three functions away, where
+/// `adding(_:to:)` compares the content's decoded sgid BYTE-FOR-BYTE against the
+/// person's — and Go's expansion DELETES the reference's bytes where a narrower
+/// table keeps them. `<payload>--&not` is a mention Go sees as already present
+/// and the subset added a second time. **An equivalence argument is scoped to
+/// the operation it was proved over**, and this one was inherited by a byte
+/// comparison that never held it.
 ///
-/// Every other reference expands to something the alphabet does not contain, so
-/// the envelope fails to decode whether it was expanded or left verbatim: same
-/// answer, reached differently. The table below is exactly those two kinds, and
-/// every entry in it was read off `html.UnescapeString` rather than guessed —
-/// which is how `&hyphen;` and `&dash;` are absent (both name U+2010, not ASCII
-/// `-`) and how `&ThickSpace;` comes to be two scalars.
+/// So `&hyphen;` and `&dash;` ARE expanded now — to U+2010, which is still not
+/// ASCII `-`, so the verdict never changes and the bytes always did. That
+/// distinction is the whole of the finding.
 /// Walked as UTF-8 BYTES, like `html.unescapeEntity` and unlike every earlier
 /// version of this. A `Character` is a grapheme cluster, so a combining mark on
 /// a digit makes `5` + U+0301 ONE Character that is not a digit — and the scan
