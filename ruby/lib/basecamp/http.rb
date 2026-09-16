@@ -14,24 +14,51 @@ module Basecamp
 
     # Normalizes Person-shaped objects in parsed JSON.
     # For objects with personable_type and a string id:
-    # - Numeric strings: coerced to Integer, no system_label
+    # - Signed decimal strings: coerced to Integer, no system_label
     # - Non-numeric sentinels (e.g. "basecamp"): id becomes 0, system_label preserves original
+    # - Numeric overflow: left as the string, for the reader to refuse
     def self.normalize_person_ids(obj)
       case obj
       when Hash
-        if obj.key?("personable_type") && obj["id"].is_a?(String)
-          raw_id = obj["id"]
-          numeric = Integer(raw_id, exception: false)
-          if numeric
-            obj["id"] = numeric
-          else
-            obj["system_label"] = raw_id
-            obj["id"] = 0
-          end
-        end
+        coerce_person_id(obj) if obj.key?("personable_type") && obj["id"].is_a?(String)
         obj.each_value { |v| normalize_person_ids(v) }
       when Array
         obj.each { |item| normalize_person_ids(item) }
+      end
+    end
+
+    # One Person-shaped object's string id, by the reference's grammar.
+    #
+    # SIGNED DECIMAL, not Ruby's Integer(). That method detects a base from the
+    # literal and tolerates surrounding space and underscores, so it read
+    # "0x10" as 16, "0b11" as 3, "1_2" as 12 and " 7" as 7 where the reference
+    # reads every one of them as a non-numeric sentinel and zeroes it. Worst of
+    # the set is "010": the reference parses base 10 and gets 10, Ruby detected
+    # octal and got 8 — not a refusal against an acceptance but two different
+    # PEOPLE, either of which a caller could then mention.
+    #
+    # This runs before either composite sees the value, so the strict decoding
+    # they do could never have seen the original: the normalizer had already
+    # replaced it. Measured against strconv.ParseInt(s, 10, 64) over the shapes
+    # above; the two agree everywhere else.
+    #
+    # Overflow is left as a String on purpose, which is what the reference does:
+    # the id is out of range for the field, so the reader refuses it rather than
+    # this silently substituting a sentinel.
+    def self.coerce_person_id(obj)
+      raw = obj["id"]
+      # Bounded before conversion: this runs over EVERY decoded response, and a
+      # body may be 50 MB, so a long digit run built an arbitrarily large
+      # Integer here before anything decided to discard it.
+      parsed = Ids.bounded_decimal(raw)
+      case parsed
+      when :not_decimal
+        obj["system_label"] = raw
+        obj["id"] = 0
+      when :overflow
+        nil # left as the string, for the reader to refuse
+      else
+        obj["id"] = parsed
       end
     end
 
@@ -225,7 +252,12 @@ module Basecamp
       wrapper = nil
       events = paginated_enumerator(path, key: key, params: params, operation: operation, \
         max_items: max_items) do |first_data|
-        wrapper = first_data.reject { |k, _| k == key }
+        # The wrapper is the same body the page items came out of, so it takes
+        # the same rule: a null body is an empty wrapper, not a crash. This is
+        # the site the previous null sweep did not reach — `nil.reject` raised
+        # NoMethodError out of a public method where the reference reads a zero
+        # value and reports no events.
+        wrapper = first_data.is_a?(Hash) ? first_data.reject { |k, _| k == key } : {}
       end
       wrapper.merge(key => events)
     end
@@ -372,20 +404,90 @@ module Basecamp
     # bare-array pagination, or the named key's array otherwise.
     def extract_page_items(data, key:, page:)
       if key.nil?
+        # Bare-array pagination, so the body must BE the array. It was returned
+        # verbatim, and the caller's loop then did `items.each_with_index` on
+        # it: a scalar, a boolean or a null body raised NoMethodError out of a
+        # public list method, and an object returned its key/value pairs as
+        # though they were records. An empty object was the worst of the set,
+        # because it silently paginated to zero items — a composite that reads
+        # "no rows" as "nothing exists" then reports absent what it never
+        # managed to read.
+        # A null body is an EMPTY page, not a malformed one. The reference
+        # decodes JSON `null` into a slice as the nil slice with no error, so a
+        # listing that comes back null is "no rows" there. Rejecting it turned
+        # that into an ApiError and, for Campfire discovery, into a failed read
+        # where the contract has an empty one.
+        return [] if data.nil?
+
+        unless data.is_a?(Array)
+          raise Basecamp::ApiError.new(
+            # The CLASS only. MergeSafe.describe appends up to 500 bytes of the
+            # value, and here the value is a whole paginated page — customer
+            # data in an exception message, which travels into logs and bug
+            # reports. The shape is what a caller needs; the contents are not.
+            "Paginated response (page #{page}) is #{data.class}, not a list",
+            hint: "This operation paginates over a bare JSON array; a body of another shape cannot be read.",
+            retryable: false
+          )
+        end
+
         data
       else
+        # Same rule as the bare-array branch above: the reference decodes JSON
+        # `null` as the zero value, so a null body is an empty page rather than
+        # a malformed one — and anything that is not an object cannot be asked
+        # for a key at all. `data.key?` raised NoMethodError on nil and on a
+        # scalar, and TypeError on an array, straight out of a public method.
+        return [] if data.nil?
+
+        unless data.is_a?(Hash)
+          raise Basecamp::ApiError.new(
+            "Paginated response (page #{page}) is #{data.class}, not an object",
+            hint: "This operation paginates over the #{key.inspect} key of a JSON object; " \
+                  "a body of another shape cannot be read.",
+            retryable: false
+          )
+        end
+
         unless data.key?(key)
           warn "[Basecamp SDK] paginate: expected key '#{key}' not found in response (page #{page})"
         end
-        data[key] || []
+        items = data[key]
+        # The VALUE at the key takes the same rule as the envelope above, and
+        # the guard added with that one stopped a line short. A scalar or a
+        # boolean here reached the caller's `each_with_index` as a native
+        # exception out of a public method, and an OBJECT paginated over its
+        # key/value pairs as though they were records — which is the hazard this
+        # method's own comment writes down for the bare-array branch, live one
+        # `else` away from it.
+        return [] if items.nil?
+
+        unless items.is_a?(Array)
+          raise Basecamp::ApiError.new(
+            "Paginated response (page #{page}) has a #{items.class} at #{key.inspect}, not a list",
+            hint: "This operation paginates over the #{key.inspect} key of a JSON object; " \
+                  "a value of another shape cannot be read.",
+            retryable: false
+          )
+        end
+
+        items
       end
     end
 
     # Parses the X-Total-Count header, returning 0 when absent or malformed.
     def parse_total_count(headers)
-      Integer(headers["X-Total-Count"] || headers["x-total-count"], 10)
-    rescue ArgumentError, TypeError
-      0
+      raw = headers["X-Total-Count"] || headers["x-total-count"]
+      return 0 unless raw.is_a?(String)
+
+      # The reference reads this with Atoi, which takes a signed decimal and
+      # returns 0 on anything else — so a negative, an overflow or a padded
+      # value is 0 there and was the number itself here. And nothing caps a
+      # HEADER: the body has a 50 MB ceiling, so this was the LESS defended of
+      # the sites the person-id sweep hardened, reached on the first response of
+      # every paginated call.
+      count = Ids.bounded_decimal(raw)
+      count.is_a?(Integer) && count.positive? ? count : 0
     end
 
     def build_faraday_client
@@ -792,8 +894,17 @@ module Basecamp
       # since 1*DIGIT has no upper bound and no digit string is malformed for
       # its length.
       if value.match?(/\A\d+\z/)
-        seconds = value.to_i
-        return seconds.positive? ? [ seconds, MAX_RETRY_AFTER_SECONDS ].min : nil
+        # Bounded before conversion, which is what the reference does here too
+        # — its own comment says "the width test comes before ParseInt so no
+        # conversion can overflow". So this is a contract divergence rather
+        # than a hardening choice: the gate existed there and not here, and the
+        # comment above fixed the consequence (sleep raising on a bignum)
+        # rather than the conversion that produced it.
+        seconds = Ids.bounded_decimal(value, signed: false)
+        return MAX_RETRY_AFTER_SECONDS if seconds == :overflow
+        return nil unless seconds.is_a?(Integer) && seconds.positive?
+
+        return [ seconds, MAX_RETRY_AFTER_SECONDS ].min
       end
 
       # Try parsing as HTTP-date. Rounded UP (SPEC §6 step 2): truncating a

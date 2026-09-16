@@ -289,6 +289,126 @@ class HttpPaginationMetaTest < Minitest::Test
     assert_not enum.meta.truncated
   end
 
+  def test_the_total_count_header_is_read_as_the_reference_reads_it
+    # A HEADER has no size cap — the body has a 50 MB ceiling and this does not
+    # — so an unbounded conversion here was the less defended of the sites the
+    # person-id sweep hardened, and it is read on the first response of every
+    # paginated call.
+    #
+    # The reference reads it with Atoi: a signed decimal, 0 on anything else.
+    # Ruby's Integer() returned the number itself for a negative, an overflow
+    # and a padded value.
+    { "42" => 42, "0" => 0, "-1" => 0, " 7" => 0, "9223372036854775808" => 0,
+      "#{"9" * 25}" => 0, "not-a-number" => 0, "0x10" => 0, "007" => 7 }.each do |header, expected|
+      stub_get("/things.json", response_body: [ { "id" => 1 } ], headers: { "X-Total-Count" => header })
+
+      assert_equal expected, @http.paginate("/things.json").meta.total_count, "a header of #{header.inspect}"
+      WebMock.reset!
+    end
+  end
+
+  def test_a_huge_total_count_header_is_bounded_rather_than_converted
+    # On the clock, because the answer is 0 either way and only the cost
+    # differs — the same reason the id bound needed a timing assertion.
+    stub_get("/things.json", response_body: [ { "id" => 1 } ],
+                             headers: { "X-Total-Count" => "9" * 2_000_000 })
+
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+    assert_equal 0, @http.paginate("/things.json").meta.total_count
+
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - elapsed
+
+    assert_operator elapsed, :<, 1.0, "a two-million-digit header took #{elapsed.round(3)}s"
+  end
+
+  def test_a_paginated_body_that_is_not_a_list_fails_with_a_basecamp_error
+    # extract_page_items returned the parsed body verbatim and the caller's loop
+    # indexed it, so a scalar, a boolean or a null raised NoMethodError out of a
+    # public list method and an OBJECT paginated over its key/value pairs as
+    # though they were records. The widest-blast-radius guard on this branch had
+    # no test naming it — its null branch was killed only incidentally by a
+    # Campfire-discovery test one layer up.
+    [ '"scalar"', "5", "true", "{}" ].each do |body|
+      stub_get("/things.json", response_body: body)
+
+      error = assert_raises(Basecamp::ApiError, "a bare-list body of #{body}") do
+        @http.paginate("/things.json").to_a
+      end
+
+      assert_not error.retryable?
+      assert_match(/not a list/, error.message)
+      # The body is NOT echoed: a whole paginated page is customer data, and an
+      # error message travels into logs and bug reports.
+      assert_not_includes error.message, "scalar"
+      WebMock.reset!
+    end
+  end
+
+  def test_a_null_paginated_body_is_an_empty_page_at_both_branches
+    # The reference decodes JSON null as the zero value, so a null body is "no
+    # rows" rather than a failed read — at the bare-list branch, at the keyed
+    # branch, and in the wrapper that paginate_wrapped builds from the same
+    # body. The first was fixed a commit before the other two, which is how the
+    # third site came to raise NoMethodError from `nil.reject`.
+    stub_get("/things.json", response_body: "null")
+
+    assert_empty @http.paginate("/things.json").to_a
+    WebMock.reset!
+
+    stub_get("/progress.json", response_body: "null")
+    result = @http.paginate_wrapped("/progress.json", key: "events")
+
+    assert_kind_of Hash, result
+    assert_empty result["events"].to_a
+  end
+
+  def test_a_keyed_paginated_body_that_is_not_an_object_fails_with_a_basecamp_error
+    [ '"scalar"', "5", "[1,2]" ].each do |body|
+      stub_get("/progress.json", response_body: body)
+
+      error = assert_raises(Basecamp::ApiError, "a keyed body of #{body}") do
+        @http.paginate_wrapped("/progress.json", key: "events")
+      end
+
+      assert_match(/not an object/, error.message)
+      assert_not error.retryable?
+      assert_not_includes error.message, "scalar"
+      WebMock.reset!
+    end
+  end
+
+  def test_a_keyed_page_whose_value_is_not_a_list_fails_with_a_basecamp_error
+    # The guard for the ENVELOPE stopped one line short of the value at the
+    # key, so `{"events": 5}` reached the caller's each_with_index as a
+    # NoMethodError and `{"events": {}}` paginated to zero items — silently
+    # reading "no rows" out of a body that could not be read, which is the
+    # hazard this very method's comment writes down for the bare-array branch.
+    [ "5", '"abc"', "true", "{}", '{"a":1}' ].each do |value|
+      stub_get("/progress.json", response_body: %({"person":{"id":7},"events":#{value}}))
+
+      error = assert_raises(Basecamp::ApiError, "an events value of #{value}") do
+        @http.paginate_wrapped("/progress.json", key: "events")["events"].to_a
+      end
+
+      assert_match(/at "events"/, error.message)
+      assert_not error.retryable?
+      WebMock.reset!
+    end
+  end
+
+  def test_a_keyed_page_with_a_null_or_absent_value_is_an_empty_page
+    # null and absent are the zero value there, not a malformed body.
+    [ %({"person":{"id":7},"events":null}), %({"person":{"id":7}}) ].each do |body|
+      stub_get("/progress.json", response_body: body)
+      result = @http.paginate_wrapped("/progress.json", key: "events")
+
+      assert_empty result["events"].to_a, body
+      assert_equal({ "id" => 7 }, result["person"])
+      WebMock.reset!
+    end
+  end
+
   def test_paginate_wrapped_shape_survives_with_meta
     stub_get(
       "/progress.json",

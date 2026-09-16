@@ -85,4 +85,40 @@ class ZeitwerkTest < Minitest::Test
     assert_equal Basecamp::Services::SchedulesService, \
                  Basecamp::Services::SchedulesService.instance_method(:replace_entry).owner
   end
+
+  # And for recordings: the generated class owns the status writes, and the
+  # prepended module contributes the `summarize` projection.
+  def test_recordings_extensions_prepended
+    assert_includes Basecamp::Services::RecordingsService.ancestors, \
+                    Basecamp::Services::RecordingsExtensions
+    assert Basecamp::Services::RecordingsService.ancestors.index(Basecamp::Services::RecordingsExtensions) <
+           Basecamp::Services::RecordingsService.ancestors.index(Basecamp::Services::RecordingsService),
+           "extensions must be prepended (before the class in the ancestor chain)"
+  end
+
+  def test_recordings_composite_surface_is_reachable
+    assert_equal Basecamp::Services::RecordingsExtensions, \
+                 Basecamp::Services::RecordingsService.instance_method(:summarize).owner
+    assert_equal Basecamp::Services::RecordingsService, \
+                 Basecamp::Services::RecordingsService.instance_method(:archive).owner
+  end
+
+  # And for comments: the generated class owns `create`, which the prepended
+  # `create_with_mentions` composes rather than takes over.
+  def test_comments_extensions_prepended
+    assert_includes Basecamp::Services::CommentsService.ancestors, \
+                    Basecamp::Services::CommentsExtensions
+    assert Basecamp::Services::CommentsService.ancestors.index(Basecamp::Services::CommentsExtensions) <
+           Basecamp::Services::CommentsService.ancestors.index(Basecamp::Services::CommentsService),
+           "extensions must be prepended (before the class in the ancestor chain)"
+  end
+
+  def test_comments_composite_surface_is_reachable
+    assert_equal Basecamp::Services::CommentsExtensions, \
+                 Basecamp::Services::CommentsService.instance_method(:create_with_mentions).owner
+    assert_equal Basecamp::Services::CommentsExtensions, \
+                 Basecamp::Services::CommentsService.instance_method(:expand_mentions).owner
+    assert_equal Basecamp::Services::CommentsService, \
+                 Basecamp::Services::CommentsService.instance_method(:create).owner
+  end
 end
