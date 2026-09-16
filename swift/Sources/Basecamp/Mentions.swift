@@ -643,11 +643,14 @@ extension Mentions {
 /// would hide the string boundary from a `Character`-level scan, which is the
 /// same trap the gid parser was in.
 ///
-/// **One divergence is left, knowingly.** `JSONSerialization` caps nesting at
-/// 511 where Go's scanner caps it at 10,000, so an envelope nested deeper than
-/// 511 is an sgid Go decodes and this does not. That is the vanishing
-/// direction, it costs a payload nobody mints, and closing it would mean
-/// replacing the parser rather than pre-processing for it. Measured on
+/// **One divergence is left, knowingly.** `JSONSerialization` refuses nesting
+/// deeper than 511, so an envelope nested deeper than that is an sgid Go decodes
+/// and this does not. The window is narrow and worth stating exactly rather than
+/// by citing the scanner's own 10,000 limit, which never applies: the 4,096-byte
+/// payload bound refuses the input first, and the deepest envelope that fits is
+/// 2,016 arrays. So the gap is depths 512 through 2,016 — the vanishing
+/// direction, a payload nobody mints, and closing it would mean replacing the
+/// parser rather than pre-processing for it. Measured on
 /// swift-corelibs-foundation; the macOS `NSJSONSerialization` this ships against
 /// may differ, which is the other reason not to build on it.
 private func jsonEnvelopeBytes(_ raw: [UInt8]) -> Data? {
@@ -767,6 +770,10 @@ private let asciiFive = UInt8(ascii: "5")
 private let asciiDash = UInt8(ascii: "-")
 private let asciiPlus = UInt8(ascii: "+")
 private let asciiUnderscore = UInt8(ascii: "_")
+private let asciiAmpersand = UInt8(ascii: "&")
+private let asciiSemicolon = UInt8(ascii: ";")
+private let asciiLowerX = UInt8(ascii: "x")
+private let asciiUpperX = UInt8(ascii: "X")
 
 private func isSpaceByte(_ c: UInt8) -> Bool {
     c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D || c == 0x0C
@@ -845,30 +852,45 @@ private func decodeUnpaddedBase64(_ value: [UInt8]) -> Data? {
 /// every entry in it was read off `html.UnescapeString` rather than guessed —
 /// which is how `&hyphen;` and `&dash;` are absent (both name U+2010, not ASCII
 /// `-`) and how `&ThickSpace;` comes to be two scalars.
+/// Walked as UTF-8 BYTES, like `html.unescapeEntity` and unlike every earlier
+/// version of this. A `Character` is a grapheme cluster, so a combining mark on
+/// a digit makes `5` + U+0301 ONE Character that is not a digit — and the scan
+/// stopped a digit early, decoding the same reference to a different character
+/// than Go does. `&#455\u{0301};` is `Ǉ` in Go and was `-` here, which is the
+/// sgid SEPARATOR: `<payload>-&#455\u{0301};x` named nobody in Go and person 7
+/// here. It reaches the write side too, where `adding(_:to:)` dedupes against
+/// the content's decoded sgids, so the same divergence silently drops a mention
+/// the reference inserts — the outcome the package comment forbids.
+///
+/// The comment below said "a digit is an ASCII BYTE, tested the way Go tests
+/// it", and that was true of the digit TEST and false of the walk around it.
 private func unescapeEntities(_ value: String) -> String {
-    guard value.contains("&") else { return value }
+    let bytes = Array(value.utf8)
+    guard bytes.contains(asciiAmpersand) else { return value }
 
-    var out = ""
-    out.reserveCapacity(value.count)
-    var rest = Substring(value)
-    while let amp = rest.firstIndex(of: "&") {
-        out += rest[..<amp]
-        let after = rest.index(after: amp)
-        guard let (replacement, end) = entityAt(rest, from: after) else {
-            out.append("&")
-            rest = rest[after...]
+    var out: [UInt8] = []
+    out.reserveCapacity(bytes.count)
+    var index = 0
+    while index < bytes.count {
+        guard bytes[index] == asciiAmpersand else {
+            out.append(bytes[index])
+            index += 1
             continue
         }
-        out += replacement
-        rest = rest[end...]
+        guard let (replacement, end) = entityAt(bytes, from: index + 1) else {
+            out.append(asciiAmpersand)
+            index += 1
+            continue
+        }
+        out.append(contentsOf: replacement)
+        index = end
     }
-    out += rest
-    return out
+    return String(decoding: out, as: UTF8.self)
 }
 
 /// Reads one character reference starting just after its `&`, returning the
 /// expansion and the index after it. Nil when there is no reference there.
-private func entityAt(_ text: Substring, from start: Substring.Index) -> (String, Substring.Index)? {
+private func entityAt(_ bytes: [UInt8], from start: Int) -> ([UInt8], Int)? {
     // Numeric, ported from Go's `unescapeEntity` rather than from a reading of
     // what it ought to do — the boundary is not guessable. `&#9x` is LITERAL
     // (only one character consumed after `&#`) while `&#10x` is a newline and
@@ -877,7 +899,8 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
     // (`&#133;` is an ellipsis, NOT the NEL that would have been trimmed), and
     // NUL, the surrogates and anything past U+10FFFF become U+FFFD.
     //
-    // A digit is an ASCII BYTE, tested the way Go tests it. `Character` has a
+    // A digit is an ASCII byte and so is the WALK, which is the harder half:
+    // see the note on `unescapeEntities`. `Character` also has a
     // `hexDigitValue`, and reaching for it is the obvious move and wrong: it
     // accepts the fullwidth forms U+FF10–U+FF19 and U+FF21–U+FF26/U+FF41–U+FF46,
     // which Go and HTML5 both refuse. That is not a curiosity — it re-opens the
@@ -891,26 +914,29 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
     // back inside the valid range is a character Go writes. Latching to U+FFFD
     // instead reported one mention fewer than the contract on 357 of 20,000
     // fuzzed inputs.
-    if start < text.endIndex, text[start] == "#" {
+    if start < bytes.count, bytes[start] == asciiHash {
         var consumed = 2  // Go's `i`, counting the "&" and the "#"
-        var cursor = text.index(after: start)
+        var cursor = start + 1
         var hex = false
-        if cursor < text.endIndex, text[cursor] == "x" || text[cursor] == "X" {
+        if cursor < bytes.count, bytes[cursor] == asciiLowerX || bytes[cursor] == asciiUpperX {
             hex = true
-            cursor = text.index(after: cursor)
+            cursor += 1
             consumed += 1
         }
 
         var value: Int32 = 0
-        while cursor < text.endIndex {
-            let c = text[cursor]
-            cursor = text.index(after: cursor)
+        while cursor < bytes.count {
+            let c = bytes[cursor]
+            cursor += 1
             consumed += 1
             if let digit = asciiDigitValue(c, hex: hex) {
                 value = value &* (hex ? 16 : 10) &+ digit
                 continue
             }
-            if c != ";" { consumed -= 1; cursor = text.index(before: cursor) }
+            if c != asciiSemicolon {
+                consumed -= 1
+                cursor -= 1
+            }
             break
         }
         guard consumed > 3 else { return nil }  // "No characters matched."
@@ -926,7 +952,7 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
             scalarValue = 0xFFFD
         }
         guard let scalar = Unicode.Scalar(UInt32(scalarValue)) else { return nil }
-        return (String(Character(scalar)), cursor)
+        return (Array(String(scalar).utf8), cursor)
     }
 
     // Named. A name is alphanumeric — `emsp13` is one — and is matched against
@@ -936,21 +962,17 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
     // name, but `nbsp` is, and Go expands it.
     var cursor = start
     var length = 0
-    // Counted, not re-measured: `String.distance` is O(k), so calling it in the
-    // loop condition makes a bounded scan quadratic in its own bound.
-    while cursor < text.endIndex, length < maxEntityNameLength, text[cursor].isASCII,
-        text[cursor].isLetter || text[cursor].isNumber
-    {
-        cursor = text.index(after: cursor)
+    while cursor < bytes.count, length < maxEntityNameLength, isEntityNameByte(bytes[cursor]) {
+        cursor += 1
         length += 1
     }
     guard start < cursor else { return nil }
 
     // With its semicolon, any name in the table.
-    if cursor < text.endIndex, text[cursor] == ";",
-        let replacement = namedEntities[String(text[start..<cursor])]
+    if cursor < bytes.count, bytes[cursor] == asciiSemicolon,
+        let replacement = namedEntities[String(decoding: bytes[start..<cursor], as: UTF8.self)]
     {
-        return (replacement, text.index(after: cursor))
+        return (Array(replacement.utf8), cursor + 1)
     }
     // Without one, only the legacy names allow it — longest first, and no
     // longer than the longest legacy name. Go bounds the same descent with
@@ -959,16 +981,28 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
     var candidate = cursor
     var candidateLength = length
     while candidateLength > longestLegacyEntityName {
-        candidate = text.index(before: candidate)
+        candidate -= 1
         candidateLength -= 1
     }
     while candidate > start {
-        if let replacement = legacyEntities[String(text[start..<candidate])] {
-            return (replacement, candidate)
+        if let replacement = legacyEntities[String(decoding: bytes[start..<candidate], as: UTF8.self)] {
+            return (Array(replacement.utf8), candidate)
         }
-        candidate = text.index(before: candidate)
+        candidate -= 1
     }
     return nil
+}
+
+/// What may appear in a character reference's name: ASCII alphanumerics, as
+/// `unescapeEntity` reads them.
+private func isEntityNameByte(_ c: UInt8) -> Bool {
+    switch c {
+    case asciiZero...asciiNine, UInt8(ascii: "A")...UInt8(ascii: "Z"),
+        UInt8(ascii: "a")...UInt8(ascii: "z"):
+        return true
+    default:
+        return false
+    }
 }
 
 /// Longer than any name in the table below, and short enough that a stray `&`

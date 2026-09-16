@@ -885,6 +885,110 @@ final class MentionsTests: XCTestCase {
     }
 
 
+    /// A combining mark on a digit truncated the character-reference scan, and
+    /// the reference it truncated to was the sgid SEPARATOR.
+    ///
+    /// `unescapeEntities` was the last `Character`-level walk in the module.
+    /// `4`,`5`,`5` followed by U+0301 is three digits and a mark to Go's byte
+    /// scan — `&#455` is `Ǉ` — and to a grapheme walk the third digit and the
+    /// mark are ONE `Character` that is not a digit, so the scan stopped at
+    /// `&#45`, which is `-`. Two sides, two different characters, from the same
+    /// eight bytes.
+    ///
+    /// That made `<payload>-&#455\u{0301};x` an sgid Go reads as nobody and this
+    /// read as person 7, because the `-` it invented completed the `--` the
+    /// envelope splits on. It reaches the WRITE side as the mirror: `adding`
+    /// dedupes against the content's DECODED sgids, so a reference that decodes
+    /// differently here silently suppresses a mention Go inserts — which is the
+    /// outcome the package comment forbids in as many words.
+    ///
+    /// Nine references, measured through `MentionedPersonIDs`.
+    func testAGraphemeClusterCannotTruncateACharacterReference() {
+        let p = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNyIsInB1ciI6ImF0dGFjaGFibGUifX0"
+        func ids(_ sgid: String) -> [Int] {
+            Mentions.personIds(in: "<bc-attachment sgid=\"\(sgid)\"></bc-attachment>")
+        }
+        let mark = "\u{0301}"
+
+        // The mark ends the scan one digit early only if the walk is by
+        // grapheme. `&#455` is `Ǉ`, and `Ǉ` does not complete a separator.
+        XCTAssertEqual(ids("\(p)-&#455\(mark);x"), [])
+        XCTAssertEqual(ids("\(p)--&#45\(mark);"), [])
+        XCTAssertEqual(ids("\(p)-&#455;x"), [])
+        // And where the reference really is `-`, with or without a mark after
+        // the digits, the separator completes and the payload decodes.
+        XCTAssertEqual(ids("\(p)-&#45\(mark);x"), [7])
+        XCTAssertEqual(ids("\(p)-&#x2D\(mark);x"), [7])
+        XCTAssertEqual(ids("\(p)-&#45;x"), [7])
+        XCTAssertEqual(ids("\(p)--sig"), [7])
+        // The same truncation on a leading `&#32;`: expanded it is a space Go
+        // trims, truncated it leaves a mark that is not whitespace anywhere.
+        XCTAssertEqual(ids("&#32;\(p)--sig"), [7])
+        XCTAssertEqual(ids("&#32\(mark);\(p)--sig"), [])
+
+        // The write side, which is where the divergence costs a mention rather
+        // than inventing one: the content's tag decodes to something that is not
+        // this person's sgid, so Go inserts and so must this.
+        let content = "<p><bc-attachment sgid=\"\(p)-&#455\(mark);x\"></bc-attachment></p>"
+        let added = try? Mentions.adding([person(7, "\(p)--5\(mark);x")], to: content)
+        XCTAssertEqual(
+            added,
+            "<p><bc-attachment sgid=\"\(p)--5\(mark);x\"></bc-attachment> "
+                + "<bc-attachment sgid=\"\(p)-&#455\(mark);x\"></bc-attachment></p>")
+    }
+
+    /// The encoded-length bound, which nothing pinned.
+    ///
+    /// Go applies `maxSGIDEncodedBytes` to the ENCODED form, before any
+    /// normalization, so an oversized sgid costs no decode buffer. Dropping the
+    /// guard is permissive, not merely wasteful: `<payload>` followed by six
+    /// thousand `=` is refused there on length and would decode here, because
+    /// the trailing `=` are trimmed before anything else looks at it.
+    func testTheEncodedLengthBoundIsAppliedBeforeNormalization() {
+        let p = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNyIsInB1ciI6ImF0dGFjaGFibGUifX0"
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: p), 7, "the control")
+        XCTAssertNil(
+            Mentions.personId(fromAttachableSgid: p + String(repeating: "=", count: 6000)),
+            "trailing padding is trimmed, but only after the bound has refused it")
+        XCTAssertEqual(
+            Mentions.personId(fromAttachableSgid: p + String(repeating: "\r\n", count: 4000)), 7,
+            "but TRAILING CR/LF is whitespace, and the trim runs before the bound")
+        XCTAssertNil(
+            Mentions.personId(
+                fromAttachableSgid: String(p.prefix(40)) + String(repeating: "\r\n", count: 4000)
+                    + String(p.dropFirst(40))),
+            "interior CR/LF survives the trim, so the bound sees it and the decoder would not")
+        XCTAssertEqual(
+            Mentions.personId(fromAttachableSgid: p + String(repeating: "=", count: 10)), 7,
+            "a little padding is trimmed and decodes; it is the LENGTH that refuses the rest")
+    }
+
+    /// An UNTERMINATED opening tag is not a block, so the mention goes before
+    /// the content rather than inside it.
+    ///
+    /// `leadingBlockEnd` returns the index past `<p …>` only when the tag was
+    /// actually closed. Dropping that condition puts the mention after `<p a=`
+    /// — inside an attribute value that never ended — which is markup Go does
+    /// not write, and nothing pinned it.
+    ///
+    /// Measured through `WithMentions`, ten shapes.
+    func testAnUnterminatedOpeningTagIsNotABlock() throws {
+        let p = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNyIsInB1ciI6ImF0dGFjaGFibGUifX0"
+        let tag = "<bc-attachment sgid=\"\(p)\"></bc-attachment>"
+        func added(_ content: String) throws -> String {
+            try Mentions.adding([person(7, p)], to: content)
+        }
+        // Closed: the mention goes inside the block.
+        XCTAssertEqual(try added("<p>x</p>"), "<p>\(tag) x</p>")
+        XCTAssertEqual(try added("<p a=b>x"), "<p a=b>\(tag) x")
+        XCTAssertEqual(try added("<p/>x"), "<p/>\(tag) x")
+        XCTAssertEqual(try added("<p >x"), "<p >\(tag) x")
+        // Unterminated, or not a leading block at all: the mention is a prefix.
+        for content in ["<p a=", "<div", "<p", "x<p>", "<p a='b>", "<p a=\"b>"] {
+            XCTAssertEqual(try added(content), "\(tag) \(content)", content)
+        }
+    }
+
     /// Go trims the trailing `=` BEFORE decoding, and its decoder then refuses
     /// an `=` anywhere. Stripping newlines first instead turns `<payload>=\n`
     /// into `<payload>=`, trims that `=` as trailing, and accepts an envelope Go
