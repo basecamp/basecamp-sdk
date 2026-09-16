@@ -3880,10 +3880,13 @@ configured base origin with §8's Same-Origin Validation Algorithm, and rejects 
 downgrade (HTTPS → HTTP) — the same rule, for the same reason, as §8's pagination `Link`
 rejection: a cross-origin or downgraded URL in a response body must never redirect an
 authenticated request (SSRF and token leakage). A URL that fails validation is
-Terminal(`invalid_continuation`) — no request is issued to the failing URL, and the
-rejected URL is carried redacted (origin only) in the error; a URL that yields no complete
-origin renders the fixed token `unparsable` (§9 "Credential-Bearing Values Are Never
-Rendered"). There is no retry and no handler for this condition: a hostile continuation is
+Terminal(`invalid_continuation`) — no request is issued to the failing URL, and the error
+names only the violation class: no component of the rejected URL is rendered, because a
+hostile continuation is precisely the case where every component is hostile text and the
+server can reflect the caller's bearer into a scheme or host label as easily as into a
+path (§9 "Credential-Bearing Values Are Never Rendered"). The refused Location of a
+redirect reaches the seam's `redirect_refused` kind reduced to its origin as DATA, never a
+rendering. There is no retry and no handler for this condition: a hostile continuation is
 not an operable feed state.
 
 **Prevalidation does not cover redirects, so the poll seam must.** The underlying HTTP
@@ -4102,8 +4105,8 @@ resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
 
 - **Never log the ticket or the mint URL's query string** — the ticket rides in it, which
   makes the mint URL one of the credential-bearing values §9 "Credential-Bearing
-  Values Are Never Rendered" names. A dial failure renders that URL as its origin only,
-  projected from a parse (`unparsable` where there is none), and never chains the
+  Values Are Never Rendered" names. A dial failure names the policy class it violated
+  from a closed vocabulary, never any component of the URL, and never chains the
   transport's own error where a caller or runtime would render it. Poll and resume URLs
   are not credentials — polls authenticate with the bearer header — so `gap(resume_url)`
   and `catch_up_started(cursor)` carry them whole.
