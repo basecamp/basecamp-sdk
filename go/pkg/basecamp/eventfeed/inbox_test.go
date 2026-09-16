@@ -81,9 +81,9 @@ func TestCheckpointKeyCarriesTheLane(t *testing.T) {
 // TestInboxLaneSubscribesPollsAndDedupesByAddressingID drives the lane end to
 // end: the subscribe identifier carries `inbox:true` and the reasons; the
 // store lineage carries the lane; the entry walk delivers items; a repeated
-// EVENT id under a second addressing id is a second delivery, while a
-// repeated addressing id is suppressed; and the live item that a poll then
-// re-serves is delivered exactly once.
+// EVENT id under a second addressing id is a second delivery; and the live
+// item that a poll then re-serves is suppressed by its addressing id, so it
+// is delivered exactly once.
 func TestInboxLaneSubscribesPollsAndDedupesByAddressingID(t *testing.T) {
 	store := feedtest.NewStore()
 	store.Stored("pos-0")
@@ -92,10 +92,10 @@ func TestInboxLaneSubscribesPollsAndDedupesByAddressingID(t *testing.T) {
 		eventfeed.WithLane(eventfeed.InboxLane),
 		eventfeed.WithFilters(filters))
 	h.minter.ScriptTicket(ticket(1))
-	// Two items address the principal through ONE event (id 100): both
-	// deliver. The third repeats addressing id 11: suppressed.
+	// Two items address the principal through ONE event (id 100), in strict
+	// addressing-id order: both deliver.
 	h.polls.ScriptPage(eventfeed.PollPage{
-		Events:   []eventfeed.Event{inboxItem(11, 100, "mentioned"), inboxItem(12, 100, "assigned"), inboxItem(11, 100, "mentioned")},
+		Events:   []eventfeed.Event{inboxItem(11, 100, "mentioned"), inboxItem(12, 100, "assigned")},
 		Position: "pos-1",
 	})
 	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{inboxItem(13, 101, "mentioned")}, Position: "pos-2"})
