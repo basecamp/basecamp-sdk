@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::emit::{HEADER, check_cursor_key, doc_comment, string_literal, wrapped_items};
 use crate::model::{Field, FieldType, Model, Response, Role, Schema, Shape};
@@ -50,8 +50,9 @@ pub(crate) fn render(model: &Model) -> Result<String, String> {
     out.push_str(
         "use crate::types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveString};\n\n",
     );
+    let people = people(model);
     for schema in &model.schemas {
-        render_schema(&mut out, schema);
+        render_schema(&mut out, schema, &people);
         if let Some((key, item)) = envelopes.get(&schema.name) {
             writeln!(
                 out,
@@ -65,7 +66,25 @@ pub(crate) fn render(model: &Model) -> Result<String, String> {
     Ok(out)
 }
 
-fn render_schema(out: &mut String, schema: &Schema) {
+/// The shapes Go decodes as a person: a struct whose id is a required `FlexibleInt64`
+/// (`generated.Person.Id` is `types.FlexibleInt64`). Keyed on that marker rather than a name,
+/// so it reaches exactly what the reference's flexible decoder reaches — a person type whose id
+/// is a plain `int64` in Go (`UpcomingSchedulePerson`, `OutOfOfficePerson`, …) is not one.
+fn people(model: &Model) -> BTreeSet<String> {
+    model
+        .schemas
+        .iter()
+        .filter(|schema| match &schema.shape {
+            Shape::Struct(fields) => fields.iter().any(|field| {
+                field.required && !field.nullable && field.kind == FieldType::FlexibleInt64
+            }),
+            _ => false,
+        })
+        .map(|schema| schema.name.clone())
+        .collect()
+}
+
+fn render_schema(out: &mut String, schema: &Schema, people: &BTreeSet<String>) {
     match &schema.shape {
         Shape::Alias(kind) => {
             doc(out, schema, &format!("`{}`.", schema.name));
@@ -82,7 +101,7 @@ fn render_schema(out: &mut String, schema: &Schema) {
             writeln!(out, "pub type {} = Vec<u8>;\n", schema.name).unwrap();
         }
         Shape::Enum(values) => render_enum(out, schema, values),
-        Shape::Struct(fields) => render_struct(out, schema, fields),
+        Shape::Struct(fields) => render_struct(out, schema, fields, people),
     }
 }
 
@@ -96,7 +115,7 @@ fn doc(out: &mut String, schema: &Schema, fallback: &str) {
     }
 }
 
-fn render_struct(out: &mut String, schema: &Schema, fields: &[Field]) {
+fn render_struct(out: &mut String, schema: &Schema, fields: &[Field], people: &BTreeSet<String>) {
     doc(
         out,
         schema,
@@ -121,7 +140,30 @@ fn render_struct(out: &mut String, schema: &Schema, fields: &[Field]) {
             attributes.push(format!("rename = {}", string_literal(&field.wire_name)));
         }
         let kind = rust_type(&field.kind, field.recursive);
+        // A list of people reads a `null` element as the zero person, as Go's decoder does
+        // for a `[]Person` element; see `crate::types::person_list`.
+        let people_list = matches!(&field.kind, FieldType::List(item)
+            if matches!(item.as_ref(), FieldType::Named(name) if people.contains(name)));
         let declared = match (field.required, field.nullable, &field.kind) {
+            (true, true, FieldType::List(_)) if people_list => {
+                attributes.push(
+                    "deserialize_with = \"crate::types::person_list::deserialize_optional\"".into(),
+                );
+                format!("Option<{kind}>")
+            }
+            (true, false, FieldType::List(_)) if people_list => {
+                attributes
+                    .push("deserialize_with = \"crate::types::person_list::deserialize\"".into());
+                kind
+            }
+            (false, _, FieldType::List(_)) if people_list => {
+                attributes.push("default".into());
+                attributes.push(
+                    "deserialize_with = \"crate::types::person_list::deserialize_optional\"".into(),
+                );
+                attributes.push("skip_serializing_if = \"Option::is_none\"".into());
+                format!("Option<{kind}>")
+            }
             // Present-and-nullable: the key must be there, the value may be null. Serde's
             // missing-means-None shortcut is switched off so an absent key still fails.
             (true, true, FieldType::FlexInt) => {
@@ -139,7 +181,11 @@ fn render_struct(out: &mut String, schema: &Schema, fields: &[Field]) {
                     .push("deserialize_with = \"crate::types::flex_int::deserialize\"".into());
                 format!("Option<{kind}>")
             }
+            // An absent id is Go's zero value, `0`, and no error: `FlexibleInt64`'s reader is
+            // only called for a key that is there. An explicit `null` still reaches the reader
+            // and fails, as `ParseInt("")` fails it in the reference.
             (true, false, FieldType::FlexibleInt64) => {
+                attributes.push("default".into());
                 attributes
                     .push("deserialize_with = \"crate::types::flexible_i64::deserialize\"".into());
                 kind

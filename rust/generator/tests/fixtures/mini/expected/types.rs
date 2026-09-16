@@ -36,6 +36,7 @@ pub struct GetWidgetProgressResponseContent {
     /// `owner`.
     pub owner: Owner,
     /// `events`.
+    #[serde(deserialize_with = "crate::types::person_list::deserialize")]
     pub events: Vec<Widget>,
 }
 
@@ -55,7 +56,7 @@ pub type ListWidgetsResponseContent = Vec<Widget>;
 #[non_exhaustive]
 pub struct Widget {
     /// `id`.
-    #[serde(deserialize_with = "crate::types::flexible_i64::deserialize")]
+    #[serde(default, deserialize_with = "crate::types::flexible_i64::deserialize")]
     pub id: i64,
     /// `name`.
     pub name: String,
@@ -84,7 +85,11 @@ pub struct Widget {
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
     pub parent: Option<Owner>,
     /// `children`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub children: Option<Vec<Widget>>,
     /// `labels`.
     #[serde(default, skip_serializing_if = "Option::is_none")]

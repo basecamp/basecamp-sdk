@@ -189,6 +189,14 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
         guard let ps = properties[propName] as? [String: Any] else { return false }
         return requiredFields.contains(propName) && schemaIsNullable(ps)
     }
+    // A person (see `isPersonSchema`) reads an absent id as `0`, and a list of
+    // people reads a `null` element as the zero person. Synthesized Codable can
+    // do neither, so both take the explicit coding below.
+    let isPerson = isPersonSchema(schemaName, schemas: schemas)
+    let hasPersonList = orderedProps.contains { propName in
+        guard let ps = properties[propName] as? [String: Any] else { return false }
+        return personListElement(ps, schemas: schemas) != nil
+    }
 
     for propName in orderedProps {
         guard let propSchema = properties[propName] as? [String: Any] else { continue }
@@ -257,15 +265,82 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
 
     // Synthesized Codable treats an optional-typed property as decodeIfPresent
     // (missing OK) and omits nil on encode — which is wrong for a
-    // required-and-nullable member. Emit explicit coding only for such structs
-    // so every other model keeps its synthesized (unchanged) Codable.
-    if hasRequiredNullable {
-        lines.append(contentsOf: emitRequiredNullableCoding(orderedProps: orderedProps, properties: properties, requiredFields: requiredFields))
+    // required-and-nullable member. It is also unable to default a person's
+    // absent id or read a `null` element of a person list as the zero person.
+    // Emit explicit coding only for such structs so every other model keeps its
+    // synthesized (unchanged) Codable.
+    if hasRequiredNullable || isPerson || hasPersonList {
+        lines.append(contentsOf: emitRequiredNullableCoding(orderedProps: orderedProps, properties: properties, requiredFields: requiredFields, schemas: schemas, isPerson: isPerson))
     }
 
     lines.append("}")
+
+    if isPerson {
+        lines.append(contentsOf: emitZeroPerson(typeName: typeName, orderedProps: orderedProps, properties: properties, requiredFields: requiredFields))
+    }
+
     lines.append("")
     return lines.joined(separator: "\n")
+}
+
+/// Whether a schema is a person as the reference decodes one: an object whose
+/// id is a required, non-null flexible integer (`generated.Person.Id` is
+/// `types.FlexibleInt64`). Keyed on that marker, not on a name, so it reaches
+/// exactly what Go's flexible decoder reaches — `UpcomingSchedulePerson`,
+/// `OutOfOfficePerson` and the other person shapes whose id is a plain `int64`
+/// in Go are not persons here, and keep their strict decode.
+func isPersonSchema(_ schemaName: String, schemas: [String: Any]) -> Bool {
+    guard let schema = schemas[schemaName] as? [String: Any],
+          let properties = schema["properties"] as? [String: Any] else { return false }
+    let required = Set(schema["required"] as? [String] ?? [])
+    return properties.contains { name, value in
+        guard let ps = value as? [String: Any] else { return false }
+        return required.contains(name) && !schemaIsNullable(ps) && schemaToSwiftType(ps) == "FlexibleInt"
+    }
+}
+
+/// The person type a property lists, when the property is an array of
+/// non-null references to a person schema; `nil` otherwise.
+func personListElement(_ propSchema: [String: Any], schemas: [String: Any]) -> String? {
+    var base = propSchema
+    if let types = propSchema["type"] as? [Any] {
+        base["type"] = types.compactMap { $0 as? String }.first { $0 != "null" }
+    }
+    guard (base["type"] as? String) == "array",
+          let items = base["items"] as? [String: Any],
+          !schemaIsNullable(items),
+          let ref = items["$ref"] as? String else { return nil }
+    let name = resolveRef(ref)
+    return isPersonSchema(name, schemas: schemas) ? name : nil
+}
+
+/// Emits the `ZeroPerson` conformance: the value a `null` list element decodes
+/// to, which is Go's zero struct — every required member at its zero value.
+private func emitZeroPerson(typeName: String, orderedProps: [String], properties: [String: Any], requiredFields: Set<String>) -> [String] {
+    var args: [String] = []
+    for propName in orderedProps where requiredFields.contains(propName) {
+        guard let ps = properties[propName] as? [String: Any] else { continue }
+        let zero: String
+        if schemaIsNullable(ps) {
+            zero = "nil"
+        } else {
+            switch schemaToSwiftType(ps) {
+            case "FlexibleInt", "Int", "Int32", "Double": zero = "0"
+            case "String": zero = "\"\""
+            case "Bool": zero = "false"
+            case let t where t.hasPrefix("["): zero = "[]"
+            case let t:
+                fatalError("\(typeName).\(propName): no zero value for \(t) — a person's required member must have one")
+            }
+        }
+        args.append("\(toCamelCase(propName)): \(zero)")
+    }
+    return [
+        "",
+        "extension \(typeName): ZeroPerson {",
+        "    static var zero: \(typeName) { \(typeName)(\(args.joined(separator: ", "))) }",
+        "}",
+    ]
 }
 
 /// Emits explicit `CodingKeys` + `init(from:)` + `encode(to:)` for a struct
@@ -274,7 +349,7 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
 ///     JSON null -> nil) and `encode(value)` (nil -> explicit `"key": null`).
 ///   - required & non-null: `decode(T.self)` / `encode(value)`.
 ///   - optional: `decodeIfPresent` / `encodeIfPresent` (missing OK, nil omitted).
-private func emitRequiredNullableCoding(orderedProps: [String], properties: [String: Any], requiredFields: Set<String>) -> [String] {
+private func emitRequiredNullableCoding(orderedProps: [String], properties: [String: Any], requiredFields: Set<String>, schemas: [String: Any], isPerson: Bool) -> [String] {
     var lines: [String] = []
 
     // Emits bare `case camel` for every field. BaseService's decoder/encoder use
@@ -310,7 +385,22 @@ private func emitRequiredNullableCoding(orderedProps: [String], properties: [Str
         let camelName = toCamelCase(propName)
         let required = requiredFields.contains(propName)
         let nullable = schemaIsNullable(propSchema)
-        if required && nullable {
+        if let person = personListElement(propSchema, schemas: schemas) {
+            // A `null` element is the zero person (`decodePeople`, `PersonList.swift`).
+            if required && nullable {
+                lines.append("        guard container.contains(.\(camelName)) else { throw DecodingError.keyNotFound(CodingKeys.\(camelName), DecodingError.Context(codingPath: container.codingPath, debugDescription: \"\(propName) is required\")) }")
+                lines.append("        self.\(camelName) = try container.decodePeopleIfPresent([\(person)].self, forKey: .\(camelName))")
+            } else if required {
+                lines.append("        self.\(camelName) = try container.decodePeople([\(person)].self, forKey: .\(camelName))")
+            } else {
+                lines.append("        self.\(camelName) = try container.decodePeopleIfPresent([\(person)].self, forKey: .\(camelName))")
+            }
+        } else if isPerson && required && !nullable && baseType == "FlexibleInt" {
+            // Absent is Go's zero value, `0`: `FlexibleInt64`'s reader only runs
+            // for a key that is there. A present `null` still reaches the reader
+            // and fails the read, as `ParseInt("")` fails it in the reference.
+            lines.append("        self.\(camelName) = try container.contains(.\(camelName)) ? container.decode(FlexibleInt.self, forKey: .\(camelName)) : FlexibleInt(0)")
+        } else if required && nullable {
             // `decode(T?.self)` requires the key present but accepts null.
             lines.append("        self.\(camelName) = try container.decode(\(baseType)?.self, forKey: .\(camelName))")
         } else if required {

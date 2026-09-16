@@ -175,10 +175,12 @@ public struct FlexibleInt: Codable, Sendable, Hashable, CustomStringConvertible,
     /// A plain `int64` field has no `UnmarshalJSON` and reads both as `0`, which
     /// is why only the flexible reader draws the distinction. The asymmetry is
     /// the same one `ruby/lib/basecamp/ids.rb`'s `person_from_wire` documents,
-    /// measured there through the real decode path. Here it falls out of the
-    /// model shape rather than needing a branch: `Person.id` is a non-optional
-    /// `FlexibleInt`, so a `null` reaches this initializer and throws, and an
-    /// absent key is the container's `keyNotFound`, never this code.
+    /// measured there through the real decode path. Here the split is the
+    /// generated `Person`'s: its decoder reads `id` only when the key is present,
+    /// so a `null` reaches this initializer and throws, and an absent key is
+    /// `FlexibleInt(0)` without ever calling it (`ModelEmitter.swift`,
+    /// `isPersonSchema`). It used to be the container's `keyNotFound`, which
+    /// refused a person the reference reads as `0`.
     ///
     /// **Do not reach for SPEC §10's rule here.** A rich-text/upload `width` or
     /// `height` is a *different type* — a bare `Int32?`, decoded by the
@@ -195,11 +197,13 @@ public struct FlexibleInt: Codable, Sendable, Hashable, CustomStringConvertible,
     /// through every accessor a `SingleValueDecodingContainer` offers
     /// (`decode(Int.self)` yields `7` for both, `Double` `7.0` for both, and
     /// there is no access to the literal text), because `JSONDecoder` unboxes
-    /// through `Int(exactly: Double)`. The divergence is accepting-direction but
-    /// benign in the way that matters: it reads the *correct* id for a spelling
-    /// Go refuses, and can never produce the system actor or name a different
-    /// person. Closing it needs the raw number literal, which only a pre-decode
-    /// pass over the bytes can see.
+    /// through `Int(exactly: Double)`, and decoding `Decimal` does not help —
+    /// measured under Swift 6.1, `1024.0` and `1024` come back as the same
+    /// `Decimal`, exponent included. The divergence is accepting-direction: it
+    /// reads the id the number denotes for a spelling Go refuses, so it never
+    /// names a *different* person, but `0.0` and `-0.0` do read as the system
+    /// actor `0` where Go fails the read. Closing it needs the raw number
+    /// literal, which only a pre-decode pass over the bytes can see.
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let i = try? container.decode(Int.self) {

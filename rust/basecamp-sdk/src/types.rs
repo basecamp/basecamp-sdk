@@ -266,6 +266,46 @@ pub(crate) mod flexible_i64 {
     }
 }
 
+/// Reads a list of people the way the reference does. Go decodes `[]generated.Person`, and
+/// `encoding/json` leaves a `null` element as the zero `Person` — id `0`, empty name — rather
+/// than failing the read, so a merge-safe write that reads the list back sends `0` for it. The
+/// generator emits this for every member whose element type is a person (a struct with a
+/// required flexible id); a plain-`int64` person type in Go keeps the strict list.
+///
+/// Only the element is lenient. A `null` *list* is `None` as before, an element that is not an
+/// object still fails, and so does an element whose id is an explicit `null`.
+pub(crate) mod person_list {
+    use serde::{Deserialize, Deserializer};
+
+    /// A required list of people.
+    #[allow(dead_code)]
+    pub(crate) fn deserialize<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: Deserialize<'de> + Default,
+    {
+        Ok(zero_nulls(Vec::<Option<T>>::deserialize(deserializer)?))
+    }
+
+    /// An optional (or nullable) list of people: `null` is `None`.
+    pub(crate) fn deserialize_optional<'de, D, T>(
+        deserializer: D,
+    ) -> Result<Option<Vec<T>>, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: Deserialize<'de> + Default,
+    {
+        Ok(Option::<Vec<Option<T>>>::deserialize(deserializer)?.map(zero_nulls))
+    }
+
+    fn zero_nulls<T: Default>(elements: Vec<Option<T>>) -> Vec<T> {
+        elements
+            .into_iter()
+            .map(Option::unwrap_or_default)
+            .collect()
+    }
+}
+
 /// A string that must not end up in logs — a person's name or email address. It prints as
 /// `[REDACTED]`; call [`SensitiveString::expose`] to read it.
 #[derive(Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
@@ -964,5 +1004,33 @@ mod tests {
             serde_json::to_string(&secret).unwrap(),
             "\"jane@example.com\""
         );
+    }
+
+    /// The shape the generator emits for a *required* list of people. The model has none
+    /// today (every person list is optional), so this frame is what holds
+    /// `person_list::deserialize` to the rule its optional sibling is tested against.
+    #[derive(Deserialize, Default, Debug, PartialEq)]
+    struct Someone {
+        #[serde(default, deserialize_with = "flexible_i64::deserialize")]
+        id: i64,
+    }
+
+    #[derive(Deserialize)]
+    struct RequiredPeople {
+        #[serde(deserialize_with = "person_list::deserialize")]
+        people: Vec<Someone>,
+    }
+
+    #[test]
+    fn a_required_person_list_reads_a_null_element_as_the_zero_person() {
+        let read = |body: &str| serde_json::from_str::<RequiredPeople>(body).map(|r| r.people);
+        assert_eq!(
+            read(r#"{"people": [null, {"id": "7"}, {}]}"#).unwrap(),
+            vec![Someone { id: 0 }, Someone { id: 7 }, Someone { id: 0 }]
+        );
+        assert!(read(r#"{"people": null}"#).is_err());
+        assert!(read("{}").is_err());
+        assert!(read(r#"{"people": [5]}"#).is_err());
+        assert!(read(r#"{"people": [{"id": null}]}"#).is_err());
     }
 }
