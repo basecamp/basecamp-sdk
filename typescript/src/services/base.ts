@@ -79,20 +79,20 @@ function selectedPageResult<T>(
 }
 
 /**
- * Normalizes Person-shaped objects in API responses.
+ * Rewrites one Person-shaped object's string `id` in place.
  *
- * The BC3 API conflates real Person records (numeric id) with system actors
- * like LocalPerson (symbolic id: "basecamp", "campfire"). This function walks a
- * response tree and rewrites the `id` of any object that carries a
- * `personable_type` and a STRING `id`, by the one rule in `../person-id.js` —
- * Go's `strconv.ParseInt(s, 10, 64)` — matching `coercePersonID`
- * (`go/pkg/basecamp/normalize.go:38-68`) outcome for outcome:
+ * This is `coercePersonID` (`go/pkg/basecamp/normalize.go:38-68`), outcome for
+ * outcome, over the one rule in `../person-id.js` — Go's
+ * `strconv.ParseInt(s, 10, 64)`:
  *
  * - it reads a number: write the number, no `system_label` (`:58`)
  * - SYNTAX ("basecamp", " 7", "12.0", "1e3"): id `0`, the raw string kept as
  *   `system_label` (`:66-67`) — Go's non-numeric sentinel
  * - RANGE ("9223372036854775808"): leave the string exactly as it arrived
  *   (`:62-63`), so whoever reads it refuses rather than inventing an id
+ *
+ * An object whose `id` is already a number, or absent, is left alone — which is
+ * also what makes this IDEMPOTENT, and both passes below depend on that.
  *
  * The `^-?\d+$` + `Number.isSafeInteger` pair this replaces was wrong at both
  * ends. It refused the leading `+` that `ParseInt` takes, so `"+7"` — a real
@@ -105,6 +105,77 @@ function selectedPageResult<T>(
  * label). The 11 that remain are the unrepresentable-value rows
  * {@link personIdNumber} argues about.
  */
+function coercePersonId(rec: Record<string, unknown>): void {
+  if (typeof rec.id !== "string") return;
+  const idStr = rec.id;
+  const scan = scanPersonId(idStr);
+  if (scan.kind === "syntax") {
+    // Go's non-numeric sentinel, with the label the id came in as.
+    rec.system_label = idStr;
+    rec.id = 0;
+  } else if (scan.kind === "value") {
+    const id = personIdNumber(scan.value);
+    // `undefined` is an id Go read and a `number` cannot hold. Leaving the
+    // string is the RANGE treatment, for the reason at personIdNumber: a
+    // rounded id names a different person and `0` names the system actor,
+    // while the digits, left alone, name whoever they always named.
+    if (id !== undefined) rec.id = id;
+  }
+  // RANGE: nothing. The string stays put and the caller refuses it.
+}
+
+/** A JSON object — what Go's `.(map[string]any)` assertion accepts, and no array. */
+function isJSONObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Normalizes Person-shaped objects in API responses.
+ *
+ * The BC3 API conflates real Person records (numeric id) with system actors
+ * like LocalPerson (symbolic id: "basecamp", "campfire"), and it serializes
+ * person ids as strings in some payloads. This stands where
+ * `normalizeEmbeddedPeopleJSON` stands (`go/pkg/basecamp/normalize.go:117-134`),
+ * so it owns BOTH of the passes that function runs, and finds a person two ways:
+ *
+ * 1. **By `personable_type`** (`normalizePersonIds`, `:16-29`) — any object at
+ *    any depth carrying that key.
+ * 2. **By structural position** (`normalizeEmbeddedPersonIds`, `:83-104`) — the
+ *    `creator` object and each element of the `participants` array, on any
+ *    object at any depth, WHETHER OR NOT it has a `personable_type`.
+ *
+ * The second pass is not redundant and Go's comment says why (`:78-82`):
+ * embedded creator/participants people frequently omit `personable_type`, so
+ * the first pass skips exactly the payloads the second exists to fix. Missing it
+ * was observable in this SDK and in no other: every other port has a runtime
+ * decoder behind the normalizer — Kotlin's `FlexibleLongSerializer`, Swift's
+ * `FlexibleInt`, Rust's `flexible_i64`, Python's `_decoded_flexible_int64`,
+ * Ruby's `person_from_wire` — that converts the string at read time whichever
+ * pass did or did not touch it. TypeScript has none, so an un-normalized
+ * `creator.id` reached the caller as the STRING `"007"` in a field typed
+ * `number`, where the reference and the other five give `7`. It also made the
+ * one honest string this normalizer does leave behind — the unrepresentable
+ * large id — unreadable as a signal, because `typeof person.id === "string"`
+ * could equally mean "nobody looked at this".
+ *
+ * ONE walk here where Go runs two, and the two are equivalent because
+ * {@link coercePersonId} is idempotent and both passes apply it unchanged.
+ * After JSON.parse the body is a tree, so each node is reached once per pass;
+ * the set of coerced nodes is the union of "has personable_type" and "is a
+ * creator/participant of its parent", identical either way; and a node in both
+ * sets is coerced twice in both schemes, which is a no-op the second time
+ * (`id` is no longer a string) or the same leave-in-place decision on the same
+ * string. Only the order differs, and idempotence is what makes order not
+ * matter. Doing it in one pass rather than two keeps this off a second full
+ * walk of every response body.
+ *
+ * One deliberate breadth difference from the reference, pre-dating the second
+ * pass: Go runs `normalizeEmbeddedPeopleJSON` on the notification, gauge and
+ * todo paths specifically, while this runs on every response body. That is
+ * wider, never narrower, and it is wider in the accepting direction — a string
+ * id Go would only coerce on those paths is coerced here everywhere, rather
+ * than reaching a `number`-typed field as a string.
+ */
 function normalizePersonIds(obj: unknown): void {
   if (!obj || typeof obj !== "object") return;
   if (Array.isArray(obj)) {
@@ -112,23 +183,19 @@ function normalizePersonIds(obj: unknown): void {
     return;
   }
   const rec = obj as Record<string, unknown>;
-  if ("personable_type" in rec && typeof rec.id === "string") {
-    const idStr = rec.id as string;
-    const scan = scanPersonId(idStr);
-    if (scan.kind === "syntax") {
-      // Go's non-numeric sentinel, with the label the id came in as.
-      rec.system_label = idStr;
-      rec.id = 0;
-    } else if (scan.kind === "value") {
-      const id = personIdNumber(scan.value);
-      // `undefined` is an id Go read and a `number` cannot hold. Leaving the
-      // string is the RANGE treatment, for the reason at personIdNumber: a
-      // rounded id names a different person and `0` names the system actor,
-      // while the digits, left alone, name whoever they always named.
-      if (id !== undefined) rec.id = id;
+  // Pass 1's test: the key's presence, whatever its value (`:19`).
+  if ("personable_type" in rec) coercePersonId(rec);
+  // Pass 2's: a `creator` that is an object and a `participants` that is an
+  // array, each element of it an object. Go's type assertions skip anything
+  // else — a `creator: "me"` or a `participants: {}` is not a person (`:85-95`).
+  if (isJSONObject(rec.creator)) coercePersonId(rec.creator);
+  if (Array.isArray(rec.participants)) {
+    for (const participant of rec.participants) {
+      if (isJSONObject(participant)) coercePersonId(participant);
     }
-    // RANGE: nothing. The string stays put and the caller refuses it.
   }
+  // Both passes then recurse through every child, so a creator nested under a
+  // comment under an event is reached at whatever depth it sits (`:96-102`).
   for (const val of Object.values(rec)) {
     if (typeof val === "object" && val !== null) normalizePersonIds(val);
   }
