@@ -109,6 +109,18 @@ func NewLive(cfg *basecamp.Config, tokens basecamp.TokenProvider, accountID stri
 		if u.RawQuery != "" || u.Fragment != "" || u.ForceQuery || u.RawFragment != "" {
 			return nil, usageError("the base URL must carry no query or fragment")
 		}
+		// The rules below read the DECODED path, and the client sends the
+		// escaped one: `/api%2f` decodes to `/api/`, passes both of them,
+		// and goes on the wire as a request whose path is `/api%2f/...` —
+		// where the guard, anchored at `/api/`, finds no account segment
+		// and lets the 3xx through to be followed, off the API origin,
+		// with the request's query. RawPath is non-empty exactly when the
+		// escaped path is not the canonical encoding of the decoded one,
+		// so refusing it here closes every escaped spelling rather than
+		// the one that was found.
+		if u.RawPath != "" {
+			return nil, usageError("the base URL path must be canonical: no percent-encoded segments")
+		}
 		if strings.Contains(u.Path, "//") {
 			return nil, usageError("the base URL path must be canonical: no dot segments, no doubled slashes")
 		}

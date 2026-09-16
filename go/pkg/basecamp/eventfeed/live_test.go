@@ -637,6 +637,59 @@ func TestLivePolls_TheGuardRecognizesRoutesBeneathABasePath(t *testing.T) {
 	}
 }
 
+// TestNewLive_AnEscapedBasePathIsRefusedRatherThanMisanchored: the guard is
+// anchored at the base URL's DECODED path and the client sends the escaped
+// one, so a base URL whose two forms differ anchors the guard somewhere the
+// requests never go — `/api%2f` reads as `/api/` here and goes on the wire
+// as `/api%2f/...`, where the guard finds no account segment, passes the 3xx
+// through, and the HTTP stack follows it off the API origin with the
+// request's query. NewLive refuses that spelling and every other one, and
+// the base paths it still accepts are ones the guard covers: each answers
+// its 302 at the wire with zero egress.
+func TestNewLive_AnEscapedBasePathIsRefusedRatherThanMisanchored(t *testing.T) {
+	for _, suffix := range []string{"/api%2f", "/api%2f/", "/a%2Eb", "/%2e%2e/api"} {
+		t.Run("refused"+suffix, func(t *testing.T) {
+			cfg := basecamp.DefaultConfig()
+			cfg.BaseURL = "https://3.basecampapi.com" + suffix
+			if _, err := eventfeed.NewLive(cfg, &basecamp.StaticTokenProvider{Token: "t"}, "99999", eventfeed.AccountLane); err == nil {
+				t.Fatalf("NewLive accepted the base path %q, which anchors the guard where the requests do not go", suffix)
+			}
+		})
+	}
+	// The boundary the refusal must not overrun: a percent-encoding whose
+	// escaped form IS the canonical encoding of its decoded path anchors the
+	// guard correctly, and still refuses the hop with zero egress.
+	for _, suffix := range []string{"", "/api/v1", "/a%20b"} {
+		t.Run("covered"+suffix, func(t *testing.T) {
+			var sentinelHits atomic.Int32
+			sentinel := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				sentinelHits.Add(1)
+				jsonResponse(w, 200, `{"events":[],"position":"stolen"}`)
+			}))
+			t.Cleanup(sentinel.Close)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Location", sentinel.URL+"/99999/events.json?position=pos-0&token=leak")
+				w.WriteHeader(http.StatusFound)
+			}))
+			t.Cleanup(server.Close)
+			cfg := basecamp.DefaultConfig()
+			cfg.BaseURL = server.URL + suffix
+			live, err := eventfeed.NewLive(cfg, &basecamp.StaticTokenProvider{Token: "t"}, "99999", eventfeed.AccountLane, basecamp.WithMaxRetries(0))
+			if err != nil {
+				t.Fatalf("NewLive refused the base path %q: %v", suffix, err)
+			}
+			_, err = live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+			var pe *eventfeed.PollError
+			if !errors.As(err, &pe) || pe.Kind != eventfeed.PollRedirectRefused || pe.LocationOrigin != sentinel.URL {
+				t.Fatalf("error = %v, want redirect_refused carrying %q", err, sentinel.URL)
+			}
+			if sentinelHits.Load() != 0 {
+				t.Fatalf("the foreign origin received %d request(s), want zero egress", sentinelHits.Load())
+			}
+		})
+	}
+}
+
 // TestRedirectGuard_MatchesOnlyTheFeedRoutes: the guard claims exactly the
 // three feed routes beneath the configured base path — never a recording's
 // audit trail, whose path also ends in {id}/events.json, and never a route
