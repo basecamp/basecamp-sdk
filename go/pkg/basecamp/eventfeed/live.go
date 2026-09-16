@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -219,23 +221,43 @@ func mapMintError(err error, hop *refusedHop) error {
 		return &MintError{Kind: MintUnrecoverable, Err: errHopRefused}
 	}
 	if !errors.As(err, &apiErr) {
-		// A transport-level failure the generated call could not classify
-		// (DNS, TLS, a dropped connection): transient, it rides the
-		// reconnect cycle.
-		return &MintError{Kind: MintTransient, Err: err}
+		if isTransportFailure(err) {
+			// DNS, TLS, a dropped connection: transient, it rides the
+			// reconnect cycle.
+			return &MintError{Kind: MintTransient, Err: err}
+		}
+		// Anything else the generated call produced without a status — a
+		// 200 whose body did not decode, an empty response — is a
+		// deterministic outcome: a fresh mint answers the same way, so it
+		// is the malformed success §23 names.
+		return &MintError{Kind: MintUnrecoverable, Err: err}
 	}
 	switch {
 	case apiErr.HTTPStatus == http.StatusUnauthorized || apiErr.HTTPStatus == http.StatusForbidden:
 		return &MintError{Kind: MintUnauthorized, Err: err}
-	case apiErr.RetryAfter > 0:
+	case apiErr.Retryable && apiErr.RetryAfter > 0:
 		// A retryable outcome exhausted inside the seam whose last response
-		// carried a parsed Retry-After, whatever its status (§6).
+		// carried a parsed Retry-After, whatever its status (§6). Gated on
+		// the outcome being retryable at all: a header on a 404 names no
+		// wait worth taking.
 		return &MintError{Kind: MintThrottled, RetryAfter: time.Duration(apiErr.RetryAfter) * time.Second, Err: err}
 	case apiErr.Retryable || apiErr.Code == basecamp.CodeNetwork:
 		return &MintError{Kind: MintTransient, Err: err}
 	default:
 		return &MintError{Kind: MintUnrecoverable, Err: err}
 	}
+}
+
+// isTransportFailure reports an error the HTTP stack produced on the way to
+// or from the server — a url.Error or a net.Error — as opposed to one the
+// generated call produced from a response it received.
+func isTransportFailure(err error) bool {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr)
 }
 
 // livePolls is the PollSource over PollEvents or PollInbox.
@@ -368,7 +390,12 @@ func mapPollError(err error, hop *refusedHop) error {
 		return &PollError{Kind: PollGone, EpochAfterID: epoch, ResumeURL: gone.Resume, Err: err}
 	}
 	if !errors.As(err, &apiErr) {
-		return &PollError{Kind: PollTransient, Err: err}
+		if isTransportFailure(err) {
+			return &PollError{Kind: PollTransient, Err: err}
+		}
+		// A 200 that did not decode, or an empty response: the unexpected
+		// shape §23 maps to poll_failed, since re-polling draws it again.
+		return &PollError{Kind: PollUnrecoverable, Err: err}
 	}
 	switch {
 	case apiErr.HTTPStatus == http.StatusBadRequest:
@@ -378,7 +405,7 @@ func mapPollError(err error, hop *refusedHop) error {
 		return &PollError{Kind: PollFilterInvalid, Msg: apiErr.Message, Err: err}
 	case apiErr.HTTPStatus == http.StatusUnauthorized || apiErr.HTTPStatus == http.StatusForbidden:
 		return &PollError{Kind: PollUnauthorized, Err: err}
-	case apiErr.RetryAfter > 0:
+	case apiErr.Retryable && apiErr.RetryAfter > 0:
 		return &PollError{Kind: PollThrottled, RetryAfter: time.Duration(apiErr.RetryAfter) * time.Second, Err: err}
 	case apiErr.Retryable || apiErr.Code == basecamp.CodeNetwork:
 		return &PollError{Kind: PollTransient, Err: err}
@@ -407,6 +434,15 @@ func isCancellation(err error) bool {
 // know), so on the poll lane Event.Details is that projection — the push
 // lane, which decodes the frame itself, keeps the server's bytes whole.
 func eventFromFeed(fe basecamp.FeedEvent) (Event, error) {
+	// The generated model is value-typed, so a row missing a required member
+	// arrives as a zero value rather than a decode error; the push decoder
+	// refuses the same shapes, and a zero id would reach the dedupe ledger
+	// under a key nothing real can share.
+	if fe.ID < 1 || fe.BucketID < 1 || fe.CreatorID < 1 || fe.RecordingID < 1 ||
+		(fe.PerformedByID != nil && *fe.PerformedByID < 1) ||
+		fe.Kind == "" || fe.EventType == "" || fe.Action == "" || fe.CreatedAt.IsZero() {
+		return Event{}, fmt.Errorf("eventfeed: poll row %d is missing a required member", fe.ID)
+	}
 	ev := Event{
 		ID:            fe.ID,
 		Kind:          fe.Kind,

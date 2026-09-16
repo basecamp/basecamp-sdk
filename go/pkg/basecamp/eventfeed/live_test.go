@@ -93,6 +93,8 @@ func TestLiveMinter(t *testing.T) {
 		{"429 with Retry-After is throttled", 429, "7", `{"error":"slow down"}`, eventfeed.MintThrottled, 7 * time.Second},
 		{"503 is transient", 503, "", ``, eventfeed.MintTransient, 0},
 		{"404 is unrecoverable", 404, "", `{"error":"gone"}`, eventfeed.MintUnrecoverable, 0},
+		{"a Retry-After on a 404 is still unrecoverable", 404, "5", `{"error":"gone"}`, eventfeed.MintUnrecoverable, 0},
+		{"a 200 that does not decode is unrecoverable", 200, "", `{"ticket": `, eventfeed.MintUnrecoverable, 0},
 		{"a malformed success is unrecoverable", 200, "", `{"ticket":"","expires_in":120,"url":""}`, eventfeed.MintUnrecoverable, 0},
 	}
 	for _, tc := range cases {
@@ -251,6 +253,24 @@ func TestLivePolls_ErrorMatrix(t *testing.T) {
 			func(t *testing.T, pe *eventfeed.PollError) {
 				if pe.Kind != eventfeed.PollUnrecoverable {
 					t.Fatalf("kind = %s", pe.Kind)
+				}
+			}},
+		{"a Retry-After on a 404 does not make it throttled", eventfeed.AccountLane, 404, "5", `{"error":"no such feed"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable || pe.RetryAfter != 0 {
+					t.Fatalf("pe = %+v, want unrecoverable with no wait", pe)
+				}
+			}},
+		{"a 200 that does not decode is unrecoverable", eventfeed.AccountLane, 200, "", `{"events": [`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable {
+					t.Fatalf("kind = %s, want unrecoverable (re-polling draws the same body)", pe.Kind)
+				}
+			}},
+		{"a row missing required members is unrecoverable", eventfeed.AccountLane, 200, "", `{"events":[{"id":0,"kind":"","event_type":"message.created","action":"created","created_at":"2026-07-14T06:10:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":900}],"position":"p"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable {
+					t.Fatalf("kind = %s, want unrecoverable", pe.Kind)
 				}
 			}},
 	}
