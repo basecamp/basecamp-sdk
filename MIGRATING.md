@@ -36,6 +36,14 @@ source-compatibility hazard the tool does not model, which is why this note
 exists. Keyed literals, and every decode path, are unaffected; the field is
 `nil`/absent unless BC3 sent `performed_by`.
 
+**TypeScript and Python: `Person`'s `email_address`, `title`, `bio`, `tagline`
+and `location` are typed nullable.** BC3's person partial always writes the five
+keys and writes `null` when there is no value — routinely so for an `Agent`
+performer, whose `email_address` and `title` are null — so the generated types
+now say `string | null` / `str | None` where they said `string` / `str`. Code
+that narrowed on `!== undefined` alone needs `!= null`; Go, Kotlin, Swift and
+Rust already rendered these as optional-nullable and are unchanged.
+
 The same change adds the account event feed's wire layer (`PollEvents`,
 `PollInbox`, `CreateStreamTicket` on the `EventFeed` tag, service `eventFeed`)
 to every SDK. Those are new operations and new generated interface methods —

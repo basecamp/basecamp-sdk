@@ -31246,48 +31246,68 @@
             }
           },
           "email_address": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "password",
             "x-basecamp-sensitive": {
               "category": "pii",
               "redact": true
-            }
+            },
+            "x-go-type": "string"
           },
           "personable_type": {
             "type": "string"
           },
           "title": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "password",
             "x-basecamp-sensitive": {
               "category": "pii",
               "redact": false
-            }
+            },
+            "x-go-type": "string"
           },
           "bio": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "password",
             "x-basecamp-sensitive": {
               "category": "pii",
               "redact": false
-            }
+            },
+            "x-go-type": "string"
           },
           "tagline": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;\nolder BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.",
             "format": "password",
             "x-basecamp-sensitive": {
               "category": "pii",
               "redact": false
-            }
+            },
+            "x-go-type": "string"
           },
           "location": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "password",
             "x-basecamp-sensitive": {
               "category": "pii",
               "redact": false
-            }
+            },
+            "x-go-type": "string"
           },
           "created_at": {
             "type": "string",

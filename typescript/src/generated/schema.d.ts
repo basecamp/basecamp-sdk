@@ -5776,20 +5776,20 @@ export interface components {
             /** Format: password */
             name: string;
             /** Format: password */
-            email_address?: string;
+            email_address?: string | null;
             personable_type?: string;
             /** Format: password */
-            title?: string;
+            title?: string | null;
             /** Format: password */
-            bio?: string;
+            bio?: string | null;
             /**
              * Format: password
              * @description Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;
              *     older BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.
              */
-            tagline?: string;
+            tagline?: string | null;
             /** Format: password */
-            location?: string;
+            location?: string | null;
             created_at?: string;
             updated_at?: string;
             admin?: boolean;

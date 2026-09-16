@@ -397,7 +397,14 @@ func continuationQuery(rawURL string) (url.Values, error) {
 	if !u.IsAbs() {
 		return nil, ErrUsage("continuation URL must be absolute")
 	}
-	return u.Query(), nil
+	// url.Values from URL.Query would drop a malformed pair silently, and a
+	// dropped position turns a resume into a bare present entry that skips
+	// events; ParseQuery reports the malformation instead.
+	q, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		return nil, ErrUsage(fmt.Sprintf("continuation URL query is malformed: %v", err))
+	}
+	return q, nil
 }
 
 // checkFeedResponse is checkResponse plus the feed's two typed bodies: 409's

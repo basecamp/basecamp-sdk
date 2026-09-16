@@ -1300,7 +1300,7 @@ class Person(TypedDict):
     admin: NotRequired[bool]
     attachable_sgid: NotRequired[str]
     avatar_url: NotRequired[str]
-    bio: NotRequired[str]
+    bio: NotRequired[str | None]
     can_access_hill_charts: NotRequired[bool]
     can_access_timesheet: NotRequired[bool]
     can_manage_people: NotRequired[bool]
@@ -1309,17 +1309,17 @@ class Person(TypedDict):
     client: NotRequired[bool]
     company: NotRequired[PersonCompany]
     created_at: NotRequired[str]
-    email_address: NotRequired[str]
+    email_address: NotRequired[str | None]
     employee: NotRequired[bool]
     id: int
     system_label: NotRequired[str]
-    location: NotRequired[str]
+    location: NotRequired[str | None]
     name: str
     owner: NotRequired[bool]
     personable_type: NotRequired[str]
-    tagline: NotRequired[str]
+    tagline: NotRequired[str | None]
     time_zone: NotRequired[str]
-    title: NotRequired[str]
+    title: NotRequired[str | None]
     updated_at: NotRequired[str]
 
 

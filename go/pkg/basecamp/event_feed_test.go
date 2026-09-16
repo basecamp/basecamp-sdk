@@ -366,7 +366,13 @@ func TestPollEventsOptionsFromURL(t *testing.T) {
 		t.Errorf("unexpected performer filters: %+v", opts)
 	}
 
-	for _, bad := range []string{"", "/99999/events.json?since=now", "https://3.basecampapi.com/99999/events.json?buckets=abc"} {
+	for _, bad := range []string{
+		"",
+		"/99999/events.json?since=now",
+		"https://3.basecampapi.com/99999/events.json?buckets=abc",
+		// A malformed pair must be an error, not a silently dropped position.
+		"https://3.basecampapi.com/99999/events.json?position=%ZZ&types=message.created",
+	} {
 		if _, err := PollEventsOptionsFromURL(bad); err == nil {
 			t.Errorf("expected an error for %q", bad)
 		}
