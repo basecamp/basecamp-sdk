@@ -123,7 +123,6 @@ func TestEvent_UnmarshalList(t *testing.T) {
 	}
 }
 
-// Regression: an event whose wire payload omits `details` decodes to a nil
 // The second fixture entry is a delegated action: an Agent performed it on the
 // creator's behalf, so performed_by rides beside creator. The first and third
 // are direct and carry no performer.
@@ -161,6 +160,7 @@ func TestEvent_DelegatedPerformer(t *testing.T) {
 	}
 }
 
+// Regression: an event whose wire payload omits `details` decodes to a nil
 // generated.Event.Details pointer; eventFromGenerated must not deref it.
 // (Pre-guard, this panicked — Go auto-deref compiles `ge.Details.X` fine.)
 func TestEventFromGenerated_NilDetails(t *testing.T) {

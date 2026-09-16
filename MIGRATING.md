@@ -13,6 +13,36 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Go: `Event` and `WebhookEvent` gain `PerformedBy` (#898)
+
+**The compile error, if you get one:** an unkeyed composite literal of
+`basecamp.Event` or `basecamp.WebhookEvent` no longer compiles — each struct
+gained an exported `PerformedBy` field (the agent that carried out a delegated
+action; nil for a direct one), inserted after `Creator`, so the old value count
+is now too short. Same class of break as `Error.RetryAfter` (#795) and
+`Error.FieldErrors` (#541), and the remedy is the same, and permanent: use keyed
+fields.
+
+```go
+// before
+e := basecamp.Event{id, recordingID, "created", 0, "", nil, createdAt, &creator}
+// after — and it will not break again
+e := basecamp.Event{ID: id, RecordingID: recordingID, Action: "created", CreatedAt: createdAt, Creator: &creator}
+```
+
+`apidiff` reports the fields as compatible, and it is right about what it
+measures: they are additive to the exported API surface. Unkeyed literals are a
+source-compatibility hazard the tool does not model, which is why this note
+exists. Keyed literals, and every decode path, are unaffected; the field is
+`nil`/absent unless BC3 sent `performed_by`.
+
+The same change adds the account event feed's wire layer (`PollEvents`,
+`PollInbox`, `CreateStreamTicket` on the `EventFeed` tag, service `eventFeed`)
+to every SDK. Those are new operations and new generated interface methods —
+additive for every caller, breaking only for Go code that implements the
+generated `ClientInterface` / `ClientWithResponsesInterface` itself, which the
+generated client is the only intended implementer of.
+
 ### Python: a malformed list body is now an `ApiError`, and two of those changes are silent
 
 A list response the SDK could not read used to leave the Python SDK in one of
