@@ -1681,13 +1681,30 @@ still wrong. None of the operations serving them (`GetUpcomingSchedule`,
 `GetMyAssignments` and its siblings, `DisableOutOfOffice`) carries a genuine
 `Person` field at any depth, so leaving them strict costs no coverage.
 
-What the wider reach WAS covering is a real gap and is not closed by this rule:
-a port with no decoder (Ruby, Python, TypeScript) leaves a string id in
-`assignees`, `subscribers`, `completion_subscribers` and schedule `participants`
-as a string, where Go's decoder reads the number, and the merge-safe composites
-refuse such a body before writing. That is the refusing direction — no id is
-invented and no partial update is sent — and it is decoder coverage, field by
-field against the reference, rather than normalizer reach. It is tracked in
+What the wider reach WAS covering is a real gap and is not closed by this rule.
+Off the two surfaces, a port with no decoder on its generated path leaves an
+untagged string person id AS A STRING wherever Go's decoder would read the
+number. Stated in full, because a partial list is how this gap was
+under-counted once already:
+
+- **Ruby, Python and TypeScript:** an untagged `creator` on every recording read
+  (a comment, a message, a to-do…), and `assignees`, `subscribers`,
+  `completion_subscribers` and a schedule entry's `participants`.
+- **TypeScript also**, having been the port that widened furthest: `approver`,
+  `booster`, `completer` (live in `spec/fixtures/cards/step.json`),
+  `performed_by`, `granted`, `revoked` and `person`.
+- **Where it is visible:** on a plain generated read. TypeScript's
+  `comments.get` returns an untagged `creator.id` of `"7"` as the string `"7"`
+  in a field typed `number`, where Go gives `7`; Ruby and Python hand back the
+  string in their untyped hashes the same way. The recording-summary composites
+  do NOT show it: all three now decode a nested person's id as the
+  `FlexibleInt64` it is, so `recordings.summarize()` gives `7` in every port.
+
+The merge-safe composites refuse such a body before writing, so on the write
+path it is the refusing direction — no id is invented and no partial update is
+sent. On a plain read it is a string where the type says number. Both are
+decoder coverage, field by field against the reference, rather than normalizer
+reach, and are tracked in
 [PR #913](https://github.com/basecamp/basecamp-sdk/pull/913).
 
 **The oracle, not the documentation.** Every port that reasoned from

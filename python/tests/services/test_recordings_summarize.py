@@ -39,29 +39,26 @@ from tests.person_id_corpus import PERSON_ID_CORPUS
 #: The shared person-id corpus in this table's shape: `(wire id, fails, the
 #: creator the projection returns)`. A `"refuse"` row fails the read.
 #:
-#: A `"label"` row is the system-actor 0 AND carries a `system_label`, because
-#: the creator here sits at a `creator` key, which is one of the two structural
-#: positions the pre-decode normalizer's second pass finds
-#: (`go/pkg/basecamp/normalize.go:83-104`) -- so the string is already 0-with-a-
-#: label by the time `_decoded_flexible_int64` reads it. Go's own summary has no
-#: label on this path: its `generated.Person.Id` is `FlexibleInt64`, which
-#: converts at read time and has nowhere to put one, and Go runs the normalizer
-#: on the notification and gauge paths rather than this one. That is the
-#: documented Python breadth difference (this SDK normalizes every response
-#: body) and it is additive -- an extra key beside the id Go agrees on, never a
-#: different id.
-# A syntax refusal reads as the system actor, 0, with NO ``system_label``. That is
-# what Go's summary carries: ``readSummary`` reads the recording through the
-# generated decoder, and ``personFromGenerated`` (go/pkg/basecamp/people.go:920)
-# never sets ``SystemLabel`` -- the label is ``omitempty``, so it is absent. Go's
-# own note says so (todos.go:68-77): "Endpoints that decode through the generated
-# parser lose the label".
-#
-# These rows used to expect the label, and matched only because the positional
-# normalizer then ran on EVERY response body and wrote one onto the recording's
-# untagged ``creator`` before the summary read it. That pass runs only on Go's
-# two surfaces now (gauges, notifications), and a recording read is neither, so
-# the summary carries what the reference's does.
+#: A `"label"` row -- a syntax refusal -- reads as the system actor, `0`, with NO
+#: `system_label`. Go's summary carries no label for it either: `readSummary`
+#: reads the recording through the generated decoder, and `personFromGenerated`
+#: (go/pkg/basecamp/people.go:920) never sets `SystemLabel`.
+#:
+#: These rows used to expect a label, and matched only because the positional
+#: normalizer ran on EVERY response body and wrote one onto the recording's
+#: untagged `creator` first. It runs only on Go's two surfaces now (gauges,
+#: notifications), and a recording read is neither.
+#:
+#: ONE PRE-EXISTING DIVERGENCE THIS TABLE DOES NOT CLOSE, stated so that `{"id": 0}`
+#: is not mistaken for Go's answer. The fixture below sends a creator with an id
+#: and NO name. For such a creator Go's summary has no `creator` key at all:
+#: `commentFromGenerated` sets it only when `Id != 0 || Name != ""`
+#: (go/pkg/basecamp/comments.go:364), so a syntax refusal -- or `"0"` -- with no
+#: name is dropped. With a name, Go gives `{"id": 0, "name": ...}`, which is what
+#: this port's label-free answer now matches. Python keeps `{"id": 0}` here where
+#: Go omits the creator; Ruby omits it, as Go does. That presence rule is a
+#: projection rule, not the id grammar, and predates this table -- it is left as
+#: it was rather than folded into a change about person ids.
 _FLEXIBLE_STRING_ROWS = [
     (
         raw,
