@@ -226,12 +226,14 @@ def normalize_person_ids(obj: Any, *, embedded_people: bool = False) -> None:
     for a body the reference refuses outright. Accepting direction, identity
     field, which is the class this work exists to remove.
 
-    The cost of narrowing is real and is stated rather than hidden: the
-    ``schedules.edit_entry`` write path described above refuses string
-    ``participants`` ids again, because schedules is not one of Go's two
-    surfaces and Python has no decoder standing in for ``FlexibleInt64``
-    there. That is decoder coverage, not normalizer reach, and PR #913
-    (card 42) owns it.
+    The cost of narrowing is real and is stated rather than hidden: schedules is
+    not one of Go's two surfaces and Python has no decoder standing in for
+    ``FlexibleInt64`` there, so string ``participants`` ids are no longer
+    converted on the way in. That is decoder coverage, not normalizer reach.
+    The ``schedules.edit_entry`` WRITE path is closed at the reader instead --
+    ``services/_merge_safe`` reads the id by :func:`parse_int64` (PR #913) --
+    while a plain generated read still hands the string back (SPEC.md section 10,
+    "Person Ids Off the Wire").
     """
     if isinstance(obj, list):
         for item in obj:

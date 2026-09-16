@@ -307,31 +307,26 @@ class TestSyncEdit:
         assert "notify" not in body
 
     @respx.mock
-    def test_a_participant_with_a_string_id_is_refused_where_the_reference_accepts_it(self):
-        # A KNOWN DIVERGENCE, PINNED rather than left to be discovered. BC3
-        # writes a person id as a string on some paths, and an embedded
-        # participant frequently omits `personable_type`. The reference reads it
-        # through its decoder -- generated `ScheduleEntry.Participants` is
-        # `[]Person`, and `Person.Id` is `types.FlexibleInt64` -- and completes
-        # the update. This refuses it.
+    def test_a_participant_with_a_string_id_is_read_as_the_reference_reads_it(self):
+        # The divergence this test used to pin, flipped. BC3 writes a person id as
+        # a string on some paths, and an embedded participant frequently omits
+        # `personable_type`. The reference reads it through its decoder --
+        # generated `ScheduleEntry.Participants` is `[]Person`, and `Person.Id` is
+        # `types.FlexibleInt64` -- and completes the update.
         #
-        # The positional normalizer briefly covered this by running on every
-        # response body. That over-reached: the same `creator` / `participants`
-        # keys hold plain-`int64` people on `UpcomingScheduleEntry`, which the
-        # reference refuses and the normalizer turned into the system actor. It
-        # now runs only on Go's two surfaces (gauges, notifications), and
-        # schedules is not one of them.
-        #
-        # The refusal is the SAFE direction: no id is invented, and no PUT is
-        # sent, so a refused read never becomes a partial participant list.
-        # Closing it properly is decoder coverage, field by field against the
-        # reference, and PR #913 (card 42) owns it. This is the test to flip.
+        # The positional normalizer does not reach schedules: covering it there by
+        # running on every response over-reached, because the same `creator` /
+        # `participants` keys hold plain-`int64` people on `UpcomingScheduleEntry`,
+        # which the reference refuses. So the string arrives at the merge-safe
+        # guard untouched, and the guard reads it by the reference's grammar --
+        # decoder coverage at exactly this field, not normalizer reach at every
+        # field so named. `"+007"` is person 7 to `ParseInt`.
         _, put_route = _routes(_entry(participants=[{"id": "1049715915", "name": "Ann"}, {"id": "+007", "name": "Bo"}]))
 
-        with pytest.raises(ApiError), _sync_schedules().edit_entry(entry_id=5001) as e:
+        with _sync_schedules().edit_entry(entry_id=5001) as e:
             e.participant_ids = [*e.participant_ids, 1049715914]
 
-        assert not put_route.called
+        assert _put_body(put_route)["participant_ids"] == [1049715915, 7, 1049715914]
 
     @respx.mock
     def test_assigning_the_read_backs_own_value_still_sends_it(self):

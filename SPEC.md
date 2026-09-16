@@ -1700,12 +1700,21 @@ under-counted once already:
   do NOT show it: all three now decode a nested person's id as the
   `FlexibleInt64` it is, so `recordings.summarize()` gives `7` in every port.
 
-The merge-safe composites refuse such a body before writing, so on the write
-path it is the refusing direction — no id is invented and no partial update is
-sent. On a plain read it is a string where the type says number. Both are
-decoder coverage, field by field against the reference, rather than normalizer
-reach, and are tracked in
-[PR #913](https://github.com/basecamp/basecamp-sdk/pull/913).
+Both halves are decoder coverage, field by field against the reference, rather
+than normalizer reach, and they are closed to different extents:
+
+- **The write path is closed.** The merge-safe composites' id-list guard reads
+  a person id itself, by the same `ParseInt` scan the normalizer uses, at
+  exactly the three fields it writes back — `assignees`,
+  `completion_subscribers` and a schedule entry's `participants`
+  ([PR #913](https://github.com/basecamp/basecamp-sdk/pull/913)). It also
+  answers the two shapes no walk reaches: an absent `id` is `0`, and a `null`
+  element is the zero person, as in the reference. An explicit `"id": null`
+  still fails the read.
+- **The plain read is still open.** A generated read in Ruby, Python and
+  TypeScript still returns an untagged person's string id as the string, where
+  the reference's decoder gives the number. Closing it needs a decoder at
+  those reads, not a wider walk.
 
 **The oracle, not the documentation.** Every port that reasoned from
 `ParseInt`'s docs rather than probing it got something wrong. The corpus and

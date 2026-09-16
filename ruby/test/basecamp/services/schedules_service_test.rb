@@ -371,18 +371,14 @@ class SchedulesServiceTest < Minitest::Test
   # Person.Id is types.FlexibleInt64 -- so its merge-safe read sees the number
   # and completes the update.
   #
-  # THIS SDK REFUSES IT, AND THAT IS A KNOWN DIVERGENCE, PINNED rather than left
-  # to be discovered. Ruby has no decoder on the generated path. The positional
-  # normalizer briefly covered this by running on every response, and that
-  # over-reached: the same "creator" / "participants" keys hold plain-int64
-  # people on UpcomingScheduleEntry, which the reference refuses and the
-  # normalizer turned into the system actor. So it was narrowed to the two
-  # surfaces Go normalizes (gauges, notifications), and schedules is not one.
-  #
-  # The refusal is the SAFE direction -- no id is invented and no partial
-  # participant list is written, because the guard runs before the PUT. Closing
-  # it properly is decoder coverage, field by field against the reference, and
-  # PR #913 (card 42) owns it. These are the tests to flip when it lands.
+  # Ruby has no decoder on the generated path, and the positional normalizer does
+  # not reach schedules: covering it by running on every response over-reached,
+  # because the same "creator" / "participants" keys hold plain-int64 people on
+  # UpcomingScheduleEntry, which the reference refuses. So the string arrives at
+  # MergeSafe untouched, and MergeSafe reads it through Ids.person_from_wire --
+  # decoder coverage at exactly this field, not normalizer reach at every field
+  # so named. These tests pinned the refusal while that was a known divergence;
+  # they are flipped to what the reference does.
   def entry_with_untagged_string_participants
     full_entry(
       "participants" => [
@@ -392,32 +388,44 @@ class SchedulesServiceTest < Minitest::Test
     )
   end
 
-  def test_update_entry_refuses_string_participant_ids_the_reference_accepts
+  def test_update_entry_completes_with_string_participant_ids_as_the_reference_does
     captured = stub_entry_get_and_put(entry: entry_with_untagged_string_participants)
 
-    error = assert_raises(Basecamp::ApiError) do
-      @account.schedules.update_entry(entry_id: 789, summary: "Team Meeting & Kickoff")
-    end
+    @account.schedules.update_entry(entry_id: 789, summary: "Team Meeting & Kickoff")
 
-    assert_match(/"participants"\[0\]\.id is not an integer/, error.message)
-    # No PUT: a refused read never becomes a partial update.
-    assert_empty captured[:bodies]
+    assert_equal "Team Meeting & Kickoff", captured[:bodies].first["summary"]
+    # Read, not written: participant_ids is a carve-out that reaches the wire
+    # only when addressed, as it does in the reference.
+    assert_not captured[:bodies].first.key?("participant_ids")
   end
 
-  def test_edit_entry_refuses_a_sentinel_participant_rather_than_inventing_the_system_actor
-    # The reference reads "basecamp" here as person 0, through FlexibleInt64.
-    # This SDK does not normalize schedules, so it refuses -- and it must not
-    # get to 0 by some other route, which would be the accepting-direction
-    # mistake the narrowing exists to remove.
+  def test_edit_entry_reads_string_participant_ids_as_the_reference_does
+    captured = stub_entry_get_and_put(entry: entry_with_untagged_string_participants)
+
+    @account.schedules.edit_entry(entry_id: 789) do |fields|
+      read_back = fields.participant_ids
+      assert_equal [ 1049715914, 1049715915 ], read_back
+      fields.participant_ids = read_back
+    end
+
+    assert_equal [ 1049715914, 1049715915 ], captured[:bodies].first["participant_ids"]
+  end
+
+  def test_edit_entry_reads_a_sentinel_participant_as_the_system_actor_the_reference_names
+    # The reference reads "basecamp" here as person 0, through FlexibleInt64, and
+    # appends it. That is its DECODER's rule at this field, which is the route
+    # MergeSafe takes now -- not the normalizer's, whose over-reach was minting 0
+    # on UpcomingScheduleEntry, a plain-int64 person the reference refuses.
+    # MergeSafe never reads that schema. Confirmed with the operator on card 42:
+    # follow the reference.
     entry = full_entry("participants" => [ { "id" => "basecamp", "name" => "Basecamp" } ])
     captured = stub_entry_get_and_put(entry: entry)
 
-    assert_raises(Basecamp::ApiError) do
-      @account.schedules.edit_entry(entry_id: 789) do |fields|
-        fields.participant_ids = fields.participant_ids
-      end
+    @account.schedules.edit_entry(entry_id: 789) do |fields|
+      fields.participant_ids = fields.participant_ids
     end
-    assert_empty captured[:bodies]
+
+    assert_equal [ 0 ], captured[:bodies].first["participant_ids"]
   end
 
   # notify is a directive, not state: it has nothing in the read-back to seed

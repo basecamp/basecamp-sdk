@@ -2,11 +2,11 @@
  * The id-list guard on its own, with no normalizer walk in front of it.
  *
  * The composite tests in todos.test.ts and schedules.test.ts go through the
- * transport, and on a base whose pre-decode walk covers `assignees` those
- * string ids are already numbers by the time the guard sees them — so they
- * pass whether or not the guard reads a string. These call `writableIdList`
- * directly, which is the only way to pin what the guard itself does with a
- * person the walk did not reach.
+ * transport, so what they prove depends on which keys the pre-decode walk
+ * covers: a walk that converted a string id first would let them pass whether
+ * or not the guard reads one. That happened once, while the walk still named
+ * `assignees`. These call `writableIdList` directly, so the guard is pinned on
+ * its own whatever the walk does.
  *
  * Every expectation is the reference's, measured through its own todos Update
  * and schedules EditEntry composites (`Person.Id` is `types.FlexibleInt64`, and

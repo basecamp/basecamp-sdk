@@ -239,8 +239,9 @@ function normalizePersonIds(obj: unknown): void {
  * The gap that widening was covering is real and is NOT closed here: `assignees`,
  * `subscribers` and `completion_subscribers` carry string ids that this SDK now
  * leaves as strings, where Go's decoder converts them. That is decoder coverage
- * rather than normalizer reach, it needs a per-field audit against the
- * reference, and it belongs to PR #913.
+ * rather than normalizer reach. On the WRITE path it is closed at the reader —
+ * `writableIdList` in `merge-safe.ts` reads the id by the same scan (PR #913).
+ * On a plain generated read it is still open: see SPEC.md section 10, "Person Ids Off the Wire".
  */
 function normalizeEmbeddedPersonIds(obj: unknown): void {
   if (!obj || typeof obj !== "object") return;
