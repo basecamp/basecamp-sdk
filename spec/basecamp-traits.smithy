@@ -60,8 +60,9 @@ structure basecampPagination {
     /// serves a relative `Link: rel="next"` header and asserts a single request,
     /// so a Go wrapper that started following the Link walk (`followPagination`)
     /// fails `make conformance` on the request count. A wrapper that chased the
-    /// body's absolute `next` instead would be refused as cross-origin by the Go
-    /// runner's loopback mock and fail on the resulting error — unless it
+    /// body's absolute `next` instead would be refused as cross-origin by the
+    /// client, whose base URL is the runner's loopback mock, and fail on the
+    /// resulting error — unless it
     /// swallowed that error, which is the one walker this fixture misses. (The
     /// generated SDKs are caught by the same cases or at their runner's compile,
     /// except Rust, whose link-style method fetches one page and so passes them;

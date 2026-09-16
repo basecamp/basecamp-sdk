@@ -3200,7 +3200,8 @@ relative `Link: rel="next"` served beside `next`, one request), the agents-only 
 403, the reasoned 400 and the retention 410 on the inbox, and the bodyless mint with its
 401. The feed's envelope case serves a continuation too and asserts one request. If either
 lane were flipped to the link style, these two cases go red on the request count in
-TypeScript, Python, Ruby and a Link-following Go wrapper, and at the runner's compile in
+TypeScript, Python and a Link-following Go wrapper, on the resulting error in Ruby (whose
+lazily walked items the runner's summarizer cannot measure), and at the runner's compile in
 Kotlin and Swift, whose generated return type changes. Rust's generated link-style method
 fetches one page and leaves the walk to the caller, so its runner stays green; the Rust
 route-table test (`guarantees.rs`) is what pins these two lanes to the cursor style there. The connector's
