@@ -204,12 +204,23 @@ class OperationParser(private val api: OpenApiParser) {
         // `?.jsonObject` throws on JsonNull, which is not Kotlin null -- a literal
         // "x-basecamp-pagination": null would crash here where the other five
         // generators read it as unpaginated. Narrow to a real object first.
-        val paginationExtension = operation["x-basecamp-pagination"] as? JsonObject
-        val paginationStyle = paginationExtension?.get("style")?.jsonPrimitive?.content
+        //
+        // Presence is tested BEFORE the cast, exactly as Swift does. Gating the
+        // refusal on `as? JsonObject` answers null for a present-but-non-object
+        // trait -- a bare "x-basecamp-pagination": "page" -- and skips the refusal
+        // entirely, which is the silent pass this whole branch exists to close.
+        // Absent and a literal null are unpaginated; anything else is declared,
+        // and a declared trait that is not an object has no style to accept.
+        val paginationValue = operation["x-basecamp-pagination"]
+        val paginationDeclared = paginationValue != null && paginationValue !is JsonNull
+        val paginationExtension = paginationValue as? JsonObject
+        // A non-primitive `style` becomes null here and is refused by name below,
+        // rather than throwing the confusing cast error `jsonPrimitive` would.
+        val paginationStyle = (paginationExtension?.get("style") as? JsonPrimitive)?.contentOrNull
         // Only "link" and "cursor" are implemented. Anything else -- a typo, or
         // the "page" style the trait used to advertise -- must fail loudly: read
         // as "not paginated" it would silently ship a method that never walks.
-        require(paginationExtension == null || paginationStyle in setOf("link", "cursor")) {
+        require(!paginationDeclared || paginationStyle in setOf("link", "cursor")) {
             "$operationId: unsupported pagination style $paginationStyle (expected \"link\" or \"cursor\")"
         }
         val hasPagination = paginationStyle == "link"
