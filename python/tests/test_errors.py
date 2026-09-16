@@ -627,6 +627,189 @@ class TestCompositeIdentities:
         )
 
 
+# --- The error-construction inventory -----------------------------------------
+#
+# One place that knows how to build every `BasecampError` in the package, shared
+# by the tests below rather than sampled by each. A sample is how the first
+# version of the `code` carve-out test checked 4 of 21 classes: `AuthError`
+# could have started absorbing a caller's `code` with every test still green.
+
+#: How to construct each subclass, as (label, args, kwargs) rows. Arguments are
+#: bound BY KEYWORD wherever the signature allows, which is load-bearing rather
+#: than stylistic: a class given its message positionally would report a
+#: *collision* on ``message=`` that is just Python's ordinary duplicate-argument
+#: error, and an earlier probe read six such artifacts as the defect. Most need
+#: one row. A class whose behaviour is DERIVED from an argument needs one row per
+#: value of that argument, or a test pins only the value it happened to pass --
+#: which is how a `DeviceFlowError` answering `True` for all five reasons, and a
+#: `DiscoverySelectionError` overriding one of the three reasons left out of an
+#: earlier draft, would both have passed.
+_ERROR_VARIANTS: dict[str, list[tuple[str, tuple[object, ...], dict[str, object]]]] = {
+    # The classes that fix their retryability are built at a custom message as
+    # well as their default. `error_from_response` builds them with a message
+    # from the response body, so the default-only probe was leaving the
+    # production construction path unexercised -- and `if message == "Account
+    # limit reached":` hid a conditional overwrite behind it.
+    "RateLimitError": [("default", (), {}), ("custom message", (), {"message": "slow down"})],
+    "NetworkError": [("default", (), {}), ("custom message", (), {"message": "no route"})],
+    "LimitExceededError": [("default", (), {}), ("custom message", (), {"message": "out of storage"})],
+    "CampfireIndexLoadAbortedError": [("default", (), {}), ("custom message", (), {"message": "abandoned"})],
+    "NoRecordingTypeError": [("", (), {"routing_key": "boost.created"})],
+    "UnknownRecordingTypeError": [("", (), {"routing_key": "x.y"})],
+    "BucketMismatchError": [("", (), {"bucket_id": 1, "recording_id": 2, "requested_bucket_id": 3})],
+    "RecordingUnresolvedError": [("", (), {"bucket_id": 1, "recording_id": 2, "campfire_ids": []})],
+    "CampfireDiscoveryIncompleteError": [("", (), {"bucket_id": 1, "recording_id": 2, "reason": "r"})],
+    "PeopleConfirmationRequiredError": [("", (), {"message": "m", "people": []})],
+    "OAuthError": [
+        (t, (), {"oauth_type": t, "message": "m"}) for t in ("validation", "auth", "network", "api_error", "usage")
+    ],
+    # Every member of `DiscoverySelectionReason`, not the three a first draft
+    # listed: `capability_unavailable` classifies as `validation` and the other
+    # five as `api_error`, so a partial list leaves arms unprobed.
+    "DiscoverySelectionError": [
+        (r, (), {"reason": r, "message": "m"})
+        for r in (
+            "ambiguous_issuers",
+            "expected_issuer_unavailable",
+            "invalid_issuer_origin",
+            "as_fetch_failed",
+            "issuer_mismatch",
+            "capability_unavailable",
+        )
+    ],
+    # Every member of `DeviceFlowReason`, not just the retryable one.
+    "DeviceFlowError": [
+        (r, (), {"reason": r, "message": "m"})
+        for r in ("access_denied", "expired", "transport", "unavailable", "cancelled")
+    ],
+    "_IssuerBindingError": [("", (), {"message": "m"})],
+    "UsageError": [("", (), {"message": "m"})],
+    # No __init__ of its own: it inherits the base's, message and all.
+    "RecordingRoutingError": [("", (), {"message": "m"})],
+}
+
+#: The classes that FIX their retryability, and to what. A bool applies to every
+#: variant; a dict gives the answer per variant label, which is what a DERIVED
+#: retryability needs. Everything else fixes none, so the caller's value is the
+#: value -- `ApiError` being the one that matters, since that is how
+#: `error_from_response` tells a 500 from a 418.
+_FIXED_RETRYABILITY: dict[str, bool | dict[str, bool]] = {
+    "RateLimitError": True,
+    "NetworkError": True,
+    "LimitExceededError": False,
+    "CampfireDiscoveryIncompleteError": False,
+    "CampfireIndexLoadAbortedError": True,
+    # SPEC section 16: only a transport failure is retryable.
+    # `tests/oauth/test_device.py::TestDeviceFlowErrorRetryability` pins this
+    # independently and predates this sweep; here it keeps the sweep honest
+    # about derived values for the next class that has one.
+    "DeviceFlowError": {
+        "access_denied": False,
+        "expired": False,
+        "transport": True,
+        "unavailable": False,
+        "cancelled": False,
+    },
+}
+
+#: Every error this package defines. Spelled out rather than counted: a floor
+#: only catches removals once, and `>= n` cannot see a class that arrives and
+#: another that leaves. Both directions force a decision.
+_EXPECTED_ERROR_SUBCLASSES = {
+    "AmbiguousError",
+    "ApiError",
+    "AuthError",
+    "BucketMismatchError",
+    "CampfireDiscoveryIncompleteError",
+    "CampfireIndexLoadAbortedError",
+    "DeviceFlowError",
+    "DiscoverySelectionError",
+    "ForbiddenError",
+    "LimitExceededError",
+    "NetworkError",
+    "NoRecordingTypeError",
+    "NotFoundError",
+    "OAuthError",
+    "PeopleConfirmationRequiredError",
+    "RateLimitError",
+    "RecordingRoutingError",
+    "RecordingUnresolvedError",
+    "UnknownRecordingTypeError",
+    "UsageError",
+    "ValidationError",
+    "WebhookVerificationError",
+    "_IssuerBindingError",
+}
+
+
+def _error_subclasses():
+    """Every `BasecampError` descendant this package defines, name-sorted."""
+    import importlib
+    import pkgutil
+
+    import basecamp
+    from basecamp.errors import BasecampError
+
+    for module in pkgutil.walk_packages(basecamp.__path__, "basecamp."):
+        importlib.import_module(module.name)
+
+    def descendants(cls):
+        found = set()
+        for sub in cls.__subclasses__():
+            # Only this package's own errors. `__subclasses__` sees every
+            # subclass that has been IMPORTED, so without this filter an error
+            # class defined at module scope in any other test file joins the
+            # walk -- green under `pytest tests/test_errors.py` and red under
+            # the whole suite. `== "basecamp"` is not redundant with the prefix:
+            # a class defined in the package's own `__init__.py` has exactly
+            # that module name, and a sweep that skipped it would skip a public
+            # error.
+            if sub.__module__ == "basecamp" or sub.__module__.startswith("basecamp."):
+                found.add(sub)
+            # Known limit, written down rather than papered over:
+            # `__subclasses__` holds weak references, so it sees the classes
+            # still ALIVE -- a class minted inside a function body is absent
+            # until that function first runs, and can vanish again once nothing
+            # references it and it is collected. Nothing in the package does
+            # that today; if something starts to, this walk becomes dependent
+            # on test order and on the garbage collector, and
+            # `_EXPECTED_ERROR_SUBCLASSES` is what will say so.
+            #
+            # Recurse unconditionally: a package class can sit under a
+            # non-package one.
+            found |= descendants(sub)
+        return found
+
+    found = sorted(descendants(BasecampError), key=lambda c: c.__name__)
+    assert {c.__name__ for c in found} == _EXPECTED_ERROR_SUBCLASSES, (
+        "the set of BasecampError subclasses changed. A NEW one needs a name in "
+        "`_EXPECTED_ERROR_SUBCLASSES`, a row in `_ERROR_VARIANTS` if its constructor takes "
+        "arguments, and a row in `_FIXED_RETRYABILITY` if it fixes its retryability. A REMOVED "
+        "one needs its name taken out of all three."
+    )
+    return found
+
+
+def _build_rows(cls):
+    """The (label, args, kwargs) rows that construct ``cls``."""
+    return _ERROR_VARIANTS.get(cls.__name__, [("", (), {})])
+
+
+def _refusal_of(cls, args, kwargs, keyword, value):
+    """How ``cls`` answers ``keyword``: 'collides', 'undeclared' or 'accepts'.
+
+    'collides' is the shape this whole line of work is about -- a fixed keyword
+    forwarded beside ``**kwargs``, which Python reports as *multiple values* and
+    which escapes the SDK's taxonomy. 'undeclared' is ordinary Python: the
+    constructor never advertised the keyword, so mypy refuses the call too.
+    """
+    try:
+        cls(*args, **{**kwargs, keyword: value})
+    except TypeError as exc:
+        return "collides" if "multiple values" in str(exc) else "undeclared"
+    return "accepts"
+
+
 class TestRetryableKeywordDoesNotCollide:
     """A fixed ``retryable`` must CONSUME the caller's keyword, not collide with it.
 
@@ -701,159 +884,662 @@ class TestRetryableKeywordDoesNotCollide:
         author looked. This walks the whole package instead: every
         ``BasecampError`` descendant, not a list someone remembered to extend.
 
-        Two things are pinned, and the first version of this test pinned only
-        the first. **That the flag does not raise**: a constructor advertising
-        ``retryable`` -- by declaring it, or by accepting ``**kwargs`` and so
-        telling callers and mypy alike that the keyword is legal -- must accept
-        it. **And that it answers with the right value**: an earlier version
-        asserted only ``isinstance(error.retryable, bool)``, which is true of
-        every possible answer, so regressing all six overwrite sites to
-        ``kwargs.setdefault`` -- "honour the caller", the semantics this change
-        rejects on the merits -- left it green. #888's own commit message is a
-        three-iteration post-mortem of a sweep in this file that swept nothing;
-        this is the same mistake one register down, and ``_FIXED_RETRYABILITY``
-        below is the fix: a per-class expected value, and every class must be
-        in it or in the caller-wins set.
+        Three things are pinned, and each was added because the previous version
+        of this test did not pin it.
 
-        A constructor that advertises the keyword NOWHERE is exempt: a stray
-        one is "unexpected keyword argument", refused by mypy as well as at
-        runtime, which is ordinary Python rather than an error escaping the
-        taxonomy. The exempt set is pinned by name so the sweep cannot be
-        dodged by dropping ``**kwargs`` from a constructor.
+        1. **The flag does not raise.** A constructor advertising ``retryable``
+           -- by declaring it, or by accepting ``**kwargs`` and so telling
+           callers and mypy alike that the keyword is legal -- must accept it.
+        2. **It answers with the right value.** An earlier version asserted only
+           ``isinstance(error.retryable, bool)``, which is true of every possible
+           answer, so regressing all six overwrite sites to ``kwargs.setdefault``
+           -- "honour the caller", the semantics this change rejects on the
+           merits -- left it green.
+        3. **It answers that way whatever else is passed.** The version after
+           that probed exactly one argument shape per class. A *conditional*
+           overwrite::
+
+               if "retry_after" not in kwargs:  # instead of unconditionally
+                   kwargs["retryable"] = False
+
+           left ``LimitExceededError("x", retryable=True, retry_after=5)``
+           retryable -- the invariant this whole change exists to defend -- and
+           passed the repo as it stood against the v2 file, all 2218 tests of
+           it. (That count and the 2219 quoted in
+           :meth:`test_a_fixed_retryability_is_overwritten_unconditionally` are
+           not one number drifting by one. They are two different suites: the
+           v2 ``test_errors.py`` holds 101 tests to this one's 103, and the
+           2219 is this suite with that single test deselected. Both were
+           re-run on this head rather than remembered.) So the flag is crossed with
+           companion keywords and with a custom message, and classes whose
+           retryability is DERIVED are probed at every value of the argument it
+           derives from -- which is a property of ``_ERROR_VARIANTS``, a table
+           a human writes, and not one a test can fully check. What
+           :meth:`test_a_fixed_retryability_is_overwritten_unconditionally`
+           does enforce is narrower, and said exactly: a constructor whose
+           overwrite names a declared argument on its right-hand side (not
+           through a local, which it refuses) must carry a per-variant
+           expectation with at least two distinct answers, and rows reaching
+           at least two distinct values of that argument. "Every value" is
+           still the author's job.
+
+        Item 3 is a NET, not a proof, and saying otherwise is how v2 got
+        written. Crossing the flag with a set of companion VALUES cannot see a
+        condition on a value outside that set: the first draft of this list
+        carried 429 and 503 but not 507 -- the one status
+        ``LimitExceededError`` exists for -- and built every fixed class at its
+        default message only, so both
+        ``if kwargs.get("http_status") != 507:`` and ``if message == "Account
+        limit reached":`` still hid, and still passed the whole repo. The
+        values below are chosen from what these classes document, and
+        :meth:`test_a_fixed_retryability_is_overwritten_unconditionally` closes
+        the class of hole structurally instead of by sampling.
+
+        #888's own commit message is a three-iteration post-mortem of a sweep in
+        this file that swept nothing. Each numbered item above is the same
+        mistake one register further down, which is why the assertions say what
+        the right answer is rather than that there is one. A sweep is not tested
+        by the code it passes on; it is tested by the regressions it rejects.
+
+        A constructor that advertises the keyword NOWHERE is exempt: a stray one
+        is "unexpected keyword argument", refused by mypy as well as at runtime,
+        which is ordinary Python rather than an error escaping the taxonomy. The
+        exempt set is pinned by name so the sweep cannot be dodged by dropping
+        ``**kwargs`` from a constructor.
         """
-        import importlib
         import inspect
-        import pkgutil
 
-        import basecamp
-        from basecamp.errors import BasecampError
-
-        for module in pkgutil.walk_packages(basecamp.__path__, "basecamp."):
-            importlib.import_module(module.name)
-
-        def descendants(cls):
-            found = set()
-            for sub in cls.__subclasses__():
-                # Only this package's own errors. `__subclasses__` sees every
-                # subclass that has been IMPORTED, so without this filter an
-                # error class defined at module scope in any other test file
-                # joins the walk -- green under `pytest tests/test_errors.py`
-                # and red under the whole suite.
-                if sub.__module__.startswith("basecamp."):
-                    found.add(sub)
-                found |= descendants(sub)
-            return found
-
-        # Constructor arguments for the subclasses that require them.
-        required = {
-            "NoRecordingTypeError": ((), {"routing_key": "boost.created"}),
-            "UnknownRecordingTypeError": ((), {"routing_key": "x.y"}),
-            "BucketMismatchError": ((), {"bucket_id": 1, "recording_id": 2, "requested_bucket_id": 3}),
-            "RecordingUnresolvedError": ((), {"bucket_id": 1, "recording_id": 2, "campfire_ids": []}),
-            "CampfireDiscoveryIncompleteError": ((), {"bucket_id": 1, "recording_id": 2, "reason": "r"}),
-            "PeopleConfirmationRequiredError": (("m",), {"people": []}),
-            "OAuthError": (("auth", "m"), {}),
-            "DiscoverySelectionError": (("issuer_mismatch", "m"), {}),
-            "DeviceFlowError": (("transport", "m"), {}),
-            "_IssuerBindingError": (("m",), {}),
-            "UsageError": (("m",), {}),
-            # No __init__ of its own: it inherits the base's, message and all.
-            "RecordingRoutingError": (("m",), {}),
-        }
-
-        # The classes that FIX their retryability, and to what. Everything else
-        # fixes none, so the caller's value is the value -- `ApiError` being the
-        # one that matters, since that is how `error_from_response` tells a 500
-        # from a 418. `DeviceFlowError` derives it from `reason`, and the
-        # arguments above give it `transport`, the one retryable reason.
-        fixed = {
-            "RateLimitError": True,
-            "NetworkError": True,
-            "LimitExceededError": False,
-            "CampfireDiscoveryIncompleteError": False,
-            "CampfireIndexLoadAbortedError": True,
-            "DeviceFlowError": True,
-        }
-
-        # Every error this package defines. Spelled out rather than counted: a
-        # floor only catches removals once, and `>= n` cannot see a class that
-        # arrives and another that leaves. Both directions force a decision.
-        expected_subclasses = {
-            "AmbiguousError",
-            "ApiError",
-            "AuthError",
-            "BucketMismatchError",
-            "CampfireDiscoveryIncompleteError",
-            "CampfireIndexLoadAbortedError",
-            "DeviceFlowError",
-            "DiscoverySelectionError",
-            "ForbiddenError",
-            "LimitExceededError",
-            "NetworkError",
-            "NoRecordingTypeError",
-            "NotFoundError",
-            "OAuthError",
-            "PeopleConfirmationRequiredError",
-            "RateLimitError",
-            "RecordingRoutingError",
-            "RecordingUnresolvedError",
-            "UnknownRecordingTypeError",
-            "UsageError",
-            "ValidationError",
-            "WebhookVerificationError",
-            "_IssuerBindingError",
-        }
-
-        subclasses = sorted(descendants(BasecampError), key=lambda c: c.__name__)
-        assert {c.__name__ for c in subclasses} == expected_subclasses, (
-            "the set of BasecampError subclasses changed. A new one needs a row in "
-            "`fixed` (or a deliberate place in the caller-wins set) and a name here."
-        )
+        # Companion keywords the flag is crossed with, so an overwrite that is
+        # conditional on any of them cannot hide. `code` and `message` are
+        # deliberately absent: they still refuse, which
+        # `test_code_and_message_still_refuse_across_the_whole_hierarchy` pins.
+        companions = [
+            {},
+            {"http_status": 503},
+            # 507 is the status `LimitExceededError` exists for, and leaving it
+            # out let `if kwargs.get("http_status") != 507:` hide a conditional
+            # overwrite. Every status a class in `_FIXED_RETRYABILITY` documents
+            # belongs here -- though see the docstring: a value set is a net,
+            # not a proof, which is why the AST check below exists.
+            {"http_status": 507},
+            # 500 is the status `ApiError`'s own reasoning names ("500 is
+            # retryable, 418 is not") and the arm `error_from_response` builds
+            # it at. It was missing, and `ApiError` is in neither
+            # `_FIXED_RETRYABILITY` nor the AST check below -- so for the
+            # caller-wins classes this sweep is the ONLY check, and
+            # `if kwargs.get("http_status") == 500: retryable = True` sat
+            # inside it with the whole suite green.
+            {"http_status": 500},
+            {"retry_after": 5},
+            {"hint": "h", "request_id": "r"},
+            {"http_status": 429, "retry_after": 5, "hint": "h", "request_id": "r"},
+        ]
 
         exempt, caller_wins = [], []
-        for cls in subclasses:
-            args, kwargs = required.get(cls.__name__, ((), {}))
-            try:
-                # Baseline: the class builds at all, so a failure below is the
-                # flag and not the arguments.
-                cls(*args, **kwargs)
-            except TypeError as exc:
-                pytest.fail(
-                    f"{cls.__name__} could not be constructed for the sweep ({exc}). "
-                    f"Add its constructor arguments to the `required` map in this test."
-                )
-
+        for cls in _error_subclasses():
             parameters = inspect.signature(cls.__init__).parameters
             advertised = "retryable" in parameters or any(
                 p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values()
             )
+
+            for label, args, kwargs in _build_rows(cls):
+                try:
+                    # Baseline: the class builds at all, so a failure below is
+                    # the flag and not the arguments.
+                    cls(*args, **kwargs)
+                except TypeError as exc:
+                    pytest.fail(
+                        f"{cls.__name__} could not be constructed for the sweep ({exc}). "
+                        f"Add its constructor arguments to `_ERROR_VARIANTS`."
+                    )
+
+                if not advertised:
+                    continue
+
+                expected = _FIXED_RETRYABILITY.get(cls.__name__)
+                if isinstance(expected, dict):
+                    expected = expected[label]
+
+                for companion in companions:
+                    # The flag is passed on every probe after this one, so none
+                    # of them observes the DEFAULT. Flipping the base
+                    # constructor's `retryable: bool = False` to `True` made
+                    # every caller-wins error in the package retryable with this
+                    # whole file green. And the no-flag build has to run under
+                    # the companions too, not once bare: a base that defaults to
+                    # `(http_status or 0) >= 500` -- SPEC section 6's 5xx rule,
+                    # moved one class up -- made `UsageError(http_status=503)`
+                    # retryable and passed a bare no-flag probe, because that
+                    # probe never carried a status.
+                    default = cls(*args, **{**kwargs, **companion}).retryable
+                    assert default is (False if expected is None else expected), (
+                        f"{cls.__name__}({label!r}) with {companion} and no `retryable` at all "
+                        f"answers {default}, not {False if expected is None else expected}. A class "
+                        "that fixes its retryability must answer its invariant; one that does not "
+                        "must answer the base default, which is False."
+                    )
+
+                    answers = {}
+                    for passed in (True, False):
+                        # Must not raise: that is the defect this change fixes.
+                        error = cls(*args, **{**kwargs, **companion, "retryable": passed})
+                        answers[passed] = error.retryable
+                    where = f"{cls.__name__}({label!r}) with {companion}"
+                    if expected is None:
+                        # NOTE, and it is a real one rather than a shrug: this
+                        # branch pins today's Python behaviour, and that behaviour
+                        # DIVERGES from most of the other SDKs -- by different
+                        # amounts for the two families it covers, so they are
+                        # recorded separately. Two earlier drafts of this note were
+                        # each wider than their evidence: the first said "Python is
+                        # the outlier" on a reading of two SDKs, the second folded
+                        # the discovery identity into a count that holds only for
+                        # the composites.
+                        #
+                        # The composite identities. Five of the six other SDKs put
+                        # the flag out of the caller's reach, in three different
+                        # ways. TypeScript FORCES it for the whole
+                        # `RecordingSummaryError` family (`super(code, message,
+                        # {...options, retryable: false})` -- the same move as
+                        # `kwargs["retryable"] = False` here). Ruby
+                        # (`RecordingSummaryError#initialize(kind:, message:, code:,
+                        # hint:)`) and Kotlin (`RecordingSummaryFailure`, an
+                        # `internal constructor`) REFUSE it at the signature. Go and
+                        # Swift do not model retryability on these identities at
+                        # all: Go's `RecordingRoutingError`,
+                        # `UnresolvedRecordingError`, `BucketMismatchError` and
+                        # `CampfireDiscoveryIncompleteError` are their own structs
+                        # that unwrap to sentinels with no retryable field (the field
+                        # lives on the unrelated `basecamp.Error`), and Swift's
+                        # `RecordingSummaryError` is a plain enum. Rust is the sixth
+                        # and is NOT on that side: its enum carries no retryability,
+                        # but `From<RecordingSummaryError> for Error` builds an
+                        # ordinary `Error` and `Error::retryable(bool)` is a public
+                        # builder, so `Error::from(reason).retryable(true)` is this
+                        # hazard, still identified by `RecordingSummaryError::of`.
+                        #
+                        # The discovery identity is split rather than lopsided, and
+                        # the split is itself informative. TypeScript's
+                        # `DiscoverySelectionError` refuses at the signature (its
+                        # options type is `cause` and `httpStatus`), Ruby's
+                        # `initialize(reason, message, http_status:)` refuses, and
+                        # Kotlin's `DiscoverySelection` passes `false` itself. Go and
+                        # Rust do neither: both DERIVE it from the underlying cause,
+                        # so it can be TRUE by design -- an `as_fetch_failed` is
+                        # retryable in Go over a network read failure (a non-2xx
+                        # goes through `ErrAPI`, which never sets it), and in Rust
+                        # over a network failure or a 5xx. Go's
+                        # `SelectionError.Unwrap` copies `Retryable` from the
+                        # `*basecamp.Error` in `Cause`, an exported field a caller
+                        # can set; Rust's `SelectionError::into_error` does
+                        # `error.retryable(cause.is_retryable())` from a private
+                        # cause, so a Rust caller's only route is the public builder
+                        # afterwards. Swift has no discovery-selection identity. For
+                        # Python that is a third option beside caller-wins and
+                        # overwrite -- `DiscoverySelectionError` reading its cause --
+                        # which is part of why this is not decided here.
+                        #
+                        # So Python's keyword is the easiest route to a retryable
+                        # deterministic refusal, not the only one; and for discovery
+                        # "deterministic" is itself not true of every reason.
+                        #
+                        # Python lets a caller set
+                        # `NoRecordingTypeError(routing_key=..., retryable=True)`
+                        # -- a deterministic refusal, decided from the caller's
+                        # own arguments before any request, that then invites a
+                        # retry loop to re-run the identical refusal forever.
+                        #
+                        # Pinning it here is not a claim that it is right. It is
+                        # test-only ground: changing it is a behaviour change
+                        # with its own MIGRATING entry, and it should be decided
+                        # across the composites and `DiscoverySelectionError`
+                        # together rather than one class at a time. Recorded so
+                        # the next reader inherits the question instead of an
+                        # assertion that looks settled.
+                        assert answers == {True: True, False: False}, (
+                            f"{where} fixes no retryability, so the caller's value should be the "
+                            f"value, but it answered {answers}. If it should fix one, add it to "
+                            "`_FIXED_RETRYABILITY`."
+                        )
+                    elif answers[True] == answers[False]:
+                        assert answers[True] == expected, (
+                            f"{where} should fix retryable={expected} but fixes {answers[True]}. "
+                            "The caller is not moving it -- the class's own invariant is wrong, or "
+                            "`_FIXED_RETRYABILITY` is."
+                        )
+                    else:
+                        assert answers == {True: expected, False: expected}, (
+                            f"{where} fixes retryable={expected}, but a caller moved it: {answers}. "
+                            "Overwrite the keyword unconditionally -- never setdefault (which honours "
+                            "the caller) and never under a condition on the other keywords."
+                        )
+
             if not advertised:
                 exempt.append(cls.__name__)
-                continue
-
-            answers = {}
-            for passed in (True, False):
-                # Must not raise: that is the defect this change fixes.
-                answers[passed] = cls(*args, **{**kwargs, "retryable": passed}).retryable
-
-            if cls.__name__ in fixed:
-                invariant = fixed[cls.__name__]
-                assert answers == {True: invariant, False: invariant}, (
-                    f"{cls.__name__} fixes retryable={invariant}, but a caller moved it: {answers}. "
-                    "Overwrite the keyword -- never setdefault, which honours the caller instead."
-                )
-            else:
-                assert answers == {True: True, False: False}, (
-                    f"{cls.__name__} fixes no retryability, so the caller's value should be the "
-                    f"value, but it answered {answers}. If it should fix one, add it to `fixed`."
-                )
+            elif cls.__name__ not in _FIXED_RETRYABILITY:
                 caller_wins.append(cls.__name__)
 
         assert exempt == ["WebhookVerificationError"], (
             f"the set of constructors that advertise no retryable changed: {exempt}. "
             "Dropping `**kwargs` from a constructor removes it from this sweep."
         )
-        assert set(fixed) | set(caller_wins) | set(exempt) == expected_subclasses, (
+        # Every class lands in exactly one bucket by construction, so what this
+        # actually catches is a stale or misspelled key in
+        # `_FIXED_RETRYABILITY` -- including one naming a class that advertises
+        # the keyword nowhere, whose row would be silently dead because `exempt`
+        # classes are never probed.
+        assert set(_FIXED_RETRYABILITY) | set(caller_wins) | set(exempt) == _EXPECTED_ERROR_SUBCLASSES, (
             "every subclass must be classified: it fixes retryability, or the caller's value wins, "
             "or it advertises the keyword nowhere."
         )
+        assert not set(_FIXED_RETRYABILITY) & set(exempt), (
+            "`_FIXED_RETRYABILITY` names a class that advertises `retryable` nowhere, so its row is "
+            f"never checked: {set(_FIXED_RETRYABILITY) & set(exempt)}"
+        )
+
+    def test_a_fixed_retryability_is_overwritten_unconditionally(self):
+        """A fixed retryability is set once, unconditionally, in one canonical form.
+
+        The sweep above crosses the flag with a set of companion VALUES, and a
+        value set cannot prove a negative. Three times now a *conditional*
+        overwrite slipped past it by branching on something the set did not
+        contain::
+
+            if "retry_after" not in kwargs:
+                ...  # v2
+            if kwargs.get("http_status") != 507:
+                ...  # v3
+            if message == "Account limit reached":
+                ...  # v3
+
+        Each was closed by widening the net, and each time the next condition
+        was one argument further out. That is unwinnable: the condition is
+        chosen after the net. And widening alone does not even close the
+        obvious cases -- an unconditional overwrite followed by a *nested*
+        ``kwargs.update({"retryable": True})`` under a condition on an unprobed
+        status leaks past the value sweep entirely: with this test deselected,
+        the other 2219 pass. It is the only thing that sees it, which is the
+        argument for its existence and also the reason not to overstate it --
+        "the whole suite stayed green" would be a claim about a suite this test
+        is a member of.
+
+        So this asserts the FORM, which is where the property is decidable.
+        Each class that fixes its retryability must mention the flag exactly
+        once in its constructor, as a top-level::
+
+            kwargs["retryable"] = <expression not reading kwargs>
+
+        It is deliberately a style rule and slightly stricter than
+        "unconditional": ``kwargs |= {"retryable": False}``, an aliased
+        ``kw = kwargs; kw["retryable"] = False``, and a subclass setting
+        ``self.retryable = False`` after ``super().__init__`` -- the form a
+        subclass author reaches for first -- are all correct and all rejected.
+        The point is to keep the property *checkable* -- one
+        statement, one place, no second write for a condition to hide in -- so
+        that the value sweep's job is tractable rather than open-ended. Writing
+        the canonical form costs nothing; the alternatives cost a test that
+        cannot see them.
+
+        Its limits, recorded rather than chased -- three adversarial rounds
+        have now been spent on this test, and these are where the last one
+        stopped finding plausible edits and started finding obfuscation or
+        strictness. It cannot see a name bound through a string field of the
+        syntax tree (a ``match`` capture ``case retryable:``, ``except ... as``,
+        ``import ... as``) inside a caller-wins or the base constructor. And
+        it REJECTS some correct edits, which is the price of keeping the
+        property checkable: normalising an argument before deriving from it
+        (``reason = reason.strip()``), coercing a forward
+        (``retryable=bool(retryable)`` in ``ApiError``), reusing a derived
+        argument's name as a loop variable anywhere in the constructor, a
+        ``__slots__`` entry named ``retryable``, and a fixed class reading
+        ``self.TRANSIENT`` -- that last one on purpose, since a subclass can
+        override the constant from outside the constructor this test reads.
+        Each fails with a message that says what to write instead.
+
+        This does not replace the value sweep, which catches what a form cannot:
+        ``kwargs.setdefault(...)`` and a simply wrong invariant are both
+        single-statement and both wrong. The two together are the check.
+        """
+        import ast
+        import inspect
+        import textwrap
+
+        def names_the_flag(node):
+            """True for any syntax that says ``retryable``, however it is spelled.
+
+            The string in a subscript or a ``setdefault``/``update`` call, the
+            attribute in ``self.retryable``, a bare name, a declared parameter.
+            Counting ALL of them is the point: a second mention anywhere is a
+            second place the value can come from.
+            """
+            return (
+                (isinstance(node, ast.Constant) and node.value == "retryable")
+                or (isinstance(node, ast.Attribute) and node.attr == "retryable")
+                or (isinstance(node, ast.Name) and node.id == "retryable")
+                or (isinstance(node, ast.arg) and node.arg == "retryable")
+            )
+
+        def is_the_canonical_target(node):
+            return (
+                isinstance(node, ast.Subscript)
+                and isinstance(node.value, ast.Name)
+                and node.value.id == "kwargs"
+                and isinstance(node.slice, ast.Constant)
+                and node.slice.value == "retryable"
+            )
+
+        absent = object()
+        for cls in _error_subclasses():
+            # A `retryable` property or class attribute would answer over
+            # whatever the constructor put in `__dict__`, which no amount of
+            # reading the constructor can see. `getattr_static`, not
+            # `vars(cls)`: a property with a setter on a MIXIN put a 507 back
+            # to retryable through `error_from_response`, and `vars` looks at
+            # the class alone, never its bases.
+            assert inspect.getattr_static(cls, "retryable", absent) is absent, (
+                f"{cls.__name__} or one of its bases defines a `retryable` attribute, which "
+                "answers over what the constructor sets. The value belongs in the constructor."
+            )
+            # And a metaclass `__call__` can rewrite the instance after every
+            # constructor has returned -- the same hazard with no `__init__` in
+            # sight. Nothing in the package uses one.
+            # Neither guard sees a hook that intercepts the attribute rather
+            # than defining it: `__setattr__` flipping the value when
+            # "webhook" is in the message put a 507 back to retryable through
+            # `error_from_response`, as did the same through
+            # `__getattribute__`. Package classes only -- `BaseException`
+            # itself defines `__getattribute__`. `__getattr__` is deliberately
+            # NOT refused: it runs only for a missing attribute, the base check
+            # below guarantees `retryable` is always set, and a
+            # deprecated-alias `__getattr__` is a plausible edit that should
+            # not fail here.
+            for klass in cls.__mro__:
+                if klass.__module__ == "basecamp" or klass.__module__.startswith("basecamp."):
+                    hooks = {"__setattr__", "__getattribute__", "__delattr__"} & set(vars(klass))
+                    assert not hooks, f"{klass.__name__} defines attribute hooks {sorted(hooks)}"
+            assert type(cls) is type, (
+                f"{cls.__name__} has a metaclass ({type(cls).__name__}), whose `__call__` can "
+                "set `retryable` after the constructor this test reads."
+            )
+
+        # The base is not a subclass, so nothing above reads it -- and every
+        # rule here can be dodged one class up. `self.retryable = True if
+        # http_status in (502, 504) else retryable` in `BasecampError.__init__`
+        # made `ApiError(retryable=False, http_status=502)`,
+        # `LimitExceededError(http_status=504)` and `UsageError(http_status=502)`
+        # all retryable with every test green. The base stores the caller's
+        # value untouched, in exactly one statement, and says the flag nowhere
+        # else: the parameter, the attribute, the name.
+        from basecamp.errors import BasecampError
+
+        base = ast.parse(textwrap.dedent(inspect.getsource(BasecampError.__init__))).body[0]
+        stores = [
+            stmt
+            for stmt in base.body
+            if isinstance(stmt, ast.Assign)
+            and len(stmt.targets) == 1
+            and isinstance(stmt.targets[0], ast.Attribute)
+            and stmt.targets[0].attr == "retryable"
+            and isinstance(stmt.targets[0].value, ast.Name)
+            and stmt.targets[0].value.id == "self"
+            and isinstance(stmt.value, ast.Name)
+            and stmt.value.id == "retryable"
+        ]
+        base_mentions = [node for node in ast.walk(base) if names_the_flag(node)]
+        assert len(stores) == 1 and len(base_mentions) == 3, (
+            "`BasecampError.__init__` must store the caller's flag untouched -- exactly one top-level "
+            f"`self.retryable = retryable`, and no other mention; found {len(stores)} such "
+            f"statement(s) and {len(base_mentions)} mention(s) at line(s) "
+            f"{sorted({m.lineno for m in base_mentions})}."
+        )
+
+        for name in sorted(_FIXED_RETRYABILITY):
+            cls = next(c for c in _error_subclasses() if c.__name__ == name)
+
+            # `inspect.getsource` calls `inspect.unwrap`, so a `functools.wraps`
+            # decorator hands this test the INNER function while the wrapper is
+            # what runs. A wrapper doing `self.retryable = True` after the
+            # constructor returned put a 507 back to retryable through
+            # `error_from_response` with the whole suite green -- the same
+            # hazard as the `vars(cls)` guard above, one indirection out.
+            assert not hasattr(cls.__init__, "__wrapped__"), (
+                f"{name}'s `__init__` is wrapped, so `inspect.getsource` reads the function inside "
+                "the decorator and not the one that runs. Whatever the wrapper does to `retryable` "
+                "is invisible here: put the invariant in the constructor itself."
+            )
+            tree = ast.parse(textwrap.dedent(inspect.getsource(cls.__init__)))
+            function = tree.body[0]
+            assert isinstance(function, ast.FunctionDef), name
+            assert not function.decorator_list, (
+                f"{name}'s `__init__` carries a decorator, which can rewrite `retryable` after this "
+                "test's view of the constructor ends."
+            )
+
+            canonical = [
+                stmt
+                for stmt in function.body
+                if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and is_the_canonical_target(stmt.targets[0])
+            ]
+            assert len(canonical) == 1, (
+                f"{name} is in `_FIXED_RETRYABILITY`, so its constructor must contain exactly one "
+                'top-level `kwargs["retryable"] = ...` statement; it has '
+                f"{len(canonical)}. Anything else -- `setdefault`, `update`, `|=`, an alias, a "
+                "nested assignment -- is a second place the value can come from, and this test "
+                "cannot see into those."
+            )
+
+            mentions = [node for node in ast.walk(function) if names_the_flag(node)]
+            assert len(mentions) == 1 and mentions[0] is canonical[0].targets[0].slice, (
+                f"{name} mentions `retryable` {len(mentions)} times in its constructor (line(s) "
+                f"{sorted({m.lineno for m in mentions})}). Exactly one mention, in the canonical "
+                "overwrite, is the whole point: a second one is a condition's hiding place. A "
+                'nested `kwargs.update({"retryable": True})` beside a correct top-level '
+                "overwrite leaked with the entire suite green."
+            )
+
+            # A local assigned earlier in the constructor launders anything:
+            # `status = kwargs.get("http_status")` then `= status == 418` reads
+            # the caller's kwargs without the right-hand side ever naming
+            # `kwargs`, and `permanent = "certificate" in message` then `= not
+            # permanent` hides a derivation from the check below. So the
+            # right-hand side may read no name the function assigns.
+            assigned = set()
+            for node in ast.walk(function):
+                targets = []
+                if isinstance(node, ast.Assign):
+                    targets = node.targets
+                elif isinstance(node, (ast.AnnAssign, ast.AugAssign, ast.NamedExpr, ast.For, ast.AsyncFor)):
+                    targets = [node.target]
+                elif isinstance(node, (ast.With, ast.AsyncWith)):
+                    targets = [item.optional_vars for item in node.items if item.optional_vars is not None]
+                for target in targets:
+                    assigned |= {n.id for n in ast.walk(target) if isinstance(n, ast.Name)}
+            laundered = sorted(
+                {n.id for n in ast.walk(canonical[0].value) if isinstance(n, ast.Name) and n.id in assigned}
+            )
+            assert not laundered, (
+                f"{name}'s overwrite reads {laundered}, assigned somewhere in the constructor, so this "
+                "test cannot see where the value comes from. Write the expression on the right-hand "
+                "side itself."
+            )
+
+            # A nested `def permanent(): return "certificate" in message` then
+            # `= not permanent()` binds with no Assign and names only the
+            # helper -- and `except ... as`, `import ... as`, `match` captures
+            # and nested classes bind the same way. So beyond refusing locals,
+            # the right-hand side may name only a declared argument, a module
+            # global, or a builtin.
+            import builtins
+
+            declared = {
+                p.arg
+                for p in (function.args.posonlyargs + function.args.args + function.args.kwonlyargs)
+                if p.arg != "self"
+            }
+            readable = declared | set(cls.__init__.__globals__) | set(dir(builtins))
+            unknown = sorted(
+                {
+                    n.id
+                    for n in ast.walk(canonical[0].value)
+                    if isinstance(n, ast.Name) and n.id not in readable and n.id != "kwargs"
+                }
+            )
+            assert not unknown, (
+                f"{name}'s overwrite reads {unknown}, which is neither a declared argument, a module "
+                "global nor a builtin -- a helper or binding this test cannot see into."
+            )
+
+            reads_kwargs = [
+                node for node in ast.walk(canonical[0].value) if isinstance(node, ast.Name) and node.id == "kwargs"
+            ]
+            assert not reads_kwargs, (
+                f"{name}'s overwrite reads `kwargs` on its right-hand side, so the caller's value "
+                "can reach the invariant. The value assigned must come from the class or from its "
+                'own declared arguments -- `DeviceFlowError`\'s `reason == "transport"` is the '
+                "shape to follow."
+            )
+
+            # ...and if it DOES derive from a declared argument, that argument
+            # has to be swept at more than one value, or the derivation is a
+            # condition again -- just spelled as an expression rather than an
+            # `if`. `kwargs["retryable"] = retry_after is None or retry_after <
+            # 3600` and `= "certificate" not in message` are both single
+            # top-level statements that read no `kwargs`, and both passed
+            # everything else here: `_FIXED_RETRYABILITY` still said `True`
+            # unconditionally while the class had quietly become conditional.
+            # So a derived value forces the two things that make it visible: a
+            # per-variant expectation, and rows that actually reach both arms.
+            derived_from = sorted(
+                {node.id for node in ast.walk(canonical[0].value) if isinstance(node, ast.Name) and node.id in declared}
+            )
+            if derived_from:
+                expected = _FIXED_RETRYABILITY[name]
+                assert isinstance(expected, dict), (
+                    f"{name}'s retryability is derived from {derived_from}, so its row in "
+                    "`_FIXED_RETRYABILITY` must be a per-variant dict rather than one bool -- a "
+                    "single bool asserts the same answer at every value, which is what a derived "
+                    "value is not."
+                )
+                # A dict is not enough on its own: `{"default": True, "custom
+                # message": True}` satisfies "is a dict", and the two existing
+                # rows already carry two different messages -- so the
+                # "certificate" derivation went green again by doing exactly
+                # what the failure message asked. A derivation that answers the
+                # same at every row is not being observed deriving.
+                assert len(set(expected.values())) >= 2, (
+                    f"{name}'s retryability is derived from {derived_from}, but every variant in "
+                    f"`_FIXED_RETRYABILITY` expects {set(expected.values())}. Add rows that reach "
+                    "each answer the derivation can give."
+                )
+                rows = _ERROR_VARIANTS.get(name, [])
+                for argument in derived_from:
+                    values = {repr(row_kwargs.get(argument)) for _label, _args, row_kwargs in rows}
+                    assert len(values) >= 2, (
+                        f"{name} derives its retryability from `{argument}`, and `_ERROR_VARIANTS` "
+                        f"builds it at {len(values)} value(s) of it. The sweep can only pin the "
+                        "arms it constructs: add a row per value, as `DeviceFlowError` has one per "
+                        "`reason`."
+                    )
+
+        # The other half of the rule has a form too. A class that fixes no
+        # retryability is defended by the value sweep alone, and a value set
+        # cannot win there any more than it could above: 500 was added to the
+        # companions, and `if kwargs.get("http_status") in (502, 504):
+        # retryable = True` on `ApiError` walked straight past it. So where a
+        # caller-wins constructor mentions `retryable` at all, it may do so in
+        # exactly one shape: the declared parameter, forwarded as
+        # `retryable=retryable`. `ApiError` is the only one that mentions it
+        # today, in exactly that shape; the others inherit or forward
+        # `**kwargs` and never name it.
+        exempt = {"WebhookVerificationError"}
+        for name in sorted(_EXPECTED_ERROR_SUBCLASSES - set(_FIXED_RETRYABILITY) - exempt):
+            cls = next(c for c in _error_subclasses() if c.__name__ == name)
+            if "__init__" not in vars(cls):
+                continue  # inherits a constructor this loop reads on the class that defines it
+            assert not hasattr(cls.__init__, "__wrapped__"), f"{name}'s `__init__` is wrapped"
+            function = ast.parse(textwrap.dedent(inspect.getsource(cls.__init__))).body[0]
+            assert isinstance(function, ast.FunctionDef) and not function.decorator_list, name
+            forwarded = {
+                id(kw.value)
+                for kw in ast.walk(function)
+                if isinstance(kw, ast.keyword)
+                and kw.arg == "retryable"
+                and isinstance(kw.value, ast.Name)
+                and kw.value.id == "retryable"
+            }
+            stray = [
+                node
+                for node in ast.walk(function)
+                if names_the_flag(node) and not isinstance(node, ast.arg) and id(node) not in forwarded
+            ]
+            assert not stray, (
+                f"{name} fixes no retryability, so the caller's value must pass through untouched, "
+                f"but its constructor names `retryable` at line(s) {sorted({n.lineno for n in stray})}. "
+                "The only permitted shape is the declared parameter forwarded as `retryable=retryable`; "
+                "anything else is a place for a condition to decide instead of the caller."
+            )
+
+    def test_code_and_message_still_refuse_across_the_whole_hierarchy(self):
+        """The two collisions deliberately NOT absorbed, pinned so they stay deliberate.
+
+        ``retryable`` was absorbed because the base class declares it as an
+        ordinary knob, ``ApiError`` honours it, and the value a caller asks for
+        is not derivable from anything else they passed. The other two are not
+        like that, and nothing but this test says so:
+
+        - ``code`` is the class's identity. ``NotFoundError(code="rate_limit")``
+          is a contradiction rather than a request, and overwriting it would
+          silently swallow a caller's real confusion -- the outcome this change
+          calls worse than a refusal.
+        - ``message`` on the five composites that compose one is DERIVED from
+          the caller's own structured arguments (``routing_key``, ``bucket_id``,
+          ``reason``), so the caller already controls it and a refusal defeats
+          no intent.
+
+        Without this, the next reader finds three identical-looking collisions,
+        one of them "fixed", and no record that the other two were decided.
+
+        Exhaustive, not a sample. The first version of this test built four
+        classes by hand, so `AuthError` could have started absorbing a caller's
+        ``code`` with every test in the repo still green -- the same
+        partial-coverage mistake the sweep above went through three rounds of.
+        Every subclass is classified here. For ``code`` all three sets are
+        named; for ``message`` the ``collides`` set is named and ``undeclared``
+        is asserted empty, so ``accepts`` is pinned as the complement -- the
+        same coverage, said exactly.
+        """
+        from basecamp.errors import ErrorCode
+
+        code, message = {}, {}
+        for cls in _error_subclasses():
+            for _label, args, kwargs in _build_rows(cls):
+                code.setdefault(_refusal_of(cls, args, kwargs, "code", ErrorCode.API), set()).add(cls.__name__)
+                message.setdefault(_refusal_of(cls, args, kwargs, "message", "override"), set()).add(cls.__name__)
+
+        # `code`: every class that fixes one collides. The two that do not are
+        # named, so absorbing it anywhere else fails here.
+        assert code.get("accepts") == {
+            # Declares no code of its own -- it inherits the base's constructor,
+            # where `code` is an ordinary declared parameter.
+            "RecordingRoutingError",
+        }, f"a class started accepting `code`: {code.get('accepts')}"
+        assert code.get("undeclared") == {
+            # Advertises no keywords at all, so this is "unexpected keyword
+            # argument" -- refused by mypy too.
+            "WebhookVerificationError",
+        }, f"the `code`-undeclared set changed: {code.get('undeclared')}"
+        assert code.get("collides") == _EXPECTED_ERROR_SUBCLASSES - {
+            "RecordingRoutingError",
+            "WebhookVerificationError",
+        }, "a class stopped refusing `code`"
+
+        # `message`: only the five composites that COMPOSE one collide. Every
+        # other class declares `message` and takes the caller's.
+        assert message.get("collides") == {
+            "BucketMismatchError",
+            "CampfireDiscoveryIncompleteError",
+            "NoRecordingTypeError",
+            "RecordingUnresolvedError",
+            "UnknownRecordingTypeError",
+        }, f"the set of classes that compose their message changed: {message.get('collides')}"
+        assert not message.get("undeclared"), f"a class stopped declaring `message`: {message.get('undeclared')}"
