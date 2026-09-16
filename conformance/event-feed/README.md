@@ -352,14 +352,12 @@ reason via a constant, not the literal.
 | Poll body envelope keys `events` / `position` / `next` | 1 | every fixture serving a 200 poll: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 26, 29, 30, 31 (mechanically derived from the fixture files; re-derive when the set changes) |
 | Mint response body `{ticket, expires_in, url}`, status 200 | 1 | every fixture with `expectMint` (all but 28) |
 | Subscribe identifier literals: channel `EventsChannel`, param spellings `types`/`buckets`/`creators`/`performers`/`exclude_performers`/`actor_types`, comma-joined values | 1 | channel: every `expectSubscribe`; `types` spelling: 01 (its `expectSubscribe` pins `params` explicitly, single-valued); `buckets`/`creators` spellings + comma-joining: no PR-2 fixture — pinned at PR-4 (fixture 15, whose retransmit case also pins byte-identity of the identifier) |
-| 409 body: all three keys `error` / `position_digest` / `filters_digest` required; digest values bare 16-hex (no `srv2-` prefix), `error` content unconstrained | 1 | schema-pinned shape only (the 409 respond variant requires all three keys); **no PR-2 fixture serves a 409** — pinned live at PR-4 (the tier-1 dispatch case additionally owns the wire pin when tier 1 lands) |
-| 410 body keys `epoch_after_id` / `resume` | 1 | 16, 23, 25, 27, 33 |
 | Inbox envelope keys `items` / `position` / `next`; item keys `addressing_id` / `reason` / `addressed_at` / `event` (event in the poll row's shape) | 1 | 32, 33 |
 | Inbox subscription identifier: `inbox` as a JSON boolean plus `reasons`; an inbox subscription replaces the account streams for its connection | 1 (spelling) / 2 (replacement) | 32 (spelling); replacement unpinned — the driver serves one subscription per connection either way |
 | Inbox 410 = the position fell behind the 30-day retention window; `resume` re-enters at `since=0`, the earliest retained item (exactly-once continuation for a stale position) | 2 | 33 |
 | Inbox is agents-only: a non-agent principal's poll answers 403, which rides the shared authorization counter | 2 | unpinned at tier 2 (the 401/403 poll variant already covers the counter; which principals the server admits is not a connector behavior) |
 | 409 body: all three keys `error` / `position_digest` / `filters_digest` required; digest values bare 16-hex (no `srv2-` prefix), `error` content unconstrained | 1 | 34 (served, both digests forwarded to the connector and pinned on Observer.filterConflict); the tier-1 dispatch case additionally owns the wire pin |
-| 410 body keys `epoch_after_id` / `resume` | 1 | 16, 23, 25, 27 |
+| 410 body keys `epoch_after_id` / `resume` | 1 | 16, 23, 25, 27 (feed, with `epoch_after_id`); 33 (inbox, `resume` only) |
 | 400 position-vs-filter discriminating bodies (verbatim transcript shapes) | 1 | no PR-2 fixture — pinned at PR-4 (tier 1 additionally owns it when `PollEvents` lands); the schema's 400 variant requires a verbatim body and this table is its source of truth |
 | srv2 digest vectors (eleven-vector table) + canonicalization algorithm | 1 (vectors) / 2 (algorithm) | sibling family `conformance/event-feed-digest/` |
 | Maximum inbound frame (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB), transport-enforced during the read | SDK-owned constant; enforcement seam-contractual | no PR-2 fixture — tier 3 + a later raw-bounds fixture |
@@ -372,7 +370,7 @@ reason via a constant, not the literal.
 | Ticket statelessness + ~120s TTL (server-owned `expires_in`) | 2 | 05 (TTL-advance premise; `expires_in` never schedules anything) |
 | 3-second server heartbeat cadence (input to the 7500ms staleness policy) | 2 | no PR-2 fixture — PR 4 (staleness fixture 08) |
 | Subscribe retransmit contract (identical absorbed, different rejected) | 2 | no PR-2 fixture — PR 4 (fixture 15) |
-| Push payload 11-key shape — the poll row's nine (`performed_by_id` present, null for a direct action) plus the transport-only `actor_type` and `visible_to_clients` (push carries them, poll rows omit them), and an optional `details` object for the types that publish one | 2 | schema-enforced on every `serve message` (11 keys) and every poll envelope row (9 keys, `actor_type` and `visible_to_clients` forbidden) |
+| Push payload 11-key shape — the poll row's nine (`performed_by_id` present, null for a direct action) plus the transport-only `actor_type` and `visible_to_clients` (push carries them, poll rows omit them), and an optional `details` object for the types that publish one | 2 | schema-enforced on every `serve message` (11 keys) and every feed poll row (9 keys, `actor_type` and `visible_to_clients` forbidden); an inbox item's event is documented in the poll shape and may carry the two transport keys, so `inboxItemEvent` and the Go decoder accept them when present (never a present null) — the one place the asymmetry is tolerated rather than enforced |
 
 ## Deliberate tier-2 slack (tier-3/PR-4 ownership)
 

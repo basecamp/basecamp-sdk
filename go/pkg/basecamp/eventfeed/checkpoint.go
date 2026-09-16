@@ -9,12 +9,15 @@ import (
 	"unicode/utf8"
 )
 
-// CheckpointKey is the durable checkpoint identity — all four fields, always
+// CheckpointKey is the durable checkpoint identity — all five fields, always
 // (SPEC.md §23 "Checkpoint Identity"). Server positions are bound to
 // {account, filter set} but carry no consumer identity; two independent
 // consumers in one account would otherwise share a lineage and silently skip
 // each other's work. Origin is included because the SDK supports configurable
-// base URLs.
+// base URLs, and Lane because an inbox position is never interchangeable
+// with a feed position: a store keyed by the first four would let an account
+// lineage and an inbox lineage under one namespace and filter set overwrite
+// each other.
 type CheckpointKey struct {
 	// Origin is the canonicalized API base origin (CanonicalOrigin).
 	Origin string

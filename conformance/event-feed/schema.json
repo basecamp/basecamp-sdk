@@ -265,6 +265,66 @@
                           }
                         }
                       }
+                    },
+                    "query": {
+                      "allOf": [
+                        {
+                          "not": {
+                            "anyOf": [
+                              {
+                                "required": [
+                                  "creators"
+                                ]
+                              },
+                              {
+                                "required": [
+                                  "performers"
+                                ]
+                              },
+                              {
+                                "required": [
+                                  "exclude_performers"
+                                ]
+                              },
+                              {
+                                "required": [
+                                  "actor_types"
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "properties": {
+                            "exact": {
+                              "not": {
+                                "anyOf": [
+                                  {
+                                    "required": [
+                                      "creators"
+                                    ]
+                                  },
+                                  {
+                                    "required": [
+                                      "performers"
+                                    ]
+                                  },
+                                  {
+                                    "required": [
+                                      "exclude_performers"
+                                    ]
+                                  },
+                                  {
+                                    "required": [
+                                      "actor_types"
+                                    ]
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      ]
                     }
                   }
                 },
@@ -312,7 +372,7 @@
             }
           }
         },
-        "description": "An inbox scenario serves {items, position, next} pages and item frames: an `events` envelope or a bare `event` frame is the account feed's shape and cannot certify the inbox lane. An inbox subscribe expectation carries `inbox: true` and none of the account feed's other dimensions."
+        "description": "An inbox scenario serves {items, position, next} pages and item frames: an `events` envelope or a bare `event` frame is the account feed's shape and cannot certify the inbox lane. An inbox subscribe expectation carries `inbox: true` and none of the account feed's other dimensions. A poll-query pin (subset or exact) names only the inbox's dimensions."
       },
       "else": {
         "properties": {
@@ -331,6 +391,28 @@
                           }
                         }
                       }
+                    },
+                    "query": {
+                      "allOf": [
+                        {
+                          "not": {
+                            "required": [
+                              "reasons"
+                            ]
+                          }
+                        },
+                        {
+                          "properties": {
+                            "exact": {
+                              "not": {
+                                "required": [
+                                  "reasons"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      ]
                     }
                   }
                 },
@@ -361,7 +443,7 @@
             }
           }
         },
-        "description": "An account scenario serves {events, position, next} pages and event frames: an `items` envelope or an `item` frame is the inbox lane's shape. An account subscribe expectation carries neither `inbox` nor a reasons param."
+        "description": "An account scenario serves {events, position, next} pages and event frames: an `items` envelope or an `item` frame is the inbox lane's shape. An account subscribe expectation carries neither `inbox` nor a reasons param. A poll-query pin (subset or exact) never names reasons."
       }
     }
   ],
@@ -2056,7 +2138,8 @@
         },
         "addressed_at": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339 — the shape every driver parses."
         },
         "event": {
           "$ref": "#/$defs/inboxItemEvent"

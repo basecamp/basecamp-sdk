@@ -18,8 +18,8 @@ import (
 
 // FileCheckpointStore is the one built-in CheckpointStore: a single JSON file
 // holding every lineage's durable position, keyed by CheckpointKey.FlatKey —
-// the compact RFC 8259 JSON array of the four identity strings (SPEC.md §23
-// "Checkpoint Identity"), e.g.
+// the compact RFC 8259 JSON array of the identity strings — four, or five
+// with the inbox lane (SPEC.md §23 "Checkpoint Identity"), e.g.
 //
 //	{
 //	  "[\"https://3.basecampapi.com\",\"5951425\",\"openclaw\",\"srv2-9f2ab04e5c11d3a7\"]": "…"

@@ -3998,7 +3998,8 @@ END
 
 INTERFACE PollSource
   poll(cursor: Cursor, filters: Filters, cancellation) → PollPage
-  -- One fully-governed generated PollEvents call; `cancellation` as on TicketMinter —
+  -- One fully-governed generated call of the LANE's operation: PollEvents on the account
+  -- lane, PollInbox on the inbox lane (The Inbox Lane below); `cancellation` as on TicketMinter —
   -- triggered on close(), caller cancellation, AND any teardown of the attempt the call
   -- belongs to (mid-walk socket failure, staleness, a terminal): a superseded poll must
   -- not stall reconnection or return into a disposed attempt. Prompt return required.
@@ -4019,7 +4020,9 @@ END
 
 RECORD PollPage         -- the body envelope IS the contract; never bind to response headers
                         -- (X-Feed-Position and Link rel="next" merely echo position/next)
-  events   : List<Event>
+  events   : List<Event> -- in strict order of the lane's identity: event id on the account
+                        -- lane; addressing id on the inbox lane, each row carrying its
+                        -- Addressing (the inbox adapter maps an item onto an Event)
   position : String     -- the ONLY thing that ever advances the checkpoint
   next     : String?    -- continuation URL; absent = the walk reached its frozen head.
                         -- Bound to that walk; NEVER persisted.
@@ -4101,6 +4104,9 @@ RECORD CheckpointKey
   account_id         : String
   consumer_namespace : String   -- required whenever a store is configured
   filter_key         : String   -- "srv2-" + bare server digest
+  lane               : String   -- "" on the account lane, "inbox" on the inbox lane: inbox
+                                -- positions are never interchangeable with feed positions,
+                                -- so one namespace and filter set are two lineages across lanes
 END
 ```
 
@@ -4281,8 +4287,10 @@ backoff a hard failure rather than a heuristic.
 
 ### Checkpoint Identity `[conformance]`
 
-Checkpoint identity is `{origin, account_id, consumer_namespace, filter_key}` — all four,
-always:
+Checkpoint identity is `{origin, account_id, consumer_namespace, filter_key, lane}` — all
+five, always (a custom store that keys by the first four collides an account lineage with
+an inbox lineage under one namespace and filter set, and the two overwrite each other's
+positions):
 
 - Server positions are bound to `{account, filter set}` but carry **no consumer identity**;
   two independent consumers in one account would otherwise share a lineage and silently
@@ -4358,8 +4366,9 @@ the doc calls them stable):
 | `reasons=mentioned,assigned&performers=9&types=comment.created` | `{"performers":[9],"reasons":["assigned","mentioned"],"types":["comment.created"]}` | `99b78eea305639b8` |
 
 The one built-in store is a file store: a single JSON file keyed by the compact RFC 8259
-JSON array of the four identity strings — e.g.
-`["https://3.basecampapi.com","5951425","openclaw","srv2-9f2ab04e5c11d3a7"]` — written
+JSON array of the identity strings — the four, e.g.
+`["https://3.basecampapi.com","5951425","openclaw","srv2-9f2ab04e5c11d3a7"]`, with the
+lane as a fifth element only when it is set (`…,"inbox"]`) — written
 atomically (temp + rename, 0600), documented as single-process (a server-side advisory
 checkpoint API is deliberately deferred until a multi-host connector needs a shared
 cursor). No `delete` method exists: after a 409 the connector re-enters via `since=` and

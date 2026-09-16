@@ -913,8 +913,10 @@ straight after `Close` can race the prior run's last save.
 ### Checkpointing
 
 `FileCheckpointStore` is the built-in `CheckpointStore`: one JSON file holding every
-lineage's position, keyed by the four-part checkpoint identity (origin, account,
-consumer namespace, filter key). It writes temp-file-plus-rename at 0600, and it is safe
+lineage's position, keyed by the five-part checkpoint identity (origin, account,
+consumer namespace, filter key, lane — the lane is empty on the account feed and `inbox`
+on the inbox, since the two lanes' positions are never interchangeable and a store keyed
+by four would let them overwrite each other). It writes temp-file-plus-rename at 0600, and it is safe
 for concurrent use within one process but deliberately not across processes. A store
 requires `WithConsumerNamespace` — two independent consumers in one account must not
 share a lineage — and changing filters starts a new lineage, because positions are
