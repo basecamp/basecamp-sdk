@@ -4384,9 +4384,11 @@ construction of the harness — a harness that asserted no request reached it wo
 asserting something about itself. That obligation belongs to the Layer-1 seam
 adapter's own 302 test, where a real generated `PollEvents` call meets a real redirect
 against an adapter whose client refuses the hop: the Go adapters (`eventfeed.NewLive`)
-install a redirect policy on their client that validates every hop's resolved `Location`
-under this rule before any request is issued, and their 302 test proves zero egress
-against a sentinel listener behind the foreign `Location`
+compose a guard over their client's transport that answers every 3xx at the wire —
+the `Location` reduced to its origin for the seam and stripped, with the body, before
+the HTTP stack, the operation hooks or any log sees it; no hop is followed, same-origin
+included, since the API never redirects a feed call — and their 302 test proves zero
+egress against a sentinel listener behind the foreign `Location`
 (`conformance/event-feed/README.md`, row 15).
 
 ### Clock, Timers, and Virtual Time `[conformance]`

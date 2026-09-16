@@ -479,8 +479,9 @@ driver rather than about the connector. Zero egress to a foreign redirect
 target is a Layer-1 property, and proving it belongs to the Layer-1 seam
 adapter's own 302 test, where a real generated `PollEvents` call meets a real
 redirect. The Go adapters (`eventfeed.NewLive`, `go/pkg/basecamp/eventfeed/live.go`)
-carry that test: their client's redirect policy validates every hop's resolved
-`Location` before any request is issued, and a sentinel listener behind the
+carry that test: a guard composed over their client's transport answers every 3xx
+at the wire — no hop is followed, the `Location` is reduced to its origin and
+stripped before anything else sees it — and a sentinel listener behind the
 foreign `Location` records zero hits. The other SDKs' adapters owe the same
 test when they land.
 

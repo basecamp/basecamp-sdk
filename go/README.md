@@ -812,8 +812,9 @@ direct wire act is the Action Cable dial above — the connector connects verbat
 URL a generated `CreateStreamTicket` call returned, which is the sanctioned non-HTTP wire
 act. `eventfeed.NewLive` binds those seams to the generated `CreateStreamTicket`,
 `PollEvents` and `PollInbox` operations over a `basecamp.Client` it builds for you — with
-a redirect policy that refuses cross-origin hops, so an authenticated poll never egresses
-off the API origin — and `Connect` builds the connector over them. A host may still
+a transport guard that answers every 3xx at the wire instead of following it, so an
+authenticated poll never egresses off the API origin and no `Location` reaches a log —
+and `Connect` builds the connector over them. A host may still
 supply its own `TicketMinter` and `PollSource`; the exported surface may still change.
 
 ```go

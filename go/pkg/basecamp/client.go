@@ -39,9 +39,10 @@ type Client struct {
 	logger        *slog.Logger
 	httpOpts      HTTPOptions
 	hooks         Hooks
-	// checkRedirect replaces the HTTP client's default redirect policy when
-	// set (WithCheckRedirect); nil keeps the SPEC §13 default below.
-	checkRedirect func(req *http.Request, via []*http.Request) error
+	// transportWrapper, when set, wraps the resolved transport before the
+	// logging layer (WithTransportWrapper). An interface, not a func: Client
+	// stays comparable.
+	transportWrapper TransportWrapper
 
 	// Generated client (single shared instance, account passed per operation)
 	genOnce sync.Once
@@ -158,16 +159,22 @@ func WithHTTPClient(c *http.Client) ClientOption {
 	}
 }
 
-// WithCheckRedirect replaces the HTTP client's redirect policy for every
-// request the client issues. The default (SPEC §13) follows up to ten hops
-// and strips Authorization on a cross-origin hop; a policy that returns an
-// error refuses the hop before any request reaches its target, and the
-// operation surfaces that error. The SPEC §23 event feed connector installs
-// one that refuses cross-origin and downgraded hops outright, because an
+// TransportWrapper composes a RoundTripper over the transport a Client
+// resolves — the one WithTransport supplied, or the default — so a caller can
+// observe or rewrite every wire response without replacing the transport
+// beneath it. The wrapper sits under the client's logging layer: what it
+// returns is what hooks, logs and the redirect policy see. The SPEC §23 event
+// feed connector installs one that answers every 3xx itself, because an
 // authenticated poll must never egress to a foreign origin at all.
-func WithCheckRedirect(policy func(req *http.Request, via []*http.Request) error) ClientOption {
+type TransportWrapper interface {
+	WrapTransport(inner http.RoundTripper) http.RoundTripper
+}
+
+// WithTransportWrapper installs the TransportWrapper the client composes over
+// its transport. A later option replaces an earlier one.
+func WithTransportWrapper(w TransportWrapper) ClientOption {
 	return func(client *Client) {
-		client.checkRedirect = policy
+		client.transportWrapper = w
 	}
 }
 
@@ -252,12 +259,17 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 		transport = newDefaultTransport()
 	}
 
+	if c.transportWrapper != nil {
+		transport = c.transportWrapper.WrapTransport(transport)
+	}
+
 	// Wrap transport with logging transport
 	transport = &loggingTransport{inner: transport, client: c}
 
-	checkRedirect := c.checkRedirect
-	if checkRedirect == nil {
-		checkRedirect = func(req *http.Request, via []*http.Request) error {
+	c.httpClient = &http.Client{
+		Timeout:   c.httpOpts.Timeout,
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 10 {
 				return fmt.Errorf("stopped after 10 redirects")
 			}
@@ -267,12 +279,7 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 				req.Header.Del("Authorization")
 			}
 			return nil
-		}
-	}
-	c.httpClient = &http.Client{
-		Timeout:       c.httpOpts.Timeout,
-		Transport:     transport,
-		CheckRedirect: checkRedirect,
+		},
 	}
 
 	// Validate configuration

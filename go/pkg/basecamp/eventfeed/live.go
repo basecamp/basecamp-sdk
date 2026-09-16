@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -24,18 +23,22 @@ import (
 // adapter maps every §6/§7 outcome onto exactly one seam error kind.
 //
 // The adapters build their own basecamp.Client rather than borrowing the
-// host's, for one reason: the redirect policy. A followed `next` or 410
-// `resume` URL carries the caller's bearer, and the client's default policy
-// follows a cross-origin hop with the Authorization header stripped — which
-// still egresses to the foreign origin. §23 "Continuation and Resume URL
-// Validation" requires zero foreign egress, so the feed's client refuses a
-// cross-origin or downgraded hop before any request is issued
-// (basecamp.WithCheckRedirect), and the refusal reaches the connector as the
-// poll seam's redirect_refused kind. The host keeps every other option — its
-// hooks, logger, transport, auth strategy — by passing them through, and can
-// use the same client for its own refetches (Live.Client): a policy that
-// refuses cross-origin redirects is safe for every API call, since the API
-// never legitimately redirects off its own origin.
+// host's, for one reason: redirects. A followed `next` or 410 `resume` URL
+// carries the caller's bearer, and the client's default policy follows a
+// cross-origin hop with the Authorization header stripped — which still
+// egresses to the foreign origin. §23 "Continuation and Resume URL
+// Validation" requires zero foreign egress, so the feed's client composes a
+// guard over the host's transport (basecamp.WithTransportWrapper) that
+// answers every 3xx at the wire: the Location is reduced to its origin for
+// the seam and stripped — with the body — before net/http, the operation
+// hooks or any log sees it, and the 3xx reaches the generated call as a
+// status it classifies. No hop is ever followed, same-origin included: the
+// API never redirects a feed call, and a continuation is followed by
+// re-issuing the operation, not by a hop. The host keeps every other option
+// — its hooks, logger, transport, auth strategy — by passing them through,
+// and can use the same client for its own refetches (Live.Client): refusing
+// redirects is safe for every API call, since the API never legitimately
+// redirects at all.
 
 // Live is the connector's wire binding: the seams for one account on one
 // lane, over the generated operations.
@@ -49,8 +52,9 @@ type Live struct {
 
 // NewLive builds the seams for accountID on lane over a basecamp.Client
 // constructed from cfg, tokens and clientOpts — with the feed's redirect
-// policy installed last, so it wins over any policy in clientOpts. The
-// client's base URL is the connector's origin: the checkpoint key's and the
+// guard installed last, so it wins over any transport wrapper in clientOpts
+// (the host's transport itself, from WithTransport, is what the guard
+// composes over). The client's base URL is the connector's origin: the checkpoint key's and the
 // same-origin reference every continuation is validated against.
 func NewLive(cfg *basecamp.Config, tokens basecamp.TokenProvider, accountID string, lane Lane, clientOpts ...basecamp.ClientOption) (*Live, error) {
 	if cfg == nil {
@@ -78,7 +82,7 @@ func NewLive(cfg *basecamp.Config, tokens basecamp.TokenProvider, accountID stri
 	}
 	opts := make([]basecamp.ClientOption, 0, len(clientOpts)+1)
 	opts = append(opts, clientOpts...)
-	opts = append(opts, basecamp.WithCheckRedirect(feedRedirectPolicy(origin)))
+	opts = append(opts, basecamp.WithTransportWrapper(redirectGuardWrapper{}))
 	client := basecamp.NewClient(cfg, tokens, opts...)
 	return &Live{
 		client:    client,
@@ -112,12 +116,12 @@ func (l *Live) Connect(opts ...Option) (*Connector, error) {
 	return New(l.origin, l.accountID, l.Minter(), l.Polls(), all...)
 }
 
-// refusedHop is the per-call record the redirect policy writes when it will
-// not take a hop: the refused Location reduced to its origin — data for the
+// refusedHop is the per-call record the redirect guard writes when it
+// answers a 3xx: the refused Location reduced to its origin — data for the
 // seam's redirect_refused kind, never rendered (§23: a hostile redirect can
 // reflect the bearer into a host label). It travels on the call's context so
-// the policy, which sees only the redirected request, can hand it back to the
-// seam call that owns it.
+// the guard, which sees only the wire exchange, can hand it back to the seam
+// call that owns it.
 type refusedHop struct {
 	mu      sync.Mutex
 	refused bool
@@ -144,44 +148,56 @@ func withRefusedHop(ctx context.Context) (context.Context, *refusedHop) {
 	return context.WithValue(ctx, refusedHopKey{}, hop), hop
 }
 
-// feedRedirectPolicy is the basecamp.Client redirect policy the feed installs:
-// every hop's resolved Location is validated against the API origin under §8's
-// same-origin algorithm plus downgrade rejection, before any request reaches
-// it. A same-origin hop is followed (the host's own origin, so the bearer may
-// travel). Anything else is refused by returning http.ErrUseLastResponse —
-// the client then hands the 3xx back as an ordinary response, which the
-// generated call classifies by status — rather than an error, because
-// net/http wraps a policy error in a url.Error that renders the refused
-// Location whole, and that rendering would reach the operation hooks before
-// any seam could redact it. The refused origin is recorded on the call's
-// context for the seam to read.
-func feedRedirectPolicy(origin string) func(req *http.Request, via []*http.Request) error {
-	return func(req *http.Request, via []*http.Request) error {
-		refuse := len(via) >= 10
-		if !refuse {
-			refuse = checkContinuation(origin, req.URL.String()) != nil
-		}
-		if !refuse {
-			return nil
-		}
-		if len(via) > 0 {
-			if hop, ok := via[0].Context().Value(refusedHopKey{}).(*refusedHop); ok {
-				hop.record(locationOrigin(req))
-			}
-		}
-		return http.ErrUseLastResponse
+// redirectGuardWrapper installs redirectGuard over the client's transport.
+type redirectGuardWrapper struct{}
+
+func (redirectGuardWrapper) WrapTransport(inner http.RoundTripper) http.RoundTripper {
+	return &redirectGuard{inner: inner}
+}
+
+// redirectGuard is the RoundTripper the feed composes over the host's
+// transport: every 3xx is answered here, at the wire, before net/http's
+// redirect loop can parse a Location, follow it, or render it into a
+// url.Error that the operation hooks would receive whole. The Location is
+// reduced to its origin on the call's refusedHop record — the one component
+// the seam contract lets a redirect_refused error carry — then the header and
+// the body are dropped, and the 3xx goes on as a bare status the generated
+// call classifies. One mechanism covers every shape of the class: a foreign
+// Location, a same-origin one, a downgraded one, a Location net/http could
+// not parse, and a 3xx with none.
+type redirectGuard struct {
+	inner http.RoundTripper
+}
+
+func (g *redirectGuard) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := g.inner.RoundTrip(req)
+	if err != nil || resp == nil || !isRedirectStatus(resp.StatusCode) {
+		return resp, err
 	}
+	if hop, ok := req.Context().Value(refusedHopKey{}).(*refusedHop); ok {
+		hop.record(locationOrigin(resp.Header.Get("Location")))
+	}
+	resp.Header.Del("Location")
+	resp.Header.Del("Content-Location")
+	if resp.Body != nil {
+		_ = resp.Body.Close()
+	}
+	resp.Body = http.NoBody
+	resp.ContentLength = 0
+	resp.Header.Del("Content-Length")
+	return resp, nil
 }
 
 // errHopRefused is the fixed cause a refused hop carries: never the
 // Location, never the status text.
 var errHopRefused = errors.New("eventfeed: refused a redirect off the API origin")
 
-// locationOrigin reduces a refused hop's target to its origin — the one
+// locationOrigin reduces a refused hop's Location to its origin — the one
 // component the seam contract lets a redirect_refused error carry — or the
-// fixed token `unparsable` when the URL yields no complete origin (§9).
-func locationOrigin(req *http.Request) string {
-	origin, err := CanonicalOrigin(req.URL.String())
+// fixed token `unparsable` when the header is absent or yields no complete
+// origin (§9).
+func locationOrigin(location string) string {
+	origin, err := CanonicalOrigin(location)
 	if err != nil {
 		return "unparsable"
 	}
@@ -213,14 +229,11 @@ func mapMintError(ctx context.Context, err error, hop *refusedHop) error {
 	if isCancellation(ctx, err) {
 		return err
 	}
-	if isMalformedRedirect(err) {
-		return &MintError{Kind: MintUnrecoverable, Err: errHopRefused}
-	}
 	var apiErr *basecamp.Error
 	if errors.As(err, &apiErr) && isRedirectStatus(apiErr.HTTPStatus) {
 		// A mint that redirects is out of contract, and a fresh mint would
 		// redirect the same way: unrecoverable, with a fixed cause — the
-		// refused hop never reaches a rendering.
+		// guard already reduced the hop to an origin nothing here renders.
 		_, _ = hop.get()
 		return &MintError{Kind: MintUnrecoverable, Err: errHopRefused}
 	}
@@ -407,22 +420,12 @@ func mapPollError(ctx context.Context, err error, hop *refusedHop) error {
 	if isCancellation(ctx, err) {
 		return err
 	}
-	if isMalformedRedirect(err) {
-		// A 3xx whose Location net/http could not parse fails before any
-		// policy runs and would otherwise read as a transport failure and
-		// be retried into forever; it is a refused hop with no origin to
-		// report. The url.Error's text — which renders the header — is
-		// dropped here; the operation hooks upstream of this seam still
-		// receive it (the residual named on the PR).
-		return &PollError{Kind: PollRedirectRefused, LocationOrigin: "unparsable", Err: errHopRefused}
-	}
 	var apiErr *basecamp.Error
 	if errors.As(err, &apiErr) && isRedirectStatus(apiErr.HTTPStatus) {
-		// A 3xx the policy refused — or one the client never asked the
-		// policy about: a bare 3xx with no Location, which is equally not a
-		// page. The origin the policy recorded rides as data on
-		// LocationOrigin (§9's fixed token where it recorded none), and the
-		// cause is fixed text: nothing of the response reaches a rendering.
+		// A 3xx the guard answered: the origin it recorded rides as data on
+		// LocationOrigin (§9's fixed token for a Location that was absent
+		// or did not parse), and the cause is fixed text — nothing of the
+		// response reaches a rendering.
 		origin := "unparsable"
 		if recorded, ok := hop.get(); ok && recorded != "" {
 			origin = recorded
@@ -466,9 +469,8 @@ func mapPollError(ctx context.Context, err error, hop *refusedHop) error {
 	}
 }
 
-// isRedirectStatus reports a 3xx the generated call surfaced as its own
-// status: the redirect policy declined to follow it, or it carried no
-// Location to follow.
+// isRedirectStatus reports a 3xx: at the guard, a response to answer; at
+// the seam, the status the generated call surfaced once the guard had.
 func isRedirectStatus(status int) bool {
 	return status >= 300 && status <= 399
 }
@@ -480,14 +482,6 @@ func isRedirectStatus(status int) bool {
 // DeadlineExceeded, and that one is a transport failure to classify.
 func isCancellation(ctx context.Context, err error) bool {
 	return ctx.Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded))
-}
-
-// isMalformedRedirect reports net/http's own refusal of a 3xx whose Location
-// header did not parse — raised before any redirect policy runs, so the seam
-// never recorded a hop for it.
-func isMalformedRedirect(err error) bool {
-	var urlErr *url.Error
-	return errors.As(err, &urlErr) && urlErr.Err != nil && strings.HasPrefix(urlErr.Err.Error(), "failed to parse Location header")
 }
 
 // errContinuationUnparsable is the fixed cause for a continuation whose query

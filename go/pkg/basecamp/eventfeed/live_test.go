@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,6 +33,11 @@ type liveFixture struct {
 
 func newLiveFixture(t *testing.T, lane eventfeed.Lane, handler http.HandlerFunc) *liveFixture {
 	t.Helper()
+	return newLiveFixtureWith(t, lane, handler)
+}
+
+func newLiveFixtureWith(t *testing.T, lane eventfeed.Lane, handler http.HandlerFunc, extra ...basecamp.ClientOption) *liveFixture {
+	t.Helper()
 	f := &liveFixture{}
 	f.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.requests.Add(1)
@@ -41,8 +48,8 @@ func newLiveFixture(t *testing.T, lane eventfeed.Lane, handler http.HandlerFunc)
 	t.Cleanup(f.server.Close)
 	cfg := basecamp.DefaultConfig()
 	cfg.BaseURL = f.server.URL
-	live, err := eventfeed.NewLive(cfg, &basecamp.StaticTokenProvider{Token: "test-token"}, "99999", lane,
-		basecamp.WithMaxRetries(0), basecamp.WithBaseDelay(time.Millisecond))
+	opts := append([]basecamp.ClientOption{basecamp.WithMaxRetries(0), basecamp.WithBaseDelay(time.Millisecond)}, extra...)
+	live, err := eventfeed.NewLive(cfg, &basecamp.StaticTokenProvider{Token: "test-token"}, "99999", lane, opts...)
 	if err != nil {
 		t.Fatalf("NewLive: %v", err)
 	}
@@ -346,14 +353,17 @@ func TestLivePolls_RefusesAContinuationWithoutACursor(t *testing.T) {
 	}
 }
 
-// TestLivePolls_AMalformedLocationIsARefusedHop: net/http refuses a 3xx whose
-// Location does not parse before any policy runs; the seam still classifies it
-// as a refused hop rather than a transport failure to retry into.
+// TestLivePolls_AMalformedLocationIsARefusedHop: a 3xx whose Location does
+// not parse is answered by the guard before net/http's redirect loop would
+// parse it into a url.Error; the seam classifies it as a refused hop, not a
+// transport failure to retry into, and no rendering — the seam's error or the
+// operation hooks' — carries the header.
 func TestLivePolls_AMalformedLocationIsARefusedHop(t *testing.T) {
-	f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+	hooks := &recordingHooks{}
+	f := newLiveFixtureWith(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Location", "http://[::1]:namedport/leak")
 		w.WriteHeader(http.StatusFound)
-	})
+	}, basecamp.WithHooks(hooks))
 	_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
 	var pe *eventfeed.PollError
 	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollRedirectRefused || pe.LocationOrigin != "unparsable" {
@@ -361,6 +371,46 @@ func TestLivePolls_AMalformedLocationIsARefusedHop(t *testing.T) {
 	}
 	if strings.Contains(pe.Error(), "leak") {
 		t.Fatalf("PollError renders the malformed Location: %s", pe.Error())
+	}
+	hooks.assertNoLeak(t, "leak")
+}
+
+// recordingHooks captures what the operation hooks are handed, so a test can
+// assert that the refused Location reached none of them.
+type recordingHooks struct {
+	basecamp.NoopHooks
+	mu         sync.Mutex
+	renderings []string
+}
+
+func (h *recordingHooks) OnOperationEnd(ctx context.Context, op basecamp.OperationInfo, err error, d time.Duration) {
+	if err != nil {
+		h.mu.Lock()
+		h.renderings = append(h.renderings, err.Error())
+		h.mu.Unlock()
+	}
+}
+
+func (h *recordingHooks) OnRequestEnd(ctx context.Context, info basecamp.RequestInfo, result basecamp.RequestResult) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if result.Error != nil {
+		h.renderings = append(h.renderings, result.Error.Error())
+	}
+	h.renderings = append(h.renderings, fmt.Sprintf("%+v", result))
+}
+
+func (h *recordingHooks) assertNoLeak(t *testing.T, token string) {
+	t.Helper()
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if len(h.renderings) == 0 {
+		t.Fatalf("the hooks recorded nothing; the test observes no rendering")
+	}
+	for _, r := range h.renderings {
+		if strings.Contains(r, token) {
+			t.Fatalf("a hook rendering carries the refused Location: %s", r)
+		}
 	}
 }
 
@@ -441,9 +491,10 @@ func TestLivePolls_RefusesAnInboxItemMissingItsEnvelope(t *testing.T) {
 
 // TestLivePolls_RefusesACrossOriginRedirectWithZeroEgress is the Layer-1 302
 // test the tier-2 family assigns to this layer: a validated same-origin
-// continuation answers 302 with a foreign Location. The hop is refused before
-// any request is issued — the sentinel server behind the Location never sees
-// one — and the seam reports redirect_refused carrying the Location's origin.
+// continuation answers 302 with a foreign Location. The guard answers the
+// hop at the wire — the sentinel server behind the Location never sees a
+// request — and the seam reports redirect_refused carrying the Location's
+// origin, while the operation hooks see neither the Location nor its query.
 func TestLivePolls_RefusesACrossOriginRedirectWithZeroEgress(t *testing.T) {
 	var sentinelHits atomic.Int32
 	sentinel := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -451,10 +502,11 @@ func TestLivePolls_RefusesACrossOriginRedirectWithZeroEgress(t *testing.T) {
 		jsonResponse(w, 200, `{"events":[],"position":"stolen"}`)
 	}))
 	t.Cleanup(sentinel.Close)
-	f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+	hooks := &recordingHooks{}
+	f := newLiveFixtureWith(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Location", sentinel.URL+"/99999/events.json?position=pos-0&token=leak")
-		w.WriteHeader(http.StatusFound)
-	})
+		jsonResponse(w, http.StatusFound, `{"error":"moved to leak"}`)
+	}, basecamp.WithHooks(hooks))
 	_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
 	var pe *eventfeed.PollError
 	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollRedirectRefused {
@@ -469,10 +521,10 @@ func TestLivePolls_RefusesACrossOriginRedirectWithZeroEgress(t *testing.T) {
 	if sentinelHits.Load() != 0 {
 		t.Fatalf("the foreign origin received %d request(s), want zero egress", sentinelHits.Load())
 	}
+	hooks.assertNoLeak(t, "leak")
 }
 
-// TestLivePolls_ABare3xxIsRefusedToo: a 3xx with no Location never reaches
-// the redirect policy — net/http has nothing to follow — and is equally not
+// TestLivePolls_ABare3xxIsRefusedToo: a 3xx with no Location is equally not
 // a page: the seam reports redirect_refused with the fixed unparsable token.
 func TestLivePolls_ABare3xxIsRefusedToo(t *testing.T) {
 	f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
@@ -485,25 +537,47 @@ func TestLivePolls_ABare3xxIsRefusedToo(t *testing.T) {
 	}
 }
 
-func TestLivePolls_FollowsASameOriginRedirect(t *testing.T) {
+// TestLivePolls_ASameOriginRedirectIsRefusedToo: the API never redirects a
+// feed call, and a continuation is followed by re-issuing the operation, so
+// even a same-origin hop is answered by the guard — one request, no follow —
+// and the seam reports the API origin as the refused one.
+func TestLivePolls_ASameOriginRedirectIsRefusedToo(t *testing.T) {
 	var f *liveFixture
 	f = newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("position") == "pos-0" {
 			http.Redirect(w, r, f.server.URL+"/99999/events.json?position=pos-moved", http.StatusFound)
 			return
 		}
-		if r.Header.Get("Authorization") != "Bearer test-token" {
-			t.Errorf("the same-origin hop lost the bearer: %q", r.Header.Get("Authorization"))
-		}
 		jsonResponse(w, 200, `{"events":[],"position":"pos-1"}`)
 	})
-	page, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
-	if err != nil {
-		t.Fatalf("Poll: %v", err)
+	_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollRedirectRefused || pe.LocationOrigin != f.server.URL {
+		t.Fatalf("error = %v, want redirect_refused carrying %q", err, f.server.URL)
 	}
-	if page.Position != "pos-1" || f.requests.Load() != 2 {
-		t.Fatalf("page = %+v after %d requests, want the followed hop's page", page, f.requests.Load())
+	if f.requests.Load() != 1 {
+		t.Fatalf("requests = %d, want the one the hop was refused on", f.requests.Load())
 	}
+}
+
+// TestLiveMinter_ARedirectIsUnrecoverable: a mint that answers 3xx is out of
+// contract and a fresh mint answers the same way; the guard strips the
+// Location so nothing — the seam's error or the hooks' — renders it.
+func TestLiveMinter_ARedirectIsUnrecoverable(t *testing.T) {
+	hooks := &recordingHooks{}
+	f := newLiveFixtureWith(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", "https://evil.example.test/mint?token=leak")
+		w.WriteHeader(http.StatusTemporaryRedirect)
+	}, basecamp.WithHooks(hooks))
+	_, err := f.live.Minter().MintStreamTicket(context.Background())
+	var me *eventfeed.MintError
+	if !errors.As(err, &me) || me.Kind != eventfeed.MintUnrecoverable {
+		t.Fatalf("error = %v, want MintUnrecoverable", err)
+	}
+	if strings.Contains(me.Error(), "leak") || strings.Contains(me.Error(), "evil") {
+		t.Fatalf("MintError renders the refused Location: %s", me.Error())
+	}
+	hooks.assertNoLeak(t, "leak")
 }
 
 func TestLivePolls_CancellationPassesThrough(t *testing.T) {

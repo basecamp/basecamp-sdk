@@ -35,6 +35,10 @@
 # sentence promising an issue owns something. Decrement or remove when the
 # sentence goes, and the gate stops asking.
 prose_tracking_issues:
+  - issue: 901
+    file: "ruby/lib/basecamp/http.rb"
+    site: "ruby/lib/basecamp/http.rb — declared-idempotent mutations such as CreateStreamTicket bypass the retry budget"
+    mentions: 1
   - issue: 589
     file: "Makefile"
     site: "Makefile — the vendored bc3-route table's freshness gate needs BC3_REPO_PATH, so it is not in CI"
