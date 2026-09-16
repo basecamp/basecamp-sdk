@@ -622,3 +622,235 @@ class TestCompositeIdentities:
             CampfireDiscoveryIncompleteError(bucket_id=1, recording_id=2, reason="r", retryable=False).retryable
             is False
         )
+
+
+class TestRetryableKeywordDoesNotCollide:
+    """A fixed ``retryable`` must CONSUME the caller's keyword, not collide with it.
+
+    ``RateLimitError(retryable=False)``, ``NetworkError(retryable=False)`` and
+    ``LimitExceededError(retryable=True)`` each raised a bare ``TypeError``
+    about duplicate keyword arguments: the constructor forwarded ``**kwargs``
+    beside a fixed ``retryable=``. That is an error from outside this SDK's
+    taxonomy -- ``except BasecampError`` does not catch it, and ``except
+    Exception`` cannot tell it from a bug -- raised on a call the ``**kwargs:
+    Any`` signature, and mypy reading that signature, both said was legal.
+
+    The answer is the one the composite's two errors and ``DeviceFlowError``
+    already use: overwrite, so the caller gets the class invariant. ``ApiError``
+    honours the caller instead, and is not an exception to the rule but the
+    other half of it -- it fixes no retryability (500 is retryable, 418 is not),
+    so there is nothing for a caller's value to contradict.
+    """
+
+    def test_the_three_accept_the_flag_and_yield_their_invariant(self):
+        from basecamp.errors import LimitExceededError
+
+        for passed in (True, False):
+            assert RateLimitError(retryable=passed).retryable is True
+            assert NetworkError(retryable=passed).retryable is True
+            # Never retryable: no amount of backoff frees storage. A caller who
+            # could flip this would put a retry loop into a spin against a full
+            # disk.
+            assert LimitExceededError(retryable=passed).retryable is False
+
+    def test_everything_previously_accepted_is_unchanged(self):
+        # The other direction, which is what makes this a widening rather than a
+        # change: every call that worked before still works, with the same
+        # values. Each of these is a call `error_from_response` itself makes.
+        from basecamp.errors import LimitExceededError
+
+        rate = RateLimitError("slow down", retry_after=7, http_status=429, hint="h", request_id="r")
+        assert (rate.code, rate.retryable, rate.retry_after) == (ErrorCode.RATE_LIMIT, True, 7)
+        assert (rate.http_status, rate.hint, rate.request_id) == (429, "h", "r")
+        assert str(rate) == "slow down"
+
+        network = NetworkError("no route", hint="check the network")
+        assert (network.code, network.retryable, network.hint) == (ErrorCode.NETWORK, True, "check the network")
+        assert str(network) == "no route"
+
+        limit = LimitExceededError("out of storage", http_status=507, hint="h")
+        assert (limit.code, limit.retryable, limit.http_status) == (ErrorCode.LIMIT_EXCEEDED, False, 507)
+        assert str(limit) == "out of storage"
+
+        # Defaults, too -- the no-argument form each class documents.
+        assert (RateLimitError().retryable, NetworkError().retryable, LimitExceededError().retryable) == (
+            True,
+            True,
+            False,
+        )
+
+        # And the classification `error_from_response` derives, which is where
+        # a flipped invariant would actually be felt.
+        assert error_from_response(429, b"").retryable is True
+        assert error_from_response(507, b"").retryable is False
+
+    def test_api_error_still_honours_a_caller_that_sets_the_flag(self):
+        # The half of the rule that is NOT overwrite. ApiError fixes no
+        # retryability, so the caller's value is the value -- which is how
+        # `error_from_response` tells a 500 from a 418.
+        assert ApiError(retryable=True).retryable is True
+        assert ApiError(retryable=False).retryable is False
+
+    def test_every_subclass_answers_the_flag_with_the_value_it_should(self):
+        """The sweep, so a new subclass can reintroduce neither the crash nor the wrong answer.
+
+        The card that filed this named three classes because that is where its
+        author looked. This walks the whole package instead: every
+        ``BasecampError`` descendant, not a list someone remembered to extend.
+
+        Two things are pinned, and the first version of this test pinned only
+        the first. **That the flag does not raise**: a constructor advertising
+        ``retryable`` -- by declaring it, or by accepting ``**kwargs`` and so
+        telling callers and mypy alike that the keyword is legal -- must accept
+        it. **And that it answers with the right value**: an earlier version
+        asserted only ``isinstance(error.retryable, bool)``, which is true of
+        every possible answer, so regressing all six overwrite sites to
+        ``kwargs.setdefault`` -- "honour the caller", the semantics this change
+        rejects on the merits -- left it green. #888's own commit message is a
+        three-iteration post-mortem of a sweep in this file that swept nothing;
+        this is the same mistake one register down, and ``_FIXED_RETRYABILITY``
+        below is the fix: a per-class expected value, and every class must be
+        in it or in the caller-wins set.
+
+        A constructor that advertises the keyword NOWHERE is exempt: a stray
+        one is "unexpected keyword argument", refused by mypy as well as at
+        runtime, which is ordinary Python rather than an error escaping the
+        taxonomy. The exempt set is pinned by name so the sweep cannot be
+        dodged by dropping ``**kwargs`` from a constructor.
+        """
+        import importlib
+        import inspect
+        import pkgutil
+
+        import basecamp
+        from basecamp.errors import BasecampError
+
+        for module in pkgutil.walk_packages(basecamp.__path__, "basecamp."):
+            importlib.import_module(module.name)
+
+        def descendants(cls):
+            found = set()
+            for sub in cls.__subclasses__():
+                # Only this package's own errors. `__subclasses__` sees every
+                # subclass that has been IMPORTED, so without this filter an
+                # error class defined at module scope in any other test file
+                # joins the walk -- green under `pytest tests/test_errors.py`
+                # and red under the whole suite.
+                if sub.__module__.startswith("basecamp."):
+                    found.add(sub)
+                found |= descendants(sub)
+            return found
+
+        # Constructor arguments for the subclasses that require them.
+        required = {
+            "NoRecordingTypeError": ((), {"routing_key": "boost.created"}),
+            "UnknownRecordingTypeError": ((), {"routing_key": "x.y"}),
+            "BucketMismatchError": ((), {"bucket_id": 1, "recording_id": 2, "requested_bucket_id": 3}),
+            "RecordingUnresolvedError": ((), {"bucket_id": 1, "recording_id": 2, "campfire_ids": []}),
+            "CampfireDiscoveryIncompleteError": ((), {"bucket_id": 1, "recording_id": 2, "reason": "r"}),
+            "PeopleConfirmationRequiredError": (("m",), {"people": []}),
+            "OAuthError": (("auth", "m"), {}),
+            "DiscoverySelectionError": (("issuer_mismatch", "m"), {}),
+            "DeviceFlowError": (("transport", "m"), {}),
+            "_IssuerBindingError": (("m",), {}),
+            "UsageError": (("m",), {}),
+            # No __init__ of its own: it inherits the base's, message and all.
+            "RecordingRoutingError": (("m",), {}),
+        }
+
+        # The classes that FIX their retryability, and to what. Everything else
+        # fixes none, so the caller's value is the value -- `ApiError` being the
+        # one that matters, since that is how `error_from_response` tells a 500
+        # from a 418. `DeviceFlowError` derives it from `reason`, and the
+        # arguments above give it `transport`, the one retryable reason.
+        fixed = {
+            "RateLimitError": True,
+            "NetworkError": True,
+            "LimitExceededError": False,
+            "CampfireDiscoveryIncompleteError": False,
+            "CampfireIndexLoadAbortedError": True,
+            "DeviceFlowError": True,
+        }
+
+        # Every error this package defines. Spelled out rather than counted: a
+        # floor only catches removals once, and `>= n` cannot see a class that
+        # arrives and another that leaves. Both directions force a decision.
+        expected_subclasses = {
+            "AmbiguousError",
+            "ApiError",
+            "AuthError",
+            "BucketMismatchError",
+            "CampfireDiscoveryIncompleteError",
+            "CampfireIndexLoadAbortedError",
+            "DeviceFlowError",
+            "DiscoverySelectionError",
+            "ForbiddenError",
+            "LimitExceededError",
+            "NetworkError",
+            "NoRecordingTypeError",
+            "NotFoundError",
+            "OAuthError",
+            "PeopleConfirmationRequiredError",
+            "RateLimitError",
+            "RecordingRoutingError",
+            "RecordingUnresolvedError",
+            "UnknownRecordingTypeError",
+            "UsageError",
+            "ValidationError",
+            "WebhookVerificationError",
+            "_IssuerBindingError",
+        }
+
+        subclasses = sorted(descendants(BasecampError), key=lambda c: c.__name__)
+        assert {c.__name__ for c in subclasses} == expected_subclasses, (
+            "the set of BasecampError subclasses changed. A new one needs a row in "
+            "`fixed` (or a deliberate place in the caller-wins set) and a name here."
+        )
+
+        exempt, caller_wins = [], []
+        for cls in subclasses:
+            args, kwargs = required.get(cls.__name__, ((), {}))
+            try:
+                # Baseline: the class builds at all, so a failure below is the
+                # flag and not the arguments.
+                cls(*args, **kwargs)
+            except TypeError as exc:
+                pytest.fail(
+                    f"{cls.__name__} could not be constructed for the sweep ({exc}). "
+                    f"Add its constructor arguments to the `required` map in this test."
+                )
+
+            parameters = inspect.signature(cls.__init__).parameters
+            advertised = "retryable" in parameters or any(
+                p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values()
+            )
+            if not advertised:
+                exempt.append(cls.__name__)
+                continue
+
+            answers = {}
+            for passed in (True, False):
+                # Must not raise: that is the defect this change fixes.
+                answers[passed] = cls(*args, **{**kwargs, "retryable": passed}).retryable
+
+            if cls.__name__ in fixed:
+                invariant = fixed[cls.__name__]
+                assert answers == {True: invariant, False: invariant}, (
+                    f"{cls.__name__} fixes retryable={invariant}, but a caller moved it: {answers}. "
+                    "Overwrite the keyword -- never setdefault, which honours the caller instead."
+                )
+            else:
+                assert answers == {True: True, False: False}, (
+                    f"{cls.__name__} fixes no retryability, so the caller's value should be the "
+                    f"value, but it answered {answers}. If it should fix one, add it to `fixed`."
+                )
+                caller_wins.append(cls.__name__)
+
+        assert exempt == ["WebhookVerificationError"], (
+            f"the set of constructors that advertise no retryable changed: {exempt}. "
+            "Dropping `**kwargs` from a constructor removes it from this sweep."
+        )
+        assert set(fixed) | set(caller_wins) | set(exempt) == expected_subclasses, (
+            "every subclass must be classified: it fixes retryability, or the caller's value wins, "
+            "or it advertises the keyword nowhere."
+        )

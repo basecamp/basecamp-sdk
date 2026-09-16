@@ -96,6 +96,39 @@ null-is-empty rule stops at the envelope's door. Before and after:
 | `{"events": {"a": 1}, "person": …}` | `['a']` | `ApiError` |
 | `"abc"` or `[]` (body not an object) | `AttributeError` | `ApiError` |
 
+### Python: three errors accept a `retryable` keyword they used to crash on, and now ignore it
+
+`RateLimitError`, `NetworkError` and `LimitExceededError` each forwarded
+`**kwargs` to the base constructor *alongside* a fixed `retryable=`, so passing
+the keyword raised a bare `TypeError: got multiple values for keyword argument
+'retryable'` — an error from outside the SDK's own taxonomy, on a call the
+`**kwargs: Any` signature and mypy both reported as legal. They now accept it.
+
+| call | before | after |
+|---|---|---|
+| `RateLimitError(retryable=False)` | `TypeError` | `.retryable` is `True` |
+| `NetworkError(retryable=False)` | `TypeError` | `.retryable` is `True` |
+| `LimitExceededError(retryable=True)` | `TypeError` | `.retryable` is `False` |
+| `ApiError(retryable=…)` | honoured | honoured, unchanged |
+
+The keyword is **accepted and discarded**: these three classes fix their own
+retryability and the class wins, the same call `CampfireDiscoveryIncompleteError`,
+`CampfireIndexLoadAbortedError` and `DeviceFlowError` already make. A 429 and a
+transport failure are retryable; a 507 never is, because no amount of backoff
+frees storage. `ApiError` still honours the caller, and is not an exception to
+that rule but the other half of it — it fixes no retryability (500 is retryable,
+418 is not), so there is nothing for a caller's value to contradict.
+
+**Wrong behaviour you get if you ignore it:** none for working code — every one
+of these calls raised 100% of the time, on every input, so nothing that ran
+before behaves differently now, and no value this SDK produces has moved. This
+section exists for the one thing that is *silent*: code written against the
+crash. If you were passing `retryable=` to one of the three — in a test that
+asserted the `TypeError`, or in a call you had never actually reached — you now
+get an object back whose `.retryable` is the class's answer rather than yours,
+with no signal that your argument was dropped. Read `.retryable` after
+constructing, or use `ApiError` when you need to set it yourself.
+
 ### Rust: new SDK
 
 A seventh SDK, not a breaking change for anyone. The `basecamp-sdk` crate on
