@@ -194,6 +194,10 @@ func TestLivePolls_FollowsAContinuationThroughTheOperation(t *testing.T) {
 	if page.Position != "posBBB" || page.Next != "" {
 		t.Fatalf("page = %+v, want the walk's end", page)
 	}
+	// A lane configured with a repeated value still matches the canonical set.
+	if _, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{PageURL: next}, eventfeed.Filters{Types: []string{"card.moved", "message.created", "message.created"}, Buckets: []int64{2, 2}}); err != nil {
+		t.Fatalf("a repeated configured value against the canonical set: %v", err)
+	}
 	// A URL whose filters differ from the lane's is refused, unissued.
 	before := f.requests.Load()
 	_, err = f.live.Polls().Poll(context.Background(), eventfeed.Cursor{PageURL: next}, eventfeed.Filters{Types: []string{"message.created"}})

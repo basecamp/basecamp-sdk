@@ -765,25 +765,29 @@ func checkNextCursor(next string) error {
 // trusted, and a continuation that would change the lineage is refused.
 var errContinuationFilters = errors.New("eventfeed: the continuation URL's filters differ from the lane's")
 
-// sameStrings and sameInt64s compare two filter dimensions as sets.
-func sameStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	as, bs := slices.Clone(a), slices.Clone(b)
-	slices.Sort(as)
-	slices.Sort(bs)
-	return slices.Equal(as, bs)
-}
+// sameStrings and sameInt64s compare two filter dimensions as sets — order
+// and repetition aside, as the srv2 digest reads them.
+func sameStrings(a, b []string) bool { return sameSet(a, b) }
 
-func sameInt64s(a, b []int64) bool {
-	if len(a) != len(b) {
+func sameInt64s(a, b []int64) bool { return sameSet(a, b) }
+
+func sameSet[T comparable](a, b []T) bool {
+	as, bs := map[T]struct{}{}, map[T]struct{}{}
+	for _, v := range a {
+		as[v] = struct{}{}
+	}
+	for _, v := range b {
+		bs[v] = struct{}{}
+	}
+	if len(as) != len(bs) {
 		return false
 	}
-	as, bs := slices.Clone(a), slices.Clone(b)
-	slices.Sort(as)
-	slices.Sort(bs)
-	return slices.Equal(as, bs)
+	for v := range as {
+		if _, ok := bs[v]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 // isServerDigest reports a bare srv2 digest: exactly 16 lowercase hex.
