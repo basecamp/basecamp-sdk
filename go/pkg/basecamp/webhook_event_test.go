@@ -186,8 +186,20 @@ func TestWebhookEvent_UnmarshalDelegated(t *testing.T) {
 	}
 	// An Agent's email_address, title, bio, tagline and location are explicit
 	// nulls on the wire; the decoder must accept them.
-	if event.PerformedBy.EmailAddress != "" || event.PerformedBy.Title != "" || event.PerformedBy.Bio != nil || event.PerformedBy.Location != nil {
+	if event.PerformedBy.EmailAddress != "" || event.PerformedBy.Title != "" || event.PerformedBy.Bio != nil || event.PerformedBy.Tagline != nil || event.PerformedBy.Location != nil {
 		t.Errorf("expected the agent's null-valued person fields to decode empty, got %+v", event.PerformedBy)
+	}
+	// A non-null tagline survives both the direct decode and the generated mapping.
+	var tagged WebhookEvent
+	if err := json.Unmarshal([]byte(`{"id": 1, "kind": "todo_created", "performed_by": {"id": 7, "name": "Agent", "personable_type": "Agent", "tagline": "Ships release notes"}}`), &tagged); err != nil {
+		t.Fatalf("failed to unmarshal a tagged performer: %v", err)
+	}
+	if tagged.PerformedBy == nil || tagged.PerformedBy.Tagline == nil || *tagged.PerformedBy.Tagline != "Ships release notes" {
+		t.Errorf("expected the performer's tagline to decode, got %+v", tagged.PerformedBy)
+	}
+	taggedFromGenerated := webhookPersonFromGenerated(generated.Person{Id: 7, Name: "Agent", Tagline: ptr("Ships release notes")})
+	if taggedFromGenerated.Tagline == nil || *taggedFromGenerated.Tagline != "Ships release notes" {
+		t.Errorf("expected webhookPersonFromGenerated to carry the tagline, got %+v", taggedFromGenerated)
 	}
 
 	// The generated decode path maps the same member through webhookEventFromGenerated.

@@ -46,6 +46,7 @@ type WebhookEventPerson struct {
 	PersonableType      string               `json:"personable_type"`
 	Title               string               `json:"title"`
 	Bio                 *string              `json:"bio"`
+	Tagline             *string              `json:"tagline"`
 	Location            *string              `json:"location"`
 	CreatedAt           string               `json:"created_at"`
 	UpdatedAt           string               `json:"updated_at"`

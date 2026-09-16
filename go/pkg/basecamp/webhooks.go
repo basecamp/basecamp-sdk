@@ -517,6 +517,10 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 		bio := *gp.Bio
 		p.Bio = &bio
 	}
+	if gp.Tagline != nil {
+		tagline := *gp.Tagline
+		p.Tagline = &tagline
+	}
 	if gp.Location != nil {
 		location := *gp.Location
 		p.Location = &location
