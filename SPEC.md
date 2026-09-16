@@ -1641,6 +1641,17 @@ stricter of the two either — leading zeros pass its digit walk, so `"007"` is 
 on both sides, and a port that "hardens" the walk by refusing them diverges
 just as surely.
 
+**A person is found two ways, not one.** `normalizeEmbeddedPeopleJSON`
+(`go/pkg/basecamp/normalize.go`) runs a `personable_type`-keyed pass AND a
+second one that finds people by structural position — the `creator` object and
+each `participants` element, at any depth, **whether or not they carry a
+`personable_type`**. The second is not redundant: embedded creator and
+participant people frequently omit that key, so the first pass skips exactly the
+payloads the second exists to fix. A port with only the first pass leaves such
+an id as the string it arrived as. That is invisible in a port whose id field
+has a decoder behind it — the string is converted at read time either way — and
+it reaches the caller in a port that has none.
+
 **The oracle, not the documentation.** Every port that reasoned from
 `ParseInt`'s docs rather than probing it got something wrong. The corpus and
 both properties are pinned in `go/pkg/basecamp/person_id_grammar_test.go`,
