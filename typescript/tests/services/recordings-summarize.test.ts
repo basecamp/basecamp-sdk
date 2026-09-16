@@ -542,17 +542,21 @@ describe("recordings.summarize", () => {
       ]) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
         const err = await fresh.recordings.summarize(ref).catch((e: unknown) => e);
+        // The request count FIRST, because it is the assertion that carries the
+        // claim: with the guard gone, the read goes out and the two lines below
+        // fail on the returned summary, so this one would never be reached to
+        // say what actually went wrong. An earlier version put it after the
+        // loop with a comment claiming the opposite.
+        expect(paths, JSON.stringify(ref)).toEqual([]);
         expect(err, JSON.stringify(ref)).toBeInstanceOf(BasecampError);
         expect((err as BasecampError).code, JSON.stringify(ref)).toBe("usage");
       }
-      // And nothing was read under a rounded id — an exception-only assertion
-      // passes in the world where the request went out anyway.
-      expect(paths).toEqual([]);
     });
 
     it("pins the int64 window where nothing else masks it", async () => {
-      // `wireInteger`'s window is masked at the three sites that call it through
-      // `numericId`, whose safe-integer clause refuses an out-of-range value
+      // `wireInteger`'s window is masked at the two sites that call it through
+      // `numericId` — the dock item and the listing entry — whose safe-integer
+      // clause refuses an out-of-range value
       // first — which is why the row beside that clause could not tell the two
       // apart. It is NOT masked everywhere: three call sites reach it directly
       // (the listing's bucket id, this cross-check, and the projection's own
@@ -685,6 +689,46 @@ describe("recordings.summarize", () => {
         .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
         .catch((e: unknown) => e);
       expect((discoverySide as BasecampError).hint).toContain("Campfire");
+
+      // Every helper on the discovery path, not just the one the last fix
+      // reached: a dock item's NAME goes through `recordingText`, which
+      // hard-coded the recording hint, and a listing entry's bucket id goes
+      // through `wireInteger`, whose default nothing asserted. Each row below
+      // fails if its helper's hint is flipped, which is what "both directions"
+      // has to mean to be worth writing.
+      for (const [body, path] of [
+        [`{"id":${BUCKET},"dock":[{"id":77,"name":5}]}`, `/projects/${BUCKET}`],
+      ] as const) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}${path}`, () =>
+            HttpResponse.text(body, { headers: { "content-type": "application/json" } }),
+          ),
+        );
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+          .catch((e: unknown) => e);
+        expect((err as BasecampError).hint, body).toContain("Campfire");
+        expect((err as BasecampError).hint, body).not.toContain("summarized");
+      }
+
+      // And the listing's bucket id, the one `wireInteger` call that keeps the
+      // discovery default.
+      const listing = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.json({ error: "Record not found" }, { status: 404 }),
+        ),
+        http.get(`${BASE_URL}/chats.json`, () =>
+          HttpResponse.text(`[{"id":70,"bucket":{"id":1.5,"name":"B"}}]`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      );
+      const listingSide = await listing.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e);
+      expect((listingSide as BasecampError).hint).toContain("Campfire");
     });
 
     it("refuses a nested identity Go's decoder refuses, and reads null as absent", async () => {
@@ -894,6 +938,10 @@ describe("recordings.summarize", () => {
         expect(err, content).toBeInstanceOf(BasecampError);
         expect((err as BasecampError).code, content).toBe("api_error");
         expect((err as BasecampError).httpStatus, content).toBeUndefined();
+        // `recordingText`'s own default, which nothing asserted until a review
+        // flipped it and the suite stayed green.
+        expect((err as BasecampError).hint, content).toContain("recording");
+        expect((err as BasecampError).hint, content).not.toContain("Campfire");
       }
 
       const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
@@ -1092,6 +1140,10 @@ describe("recordings.summarize", () => {
         expect(err, dock).toBeInstanceOf(BasecampError);
         expect((err as BasecampError).code, dock).toBe("api_error");
         expect((err as BasecampError).httpStatus, dock).toBeUndefined();
+        // The container helpers' own defaults, the other two that a flip left
+        // green: this is a discovery read and must say so.
+        expect((err as BasecampError).hint, dock).toContain("Campfire");
+        expect((err as BasecampError).hint, dock).not.toContain("summarized");
       }
 
       // `null` in either container is Go's zero value, and the search goes on.
@@ -1240,7 +1292,12 @@ describe("recordings.summarize", () => {
         expect((err as BasecampError).code, bucket).toBe("api_error");
         expect((err as BasecampError).httpStatus, bucket).toBeUndefined();
         expect((err as BasecampError).retryable, bucket).toBe(false);
-        expect((err as BasecampError).hint, bucket).toBeTruthy();
+        // `toBeTruthy` was what this said, which is why flipping
+        // `sourceObject`'s default hint left the suite green: a wrong hint is
+        // truthy too. This is a listing entry's bucket, read while discovering
+        // Campfires, and the hint has to say so.
+        expect((err as BasecampError).hint, bucket).toContain("Campfire");
+        expect((err as BasecampError).hint, bucket).not.toContain("summarized");
         // And the message says what the value IS. The id vocabulary — "out of
         // safe integer range", "not whole" — was reused at sites reading no id,
         // which sent a reader hunting for an oversized id given `"bucket": 0`.
@@ -1549,17 +1606,16 @@ describe("recordings.summarize", () => {
       // 2^63 is in this list for the int64 window, whose two ends are not
       // symmetric after rounding: 9223372036854775808 rounds to exactly 2^63
       // and is caught, while -9223372036854775809 rounds to exactly -2^63,
-      // which is a legal value and cannot be told from it here. -1e20 pins the
-      // bound itself, which is a different claim from the literal: Go refuses
-      // it, and without the clause a bucket id of -1e20 comes back as a
-      // bucket_mismatch naming a bucket that cannot exist — the exact outcome
-      // `wireInteger`'s own comment says the window prevents. Neither LITERAL
+      // which is a legal value and cannot be told from it here. Neither LITERAL
       // boundary is
       // PINNED at this call site, and the reason is the mask: `numericId`'s
       // safe-integer clause refuses both before `wireInteger`'s window sees
       // them, so a revert of the window alone is invisible here. The row that
-      // does pin it feeds a bucket id — the one site that calls `wireInteger`
-      // without `numericId` in front of it.
+      // does pin it feeds a bucket id, at one of the three sites that call
+      // `wireInteger` without `numericId` in front of it. "The one site" is
+      // what this said until a review counted them: the correction landed in
+      // the sibling comment and not in this one, which is the same fix-in-one-
+      // place-only that produced the finding it was correcting.
       for (const badId of [true, false, "77", 1.5, 1e20, [1], {}, 9223372036854775808]) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
         server.use(

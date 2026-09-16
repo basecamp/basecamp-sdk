@@ -813,7 +813,9 @@ class CampfireIndex {
       // discovery could go on to report the line unresolved, a composite
       // verdict standing in for a failed read.
       return sourceItems(sourceObject(project, "the project read").dock, "the project dock")
-        .filter((item) => recordingText(item.name, "a project dock item name") === "chat")
+        .filter(
+          (item) => recordingText(item.name, "a project dock item name", DISCOVERY_HINT) === "chat",
+        )
         .map((item) => numericId(item.id, "project dock item"))
         .filter((id) => id !== 0);
     });
@@ -1803,14 +1805,25 @@ const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,]\d+)?(
  * What this does not model is the re-rendering: Go parses and re-marshals, so
  * `2024-01-02T03:04:05.000Z` comes back as `…:05Z` there and verbatim here, and
  * `T3:04:05Z` as `T03:04:05Z`. The conformance runner compares instants rather
- * than strings — but only for the forms its own regex admits, and these are
- * not all of them. Five accepted spellings render differently here than in Go:
- * `,5` (Go re-renders `.5`), `T3:` (`T03:`), `T3:` with an offset, `+24:00`
- * (which Go's ENCODER then refuses outright, its own offset range being
- * [0,23]), and `+00:60` (`+01:00`). The runner's `sameInstant` demands a
- * two-digit hour, a dot fraction and a parseable `Date`, so all five fall back
- * to exact string comparison, where this port's verbatim output and Go's
- * re-rendering differ. Nothing in the fixture carries one — checked, every
+ * than strings — but only for the forms its own regex admits, and these are not
+ * all of them. Six FAMILIES of accepted spelling render differently here than in
+ * Go, counted by rule rather than by example, because an earlier version of
+ * this paragraph counted one rule twice and missed another:
+ *
+ * - a comma fraction (`,5`), which Go re-renders as `.5`;
+ * - a single-digit hour (`T3:`), re-rendered `T03:`, with or without an offset;
+ * - an offset hour of 24 (`+24:00`, and its unnamed twin `-24:00`), which Go's
+ *   ENCODER then refuses outright, its own range being [0,23];
+ * - an offset minute of 60 that stays within the hour (`+00:60` → `+01:00`);
+ * - an offset minute of 60 that CARRIES (`+23:60` → hour 24), which Go decodes
+ *   and then cannot marshal at all — the case the `+24:00` entry describes,
+ *   reached by a spelling the `+00:60` entry would have you believe merely
+ *   normalizes;
+ * - and the zero instant's own year range, where Go emits `0001-01-01T…`.
+ *
+ * The runner's `sameInstant` sends all of them to exact string comparison,
+ * though not all for the same reason: `T3:` and `,5` fail its regex, while the
+ * offset forms match it and fail its `Date.parse` guard. Nothing in the fixture carries one — checked, every
  * `updated_at` there is canonical — so the difference is invisible in practice
  * rather than by construction.
  *
@@ -1878,13 +1891,13 @@ function nestedIdentity<T>(value: T, what: string): T | undefined {
   return value;
 }
 
-function recordingText(value: unknown, what: string): string {
+function recordingText(value: unknown, what: string, hint = RECORDING_HINT): string {
   if (value === undefined || value === null) return "";
   if (typeof value !== "string") {
     throw Errors.apiError(
       truncateErrorMessage(`${what} is ${describeWireValue(value)} rather than text`),
       undefined,
-      { retryable: false, hint: "the response is malformed; the recording cannot be summarized from it" },
+      { retryable: false, hint },
     );
   }
   return value;
