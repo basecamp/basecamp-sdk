@@ -554,19 +554,38 @@ func TestLiveClient_DownloadsKeepTheirDispatchingRedirect(t *testing.T) {
 // TestLivePolls_A410OfTheOtherLanesShapeIsMalformed: the feed's 410 names
 // its epoch and the inbox's carries none; a body of the other lane's shape
 // is unrecoverable rather than a gap with a fence that does not exist.
+//
+// What refuses the other lane's body is its resume — the fence, which is the
+// lane's own re-entry — and the cases say which of the two members they are
+// about: `epochWithFeedFence` carries both the epoch and the feed's fence,
+// `epochWithInboxFence` isolates the stray member from the fence.
 func TestLivePolls_A410OfTheOtherLanesShapeIsMalformed(t *testing.T) {
-	const withEpoch = `{"error":"gone","epoch_after_id":500,"resume":"https://3.basecampapi.com/99999/events.json?since=500"}`
-	const withoutEpoch = `{"error":"gone","resume":"https://3.basecampapi.com/99999/inbox.json?since=0"}`
+	const epochWithFeedFence = `{"error":"gone","epoch_after_id":500,"resume":"https://3.basecampapi.com/99999/events.json?since=500"}`
+	const inboxFence = `{"error":"gone","resume":"https://3.basecampapi.com/99999/inbox.json?since=0"}`
+	const epochWithInboxFence = `{"error":"gone","epoch_after_id":500,"resume":"https://3.basecampapi.com/99999/inbox.json?since=0"}`
 	for _, tc := range []struct {
-		name string
-		lane eventfeed.Lane
-		body string
-		kind eventfeed.PollErrorKind
+		name   string
+		lane   eventfeed.Lane
+		body   string
+		kind   eventfeed.PollErrorKind
+		epoch  int64
+		resume string
 	}{
-		{"feed with epoch", eventfeed.AccountLane, withEpoch, eventfeed.PollGone},
-		{"feed without epoch", eventfeed.AccountLane, withoutEpoch, eventfeed.PollUnrecoverable},
-		{"inbox without epoch", eventfeed.InboxLane, withoutEpoch, eventfeed.PollGone},
-		{"inbox with epoch", eventfeed.InboxLane, withEpoch, eventfeed.PollUnrecoverable},
+		{"feed with its epoch and fence", eventfeed.AccountLane, epochWithFeedFence, eventfeed.PollGone, 500, "https://3.basecampapi.com/99999/events.json?since=500"},
+		{"feed without an epoch", eventfeed.AccountLane, inboxFence, eventfeed.PollUnrecoverable, 0, ""},
+		{"inbox with its own fence", eventfeed.InboxLane, inboxFence, eventfeed.PollGone, 0, "https://3.basecampapi.com/99999/inbox.json?since=0"},
+		{"inbox with the feed's fence", eventfeed.InboxLane, epochWithFeedFence, eventfeed.PollUnrecoverable, 0, ""},
+		// The decision this case pins: on the inbox lane the fence is the
+		// control, and an epoch_after_id the inbox contract does not declare
+		// is inert — the generated 410 shape has no member to decode it into
+		// and the inbox arm sets no epoch, so nothing it could say is
+		// reachable. Refusing the body on the stray member's presence would
+		// turn a gap that recovers correctly at since=0 into an
+		// unrecoverable one, which is worse for the case it claims to guard.
+		// Holding a response to the members its shape declares belongs at
+		// the wrapper's decode, for every consumer and every response, and
+		// is tracked separately in #915.
+		{"inbox with a stray epoch and its own fence", eventfeed.InboxLane, epochWithInboxFence, eventfeed.PollGone, 0, "https://3.basecampapi.com/99999/inbox.json?since=0"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newLiveFixture(t, tc.lane, func(w http.ResponseWriter, r *http.Request) {
@@ -576,6 +595,9 @@ func TestLivePolls_A410OfTheOtherLanesShapeIsMalformed(t *testing.T) {
 			var pe *eventfeed.PollError
 			if !errors.As(err, &pe) || pe.Kind != tc.kind {
 				t.Fatalf("error = %v, want %s", err, tc.kind)
+			}
+			if tc.kind == eventfeed.PollGone && (pe.EpochAfterID != tc.epoch || pe.ResumeURL != tc.resume) {
+				t.Fatalf("gone carries epoch %d resume %q, want %d and %q", pe.EpochAfterID, pe.ResumeURL, tc.epoch, tc.resume)
 			}
 		})
 	}
