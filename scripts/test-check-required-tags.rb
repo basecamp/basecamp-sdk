@@ -1,0 +1,100 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Negative + synthetic self-test for scripts/check-required-tags.rb.
+#
+# The live gate (`make check-required-tags`) only ever runs against the real,
+# all-tagged openapi.json, so its green run proves the check ACCEPTS a clean
+# spec but nothing about whether it REJECTS anything. This drives the check from
+# outside with crafted openapi documents in a tmpdir (via REQUIRED_TAGS_OPENAPI)
+# and asserts the pass/fail verdict for each shape. The tracked openapi.json is
+# never written to. Stdlib only.
+
+require "json"
+require "tmpdir"
+
+CHECK = File.join(__dir__, "check-required-tags.rb")
+
+def run_check(spec, allowlist: nil)
+  Dir.mktmpdir do |dir|
+    path = File.join(dir, "openapi.json")
+    File.write(path, JSON.generate(spec))
+    env = { "REQUIRED_TAGS_OPENAPI" => path }
+    env["REQUIRED_TAGS_ALLOWLIST"] = allowlist if allowlist
+    output = IO.popen(env, ["ruby", CHECK], err: [:child, :out], &:read)
+    [$?.exitstatus, output]
+  end
+end
+
+def op(tags)
+  operation = { "operationId" => "SomeOp" }
+  operation["tags"] = tags unless tags.nil?
+  operation
+end
+
+def spec_with(operation)
+  { "openapi" => "3.1.0", "paths" => { "/{accountId}/thing" => { "get" => operation } } }
+end
+
+FAILURES = []
+
+def expect(desc, condition)
+  if condition
+    puts "  ok   #{desc}"
+  else
+    puts "  FAIL #{desc}"
+    FAILURES << desc
+  end
+end
+
+# 1. A clean, single-tag spec passes.
+status, = run_check(spec_with(op(["Recordings"])))
+expect("single-tag operation passes", status.zero?)
+
+# 2. An operation with no tags key fails, and the message names it.
+status, out = run_check(spec_with(op(nil)))
+expect("missing tags key fails", status == 1)
+expect("missing-tags failure names the operation", out.include?("SomeOp"))
+
+# 3. An empty tags array fails (absent and empty are the same drift).
+status, = run_check(spec_with(op([])))
+expect("empty tags array fails", status == 1)
+
+# 4. Two tags fail — catalog.Load requires exactly one.
+status, out = run_check(spec_with(op(%w[Recordings Automation])))
+expect("multi-tag operation fails", status == 1)
+expect("multi-tag failure names both tags", out.include?("Recordings") && out.include?("Automation"))
+
+# 5. An allowlisted untagged operation passes (the allowlist path works).
+status, = run_check(spec_with(op(nil)), allowlist: "SomeOp")
+expect("allowlisted untagged operation passes", status.zero?)
+
+# 6. Fail-closed on a spec with no operations — a truncated openapi.json must
+#    not pass vacuously.
+status, = run_check({ "openapi" => "3.1.0", "paths" => { "/{accountId}/thing" => {} } })
+expect("spec with no operations fails closed", status == 1)
+
+# 7. Fail-closed on a spec with no paths at all.
+status, = run_check({ "openapi" => "3.1.0" })
+expect("spec with no paths fails closed", status == 1)
+
+# 8. Non-HTTP keys under a path (e.g. shared parameters) are ignored, not
+#    counted as untagged operations.
+mixed = {
+  "openapi" => "3.1.0",
+  "paths" => {
+    "/{accountId}/thing" => {
+      "parameters" => [{ "name" => "accountId", "in" => "path" }],
+      "get" => op(["Recordings"])
+    }
+  }
+}
+status, = run_check(mixed)
+expect("path-level parameters are ignored", status.zero?)
+
+if FAILURES.empty?
+  puts "check-required-tags self-test: all cases passed"
+else
+  warn "check-required-tags self-test: #{FAILURES.length} case(s) failed"
+  exit 1
+end
