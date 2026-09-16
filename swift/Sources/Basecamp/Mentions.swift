@@ -359,21 +359,40 @@ extension Mentions {
     /// bare payload when that fails, which is what an unsigned envelope — one
     /// that happens to contain `--` included — needs.
     static func globalId(fromSgid sgid: String) -> String? {
-        let value = sgid.trimmingCharacters(in: goWhitespace)
-        if let separator = value.range(of: "--", options: .backwards),
-            separator.lowerBound != value.startIndex,
-            let gid = envelopeGlobalId(String(value[..<separator.lowerBound]))
+        let value = Array(sgid.trimmingCharacters(in: goWhitespace).utf8)
+        // `strings.LastIndex` is a byte scan and so is this. `range(of:)`
+        // without `.literal` searches grapheme clusters, so a `--` whose second
+        // dash carries a combining mark is invisible to it and plain to Go —
+        // and then the two sides split the envelope at DIFFERENT places.
+        // `<payload>--x--\u{0301}` is the shape: Go splits at the last `--` and
+        // reads a payload that is not base64, this splits at the first and reads
+        // a person. That is the accepting direction on the read side, and the
+        // write side's gate is "does this sgid name this person", so it renders
+        // a tag Go refuses to write.
+        if let separator = lastIndexOfSeparator(value), separator > 0,
+            let gid = envelopeGlobalId(value[..<separator])
         {
             return gid
         }
-        return envelopeGlobalId(value)
+        return envelopeGlobalId(value[...])
+    }
+
+    /// The last `--` in the value, as `strings.LastIndex` finds it.
+    private static func lastIndexOfSeparator(_ value: [UInt8]) -> Int? {
+        guard value.count >= 2 else { return nil }
+        var index = value.count - 2
+        while index >= 0 {
+            if value[index] == asciiDash, value[index + 1] == asciiDash { return index }
+            index -= 1
+        }
+        return nil
     }
 
     /// Decodes one base64 payload and returns the gid its envelope carries.
-    static func envelopeGlobalId(_ payload: String) -> String? {
+    static func envelopeGlobalId(_ payload: ArraySlice<UInt8>) -> String? {
         // The bound is applied to the encoded form first, so an oversized sgid
         // costs nothing to refuse — no normalization, no decode buffer.
-        guard !payload.isEmpty, payload.utf8.count <= maxSgidEncodedBytes else { return nil }
+        guard !payload.isEmpty, payload.count <= maxSgidEncodedBytes else { return nil }
         // Rails' MessageVerifier emits either alphabet; base64url is current.
         // Both decode through the standard alphabet once the two symbols are
         // mapped, and stripping the padding lets a truncated-but-valid payload
@@ -394,15 +413,22 @@ extension Mentions {
         // a tab inside base64, so stripping whitespace generally would make this
         // the LENIENT side. Trailing bits need no handling — Go ignores a
         // non-zero final group and so does Foundation.
-        var normalized = payload.replacingOccurrences(of: "-", with: "+")
-            .replacingOccurrences(of: "_", with: "/")
-        while normalized.hasSuffix("=") { normalized.removeLast() }
-        // Byte-level: a CRLF is ONE Swift `Character`, so a Character-level
-        // filter for "\r" or "\n" walks straight past the pair a line-wrapping
-        // serializer emits.
-        let stripped = String(
-            decoding: normalized.utf8.filter { $0 != 0x0D && $0 != 0x0A }, as: UTF8.self)
-        guard !stripped.utf8.contains(UInt8(ascii: "=")) else { return nil }
+        //
+        // Byte-level throughout, and each of the three steps had to be: a CRLF
+        // is ONE Swift `Character`, so a Character-level filter for "\r" or
+        // "\n" walks past the pair a line-wrapping serializer emits; and
+        // `replacingOccurrences` searches grapheme clusters, so a `-` carrying a
+        // combining mark is a byte Go maps to `+` and Foundation leaves alone.
+        var normalized = payload.map { byte -> UInt8 in
+            switch byte {
+            case asciiDash: return asciiPlus
+            case asciiUnderscore: return asciiSlash
+            default: return byte
+            }
+        }
+        while normalized.last == asciiEquals { normalized.removeLast() }
+        let stripped = normalized.filter { $0 != 0x0D && $0 != 0x0A }
+        guard !stripped.contains(asciiEquals) else { return nil }
 
         guard let raw = decodeUnpaddedBase64(stripped), !raw.isEmpty,
             raw.count <= maxSgidPayloadBytes
@@ -416,7 +442,8 @@ extension Mentions {
             else { return nil }
             envelope = map
         } else if bytes[0] == asciiOpenBrace {
-            guard let decoded = try? JSONSerialization.jsonObject(with: jsonEnvelopeBytes(bytes)),
+            guard let json = jsonEnvelopeBytes(bytes),
+                let decoded = try? JSONSerialization.jsonObject(with: json),
                 let map = decoded as? [String: Any]
             else { return nil }
             envelope = map
@@ -581,22 +608,49 @@ extension Mentions {
     }
 }
 
-/// The bytes to hand `JSONSerialization`, with the two substitutions Go's
-/// `encoding/json` makes and Foundation refuses to.
+/// The bytes to hand `JSONSerialization`, reconciled with `encoding/json` in
+/// both directions — nil when Go's scanner would refuse the document outright.
 ///
-/// `json.Unmarshal` does not reject a string it cannot read as UTF-8 — it
-/// substitutes U+FFFD, for an invalid byte sequence and for a `\uXXXX` escape
-/// naming an unpaired surrogate alike. `JSONSerialization` refuses the whole
-/// DOCUMENT for either, so a single stray byte anywhere in the envelope — in a
-/// field this code never reads — loses an sgid Go decodes. That is the
-/// vanishing direction, and it says nothing about whether the envelope names a
-/// person.
+/// **Two substitutions Go makes and Foundation will not.** `json.Unmarshal` does
+/// not reject a string it cannot read as UTF-8; it substitutes U+FFFD, for an
+/// invalid byte sequence and for a `\uXXXX` escape naming an unpaired surrogate
+/// alike. `JSONSerialization` refuses the whole DOCUMENT for either, so a single
+/// stray byte anywhere in the envelope — in a field this code never reads —
+/// loses an sgid Go decodes.
+///
+/// One detail of the first is NOT reproduced, deliberately. Go's `unquoteBytes`
+/// calls `utf8.DecodeRune`, which yields one U+FFFD per invalid BYTE, while
+/// Swift's decoder applies the Unicode maximal-subpart rule and collapses a
+/// truncated-but-valid prefix into one. The two therefore disagree about how
+/// many replacement characters a mangled sequence becomes. It is not observable
+/// at any entry point — U+FFFD's bytes are all ≥ 0x80, so they are never a
+/// delimiter, a hex digit, a decimal digit or part of `gid`, `://` or `Person`,
+/// and nothing downstream is length-sensitive over them — and a 2,289-shape
+/// sweep carrying raw invalid UTF-8 inside the gid found no answer that differs.
+/// Reproducing Go's byte-at-a-time rule would mean hand-decoding UTF-8 here to
+/// fix something no caller can see.
+///
+/// **And one leniency Foundation has that Go does not**: a trailing comma.
+/// `{"a":1,}` is a document Go refuses and `JSONSerialization` accepts, which is
+/// the ACCEPTING direction — an sgid read here and nowhere else — so it is
+/// refused explicitly rather than left to the parser. That is also the only
+/// JSON5-ish leniency measured: unquoted keys, single quotes, `NaN`, comments,
+/// hex and octal literals, `\x` escapes and trailing junk are all refused on
+/// both sides.
 ///
 /// The walk is over unicode scalars rather than `Character`s on purpose: a
 /// quote or a backslash followed by a combining mark is one `Character` and
 /// would hide the string boundary from a `Character`-level scan, which is the
 /// same trap the gid parser was in.
-private func jsonEnvelopeBytes(_ raw: [UInt8]) -> Data {
+///
+/// **One divergence is left, knowingly.** `JSONSerialization` caps nesting at
+/// 511 where Go's scanner caps it at 10,000, so an envelope nested deeper than
+/// 511 is an sgid Go decodes and this does not. That is the vanishing
+/// direction, it costs a payload nobody mints, and closing it would mean
+/// replacing the parser rather than pre-processing for it. Measured on
+/// swift-corelibs-foundation; the macOS `NSJSONSerialization` this ships against
+/// may differ, which is the other reason not to build on it.
+private func jsonEnvelopeBytes(_ raw: [UInt8]) -> Data? {
     // Decoding as UTF-8 is what performs the first substitution: an invalid
     // sequence becomes U+FFFD here exactly as it does in `unquote`.
     let scalars = Array(String(decoding: raw, as: UTF8.self).unicodeScalars)
@@ -608,6 +662,16 @@ private func jsonEnvelopeBytes(_ raw: [UInt8]) -> Data {
         let scalar = scalars[index]
         guard inString else {
             if scalar == "\"" { inString = true }
+            if scalar == "," {
+                // Go's scanner requires a value after a comma; Foundation does
+                // not. Refusing here keeps the two agreeing without depending on
+                // which Foundation is underneath.
+                var next = index + 1
+                while next < scalars.count, isJSONWhitespace(scalars[next]) { next += 1 }
+                if next < scalars.count, scalars[next] == "}" || scalars[next] == "]" {
+                    return nil
+                }
+            }
             out.append(scalar)
             index += 1
             continue
@@ -634,6 +698,12 @@ private func jsonEnvelopeBytes(_ raw: [UInt8]) -> Data {
             index += 2
             continue
         }
+        // A valid pair is passed through unchanged. Nothing at any entry point
+        // can currently tell that from rewriting it to two U+FFFD — a surrogate
+        // pair always decodes to a non-ASCII character, so it is never a
+        // delimiter, a digit or part of a keyword, and nothing downstream is
+        // length-sensitive over it. It is here because it is what Go does, and
+        // because the next reader of the envelope may not have that property.
         if value >= 0xD800, value <= 0xDBFF, index + 11 < scalars.count,
             scalars[index + 6] == "\\", scalars[index + 7] == "u",
             let low = hexEscapeValue(scalars[(index + 8)...(index + 11)]),
@@ -652,6 +722,11 @@ private func jsonEnvelopeBytes(_ raw: [UInt8]) -> Data {
         index += 6
     }
     return Data(String(out).utf8)
+}
+
+/// The four bytes `encoding/json`'s scanner skips between tokens.
+private func isJSONWhitespace(_ scalar: Unicode.Scalar) -> Bool {
+    scalar == " " || scalar == "\t" || scalar == "\n" || scalar == "\r"
 }
 
 /// The value of a four-digit `\uXXXX` escape, or nil when it is not four hex
@@ -689,6 +764,9 @@ private let asciiNine = UInt8(ascii: "9")
 private let asciiDot = UInt8(ascii: ".")
 private let asciiTwo = UInt8(ascii: "2")
 private let asciiFive = UInt8(ascii: "5")
+private let asciiDash = UInt8(ascii: "-")
+private let asciiPlus = UInt8(ascii: "+")
+private let asciiUnderscore = UInt8(ascii: "_")
 
 private func isSpaceByte(_ c: UInt8) -> Bool {
     c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D || c == 0x0C
@@ -740,11 +818,13 @@ private func firstRange(of needle: String, in bytes: [UInt8], from: Int) -> Int?
 /// Decodes base64 whose padding has been stripped, in either alphabet's
 /// standard-mapped form. Returns nil for anything `Data(base64Encoded:)` would
 /// refuse, a length that cannot be a base64 encoding included.
-private func decodeUnpaddedBase64(_ value: String) -> Data? {
-    let remainder = value.utf8.count % 4
+private func decodeUnpaddedBase64(_ value: [UInt8]) -> Data? {
+    let remainder = value.count % 4
     if remainder == 1 { return nil }
-    let padded = value + String(repeating: "=", count: remainder == 0 ? 0 : 4 - remainder)
-    return Data(base64Encoded: padded)
+    var padded = value
+    padded.append(
+        contentsOf: repeatElement(asciiEquals, count: remainder == 0 ? 0 : 4 - remainder))
+    return Data(base64Encoded: Data(padded))
 }
 
 /// Decodes the HTML character references that can appear in an attribute value.
