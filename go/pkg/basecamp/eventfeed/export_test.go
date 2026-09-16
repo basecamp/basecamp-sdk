@@ -153,7 +153,7 @@ func ExportSubscribeFrame(f Filters) []byte {
 // error that never reached the wire.
 func ExportMapPollErrorKind(err error) PollErrorKind {
 	var pe *PollError
-	if errors.As(mapPollError(context.Background(), err, &refusedHop{}), &pe) {
+	if errors.As(mapPollError(context.Background(), err, &refusedHop{}, AccountLane), &pe) {
 		return pe.Kind
 	}
 	return 0

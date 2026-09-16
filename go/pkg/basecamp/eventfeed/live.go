@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
@@ -31,16 +32,18 @@ import (
 // egresses to the foreign origin. §23 "Continuation and Resume URL
 // Validation" requires zero foreign egress, so the feed's client composes a
 // guard over the host's transport (basecamp.WithTransportWrapper) that
-// answers every 3xx at the wire: the Location is reduced to its origin for
-// the seam and stripped — with the body — before net/http, the operation
-// hooks or any log sees it, and the 3xx reaches the generated call as a
-// status it classifies. No hop is ever followed, same-origin included: the
-// API never redirects a feed call, and a continuation is followed by
-// re-issuing the operation, not by a hop. The host keeps every other option
-// — its hooks, logger, transport, auth strategy — by passing them through,
-// and can use the same client for its own refetches (Live.Client): refusing
-// redirects is safe for every API call, since the API never legitimately
-// redirects at all.
+// answers every 3xx of a seam call at the wire: the Location is reduced to
+// its origin for the seam and stripped — with the body — before net/http,
+// the operation hooks or any log sees it, and the 3xx reaches the generated
+// call as a status it classifies. No hop is ever followed, same-origin
+// included: the API never redirects a feed call, and a continuation is
+// followed by re-issuing the operation, not by a hop. The guard acts only on
+// the seams' own calls — it recognizes them by the per-call record they
+// carry — so every other request through the same client keeps the client's
+// own redirect handling: a host can use it for its own refetches
+// (Live.Client), downloads included, whose first hop legitimately 302s to a
+// signed URL. The host keeps every other option — its hooks, logger,
+// transport, auth strategy — by passing them through.
 
 // Live is the connector's wire binding: the seams for one account on one
 // lane, over the generated operations.
@@ -79,8 +82,11 @@ func NewLive(cfg *basecamp.Config, tokens basecamp.TokenProvider, accountID stri
 	// and logs whole through every request's URL, so a value carrying
 	// userinfo is refused here — with a fixed message, since echoing it would
 	// be the leak — and the origin is canonicalized from what remains.
-	if u, err := url.Parse(cfg.BaseURL); err != nil || u.User != nil {
-		return nil, usageError("the base URL must parse and carry no userinfo")
+	if u, err := url.Parse(cfg.BaseURL); err != nil || u.User != nil || !utf8.ValidString(cfg.BaseURL) {
+		// Invalid UTF-8 is refused raw, as New refuses it: canonicalization
+		// would rewrite every invalid byte to U+FFFD and let two different
+		// broken origins collapse into one checkpoint lineage.
+		return nil, usageError("the base URL must be valid UTF-8, parse, and carry no userinfo")
 	}
 	origin, err := CanonicalOrigin(cfg.BaseURL)
 	if err != nil {
@@ -117,12 +123,21 @@ func (l *Live) Minter() TicketMinter { return &liveMinter{svc: l.svc} }
 func (l *Live) Polls() PollSource { return &livePolls{svc: l.svc, lane: l.lane} }
 
 // Connect builds the Connector over these seams: New with this binding's
-// origin, account and lane, plus opts.
+// origin, account and lane, plus opts. The lane is the binding's — the seams
+// are bound to one lane's operation — so a WithLane in opts naming another
+// lane is a usage error, never a silent override in either direction.
 func (l *Live) Connect(opts ...Option) (*Connector, error) {
 	all := make([]Option, 0, len(opts)+1)
-	all = append(all, opts...)
 	all = append(all, WithLane(l.lane))
-	return New(l.origin, l.accountID, l.Minter(), l.Polls(), all...)
+	all = append(all, opts...)
+	c, err := New(l.origin, l.accountID, l.Minter(), l.Polls(), all...)
+	if err != nil {
+		return nil, err
+	}
+	if c.cfg.lane != l.lane {
+		return nil, usageError(fmt.Sprintf("the lane is bound by NewLive (%s); build a second Live for the %s lane", l.lane, c.cfg.lane))
+	}
+	return c, nil
 }
 
 // refusedHop is the per-call record the redirect guard writes when it
@@ -165,27 +180,29 @@ func (redirectGuardWrapper) WrapTransport(inner http.RoundTripper) http.RoundTri
 }
 
 // redirectGuard is the RoundTripper the feed composes over the host's
-// transport: every 3xx is answered here, at the wire, before net/http's
-// redirect loop can parse a Location, follow it, or render it into a
-// url.Error that the operation hooks would receive whole. The Location is
-// reduced to its origin on the call's refusedHop record — the one component
-// the seam contract lets a redirect_refused error carry — then the header and
-// the body are dropped, and the 3xx goes on as a bare status the generated
-// call classifies. One mechanism covers every shape of the class: a foreign
-// Location, a same-origin one, a downgraded one, a Location net/http could
-// not parse, and a 3xx with none.
+// transport: every 3xx answered to a seam call is answered here, at the
+// wire, before net/http's redirect loop can parse a Location, follow it, or
+// render it into a url.Error that the operation hooks would receive whole.
+// The Location is reduced to its origin on the call's refusedHop record —
+// the one component the seam contract lets a redirect_refused error carry —
+// then the header and the body are dropped, and the 3xx goes on as a bare
+// status the generated call classifies. One mechanism covers every shape of
+// the class: a foreign Location, a same-origin one, a downgraded one, a
+// Location net/http could not parse, and a 3xx with none. A request carrying
+// no record is not a seam call and passes through untouched: the client's
+// other operations — a download's dispatching 302 above all — keep their own
+// redirect handling.
 type redirectGuard struct {
 	inner http.RoundTripper
 }
 
 func (g *redirectGuard) RoundTrip(req *http.Request) (*http.Response, error) {
+	hop, seamCall := req.Context().Value(refusedHopKey{}).(*refusedHop)
 	resp, err := g.inner.RoundTrip(req)
-	if err != nil || resp == nil || !isRedirectStatus(resp.StatusCode) {
+	if !seamCall || err != nil || resp == nil || !isRedirectStatus(resp.StatusCode) {
 		return resp, err
 	}
-	if hop, ok := req.Context().Value(refusedHopKey{}).(*refusedHop); ok {
-		hop.record(locationOrigin(resp.Header.Get("Location")))
-	}
+	hop.record(locationOrigin(resp.Header.Get("Location")))
 	resp.Header.Del("Location")
 	resp.Header.Del("Content-Location")
 	if resp.Body != nil {
@@ -353,7 +370,7 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 	ctx, hop := withRefusedHop(ctx)
 	page, err := p.svc.PollEvents(ctx, opts)
 	if err != nil {
-		return PollPage{}, mapPollError(ctx, err, hop)
+		return PollPage{}, mapPollError(ctx, err, hop, p.lane)
 	}
 	if page == nil {
 		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errors.New("the poll returned no page")}
@@ -395,7 +412,7 @@ func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filter
 	ctx, hop := withRefusedHop(ctx)
 	page, err := p.svc.PollInbox(ctx, opts)
 	if err != nil {
-		return PollPage{}, mapPollError(ctx, err, hop)
+		return PollPage{}, mapPollError(ctx, err, hop, p.lane)
 	}
 	if page == nil {
 		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errors.New("the poll returned no page")}
@@ -424,8 +441,9 @@ func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filter
 const positionRejectedMessage = "Unrecognized position"
 
 // mapPollError maps a PollEvents/PollInbox outcome onto exactly one
-// PollErrorKind (SPEC.md §23 "Seam Contracts").
-func mapPollError(ctx context.Context, err error, hop *refusedHop) error {
+// PollErrorKind (SPEC.md §23 "Seam Contracts"). The lane decides what a 410
+// must carry: the feed's names its epoch, the inbox's carries none.
+func mapPollError(ctx context.Context, err error, hop *refusedHop, lane Lane) error {
 	if isCancellation(ctx, err) {
 		return err
 	}
@@ -448,8 +466,15 @@ func mapPollError(ctx context.Context, err error, hop *refusedHop) error {
 	var gone *basecamp.FeedPositionGoneError
 	if errors.As(err, &gone) {
 		var epoch int64
-		if gone.EpochAfterID != nil {
+		switch {
+		case gone.EpochAfterID != nil:
 			epoch = *gone.EpochAfterID
+		case lane == AccountLane:
+			// The feed's 410 names its epoch; one that does not is not the
+			// documented gap but a malformed response, and a gap raised
+			// from it would hand a handler a resume URL with no fence
+			// behind it. Unrecoverable, as a 200 that did not decode is.
+			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the feed's 410 carries no epoch_after_id")}
 		}
 		return &PollError{Kind: PollGone, EpochAfterID: epoch, ResumeURL: gone.Resume, Err: err}
 	}

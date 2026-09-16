@@ -891,9 +891,13 @@ attempts.
 
 `Events` is single-shot: consuming it twice yields one `ReasonUsage` error element.
 
-The same connector consumes the principal's **inbox** — the low-noise lane of items that
-addressed the agent (mentions, assignments, subscriptions, watches, pings, boosts) — with
-`eventfeed.WithLane(eventfeed.InboxLane)` and a `PollSource` over the inbox endpoint.
+A second binding consumes the principal's **inbox** — the low-noise lane of items that
+addressed the agent (mentions, assignments, subscriptions, watches, pings, boosts):
+`eventfeed.NewLive(cfg, tokenProvider, "5951425", eventfeed.InboxLane)` binds the seams
+to `PollInbox`, and its `Connect` builds the inbox connector (the lane is the binding's;
+a `WithLane` naming the other lane is refused, never silently overridden). A host that
+supplies its own seams passes `eventfeed.WithLane(eventfeed.InboxLane)` to `New` with a
+`PollSource` over the inbox endpoint.
 Every delivered event then carries `ev.Addressing` (the item id, the reason, when), and
 the connector deduplicates and positions by that item id, since one event can address
 you for several reasons. Filter it with `Filters{Reasons: ...}` (plus `Types` and

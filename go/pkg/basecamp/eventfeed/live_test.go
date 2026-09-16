@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -354,6 +355,53 @@ func TestLivePolls_RefusesAContinuationWithoutACursor(t *testing.T) {
 	}
 }
 
+// TestLiveClient_DownloadsKeepTheirDispatchingRedirect: the guard answers
+// only the seams' own calls, so the client NewLive built stays a full client
+// for the host — a download's authenticated first hop still 302s to the
+// signed URL and the SDK follows its own dispatch.
+func TestLiveClient_DownloadsKeepTheirDispatchingRedirect(t *testing.T) {
+	var f *liveFixture
+	f = newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/99999/blobs/1/download":
+			http.Redirect(w, r, f.server.URL+"/signed/blob", http.StatusFound)
+		case "/signed/blob":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("PNGDATA"))
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	result, err := f.live.Client().ForAccount("99999").DownloadURL(context.Background(), f.server.URL+"/99999/blobs/1/download")
+	if err != nil {
+		t.Fatalf("DownloadURL through the feed's client: %v", err)
+	}
+	defer result.Body.Close()
+	data, _ := io.ReadAll(result.Body)
+	if string(data) != "PNGDATA" {
+		t.Fatalf("downloaded %q, want the signed hop's bytes", data)
+	}
+}
+
+// TestLivePolls_AFeed410WithoutAnEpochIsMalformed: the feed's 410 names its
+// epoch; one that does not is unrecoverable rather than a gap with a fence
+// of 0 — the inbox's, whose contract carries none, stays a gap.
+func TestLivePolls_AFeed410WithoutAnEpochIsMalformed(t *testing.T) {
+	for _, tc := range []struct {
+		lane eventfeed.Lane
+		kind eventfeed.PollErrorKind
+	}{{eventfeed.AccountLane, eventfeed.PollUnrecoverable}, {eventfeed.InboxLane, eventfeed.PollGone}} {
+		f := newLiveFixture(t, tc.lane, func(w http.ResponseWriter, r *http.Request) {
+			jsonResponse(w, 410, `{"error":"gone","resume":"https://3.basecampapi.com/99999/inbox.json?since=0"}`)
+		})
+		_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+		var pe *eventfeed.PollError
+		if !errors.As(err, &pe) || pe.Kind != tc.kind {
+			t.Fatalf("lane %s: error = %v, want %s", tc.lane, err, tc.kind)
+		}
+	}
+}
+
 // TestLivePolls_DetailsMatchThePushLaneByteForByte: a row's details object
 // reaches the connector as the bytes the server sent on both lanes — an
 // explicit null member and a member of a type this SDK does not model
@@ -674,6 +722,13 @@ func TestNewLiveValidatesAndConnects(t *testing.T) {
 	if _, err := live.Connect(eventfeed.WithFilters(eventfeed.Filters{Creators: []int64{1}})); err == nil {
 		t.Fatal("Connect accepted creators on the inbox lane")
 	}
+	var te *eventfeed.TerminalError
+	if _, err := live.Connect(eventfeed.WithLane(eventfeed.AccountLane)); !errors.As(err, &te) || te.Reason != eventfeed.ReasonUsage {
+		t.Fatalf("Connect(WithLane(AccountLane)) on an inbox binding = %v, want a usage error, not a silent override", err)
+	}
+	if _, err := live.Connect(eventfeed.WithLane(eventfeed.InboxLane)); err != nil {
+		t.Fatalf("Connect(WithLane(InboxLane)) on an inbox binding: %v", err)
+	}
 	for name, tc := range map[string]struct {
 		cfg  *basecamp.Config
 		id   string
@@ -684,6 +739,7 @@ func TestNewLiveValidatesAndConnects(t *testing.T) {
 		"cleartext base": {&basecamp.Config{BaseURL: "http://api.example.test"}, "1", eventfeed.AccountLane},
 		"nonnumeric id":  {cfg, "abc", eventfeed.AccountLane},
 		"userinfo base":  {&basecamp.Config{BaseURL: "https://user:s3cret-leak@api.example.test"}, "1", eventfeed.AccountLane},
+		"invalid utf-8":  {&basecamp.Config{BaseURL: "https://exa\xffmple.test"}, "1", eventfeed.AccountLane},
 		"no origin":      {&basecamp.Config{BaseURL: "/s3cret-leak"}, "1", eventfeed.AccountLane},
 	} {
 		t.Run(name, func(t *testing.T) {
