@@ -65,6 +65,47 @@ additive for every caller, breaking only for Go code that implements the
 generated `ClientInterface` / `ClientWithResponsesInterface` itself, which the
 generated client is the only intended implementer of.
 
+### Four SDKs change the exit code for `campfire_discovery_incomplete`, and the change is silent
+
+A chat line whose Campfire discovery could not be carried to a conclusion is
+reported as `campfire_discovery_incomplete` in every SDK. The coarse SPEC §6
+code that verdict is classified under — and therefore the CLI exit status — was
+decided independently by each port, and they did not agree. It is now `usage`
+(exit 1) everywhere.
+
+| SDK | before | after |
+|---|---|---|
+| Python, Ruby, Rust, TypeScript | `api_error` — exit 7 | `usage` — exit 1 |
+| Kotlin | `usage` — exit 1 | unchanged |
+| Go, Swift | classified as nothing | `usage` — exit 1, through a new accessor |
+
+**Wrong behaviour you get if you ignore it, and it is silent in all four.**
+Nothing stops compiling and nothing starts throwing. A script that branches on
+the CLI's exit status — `if [ $? -eq 7 ]`, a retry wrapper that treats 7 as a
+server fault worth trying again — stops matching on Python, Ruby, Rust and
+TypeScript, and starts matching wherever it tested for 1. Code that switches on
+the error's `code` field (`err.code == "api_error"`, `ErrorCode::ApiError`,
+`error.code === "api_error"`) takes the same change with a clean build.
+
+**What to react to.** Branch on the IDENTITY, not the coarse code: the exception
+class in Python and Ruby (`CampfireDiscoveryIncompleteError`), `kind` in
+TypeScript, `reason` in Kotlin, `RecordingSummaryError::of(&err)` in Rust,
+`errors.Is(err, basecamp.ErrCampfireDiscoveryIncomplete)` in Go, and the enum
+case in Swift. Those did not change and will not: the coarse code is derived
+from them, and the whole point of this change is that the derivation is now the
+same in all seven.
+
+**Retryability did not change.** It was `false` in every SDK that carries the
+field before this change and is `false` after. Only the code moved.
+
+Go and Swift still keep the verdict out of their error taxonomies — the sentinel
+and the enum are what you match — and gained a read-only classification beside
+it, `basecamp.RecordingSummaryCode(err)` and
+`RecordingSummaryError.canonicalCode`, so a CLI built on either picks the same
+exit status as every other SDK instead of inventing one. In Go, **read the
+second return value**: `code, _ := RecordingSummaryCode(err)` yields `""` for
+anything unclassified, and `ExitCodeFor("")` is 7.
+
 ### Python: a malformed list body is now an `ApiError`, and two of those changes are silent
 
 A list response the SDK could not read used to leave the Python SDK in one of
