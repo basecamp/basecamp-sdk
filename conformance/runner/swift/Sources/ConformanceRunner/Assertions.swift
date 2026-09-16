@@ -115,6 +115,11 @@ private func compositeHopIsOnContract(
 struct SemanticError {
     let type: String
     let message: String
+    /// The canonical SPEC §6 code the SDK classifies this verdict under, and
+    /// nil when it classifies it as nothing. Taken from the SDK rather than
+    /// from a table here, so a fixture pinning the code pins what a consumer
+    /// of the SDK would read.
+    let code: String?
 }
 
 /// Maps the Swift SDK's composite error onto that shared vocabulary.
@@ -503,9 +508,23 @@ func evaluateAssertions(
             guard let expected = assertion.expected?.stringValue else {
                 return .fail("\(assertion.type) assertion missing expected value")
             }
-            // A composite identity answers `errorType` only. `errorCode` stays
-            // the HTTP-shaped vocabulary, so a fixture cannot accidentally
-            // satisfy a canonical code with a semantic one.
+            // A composite identity answers `errorType` with its own name, and
+            // `errorCode` with the canonical §6 code the SDK CLASSIFIES it
+            // under (`RecordingSummaryError.canonicalCode`). The two stay
+            // different questions: `canonicalCode` only ever returns a member
+            // of the closed taxonomy, so a fixture still cannot satisfy a
+            // canonical code with a semantic name.
+            if let semanticError, assertion.type == "errorCode" {
+                guard let actual = semanticError.code else {
+                    return .fail(
+                        "Expected error code \"\(expected)\", but this SDK classifies "
+                            + "\"\(semanticError.type)\" under no canonical code")
+                }
+                if actual != expected {
+                    return .fail("Expected error code \"\(expected)\", got \"\(actual)\"")
+                }
+                break
+            }
             if let semanticError, assertion.type == "errorType" {
                 guard knownSemanticErrorTypes.contains(expected)
                     || knownErrorTypes.contains(expected)

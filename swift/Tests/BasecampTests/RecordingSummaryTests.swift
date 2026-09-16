@@ -539,6 +539,45 @@ final class RecordingSummaryTests: XCTestCase {
         }
     }
 
+    // MARK: - Classification
+
+    /// The canonical code each verdict is classified under, and the exit status
+    /// it decides. Spelled out per identity rather than as a set: a set over
+    /// five verdicts lets four of them be misclassified without changing it,
+    /// which is how `campfire_discovery_incomplete` came to exit 1 from the
+    /// Kotlin SDK and 7 from Python's with every test green in both. Settled on
+    /// card 40.
+    func testEachVerdictCarriesTheCodeAndExitStatusItSettledOn() {
+        let ref = RecordingRef(bucketId: 1, recordingId: 2, eventType: "chat.line.created")
+        let classified: [(RecordingSummaryError, String?, Int?)] = [
+            (.noRecordingType(ref), "usage", 1),
+            (.unknownRecordingType(ref), "usage", 1),
+            (
+                .recordingUnresolved(
+                    UnresolvedRecording(
+                        bucketId: 1, recordingId: 2, campfireIds: [], refreshed: false,
+                        staleCampfireIds: [])), "not_found", 2
+            ),
+            (
+                .campfireDiscoveryIncomplete(
+                    IncompleteCampfireDiscovery(bucketId: 1, recordingId: 2, reason: "r")),
+                "usage", 1
+            ),
+        ]
+        for (error, code, exit) in classified {
+            XCTAssertEqual(error.canonicalCode, code, error.message)
+            XCTAssertEqual(error.exitCode, exit, error.message)
+        }
+
+        // bucket_mismatch is deliberately UNCLASSIFIED: the merged ports
+        // disagree (Rust says not_found where Python, Ruby, Kotlin and
+        // TypeScript say usage), and the SDK with no code slot is not the one
+        // to settle it.
+        let mismatch = RecordingSummaryError.bucketMismatch(ref, 9)
+        XCTAssertNil(mismatch.canonicalCode)
+        XCTAssertNil(mismatch.exitCode)
+    }
+
     // MARK: - Helpers
 
     private func assertSummarizeFails(

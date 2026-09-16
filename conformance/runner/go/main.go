@@ -2155,6 +2155,21 @@ func checkAssertion(
 		if sdkErr == nil {
 			return fail(tc, fmt.Sprintf("Expected error code %q, but got no error", expected))
 		}
+		// A composite verdict (SPEC §18, Appendix F) is a sentinel error with
+		// no code slot, so it is not a *basecamp.Error and the branch below
+		// cannot see it. The canonical code it is CLASSIFIED under comes from
+		// the SDK itself — not from a table in this runner — so a fixture
+		// pinning the code is pinning what a consumer of the SDK would read,
+		// which is the whole point of pinning it. Unlike errorType, this asks
+		// for the coarse §6 answer: a fixture can still not satisfy it with a
+		// semantic identity, because RecordingSummaryCode only ever returns
+		// members of that closed taxonomy.
+		if code, ok := basecamp.RecordingSummaryCode(sdkErr); ok {
+			if code != expected {
+				return fail(tc, fmt.Sprintf("Expected error code %q, got %q (%v)", expected, code, sdkErr))
+			}
+			break
+		}
 		var sdkError *basecamp.Error
 		if !errors.As(sdkErr, &sdkError) {
 			return fail(tc, fmt.Sprintf("Expected error code %q, but error is not a *basecamp.Error: %v", expected, sdkErr))

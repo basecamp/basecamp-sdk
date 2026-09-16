@@ -6279,6 +6279,10 @@
       {
         "type": "errorType",
         "expected": "no_recording_type"
+      },
+      {
+        "type": "errorCode",
+        "expected": "usage"
       }
     ],
     "tags": [
@@ -6636,6 +6640,10 @@
       {
         "type": "errorType",
         "expected": "recording_unresolved"
+      },
+      {
+        "type": "errorCode",
+        "expected": "not_found"
       }
     ],
     "tags": [
@@ -6757,6 +6765,117 @@
       {
         "type": "errorType",
         "expected": "forbidden"
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "chat",
+      "error"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize reports a Campfire listing it could not read whole as discovery incomplete",
+    "description": "The account-wide listing came back truncated, so candidates were left unseen and the line cannot be reported absent: the verdict is campfire_discovery_incomplete, never recording_unresolved. Truncation is driven here by the client's page cap rather than by a thousand-entry body, which is the same signal (meta.truncated) through the same branch and the only one a fixture can script. What this case exists to pin is the CODE: every SDK classifies this verdict as usage -- the one coarse code no HTTP response can produce, so it can never be read back as a constituent read's own answer -- and the fixture pinning only errorType is why four ports shipped api_error (exit 7) and one shipped usage (exit 1) for the same condition with all 40 cases green in every one of them. Settled on card 40. errorMessage is asserted on the shared prefix only: the reason text after it names each SDK's own cap constant and is deliberately not a cross-SDK contract.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/projects/2085958499",
+    "configOverrides": {
+      "maxPages": 2
+    },
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479350,
+      "eventType": "chat.line.created"
+    },
+    "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Link": "</999/chats.json?page=2>; rel=\"next\""
+        },
+        "body": [
+          {
+            "id": 1069479400,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958500/chats/1069479400.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958500/chats/1069479400",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958500/chats/1069479400/lines.json",
+            "bucket": {
+              "id": 2085958500,
+              "name": "Project 2085958500",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          }
+        ]
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Link": "</999/chats.json?page=3>; rel=\"next\""
+        },
+        "body": [
+          {
+            "id": 1069479340,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479340.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958499/chats/1069479340",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479340/lines.json",
+            "bucket": {
+              "id": 2085958499,
+              "name": "Project 2085958499",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          }
+        ]
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 3
+      },
+      {
+        "type": "errorType",
+        "expected": "campfire_discovery_incomplete"
+      },
+      {
+        "type": "errorCode",
+        "expected": "usage"
+      },
+      {
+        "type": "errorMessage",
+        "expected": "campfire discovery incomplete: line 1069479350 in bucket 2085958499:"
       }
     ],
     "tags": [
