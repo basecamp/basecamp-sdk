@@ -35,14 +35,6 @@
 # sentence promising an issue owns something. Decrement or remove when the
 # sentence goes, and the gate stops asking.
 prose_tracking_issues:
-  - issue: 915
-    file: "go/pkg/basecamp/eventfeed/live.go"
-    site: "go/pkg/basecamp/eventfeed/live.go — the 409 digest and 400 reason shapes are held at the adapter until the wrapper's decode holds them"
-    mentions: 1
-  - issue: 915
-    file: "go/pkg/basecamp/eventfeed/live_test.go"
-    site: "go/pkg/basecamp/eventfeed/live_test.go — the inbox 410 accepts a member its shape does not declare until the wrapper's decode refuses one"
-    mentions: 1
   - issue: 901
     file: "ruby/lib/basecamp/http.rb"
     site: "ruby/lib/basecamp/http.rb — declared-idempotent mutations such as CreateStreamTicket bypass the retry budget"

@@ -1,14 +1,17 @@
 package basecamp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
@@ -151,7 +154,8 @@ type PollInboxOptions struct {
 // FeedFilterMismatchError is the feed's 409: the held position was minted for
 // a different filter set than the request presented. Re-enter with Since to
 // acknowledge the filter change. Both digests are the bare srv2 filter digest
-// BC3 publishes.
+// BC3 publishes, and both are held to that shape at the decode: a 409 that
+// does not carry two of them is a malformed response, not this value.
 type FeedFilterMismatchError struct {
 	// Err is the canonical SDK error (code api_error, HTTPStatus 409).
 	Err *Error
@@ -172,7 +176,9 @@ func (e *FeedFilterMismatchError) Unwrap() error { return e.Err }
 // filters; a position reset will not help) — and Reason tells them apart:
 // FeedReasonInvalidPosition or FeedReasonInvalidFilter. Reason is empty when
 // the server predates bc3 #13362; treat that 400 as undifferentiated and
-// surface it rather than guess between recovering and stopping.
+// surface it rather than guess between recovering and stopping. Empty means
+// absent and nothing else: a 400 carrying a reason this contract does not
+// name is a malformed response, not this value with an empty Reason.
 type FeedRequestError struct {
 	// Err is the canonical SDK error (code validation, HTTPStatus 400).
 	Err *Error
@@ -280,18 +286,36 @@ func (s *EventFeedService) PollEvents(ctx context.Context, opts *PollEventsOptio
 			ActorTypes:        joinStrings(opts.ActorTypes),
 		}
 	}
-	resp, err := s.client.parent.gen.PollEventsWithResponse(ctx, s.client.accountID, params)
+	//nolint:bodyclose // ParsePollEventsResponse below closes the body (it
+	// defers rsp.Body.Close()), and it is called unconditionally two lines on.
+	httpResp, err := s.client.parent.gen.PollEvents(ctx, s.client.accountID, params)
 	if err != nil {
+		return nil, err
+	}
+	httpResp.Body = markBodyReadFailures(httpResp.Body)
+	resp, decodeErr := generated.ParsePollEventsResponse(httpResp)
+	if decodeErr != nil {
+		err = feedDecodeError(factsOf(httpResp), decodeErr)
 		return nil, err
 	}
 	if err = checkFeedResponse(resp.HTTPResponse, resp.Body, feedLane); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		err = fmt.Errorf("unexpected empty response")
+		err = feedDecodeError(factsOf(resp.HTTPResponse), errors.New("the response carried no page"))
 		return nil, err
 	}
 	page := eventFeedPageFromGenerated(*resp.JSON200)
+	rows := make([]string, 0, 3*len(page.Events))
+	for _, e := range page.Events {
+		rows = feedEventStrings(rows, e)
+	}
+	if err = checkPollEnvelope(factsOf(resp.HTTPResponse), resp.Body, "events"); err != nil {
+		return nil, err
+	}
+	if err = checkPollPage(factsOf(resp.HTTPResponse), page.Position, page.Next, rows); err != nil {
+		return nil, err
+	}
 	return &page, nil
 }
 
@@ -324,18 +348,36 @@ func (s *EventFeedService) PollInbox(ctx context.Context, opts *PollInboxOptions
 			Buckets:  joinInt64s(opts.Buckets),
 		}
 	}
-	resp, err := s.client.parent.gen.PollInboxWithResponse(ctx, s.client.accountID, params)
+	//nolint:bodyclose // ParsePollInboxResponse below closes the body (it
+	// defers rsp.Body.Close()), and it is called unconditionally two lines on.
+	httpResp, err := s.client.parent.gen.PollInbox(ctx, s.client.accountID, params)
 	if err != nil {
+		return nil, err
+	}
+	httpResp.Body = markBodyReadFailures(httpResp.Body)
+	resp, decodeErr := generated.ParsePollInboxResponse(httpResp)
+	if decodeErr != nil {
+		err = feedDecodeError(factsOf(httpResp), decodeErr)
 		return nil, err
 	}
 	if err = checkFeedResponse(resp.HTTPResponse, resp.Body, inboxLane); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		err = fmt.Errorf("unexpected empty response")
+		err = feedDecodeError(factsOf(resp.HTTPResponse), errors.New("the response carried no page"))
 		return nil, err
 	}
 	page := inboxPageFromGenerated(*resp.JSON200)
+	rows := make([]string, 0, 4*len(page.Items))
+	for _, item := range page.Items {
+		rows = feedEventStrings(append(rows, item.Reason), item.Event)
+	}
+	if err = checkPollEnvelope(factsOf(resp.HTTPResponse), resp.Body, "items"); err != nil {
+		return nil, err
+	}
+	if err = checkPollPage(factsOf(resp.HTTPResponse), page.Position, page.Next, rows); err != nil {
+		return nil, err
+	}
 	return &page, nil
 }
 
@@ -464,37 +506,591 @@ func checkFeedResponse(resp *http.Response, body []byte, lane feedLaneKind) erro
 	if !ok {
 		return err
 	}
+	// Each arm below is TOTAL over the body, and that inversion is the whole
+	// design. The contract gives each of these three statuses exactly one body
+	// shape, so the arm decides between the typed value and a malformed
+	// response — it never hands the body back for something further down to
+	// interpret. A permissive arm ("if it looks like the documented shape,
+	// judge it; otherwise fall through to the canonical error") leaves one
+	// escape door per shape it fails to recognize — a null, a number where a
+	// string belongs, a missing required member, a body that is not an object
+	// — and every door opens onto the status-keyed recovery paths this
+	// validation exists to close. Doors are not enumerable; the default is.
+	//
+	// Required members are enforced; UNKNOWN members are ignored. That is the
+	// same rule read from both ends: the contract binds what the server must
+	// send, not what it may add, and a response that grows a member is not a
+	// malformed one (see the inbox 410 with a stray epoch in live_test.go).
 	switch resp.StatusCode {
 	case http.StatusBadRequest:
-		var request generated.FeedRequestErrorResponseContent
-		if json.Unmarshal(body, &request) == nil && request.Error != "" {
-			return &FeedRequestError{Err: base, Reason: deref(request.Reason)}
-		}
+		return feedRequestErrorFrom(base, body)
 	case http.StatusConflict:
-		var mismatch generated.FeedFilterMismatchErrorResponseContent
-		if json.Unmarshal(body, &mismatch) == nil && (mismatch.PositionDigest != "" || mismatch.FiltersDigest != "") {
-			return &FeedFilterMismatchError{Err: base, PositionDigest: mismatch.PositionDigest, FiltersDigest: mismatch.FiltersDigest}
-		}
+		return feedFilterMismatchFrom(base, body)
 	case http.StatusGone:
-		if lane == inboxLane {
-			var gone generated.InboxPositionGoneErrorResponseContent
-			if json.Unmarshal(body, &gone) == nil && gone.Resume != "" {
-				return &InboxPositionGoneError{Err: base, Resume: gone.Resume}
-			}
-			return err
-		}
-		// Decoded with a pointer rather than the generated int64 so a 410 that
-		// omits (or nulls) the required epoch is not typed with a fabricated 0
-		// boundary; it stays the canonical error.
-		var gone struct {
-			EpochAfterID *int64 `json:"epoch_after_id"`
-			Resume       string `json:"resume"`
-		}
-		if json.Unmarshal(body, &gone) == nil && gone.Resume != "" && gone.EpochAfterID != nil {
-			return &FeedPositionGoneError{Err: base, EpochAfterID: *gone.EpochAfterID, Resume: gone.Resume}
-		}
+		return feedGoneFrom(base, body, lane)
 	}
 	return err
+}
+
+// feedRequestErrorFrom decides the poll lanes' 400: {error, reason?}.
+//
+// reason is the one optional member, and absent is a state of its own — a
+// server predating bc3 #13362 sends none, and the consumer's message
+// classifier is documented for that case alone. A present value the contract
+// does not name would arrive at that classifier looking exactly like it, and
+// "Unrecognized position" then buys a position reset off a reason nobody
+// defined. An explicit null IS absent: the member is optional, null is how
+// JSON spells "no value" for one, and refusing it would make a body the
+// contract permits terminal.
+func feedRequestErrorFrom(base *Error, body []byte) error {
+	fields, ok := jsonObject(body, "")
+	if !ok {
+		return malformedFeedResponse(factsOfError(base), "a 400 whose body is not the shape this contract declares", base)
+	}
+	if _, ok := requiredString(fields, "error"); !ok {
+		return malformedFeedResponse(factsOfError(base), "a 400 without the error member its shape requires", base)
+	}
+	raw, present := fields["reason"]
+	if !present || isJSONNull(raw) {
+		return &FeedRequestError{Err: base}
+	}
+	named, isString := jsonString(raw)
+	if !isString || (named != FeedReasonInvalidPosition && named != FeedReasonInvalidFilter) {
+		return malformedFeedResponse(factsOfError(base), "a 400 whose reason is not one this contract names", base)
+	}
+	return &FeedRequestError{Err: base, Reason: named}
+}
+
+// feedFilterMismatchFrom decides the poll lanes' 409: {error, position_digest,
+// filters_digest}, both digests the bare 16-lowercase-hex srv2 form.
+//
+// The status is the conflict verdict; the digests are what a consumer
+// reports, compares and keys its checkpoint lineage on, and acting on the
+// verdict means discarding a held position. A 409 that cannot supply them is
+// not the documented conflict, so it must not be the value that triggers that
+// recovery.
+func feedFilterMismatchFrom(base *Error, body []byte) error {
+	fields, ok := jsonObject(body, "")
+	if !ok {
+		return malformedFeedResponse(factsOfError(base), "a 409 whose body is not the shape this contract declares", base)
+	}
+	if _, ok := requiredString(fields, "error"); !ok {
+		return malformedFeedResponse(factsOfError(base), "a 409 without the error member its shape requires", base)
+	}
+	position, _ := jsonString(fields["position_digest"])
+	filters, _ := jsonString(fields["filters_digest"])
+	if !isFeedDigest(position) || !isFeedDigest(filters) {
+		return malformedFeedResponse(factsOfError(base), "a 409 whose filter digests are missing or not the published srv2 form", base)
+	}
+	return &FeedFilterMismatchError{Err: base, PositionDigest: position, FiltersDigest: filters}
+}
+
+// feedGoneFrom decides the lanes' two 410s, which are two shapes on two
+// operations and deliberately not interchangeable: the feed's names its epoch
+// and re-enters there, the inbox's has none and re-enters at since=0. Each is
+// decided on its own lane only, so one lane can never be handed the other's
+// recovery.
+func feedGoneFrom(base *Error, body []byte, lane feedLaneKind) error {
+	fields, ok := jsonObject(body, "")
+	if !ok {
+		return malformedFeedResponse(factsOfError(base), "a 410 whose body is not the shape this contract declares", base)
+	}
+	if _, ok := requiredString(fields, "error"); !ok {
+		return malformedFeedResponse(factsOfError(base), "a 410 without the error member its shape requires", base)
+	}
+	resume, ok := requiredString(fields, "resume")
+	if !ok {
+		return malformedFeedResponse(factsOfError(base), "a 410 without the resume URL its shape requires", base)
+	}
+	if !survivedDecoding(resume) {
+		return malformedFeedResponse(factsOfError(base), "a 410 whose resume URL did not survive decoding", base)
+	}
+	if lane == inboxLane {
+		return &InboxPositionGoneError{Err: base, Resume: resume}
+	}
+	// The epoch is @required on the feed's shape and it is a boundary, not a
+	// label: typed from a missing member it would be a fabricated 0 that
+	// re-enters at the bottom of history.
+	epoch, isNumber := jsonInt64(fields["epoch_after_id"])
+	if !isNumber {
+		return malformedFeedResponse(factsOfError(base), "a feed 410 without the epoch its shape requires", base)
+	}
+	return &FeedPositionGoneError{Err: base, EpochAfterID: epoch, Resume: resume}
+}
+
+// jsonObject decodes a body into its raw members, reporting whether the body
+// was a JSON object at all — a nil map from the literal `null` is not one.
+// Raw because the members are then read one at a time: a member of the wrong
+// JSON type is a fact about that member, not a decode failure that discards
+// its siblings and the verdict with them.
+//
+// A member NAME the decoder substituted into disqualifies the whole object,
+// at every depth. Keys are subject to the same U+FFFD substitution as values
+// (survivedDecoding), and a substituted key is worse: it does not arrive
+// wrong, it arrives missing, so an optional member reads as absent and a
+// required one as omitted. Checked over every key rather than the ones the
+// callers happen to ask for, and through nested members rather than at the
+// top level, because which key was mangled is exactly what cannot be known in
+// advance — the same walk the poll envelope uses, so one rule covers all four
+// bodies these lanes decode.
+func jsonObject(body []byte, rawDetailsIn string) (map[string]json.RawMessage, bool) {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil || fields == nil {
+		return nil, false
+	}
+	if !feedBodyWellFormed(body, rawDetailsIn) {
+		return nil, false
+	}
+	return fields, true
+}
+
+// feedResponseFacts is what §6 records from the RESPONSE rather than from its
+// body: the request id, and the delay the server asked for. They travel
+// together because they are lost together — a refusal that drops them leaves
+// a caller unable to look the exchange up or to reschedule it, and each one
+// went missing in turn when they were copied by hand.
+//
+// Carried even though a malformed response is never Retryable: retryability
+// is this SDK's verdict about repeating the call, and Retry-After is the
+// server's delay for a caller who reschedules the work themselves (§6).
+type feedResponseFacts struct {
+	requestID  string
+	retryAfter int
+}
+
+// factsOf reads them off the response.
+func factsOf(resp *http.Response) feedResponseFacts {
+	if resp == nil {
+		return feedResponseFacts{}
+	}
+	return feedResponseFacts{
+		requestID:  resp.Header.Get(requestIDHeader),
+		retryAfter: parseRetryAfter(resp.Header.Get("Retry-After")),
+	}
+}
+
+// factsOfError reads them back off a canonical error, which parsed them from
+// the same response a moment earlier.
+func factsOfError(base *Error) feedResponseFacts {
+	if base == nil {
+		return feedResponseFacts{}
+	}
+	return feedResponseFacts{requestID: base.RequestID, retryAfter: base.RetryAfter}
+}
+
+// feedBodyWellFormed reports whether a body's object structure is one this
+// contract can act on: every member NAME came through the decode as the
+// server wrote it, and no object names a member twice.
+//
+// Both are about a member the SDK reads being silently not the member the
+// server sent. A substituted name does not arrive wrong, it arrives absent —
+// a row's `performed_by_id` mangled reads as a directly-performed event, so
+// the action is attributed to its creator rather than to the agent, with the
+// page's position committing over it, and that attribution is what the loop
+// guard (exclude_performers=self) is computed from. A repeated name is the
+// same silence from the other side: encoding/json keeps the LAST occurrence,
+// so a 400 carrying both `"reason":"invalid_filter"` and
+// `"reason":"invalid_position"` becomes one verdict chosen by position in the
+// body, and that verdict discards a held cursor. RFC 8259 leaves duplicate
+// names to the parser; a body that supplies two answers to a question with
+// one answer is not one to act on.
+//
+// There is deliberately no depth cap. A cap would be the fail-closed default
+// this decode otherwise takes everywhere, and it would make an absurd body
+// unreachable rather than merely cheap — but it would refuse a page over the
+// SHAPE of a member nothing reads, which is the one thing the additive-member
+// rule above forbids. What bounds the work instead is that the pass is linear
+// and carries O(1) state per level, and that encoding/json refuses beyond its
+// own nesting limit, so a body deep enough to matter never decodes into a
+// page at all.
+//
+// The walk is a single token pass rather than a recursive decode of each
+// subtree. Re-unmarshalling nested values from their raw bytes re-reads every
+// suffix, which is quadratic in nesting depth: a deeply nested additive
+// member — encoding/json accepts about 10,000 levels — costs seconds and
+// megabytes on a body of a few tens of kilobytes, on a poller that runs
+// continuously. BenchmarkFeedBodyWellFormed pins the linear cost.
+//
+// rawDetailsIn names the collection whose rows carry the one member whose
+// interior is skipped: a FeedEvent's `details`, whose bytes are carried
+// verbatim and never decoded into strings, so nothing in there is substituted
+// and judging it would contradict that carriage. It is the OPERATION's own
+// collection — `events` or `items` — because each answers with one of the two
+// shapes, and "" for the error bodies, which declare no verbatim member and
+// are walked whole. Naming the lane rather than a flag is what keeps a feed
+// page from exempting an additive `items[*].event.details`, or an inbox page
+// an additive `events[*].details`: those are members nothing reads, and the
+// exemption belongs to the raw bytes this response actually carries.
+func feedBodyWellFormed(body []byte, rawDetailsIn string) bool {
+	dec := json.NewDecoder(bytes.NewReader(body))
+	// Numbers are never inspected here, and json.Number keeps them as their
+	// literal text instead of parsing each one into a float.
+	dec.UseNumber()
+
+	// One frame per open object or array. Token hands names and values back
+	// in the same stream with nothing to tell them apart, so the frame
+	// carries the alternation: inside an object, a scalar is a name exactly
+	// when a name is what comes next.
+	//
+	// Each frame carries enough of its own member path to decide the details
+	// exemption and no more: how many named segments lead here, and the last
+	// two of them. The whole path is never materialised — copying it at every
+	// push is what makes a walk quadratic in nesting depth again, in
+	// allocation rather than in reads, and the two paths that declare a raw
+	// member are short and fixed.
+	var stack []feedWalkFrame
+	push := func(object bool, name string) {
+		f := feedWalkFrame{object: object, expectKey: object, name: name}
+		if n := len(stack) - 1; n >= 0 {
+			parent := stack[n]
+			f.pathLen, f.tail = parent.pathLen, parent.tail
+			if parent.object {
+				// A container held under a member name extends the path; an
+				// array's elements inherit the array's own.
+				f.pathLen++
+				f.tail = [2]string{f.tail[1], name}
+			}
+		}
+		if object {
+			f.seen = map[string]struct{}{}
+		}
+		stack = append(stack, f)
+	}
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			// EOF, or a document that does not parse. Neither is this
+			// function's verdict: the decode around it reports the second.
+			return true
+		}
+		top := len(stack) - 1
+		if delim, ok := tok.(json.Delim); ok {
+			switch delim {
+			case '{':
+				push(true, pendingName(stack))
+			case '[':
+				push(false, pendingName(stack))
+			default:
+				stack = stack[:top]
+				if top--; top >= 0 && stack[top].object {
+					stack[top].expectKey = true
+				}
+			}
+			continue
+		}
+		if top < 0 || !stack[top].object {
+			continue
+		}
+		if !stack[top].expectKey {
+			stack[top].expectKey = true
+			continue
+		}
+		name, isString := tok.(string)
+		if !isString {
+			// Only a string can be a member name; a document that spells one
+			// otherwise does not parse, and the decode reports that.
+			continue
+		}
+		stack[top].expectKey = false
+		stack[top].name = name
+		if _, repeated := stack[top].seen[name]; repeated {
+			return false
+		}
+		stack[top].seen[name] = struct{}{}
+		if !survivedDecoding(name) {
+			return false
+		}
+		if name == detailsMember && declaresRawDetails(rawDetailsIn, stack[top].pathLen, stack[top].tail) {
+			if skipValue(dec) != nil {
+				return true
+			}
+			stack[top].expectKey = true
+		}
+	}
+}
+
+// feedWalkFrame is one open object or array in feedBodyWellFormed's walk.
+// pathLen counts the named segments leading to this container (array indices
+// elided) and tail holds the last two of them, which is all the details
+// exemption needs and all that can be carried without allocating per level.
+type feedWalkFrame struct {
+	object    bool
+	expectKey bool
+	name      string
+	pathLen   int
+	tail      [2]string
+	seen      map[string]struct{}
+}
+
+// pendingName is the member name the container about to be pushed is held
+// under, or "" for an array's element and for the document's own root.
+func pendingName(stack []feedWalkFrame) string {
+	if n := len(stack) - 1; n >= 0 && stack[n].object {
+		return stack[n].name
+	}
+	return ""
+}
+
+// detailsMember is the one member a poll page carries as raw bytes.
+const detailsMember = "details"
+
+// declaresRawDetails reports the ONE member path where the lane under
+// rawDetailsIn carries a FeedEvent, array indices elided: `events` for the
+// feed's rows, `items.event` for the event nested in an inbox item. A
+// `details` anywhere else — including the other lane's path, which on this
+// response is an additive member — is walked like any other subtree, because
+// the SDK reads no raw bytes out of it.
+//
+// pathLen is what keeps a deeper path from matching on its tail alone:
+// `x.items.event` ends the same way and is not the declared one.
+func declaresRawDetails(rawDetailsIn string, pathLen int, tail [2]string) bool {
+	switch rawDetailsIn {
+	case "events":
+		return pathLen == 1 && tail[1] == "events"
+	case "items":
+		return pathLen == 2 && tail[0] == "items" && tail[1] == "event"
+	}
+	return false
+}
+
+// skipValue consumes exactly one value from the token stream, whatever its
+// shape.
+func skipValue(dec *json.Decoder) error {
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	delim, ok := tok.(json.Delim)
+	if !ok || (delim != '{' && delim != '[') {
+		return nil
+	}
+	for depth := 1; depth > 0; {
+		tok, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		if delim, ok := tok.(json.Delim); ok {
+			if delim == '{' || delim == '[' {
+				depth++
+			} else {
+				depth--
+			}
+		}
+	}
+	return nil
+}
+
+// requiredString reads a member the shape DECLARES: present, a JSON string,
+// and nonempty. One reader for all of them, so "required" means the same
+// thing at every site rather than whatever each site remembered to check.
+//
+// Nonempty is part of it because of what an empty one does downstream: §6's
+// error-body parse falls back to a `message` member when `error` is empty, so
+// {"error":"","message":"Unrecognized position"} would carry a message the
+// declared member never supplied into a consumer's classifier — and that
+// classifier's answer is a position reset.
+func requiredString(fields map[string]json.RawMessage, name string) (string, bool) {
+	s, isString := jsonString(fields[name])
+	return s, isString && s != ""
+}
+
+// jsonString reports a member that is present and a JSON string, with its
+// value. Absent, null and every other type answer false — the three the
+// callers above have to tell apart from a real value.
+//
+// Null is rejected explicitly because encoding/json does not: unmarshalling
+// `null` into any type succeeds and leaves the zero value, so every required
+// member would otherwise be satisfiable by a null and read back as "". That
+// one behaviour is the root the null-versus-absent findings kept surfacing
+// through, which is why it is answered once, here, rather than at each site.
+func jsonString(raw json.RawMessage) (string, bool) {
+	if len(raw) == 0 || isJSONNull(raw) {
+		return "", false
+	}
+	var s string
+	if json.Unmarshal(raw, &s) != nil {
+		return "", false
+	}
+	return s, true
+}
+
+// jsonInt64 is jsonString for a JSON number, and rejects null for the same
+// reason: a nulled epoch would read back as 0, a boundary at the bottom of
+// history rather than the fence the server named.
+func jsonInt64(raw json.RawMessage) (int64, bool) {
+	if len(raw) == 0 || isJSONNull(raw) {
+		return 0, false
+	}
+	var n int64
+	if json.Unmarshal(raw, &n) != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+// isJSONNull reports the explicit null literal, which for an OPTIONAL member
+// is the absent case rather than a value.
+func isJSONNull(raw json.RawMessage) bool {
+	return bytes.Equal(bytes.TrimSpace(raw), []byte("null"))
+}
+
+// feedDigestLength is the width of the bare srv2 filter digest BC3 publishes
+// in a 409 (doc/api/sections/event_feed.md, "Filter digests"). Bare: the
+// `srv2-` prefix is the SDK's own checkpoint-lineage namespace and never
+// appears on the wire.
+const feedDigestLength = 16
+
+// isFeedDigest reports a bare srv2 filter digest: exactly 16 lowercase hex.
+func isFeedDigest(s string) bool {
+	if len(s) != feedDigestLength {
+		return false
+	}
+	for _, r := range s {
+		digit, hex := r >= '0' && r <= '9', r >= 'a' && r <= 'f'
+		if !digit && !hex {
+			return false
+		}
+	}
+	return true
+}
+
+// malformedFeedResponse renders a poll lane's unusable body in the SPEC §6
+// shape every other malformed-response guard uses (fieldsFromTodolist,
+// documentDecodeError): api_error, non-retryable, and STATUSLESS.
+//
+// Statuslessness is the load-bearing part, not a formality. A status is the
+// server's verdict on the request, and these bodies are how the verdict is
+// acted on — the 409's digests discard a held position, the 400's reason
+// keys recover-versus-stop. A body that does not carry the shape its verdict
+// is documented to carry answers neither question, and leaving the status on
+// would hand it straight to the fallbacks that key off one: a 400 kept at 400
+// still reaches a consumer's message classifier, which is the exact path a
+// reason nobody defined must not reach. The canonical error rides as Cause so
+// the exchange is still legible to anyone debugging it.
+//
+// The response's own facts are a PARAMETER rather than something sniffed off
+// the cause. §6 records them on every response error and errors.As stops at
+// this one, so a refused body — precisely the response somebody has to look
+// up server-side, or reschedule against — must carry them itself. Sniffing
+// worked only where the cause happened to be the canonical error, which
+// silently left the 200 paths bare; a parameter is a question the compiler
+// makes every call site answer, and one struct means the next field §6 adds
+// is added once rather than at each site.
+//
+// what names the member, never its value: these bodies are server-written
+// text and SPEC §23 keeps such text out of every rendering.
+func malformedFeedResponse(facts feedResponseFacts, what string, cause error) error {
+	return &Error{
+		Code:       CodeAPI,
+		RequestID:  facts.requestID,
+		RetryAfter: facts.retryAfter,
+		Message:    "the event feed answered " + what,
+		Hint: "A malformed response is not a recovery signal. Re-entering the feed, or discarding a held " +
+			"position, on a body the server did not make would lose events; report it rather than recover from it.",
+		Retryable: false,
+		Cause:     cause,
+	}
+}
+
+// survivedDecoding reports a server-supplied string that reached us as the
+// server wrote it.
+//
+// Go's JSON decoder fails on neither invalid UTF-8 in the body nor a lone
+// surrogate escape: it substitutes U+FFFD and hands back a string nobody
+// sent. Both forms land in the decoded value, which is why it is the value
+// that is checked and not the bytes. U+FFFD is therefore the fingerprint of the substitution, and
+// it is a fingerprint these members can afford to refuse on — an opaque
+// signed cursor and an absolute URL are machine-written ASCII, so a literal
+// replacement character in one is already the malformed case.
+//
+// The values held to this are the ones the SDK hands back for a consumer to
+// PERSIST or RE-ISSUE: the page's position and continuation, and a 410's
+// resume URL. Each one substituted is a durable wrong turn — a saved
+// position the feed cannot resolve (which answers 400 or 410, and provokes
+// the reset that loses the walk), a continuation followed somewhere the walk
+// was not, a re-entry whose preserved filters are no longer the ones the
+// walk was minted for. The mint's URL and an event's details are not held to
+// it: the URL is checked against cable-URL policy before it is dialed and
+// the ticket is signed, and details are refused by the push decoder's own
+// rule, but neither is persisted or re-issued.
+func survivedDecoding(s string) bool {
+	return !strings.ContainsRune(s, utf8.RuneError)
+}
+
+// feedDecodeError renders a poll body that never became a page at all in the
+// same shape as one that became a wrong page — the malformed response — so
+// the lane has one verdict for "this is not the envelope" instead of two.
+// Without the split the generated combined call hands back the decoder's own
+// error, which a caller switching on *Error never sees.
+//
+// The decode step is not classified by inspecting the error (documentDecodeError
+// explains why that cannot work in either direction); it is known by
+// construction, because the request and the parse are separate calls. The one
+// piece of help it needs is that io.ReadAll runs INSIDE the parse (#773), so a
+// failed READ arrives here looking like a failed decode; markBodyReadFailures
+// tags those at the read and they pass through verbatim.
+func feedDecodeError(facts feedResponseFacts, err error) error {
+	if marked, ok := errors.AsType[*bodyReadError](err); ok {
+		return marked.err
+	}
+	return malformedFeedResponse(facts, "a page that does not decode as the envelope this contract declares", err)
+}
+
+// checkPollEnvelope holds the 200 to the members its shape declares, the way
+// every error arm above holds its own: the body is an object whose keys the
+// decoder did not substitute into, and the envelope's two required members
+// are there. A page whose `position` key arrived mangled would otherwise read
+// as an empty position — the connector already calls that an unexpected
+// shape and refuses it, which is the same verdict one layer earlier.
+//
+// collection is `events` or `items`: which rows the lane serves is the one
+// difference between the two envelopes.
+func checkPollEnvelope(facts feedResponseFacts, body []byte, collection string) error {
+	fields, ok := jsonObject(body, collection)
+	if !ok {
+		return malformedFeedResponse(facts, "a page whose body is not the shape this contract declares", nil)
+	}
+	if _, ok := requiredString(fields, "position"); !ok {
+		return malformedFeedResponse(facts, "a page without the position its shape requires", nil)
+	}
+	if raw, present := fields[collection]; !present || isJSONNull(raw) {
+		return malformedFeedResponse(facts, "a page without the rows its shape requires", nil)
+	}
+	return nil
+}
+
+// checkPollPage refuses a poll page whose decoded VALUES are not the ones the
+// server wrote — the other half of feedBodyWellFormed, which reads the same
+// page's member names.
+//
+// The cursors carry the durable harm. The rows carry a quieter one: an
+// event_type the decoder rewrote is a token a consumer dispatches on, and the
+// page's position commits over it, so the event is not delivered and never
+// comes back.
+//
+// Between them those are every string the page decodes. Details is not one:
+// it is json.RawMessage, so its bytes are never decoded into a string and no
+// substitution can reach them — they arrive verbatim, which is the point of
+// carrying them raw, and their shape is the push decoder's rule at the layer
+// comparing the two lanes. TestFeedEventStringsHoldsEveryDecodedString keeps
+// "every string" true as the shapes grow.
+func checkPollPage(facts feedResponseFacts, position, next string, rows []string) error {
+	if !survivedDecoding(position) || !survivedDecoding(next) {
+		return malformedFeedResponse(facts, "a page whose position or continuation did not survive decoding", nil)
+	}
+	for _, s := range rows {
+		if !survivedDecoding(s) {
+			return malformedFeedResponse(facts, "a page whose rows did not survive decoding", nil)
+		}
+	}
+	return nil
+}
+
+// feedEventStrings appends a row's decoded strings — the tokens a consumer
+// routes on, every one of them from a server-side catalog. Details is absent
+// deliberately; see checkPollPage.
+func feedEventStrings(into []string, e FeedEvent) []string {
+	return append(into, e.Kind, e.Action, e.EventType)
 }
 
 func eventFeedPageFromGenerated(gp generated.PollEventsResponseContent) EventFeedPage {

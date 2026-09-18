@@ -70,6 +70,16 @@ const testOrigin = "https://3.basecampapi.com"
 
 func newHarness(t *testing.T, opts ...eventfeed.Option) *harness {
 	t.Helper()
+	return newHarnessOverPolls(t, nil, opts...)
+}
+
+// newHarnessOverPolls is newHarness with a caller-supplied PollSource (nil
+// keeps the scripted one), for the assertions that have to run a REAL seam —
+// the wrapper's decode included — through the loop rather than a scripted
+// verdict. h.polls stays the scripted source and must not be read when one is
+// supplied: it is not what the loop is calling.
+func newHarnessOverPolls(t *testing.T, polls eventfeed.PollSource, opts ...eventfeed.Option) *harness {
+	t.Helper()
 	h := &harness{
 		t:        t,
 		clock:    feedtest.NewClock(),
@@ -86,7 +96,11 @@ func newHarness(t *testing.T, opts ...eventfeed.Option) *harness {
 		eventfeed.WithTransport(h.tr),
 		eventfeed.WithClock(h.clock),
 	}
-	c, err := eventfeed.New(testOrigin, "5951425", h.minter, h.polls, append(base, opts...)...)
+	source := eventfeed.PollSource(h.polls)
+	if polls != nil {
+		source = polls
+	}
+	c, err := eventfeed.New(testOrigin, "5951425", h.minter, source, append(base, opts...)...)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

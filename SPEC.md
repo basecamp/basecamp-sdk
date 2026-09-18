@@ -3461,6 +3461,120 @@ fetches one page and leaves the walk to the caller, so its runner stays green; t
 route-table test (`guarantees.rs`) is what pins these two lanes to the cursor style there. The connector's
 own family stays under `conformance/event-feed/`.
 
+**Decode validation.** A wrapper that types these bodies decides each of the three typed
+statuses TOTALLY (#915): the arm returns either the typed value or the SDK's
+malformed-response error — `api_error`, non-retryable, and **statusless**, the shape §6 gives
+every malformed body — and never hands the body back for something further down to interpret.
+The contract gives each status exactly one body shape, so "not that shape" is a decidable
+verdict: a 400 is `{error, reason?}` with `reason` absent or one of the two values named here,
+a 409 is `{error, position_digest, filters_digest}` with both digests the bare
+16-lowercase-hex srv2 form, and each 410 is its own lane's shape with `resume` present and the
+feed's `epoch_after_id` a number. `error` is `@required` on all three and enforced on all
+three. The 200 envelope is held the same way — an object carrying `position` and the lane's
+rows — and a 200 that does not decode into the envelope at all is rendered as the same
+malformed response rather than as the decoder's own error, so the lane has one verdict for
+"this is not the envelope" instead of two. A required member is a nonempty string: §6's
+error-body parse falls back to a `message` member when `error` is empty, so an empty one would
+carry a message the declared member never supplied into a consumer's classifier, whose answer
+is a position reset.
+
+The same totality covers the body's object STRUCTURE — its member names — in two ways a decoder
+answers silently. **A name repeated within one object makes the body malformed**: `encoding/json`
+keeps the last occurrence, RFC 8259 leaves the choice to the parser, and a 400 carrying both
+`"reason":"invalid_filter"` and `"reason":"invalid_position"` would otherwise become one verdict
+chosen by position in the body — a verdict that discards a held cursor. A body that answers a
+one-answer question twice is not one to act on. **And a substituted name makes it malformed**,
+since names are subject to the substitution below exactly as values are — and worse, because a substituted key does not arrive wrong, it arrives missing: an
+optional member reads as absent and a required one as omitted. Both are judged over every key rather than the ones a
+given arm happens to read, since which key was mangled or repeated is what cannot be known in
+advance, and **at every depth** rather than at the envelope's top level: a row's `performed_by_id` arriving mangled reads as absent, which
+attributes a delegated action to its creator — the attribution `exclude_performers=self` is
+computed from — while the page's position commits over it. The walk's one stopping boundary is a
+FeedEvent's `details`: its bytes are carried verbatim and never decoded into strings, so nothing
+inside it is substituted, and refusing an escape there would contradict the byte-identical
+carriage the push lane depends on. Structural member names are validated; opaque `details`
+contents are not. The exemption is by member PATH and by OPERATION, not by name — `events[*].details` on
+`PollEvents`, `items[*].event.details` on `PollInbox`, each the one place that response declares
+a raw member. A member that merely happens to be named `details`, including the other lane's
+path on this response, carries no raw bytes the SDK reads and is walked like any other subtree. The walk is one linear token pass over the body carrying O(1) state per
+level: decoding each nested value from its raw bytes re-reads every suffix, and materialising
+each container's path re-copies it, either of which is quadratic in nesting depth — seconds, or
+hundreds of megabytes, on a body of a few tens of kilobytes, which a continuous poller cannot
+carry. There is deliberately no depth cap: one would refuse a page over the shape of a member
+nothing reads, which is what the additive-member rule forbids, and a body deep enough to matter
+does not decode into a page at all. The boundary belongs to the shape that declares a verbatim member, not to the
+name: the error bodies declare none, so they are walked whole — a body carrying a member that
+happens to be named `details` is not carrying raw bytes, and exempting it would be an escape
+hatch for nothing.
+
+Every refusal carries what §6 records from the RESPONSE rather than from its body — the request
+id and the server's `Retry-After` — on the 200 paths as much as the error ones, because
+`errors.As` stops at the malformed error rather than walking to its cause, and those are the
+refusals a caller cannot otherwise look up or reschedule against. `Retry-After` rides even
+though a malformed response is never retryable: retryability is the SDK's verdict about
+repeating the call, and the delay is the server's instruction to a caller who reschedules the
+work themselves.
+
+The totality is the mechanism, not the individual checks. A permissive arm — *if the body
+looks like the documented shape, judge it; otherwise fall through to the canonical error* —
+leaves one escape door per shape it fails to recognize, and the doors are not enumerable: a
+`null` where a string belongs, a number where a string belongs, an omitted required member, a
+body that is not an object, a top-level `null`. Every one of them opens onto the status-keyed
+recovery paths this validation exists to close, because the canonical error still carries the
+status. Only the default is enumerable, so the default refuses. Statuslessness is the second
+half: it is what keeps a refused body out of a consumer's status-keyed fallbacks, so it is
+part of the contract rather than a rendering choice.
+
+These members are not decoration. The digests are what a consumer discards a held position on
+and keys its checkpoint lineage by; `reason` is the recover-versus-stop split, with the message
+classifier documented for an ABSENT reason alone; the epoch is a boundary, so a missing one
+typed as `0` re-enters at the bottom of history. An unrecognized reason left to look absent buys
+a position reset off a reason nobody defined, and a digest that is not a digest buys the same
+reset off a 409 the server did not make.
+
+**Required members are enforced; unknown members are ignored.** The members in question are the
+ENVELOPE's and the error shapes' — `error`, the digests, `resume`, `epoch_after_id`, `position`,
+the lane's rows collection. A ROW's own required members are not enforced here: the poll and push
+lanes must refuse identical row shapes for the two to deliver identically (§23), so that rule
+belongs where both lanes meet — the connector refuses a row missing any of them today — and
+moving half of it to the wrapper would leave the contract in two places rather than one. That is one rule read from both
+ends: the contract binds what the server must send, not what it may add. A response that grows a
+member is not malformed — refusing it would make every additive server change a client outage,
+on a wire format that is expected to grow (`reason` itself arrived that way, and `details` is
+carried verbatim precisely so members of newly cataloged types survive). One consequence to
+state plainly: `null` is not a way to satisfy a required member. A JSON decoder that accepts
+`null` into any type — Go's does, leaving the zero value — would otherwise let a nulled epoch
+read back as `0`; for the one OPTIONAL member, `reason`, `null` is the absent case and the
+undifferentiated 400 is the documented answer for it.
+
+The strings a consumer PERSISTS or RE-ISSUES carry a second, unrelated defect class, which no
+decoder strictness reaches: a page's `position` and `next`, a 410's `resume`, and the rows'
+catalog tokens (`kind`, `action`, `event_type`, the inbox's `reason`) must reach the caller as
+the server wrote them. A JSON decoder that substitutes U+FFFD for an invalid byte or a lone
+surrogate escape — Go's does, and it is not alone — hands back a position the feed cannot
+resolve (which answers 400 or 410, and provokes the reset that loses the walk), a continuation
+followed somewhere the walk was not, a re-entry whose preserved filters are no longer the ones
+the position was minted for, or an `event_type` a consumer fails to dispatch on while the
+page's position commits over it. The value is what is checked, not the bytes: the escape form
+is well-formed ASCII on the wire and exists only after decoding. U+FFFD is a shape these
+members can afford to refuse on — an opaque signed cursor, an absolute URL and a catalog token
+are machine-written ASCII. The mint's `url` and an event's `details` are out of scope: the URL
+is held to cable-URL policy before it is dialed and the ticket is signed, and `details` is
+`json.RawMessage`, never decoded into a string, so no substitution can reach it — its shape is
+the push decoder's rule at the layer comparing the two lanes.
+
+The verdict belongs at the decode rather than in a connector adapter because the adapter is one
+consumer of the wrapper and this is a property of the response: an adapter check leaves every
+other consumer — and every other SDK's port — reading the unchecked value, and makes the
+contract two copies that drift. Go is the only SDK that types these bodies today, so it is the
+only one where the rule has anything to enforce; the rule is written here so that each remaining
+SDK inherits it with its typed layer rather than rediscovering it. The cross-SDK conformance
+suite does not pin it for the same reason: those cases assert one behavior for all seven
+runners, and an SDK that hands back the canonical error cannot answer differently for a body it
+never types. Go's own tests carry it (`go/pkg/basecamp/event_feed_test.go`), including the
+totality as two tables of off-contract bodies — the error shapes and the page envelope — a body
+that grew a member, and that the refusal is statusless and carries the response's request id.
+
 ### Provenance `[manual]`
 
 Everything bc3-derived in this section was drafted against bc3 `8be5c67de5` (pre-merge;
