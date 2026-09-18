@@ -304,7 +304,8 @@ func TestRouterMatch(t *testing.T) {
 		// The recording routes carry Resource "Recordings". They read
 		// "Automation" until these operations were retagged, and Resource is
 		// part of the router's public Match, so the classification is pinned
-		// here rather than left to the regenerated route table alone.
+		// here rather than left to the regenerated route table alone. The
+		// events route is the recording's own history and moved with them.
 		{
 			name:         "recording spotlight URL",
 			input:        "https://3.basecamp.com/123/recordings/789/spotlight",
@@ -329,6 +330,15 @@ func TestRouterMatch(t *testing.T) {
 			wantSource:   MatchedAPI,
 			wantOp:       "ListRecordings",
 			wantAccount:  "123",
+			wantResource: "Recordings",
+		},
+		{
+			name:         "recording events URL",
+			input:        "https://3.basecamp.com/123/recordings/789/events",
+			wantSource:   MatchedAPI,
+			wantOp:       "ListEvents",
+			wantAccount:  "123",
+			wantRes:      "789",
 			wantResource: "Recordings",
 		},
 	}
