@@ -35,7 +35,7 @@ class PaginationStyleTest {
             put("operationId", "ListWidgets")
             if (pagination != null) put("x-basecamp-pagination", pagination)
         }
-        return OperationParser(api).parseOperation("/widgets", "get", operation)
+        return OperationParser(api, listOf("get")).parseOperation("/widgets", "get", operation)
     }
 
     private fun styleFailure(pagination: JsonElement?): String =

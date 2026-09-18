@@ -221,14 +221,19 @@ type openapiDoc struct {
 // breaking a downstream cutover. The catalog describes the GENERATED surface,
 // so it is bounded to exactly these verbs.
 //
-// This literal is a COPY, and a known one. The same five verbs are restated
-// independently in each of the six per-language service generators (Kotlin,
-// Rust, Python, Ruby, TypeScript, Swift) and in scripts/generate-url-routes;
-// there is no shared source, and consolidating those copies is tracked in #925.
-// This seventh copy is registered against that issue in spec/tracking-issues.yml
-// so the known-defect gate fails — dragging this line back into view — when
-// #925 closes, rather than leaving the newest copy the forgotten one. Prefer a
-// shared source the day #925 lands; until then this stays a bare, tracked list.
+// This literal is a COPY, and a known one. There is now a shared source for it:
+// spec/generated-verbs.json is the single declaration the six per-language
+// service generators read, added when #925 closed. Deriving this set from that
+// file, or dropping it, belongs to whoever owns this generator — it is not
+// changed here, so this stays a bare list until they take it.
+//
+// The BOUND itself is still live after #925 and is not obsolete. #925 made the
+// generators refuse an operation on a verb they cannot emit instead of dropping
+// it in silence; it deliberately did not teach them to emit new verbs. So a
+// non-generated verb still reaches no client, and a catalog built from one would
+// still list an operation nothing can call. This generator reads openapi.json
+// directly rather than the SDK trees, so it holds that line on its own input
+// even when nothing has been regenerated.
 var generatedVerbs = map[string]bool{
 	"get":    true,
 	"put":    true,

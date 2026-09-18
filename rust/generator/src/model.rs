@@ -194,6 +194,7 @@ impl Model {
         openapi: &Value,
         behavior: &Value,
         naming: &Naming,
+        emittable_verbs: &[String],
     ) -> Result<Model, String> {
         let api_version = openapi["info"]["version"]
             .as_str()
@@ -204,7 +205,7 @@ impl Model {
             .ok_or("openapi.json has no components.schemas")?;
         let request_shapes = request_shapes(openapi, components)?;
         let schemas = build_schemas(components, &request_shapes, naming)?;
-        let services = build_services(openapi, behavior, naming)?;
+        let services = build_services(openapi, behavior, naming, emittable_verbs)?;
         Ok(Model {
             api_version,
             schemas,
@@ -454,10 +455,22 @@ fn string_type(property: &Value, go_type: Option<&str>, format: Option<&str>) ->
     }
 }
 
+/// The non-operation members of a Path Item Object — a closed, spec-defined set.
+/// Specification extensions are `x-` prefixed. EVERY other field is an operation.
+///
+/// Enumerating the operation verbs instead is the defect this replaces
+/// (basecamp-sdk#925): Smithy's `@http` trait takes the method as a free-form
+/// string it "will use literally and will perform no validation on", so a model
+/// author writing `method: "HEAD"` produced a valid model, a valid
+/// `openapi.json`, and no method on any client — the verb was not in the list,
+/// so the operation was stepped over in silence.
+const NON_OPERATION_FIELDS: [&str; 4] = ["summary", "description", "servers", "parameters"];
+
 fn build_services(
     openapi: &Value,
     behavior: &Value,
     naming: &Naming,
+    emittable_verbs: &[String],
 ) -> Result<Vec<Service>, String> {
     let paths = openapi["paths"]
         .as_object()
@@ -471,11 +484,41 @@ fn build_services(
         for (http_method, operation) in
             item.as_object().ok_or(format!("{path} is not an object"))?
         {
-            if !matches!(
-                http_method.as_str(),
-                "get" | "post" | "put" | "patch" | "delete"
-            ) {
+            if NON_OPERATION_FIELDS.contains(&http_method.as_str()) || http_method.starts_with("x-")
+            {
                 continue;
+            }
+            // A `$ref` path item points at operations this walk cannot see
+            // without resolving the reference. Skipping it is the same silent
+            // under-count the exclusion walk exists to prevent, so refuse.
+            if http_method == "$ref" {
+                return Err(format!(
+                    "openapi.json path {path} is a $ref; resolving a path-item reference is not \
+                     implemented, and skipping it would hide every operation behind it from the SDK"
+                ));
+            }
+            // Discovery above is total; emission is bounded by the one
+            // declaration every SDK generator reads. An operation on any other
+            // verb stops the run by name rather than disappearing from the
+            // client, which is the failure basecamp-sdk#925 closed.
+            if !emittable_verbs.iter().any(|verb| verb == http_method) {
+                let id = operation["operationId"]
+                    .as_str()
+                    .unwrap_or("(no operationId)");
+                return Err(format!(
+                    "openapi.json declares {} {path} ({id}), and this generator emits only {}. \
+                     Generating the rest of the SDK without it would drop the operation from every \
+                     client in silence, which is the failure basecamp-sdk#925 closed. Give the \
+                     runtime a {http_method} helper and add \"{http_method}\" to \
+                     spec/generated-verbs.json (read that file first — the other five SDKs need \
+                     the same helper), or take the operation out of the Smithy model",
+                    http_method.to_uppercase(),
+                    emittable_verbs
+                        .iter()
+                        .map(|verb| verb.to_uppercase())
+                        .collect::<Vec<_>>()
+                        .join("/"),
+                ));
             }
             let id = operation["operationId"]
                 .as_str()

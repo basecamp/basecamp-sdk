@@ -60,7 +60,14 @@ enum BodyContentType: Equatable {
 // MARK: - Parser
 
 /// Parses all operations from the OpenAPI spec.
-func parseAllOperations(spec: [String: Any]) -> (operations: [ParsedOperation], schemas: [String: Any]) {
+/// Discovery is total (`operationsOf` reads a path item by excluding its closed
+/// set of non-operation fields). `emittableVerbs` bounds what this generator can
+/// RENDER and comes from the one declaration every SDK generator reads; an
+/// operation on any other verb stops the run by name rather than disappearing
+/// from the client, which is the failure basecamp-sdk#925 closed.
+func parseAllOperations(
+    spec: [String: Any], emittableVerbs: [String]
+) -> (operations: [ParsedOperation], schemas: [String: Any]) {
     let paths = spec["paths"] as? [String: Any] ?? [:]
     let components = spec["components"] as? [String: Any] ?? [:]
     let schemas = components["schemas"] as? [String: Any] ?? [:]
@@ -71,8 +78,9 @@ func parseAllOperations(spec: [String: Any]) -> (operations: [ParsedOperation], 
         let pathItem = paths[path]!
         guard let pathDict = pathItem as? [String: Any] else { continue }
 
-        for method in ["get", "post", "put", "patch", "delete"] {
-            guard let operation = pathDict[method] as? [String: Any] else { continue }
+        for (method, operation) in operationsOf(
+            path: path, pathItem: pathDict, order: emittableVerbs, emittable: emittableVerbs
+        ) {
             guard operation["operationId"] is String else { continue }
 
             guard let parsed = parseOperation(

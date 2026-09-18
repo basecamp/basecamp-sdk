@@ -13,7 +13,31 @@ require 'time'
 
 # Extract metadata from OpenAPI spec
 class MetadataExtractor
-  METHODS = %w[get post put patch delete].freeze
+  # A Path Item Object is read by EXCLUSION: its non-operation fields are a
+  # closed, spec-defined set, its extensions are `x-` prefixed, and every other
+  # field is an operation. A verb list here dropped an operation's metadata in
+  # silence for any method outside the five it knew (#925). Nothing in this
+  # file is verb-specific — metadata is keyed by operationId — so the walk is
+  # total and no verb bound belongs here.
+  NON_OPERATION_FIELDS = %w[summary description servers parameters].freeze
+
+  # Membership is decided above, by exclusion. The shared declaration every
+  # generator reads (spec/generated-verbs.json) is ORDERED, and that order is
+  # reused here to keep metadata.json byte-stable. Order is not membership: a
+  # verb absent from the declaration sorts deterministically to the end by name
+  # and is still extracted, because nothing in this file is verb-specific.
+  # The self-test points this at a crafted declaration to prove the bound is
+  # sourced from the shared file rather than a private literal; production runs
+  # never set it.
+  GENERATED_VERBS_FILE = ENV.fetch(
+    'BASECAMP_GENERATED_VERBS', File.expand_path('../../spec/generated-verbs.json', __dir__)
+  )
+
+  METHOD_ORDER = begin
+    JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8')).fetch('verbs').freeze
+  rescue Errno::ENOENT, JSON::ParserError, KeyError => e
+    abort "Error: cannot read the generated-verb declaration #{GENERATED_VERBS_FILE}: #{e.message}"
+  end
 
   def initialize(openapi_path)
     # Read as UTF-8 regardless of process locale (LC_ALL=C would otherwise read
@@ -24,11 +48,8 @@ class MetadataExtractor
   def extract
     operations = {}
 
-    (@openapi['paths'] || {}).each_value do |path_item|
-      METHODS.each do |method|
-        operation = path_item[method]
-        next unless operation
-
+    (@openapi['paths'] || {}).each do |path, path_item|
+      each_operation(path, path_item) do |_method, operation|
         operation_id = operation['operationId']
         next unless operation_id
 
@@ -61,10 +82,9 @@ class MetadataExtractor
   # in "[]" names an array of people. "$" is the body itself.
   def person_id_sites
     sites = {}
-    (@openapi['paths'] || {}).each_value do |path_item|
-      METHODS.each do |method|
-        operation = path_item[method]
-        next unless operation && operation['operationId']
+    (@openapi['paths'] || {}).each do |path, path_item|
+      each_operation(path, path_item) do |_method, operation|
+        next unless operation['operationId']
 
         paths = (operation['responses'] || {}).flat_map do |code, response|
           next [] unless code.to_s.start_with?('2')
@@ -115,6 +135,36 @@ class MetadataExtractor
     nested = []
     walk_person_sites(extra, path + [ '{}' ], stack, nested)
     raise "person id site under additionalProperties at #{nested.first} has no runtime path syntax" if nested.any?
+  end
+
+  # Yields [verb, operation] for every operation in a path item. A field that is
+  # neither a known non-operation field nor a readable operation object stops
+  # the run by name rather than being stepped over.
+  def each_operation(path, path_item)
+    unless path_item.is_a?(Hash)
+      abort "Error: openapi.json path #{path} is a #{path_item.class}, not a path item object."
+    end
+
+    if path_item.key?('$ref')
+      abort "Error: openapi.json path #{path} is a $ref to #{path_item['$ref'].inspect}. " \
+            'This extractor cannot resolve a path-item reference, and skipping it would leave ' \
+            'every operation behind it without runtime metadata.'
+    end
+
+    fields = path_item.keys.reject { |f| NON_OPERATION_FIELDS.include?(f) || f.start_with?('x-') }
+    fields.sort_by! { |f| [ METHOD_ORDER.index(f) || METHOD_ORDER.length, f ] }
+
+    fields.each do |field|
+      operation = path_item[field]
+
+      unless operation.is_a?(Hash)
+        abort "Error: openapi.json path #{path} field #{field.inspect} is a #{operation.class}, " \
+              'which is neither a known non-operation field nor an operation object. If a later ' \
+              'OpenAPI version added it, add it to NON_OPERATION_FIELDS with a reason.'
+      end
+
+      yield field, operation
+    end
   end
 
   private

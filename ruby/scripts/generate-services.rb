@@ -17,7 +17,43 @@ require 'set'
 
 # Service generator for Ruby SDK
 class ServiceGenerator
-  METHODS = %w[get post put patch delete].freeze
+  # A Path Item Object is read by EXCLUSION. Its non-operation fields are a
+  # closed, spec-defined set and its extensions are `x-` prefixed, so every
+  # OTHER field is an operation. Enumerating the verbs instead is the defect
+  # this replaces (#925): Smithy's `@http` trait takes the method as a
+  # free-form string it "will use literally and will perform no validation
+  # on", so a model author writing `method: "HEAD"` produced a valid model, a
+  # valid openapi.json, and no method on any service — the verb was not in the
+  # list, so the operation was stepped over in silence.
+  NON_OPERATION_FIELDS = %w[summary description servers parameters].freeze
+
+  # Discovery above is total; emission is bounded by the ONE declaration every
+  # generator reads (spec/generated-verbs.json), whose header carries the
+  # reasoning. Each verb in it has an `Http` helper (`http_get`, `http_post`, …)
+  # the emitted method body calls. An operation on any other verb stops this
+  # generator by name instead of vanishing from the SDK — a loud refusal is the
+  # acceptable outcome, a silent drop never was.
+  #
+  # The declaration is ORDERED, and that order is emission order. Ordering is a
+  # different job from deciding membership and cannot reproduce #925: membership
+  # is decided by exclusion above, so a verb absent from the declaration is
+  # refused, never skipped.
+  # The self-test points this at a crafted declaration to prove the bound is
+  # sourced from the shared file rather than a private literal; production runs
+  # never set it.
+  GENERATED_VERBS_FILE = ENV.fetch(
+    'BASECAMP_GENERATED_VERBS', File.expand_path('../../spec/generated-verbs.json', __dir__)
+  )
+
+  EMITTABLE_METHODS = begin
+    verbs = JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8'))['verbs']
+    unless verbs.is_a?(Array) && !verbs.empty? && verbs.all? { |v| v.is_a?(String) && !v.empty? }
+      abort "Error: #{GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of strings."
+    end
+    verbs.freeze
+  rescue Errno::ENOENT, JSON::ParserError => e
+    abort "Error: cannot read the generated-verb declaration #{GENERATED_VERBS_FILE}: #{e.message}"
+  end
 
   # Schema reference cache for resolving $ref
   attr_reader :schemas
@@ -367,14 +403,57 @@ class ServiceGenerator
 
   private
 
+  # Yields [verb, operation] for every operation in a path item, identifying an
+  # operation by what it is NOT (see NON_OPERATION_FIELDS). Anything this
+  # generator cannot render aborts the run naming the operation.
+  def each_operation(path, path_item)
+    unless path_item.is_a?(Hash)
+      abort "Error: openapi.json path #{path} is a #{path_item.class}, not a path item object."
+    end
+
+    # A `$ref` path item points at operations this generator cannot see without
+    # resolving the reference. Skipping it is the same silent under-count the
+    # exclusion walk exists to prevent, so refuse until someone teaches it to
+    # follow one.
+    if path_item.key?('$ref')
+      abort "Error: openapi.json path #{path} is a $ref to #{path_item['$ref'].inspect}. " \
+            'This generator cannot resolve a path-item reference, and skipping it would hide ' \
+            'every operation behind it from the SDK. Inline the path item, or teach this ' \
+            'generator to resolve local references.'
+    end
+
+    fields = path_item.keys.reject { |f| NON_OPERATION_FIELDS.include?(f) || f.start_with?('x-') }
+    fields.sort_by! { |f| [ EMITTABLE_METHODS.index(f) || EMITTABLE_METHODS.length, f ] }
+
+    fields.each do |field|
+      operation = path_item[field]
+
+      unless operation.is_a?(Hash)
+        abort "Error: openapi.json path #{path} field #{field.inspect} is a #{operation.class}, " \
+              'which is neither a known non-operation field nor an operation object. If a later ' \
+              'OpenAPI version added it, add it to NON_OPERATION_FIELDS with a reason.'
+      end
+
+      unless EMITTABLE_METHODS.include?(field)
+        op_id = operation['operationId'] || '(no operationId)'
+        abort "Error: openapi.json declares #{field.upcase} #{path} (#{op_id}), and this generator " \
+              "emits only #{EMITTABLE_METHODS.map(&:upcase).join('/')}. Generating the rest of the " \
+              'SDK without it would drop the operation from every Ruby client in silence, which is ' \
+              'the failure #925 closed. Give Basecamp::Http a ' \
+              "http_#{field} helper, add #{field.inspect} to spec/generated-verbs.json (read that " \
+              'file first — the other five SDKs need the same helper), or take the operation out ' \
+              'of the Smithy model.'
+      end
+
+      yield field, operation
+    end
+  end
+
   def group_operations
     services = {}
 
     @openapi['paths'].each do |path, path_item|
-      METHODS.each do |method|
-        operation = path_item[method]
-        next unless operation
-
+      each_operation(path, path_item) do |method, operation|
         tag = operation['tags']&.first || 'Untagged'
         parsed = parse_operation(path, method, operation)
 

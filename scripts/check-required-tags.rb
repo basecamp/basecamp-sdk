@@ -35,11 +35,13 @@
 # resolve a local reference would turn that refusal into a check.
 #
 # It does not judge whether the single tag is the RIGHT tag, only that there is
-# exactly one and that it names something. And the six per-language generators
-# still iterate a five-verb list of their own, so an operation on any other verb
-# would be dropped from the generated services outright rather than merely
-# shipping untagged — a larger hole, one cross-SDK regeneration away from this
-# file, deliberately not addressed here, and tracked in #925.
+# exactly one and that it names something. The larger hole it used to sit beside
+# is closed: the six per-language generators each iterated a five-verb list of
+# their own, so an operation on any other verb was dropped from the generated
+# services outright rather than merely shipping untagged. They now walk a path
+# item by the same exclusion this file uses and refuse an operation they cannot
+# emit, by name (#925). What remains here is unchanged — this gate names such an
+# operation as untagged, it does not decide whether an SDK can serve it.
 #
 # Paths default to the repo layout but honour the REQUIRED_TAGS_OPENAPI and
 # REQUIRED_TAGS_ALLOWLIST env overrides so the negative-case self-test

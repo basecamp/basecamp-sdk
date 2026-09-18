@@ -26,6 +26,7 @@ private const val COMMITTED_GENERATED_DIR = "sdk/src/commonMain/kotlin/com/basec
 fun main(args: Array<String>) {
     var openapiPath = "../openapi.json"
     var behaviorPath = "../behavior-model.json"
+    var verbsPath = "../spec/generated-verbs.json"
     var outputDir = COMMITTED_GENERATED_DIR
     // Read the constructor-order pin from the COMMITTED tree by default, even
     // when --output points elsewhere: it records the order already shipped, so
@@ -37,6 +38,7 @@ fun main(args: Array<String>) {
         when (args[i]) {
             "--openapi" -> openapiPath = args[++i]
             "--behavior" -> behaviorPath = args[++i]
+            "--verbs" -> verbsPath = args[++i]
             "--output" -> outputDir = args[++i]
             "--options-order" -> optionsOrderPath = args[++i]
         }
@@ -68,7 +70,7 @@ fun main(args: Array<String>) {
 
     // Parse
     val api = OpenApiParser(spec)
-    val parser = OperationParser(api)
+    val parser = OperationParser(api, PathItems.generatedVerbs(verbsPath))
     val services = parser.groupOperations()
 
     // 1. Generate entity models

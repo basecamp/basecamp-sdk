@@ -14,6 +14,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { pathToFileURL } from "url";
+import { generatedVerbs, operationsOf } from "./path-items.js";
 
 // =============================================================================
 // Types
@@ -891,14 +892,18 @@ function parseOperation(
   };
 }
 
+const EMITTABLE_VERBS = generatedVerbs();
+
 function groupOperations(spec: OpenAPISpec): Map<string, ServiceDefinition> {
   const services = new Map<string, ServiceDefinition>();
 
+  // Discovery is total (operationsOf reads a path item by excluding its closed
+  // set of non-operation fields). EMITTABLE_VERBS bounds what this generator
+  // can RENDER and comes from the one declaration every SDK generator reads;
+  // an operation on any other verb stops the run by name rather than
+  // disappearing from the client, which is the failure basecamp-sdk#925 closed.
   for (const [path, pathItem] of Object.entries(spec.paths)) {
-    for (const method of ["get", "post", "put", "patch", "delete"]) {
-      const operation = pathItem[method];
-      if (!operation) continue;
-
+    for (const [method, operation] of operationsOf<Operation>(path, pathItem, EMITTABLE_VERBS)) {
       const tag = operation.tags?.[0] || "Untagged";
       const parsed = parseOperation(path, method, operation);
 

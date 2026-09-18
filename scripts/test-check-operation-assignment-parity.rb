@@ -164,7 +164,7 @@ spec = JSON.parse(read_utf8(File.join(ROOT, OPENAPI)))
 wire = {}
 spec.fetch("paths").each do |path, item|
   item.each do |verb, operation|
-    next unless %w[get put post delete patch].include?(verb)
+    next if %w[summary description servers parameters].include?(verb) || verb.start_with?("x-")
     id = operation["operationId"]
     raise "openapi.json has an operation with no operationId at #{verb} #{path}" if id.nil?
     raise "openapi.json path #{path} is not account-scoped" unless path.start_with?("/{accountId}")
