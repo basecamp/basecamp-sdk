@@ -120,7 +120,13 @@ object PathItems {
                 // be omitted, and every walker here used to step over one that
                 // was — a silent drop of a real operation, which is
                 // basecamp-sdk#925 wearing a different field.
-                val operationId = operation["operationId"]?.jsonPrimitive?.contentOrNull
+                // `isString` before `content`, for the same reason the declaration
+                // loader above checks it: JsonPrimitive renders a number or a
+                // boolean as text, so `operationId: 123` would satisfy a bare
+                // content check here and name a generated method `123` while the
+                // other five walkers reject it.
+                val idPrimitive = operation["operationId"] as? JsonPrimitive
+                val operationId = idPrimitive?.takeIf { it.isString }?.content
                 require(!operationId.isNullOrEmpty()) {
                     "openapi.json declares ${field.uppercase()} $path with no operationId. " +
                         "Everything downstream is keyed by it, and skipping the operation would " +

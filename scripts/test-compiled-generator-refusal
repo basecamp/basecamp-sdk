@@ -20,7 +20,7 @@
 # which the Kotlin generator did until this test was written. An EMPTY output
 # directory cannot show that, so the directory is seeded first.
 #
-# FOUR SCENARIOS, one per guard the walk carries. They are a table rather than a
+# FIVE SCENARIOS, one per guard the walk carries. They are a table rather than a
 # list that grows by one each review round: a new guard in the shared walk gets a
 # row here, because the live spec exercises none of them.
 #
@@ -228,5 +228,17 @@ jq --arg p "$PATH_KEY" \
 run_scenario "an additionalOperations map is refused rather than read as one operation" \
   "$TMP/openapi-additional.json" "$ROOT_DIR/spec/generated-verbs.json" \
   "additionalOperations" "$PATH_KEY"
+
+# Scenario 5: an operationId that is not a string. OpenAPI lets the field be
+# omitted and every walker used to step over one that was; the guard that
+# replaced those skips has to reject a NON-STRING too, because a JSON library
+# that renders 123 as "123" would name a generated method after it. Kotlin's
+# JsonPrimitive does exactly that, which is why this is a scenario rather than a
+# comment.
+jq --arg p "$PATH_KEY" '.paths[$p].get.operationId = 123' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-numeric-id.json"
+run_scenario "an operationId that is not a string is refused" \
+  "$TMP/openapi-numeric-id.json" "$ROOT_DIR/spec/generated-verbs.json" \
+  "operationId" "$PATH_KEY"
 
 exit "$failures"
