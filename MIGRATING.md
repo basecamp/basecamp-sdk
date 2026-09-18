@@ -316,7 +316,9 @@ capability: `['id']` and `['a', 'b', 'c']` were wrong answers presented as
 successes. If you were consuming them, the new refusal is telling you something
 your code was previously acting on.
 
-The 9 unpaginated operations, sync and async: `automation.list_lineup_markers`,
+The 9 unpaginated operations, sync and async: `automation.list_lineup_markers`
+(the accessor as it stood at v0.19.0; it is `lineup.list_lineup_markers` from the
+Unreleased section above onward),
 `everything.get_everything_overdue_cards`,
 `everything.get_everything_overdue_todos`, `folders.list_folders`,
 `my_assignments.get_my_completed_assignments`,
