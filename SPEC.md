@@ -3511,7 +3511,12 @@ typed as `0` re-enters at the bottom of history. An unrecognized reason left to 
 a position reset off a reason nobody defined, and a digest that is not a digest buys the same
 reset off a 409 the server did not make.
 
-**Required members are enforced; unknown members are ignored.** That is one rule read from both
+**Required members are enforced; unknown members are ignored.** The members in question are the
+ENVELOPE's and the error shapes' — `error`, the digests, `resume`, `epoch_after_id`, `position`,
+the lane's rows collection. A ROW's own required members are not enforced here: the poll and push
+lanes must refuse identical row shapes for the two to deliver identically (§23), so that rule
+belongs where both lanes meet — the connector refuses a row missing any of them today — and
+moving half of it to the wrapper would leave the contract in two places rather than one. That is one rule read from both
 ends: the contract binds what the server must send, not what it may add. A response that grows a
 member is not malformed — refusing it would make every additive server change a client outage,
 on a wire format that is expected to grow (`reason` itself arrived that way, and `details` is

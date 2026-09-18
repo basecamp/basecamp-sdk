@@ -624,22 +624,22 @@ func feedGoneFrom(base *Error, body []byte, lane feedLaneKind) error {
 // JSON type is a fact about that member, not a decode failure that discards
 // its siblings and the verdict with them.
 //
-// A member NAME the decoder substituted into disqualifies the whole object.
-// Keys are subject to the same U+FFFD substitution as values (survivedDecoding),
-// and a substituted key is worse: it does not arrive wrong, it arrives
-// missing, so an optional member reads as absent and a required one as
-// omitted. Checked over every key rather than the ones the callers happen to
-// ask for, because which key was mangled is exactly what cannot be known in
-// advance.
+// A member NAME the decoder substituted into disqualifies the whole object,
+// at every depth. Keys are subject to the same U+FFFD substitution as values
+// (survivedDecoding), and a substituted key is worse: it does not arrive
+// wrong, it arrives missing, so an optional member reads as absent and a
+// required one as omitted. Checked over every key rather than the ones the
+// callers happen to ask for, and through nested members rather than at the
+// top level, because which key was mangled is exactly what cannot be known in
+// advance — the same walk the poll envelope uses, so one rule covers all four
+// bodies these lanes decode.
 func jsonObject(body []byte) (map[string]json.RawMessage, bool) {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(body, &fields) != nil || fields == nil {
 		return nil, false
 	}
-	for name := range fields {
-		if !survivedDecoding(name) {
-			return nil, false
-		}
+	if !memberNamesSurvived(body) {
+		return nil, false
 	}
 	return fields, true
 }

@@ -740,6 +740,10 @@ func TestEventFeedService_RefusesEveryOffContractErrorBody(t *testing.T) {
 		{409, "no error member", `{"position_digest":"38b223c13c89dc89","filters_digest":"44136fa355b3678a"}`},
 		{409, "an empty error member", `{"error":"","position_digest":"38b223c13c89dc89","filters_digest":"44136fa355b3678a"}`},
 		{409, "a substituted member name", `{"error":"conflict","position_digest":"38b223c13c89dc89","filters\ud800_digest":"44136fa355b3678a"}`},
+		// A NESTED substituted key, in a member the arm never reads: the
+		// depth rule covers the error bodies too, not only the page.
+		{409, "a substituted key nested in a member the arm never reads", `{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":"44136fa355b3678a","metadata":{"bad\ud800key":1}}`},
+		{400, "a substituted key nested in a member the arm never reads", `{"error":"Unrecognized position.","reason":"invalid_position","metadata":{"bad\ud800key":1}}`},
 		{410, "no error member", `{"epoch_after_id":7,"resume":"https://3.basecampapi.com/99999/events.json?since=7"}`},
 		{410, "an empty resume", `{"error":"gone","epoch_after_id":7,"resume":""}`},
 		{409, "not an object", `<html><body>Conflict</body></html>`},
