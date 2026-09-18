@@ -92,6 +92,30 @@ mixed = {
 status, = run_check(mixed)
 expect("path-level parameters are ignored", status.zero?)
 
+# 9. The exact regression the verb list guards: a tagged GET beside an untagged
+#    HEAD. A short HTTP_METHODS list never visits the HEAD, so the document
+#    passes and reports one operation.
+tagged_get_untagged_head = {
+  "openapi" => "3.1.0",
+  "paths" => {
+    "/{accountId}/thing" => {
+      "get" => { "operationId" => "GetThing", "tags" => ["Recordings"] },
+      "head" => { "operationId" => "HeadThing" }
+    }
+  }
+}
+status, out = run_check(tagged_get_untagged_head)
+expect("untagged HEAD beside a tagged GET fails", status == 1)
+expect("untagged-HEAD failure names the HEAD operation", out.include?("HeadThing"))
+
+# 10. Every verb a Path Item Object may carry is visited, not just the five the
+#     Basecamp API happens to use today.
+%w[get put post delete options head patch trace].each do |verb|
+  spec = { "openapi" => "3.1.0", "paths" => { "/{accountId}/thing" => { verb => { "operationId" => "Untagged#{verb.capitalize}" } } } }
+  status, out = run_check(spec)
+  expect("untagged #{verb.upcase} fails", status == 1 && out.include?("Untagged#{verb.capitalize}"))
+end
+
 if FAILURES.empty?
   puts "check-required-tags self-test: all cases passed"
 else

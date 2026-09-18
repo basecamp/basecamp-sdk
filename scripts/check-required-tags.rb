@@ -39,7 +39,12 @@ require "set"
 PROJECT_ROOT = File.expand_path("..", __dir__)
 OPENAPI_FILE = ENV.fetch("REQUIRED_TAGS_OPENAPI", File.join(PROJECT_ROOT, "openapi.json"))
 
-HTTP_METHODS = %w[get post put patch delete].freeze
+# All eight HTTP methods an OpenAPI Path Item Object may carry. Anything else at
+# that level (`parameters`, `summary`, `servers`, `$ref`, `x-*`) is not an
+# operation. The list has to be complete or an operation on an unlisted verb
+# slips past a gate whose whole claim is "every operation"; it matches
+# scripts/check-projected-examples.rb.
+HTTP_METHODS = %w[get put post delete options head patch trace].freeze
 
 # operationIds permitted to carry no tag. Keep empty; see the header note.
 ALLOWLIST = [].freeze
