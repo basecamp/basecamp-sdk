@@ -165,19 +165,13 @@ apply ListClientReplies @tags(["ClientFeatures"])
 apply GetClientReply @tags(["ClientFeatures"])
 apply SetClientVisibility @tags(["ClientFeatures"])
 
-// Automation (Webhooks, Events, Recordings, Search, Templates, Tools, Lineup)
+// Automation (Webhooks, Events, Search, Templates, Tools, Lineup)
 apply ListWebhooks @tags(["Automation"])
 apply GetWebhook @tags(["Automation"])
 apply CreateWebhook @tags(["Automation"])
 apply UpdateWebhook @tags(["Automation"])
 apply DeleteWebhook @tags(["Automation"])
 apply ListEvents @tags(["Automation"])
-apply ListRecordings @tags(["Automation"])
-apply SpotlightRecording @tags(["Automation"])
-apply UnspotlightRecording @tags(["Automation"])
-apply TrashRecording @tags(["Automation"])
-apply ArchiveRecording @tags(["Automation"])
-apply UnarchiveRecording @tags(["Automation"])
 apply Search @tags(["Automation"])
 apply GetSearchMetadata @tags(["Automation"])
 apply ListTemplates @tags(["Automation"])
@@ -325,3 +319,19 @@ apply DeleteFolder @tags(["Folders"])
 apply PollEvents @tags(["EventFeed"])
 apply PollInbox @tags(["EventFeed"])
 apply CreateStreamTicket @tags(["EventFeed"])
+
+// Recordings (recording lifecycle: list, spotlight, trash, archive). New
+// domain tag mirroring the Recordings service every SDK generator already
+// emits (each generator's SERVICE_SPLITS routed these under Automation ->
+// Recordings while they were tagged Automation). These ops previously folded
+// into the Automation domain, which left MCP catalog generation with no
+// dedicated recordings tool. Recording boosts stay under Boosts and the
+// recording timesheet stays under Schedule -> Timesheets, matching the SDK
+// service groupings. Tagging these Recordings keeps the generated grouping
+// byte-identical and gives catalog.Load one tag per op.
+apply ListRecordings @tags(["Recordings"])
+apply SpotlightRecording @tags(["Recordings"])
+apply UnspotlightRecording @tags(["Recordings"])
+apply TrashRecording @tags(["Recordings"])
+apply ArchiveRecording @tags(["Recordings"])
+apply UnarchiveRecording @tags(["Recordings"])

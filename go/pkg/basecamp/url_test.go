@@ -8,36 +8,39 @@ func TestRouterMatch(t *testing.T) {
 	r := DefaultRouter()
 
 	tests := []struct {
-		name        string
-		input       string
-		wantNil     bool
-		wantSource  MatchSource
-		wantOp      string
-		wantAccount string
-		wantProject string
-		wantRes     string
-		wantComment string
-		wantPath    string
+		name         string
+		input        string
+		wantNil      bool
+		wantSource   MatchSource
+		wantOp       string
+		wantAccount  string
+		wantProject  string
+		wantRes      string
+		wantComment  string
+		wantPath     string
+		wantResource string
 	}{
 		{
-			name:        "todo URL",
-			input:       "https://3.basecamp.com/123/buckets/456/todos/789",
-			wantSource:  MatchedAPI,
-			wantOp:      "GetTodo",
-			wantAccount: "123",
-			wantProject: "456",
-			wantRes:     "789",
-			wantPath:    "todos",
+			name:         "todo URL",
+			input:        "https://3.basecamp.com/123/buckets/456/todos/789",
+			wantSource:   MatchedAPI,
+			wantOp:       "GetTodo",
+			wantAccount:  "123",
+			wantProject:  "456",
+			wantRes:      "789",
+			wantPath:     "todos",
+			wantResource: "Todos",
 		},
 		{
-			name:        "message URL",
-			input:       "https://3.basecamp.com/123/buckets/456/messages/789",
-			wantSource:  MatchedAPI,
-			wantOp:      "GetMessage",
-			wantAccount: "123",
-			wantProject: "456",
-			wantRes:     "789",
-			wantPath:    "messages",
+			name:         "message URL",
+			input:        "https://3.basecamp.com/123/buckets/456/messages/789",
+			wantSource:   MatchedAPI,
+			wantOp:       "GetMessage",
+			wantAccount:  "123",
+			wantProject:  "456",
+			wantRes:      "789",
+			wantPath:     "messages",
+			wantResource: "Messages",
 		},
 		{
 			name:        "URL with comment fragment",
@@ -298,6 +301,36 @@ func TestRouterMatch(t *testing.T) {
 			wantProject: "456",
 			wantPath:    "timeline",
 		},
+		// The recording routes carry Resource "Recordings". They read
+		// "Automation" until these operations were retagged, and Resource is
+		// part of the router's public Match, so the classification is pinned
+		// here rather than left to the regenerated route table alone.
+		{
+			name:         "recording spotlight URL",
+			input:        "https://3.basecamp.com/123/recordings/789/spotlight",
+			wantSource:   MatchedAPI,
+			wantOp:       "SpotlightRecording",
+			wantAccount:  "123",
+			wantRes:      "789",
+			wantResource: "Recordings",
+		},
+		{
+			name:         "recording archive URL",
+			input:        "https://3.basecamp.com/123/recordings/789/status/archived",
+			wantSource:   MatchedAPI,
+			wantOp:       "ArchiveRecording",
+			wantAccount:  "123",
+			wantRes:      "789",
+			wantResource: "Recordings",
+		},
+		{
+			name:         "recordings index URL",
+			input:        "https://3.basecamp.com/123/projects/recordings",
+			wantSource:   MatchedAPI,
+			wantOp:       "ListRecordings",
+			wantAccount:  "123",
+			wantResource: "Recordings",
+		},
 	}
 
 	for _, tt := range tests {
@@ -332,6 +365,9 @@ func TestRouterMatch(t *testing.T) {
 			}
 			if tt.wantPath != "" && m.PathType != tt.wantPath {
 				t.Errorf("PathType = %q, want %q", m.PathType, tt.wantPath)
+			}
+			if tt.wantResource != "" && m.Resource != tt.wantResource {
+				t.Errorf("Resource = %q, want %q", m.Resource, tt.wantResource)
 			}
 		})
 	}

@@ -56,7 +56,6 @@ let serviceSplits: [String: [String: [String]]] = [
     ],
     "Automation": [
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
-        "Recordings": ["ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings", "SpotlightRecording", "UnspotlightRecording"],
         "Webhooks": ["ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"],
         "Events": ["ListEvents"],
         "Lineup": ["CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"],

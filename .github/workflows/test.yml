@@ -192,6 +192,12 @@ jobs:
       - name: Bucket-scoped vs flat operation parity
         run: make check-bucket-flat-parity
 
+      - name: Required-tags gate self-test (negative + synthetic cases)
+        run: make test-check-required-tags
+
+      - name: Every operation carries exactly one tag
+        run: make check-required-tags
+
       - name: api-gaps registry frontmatter + allowlist schema
         run: make validate-api-gaps
         env:

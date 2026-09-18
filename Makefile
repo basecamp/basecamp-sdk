@@ -1401,7 +1401,23 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-gradle-serialization test-check-gradle-serialization check-bucket-flat-parity check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+.PHONY: check-gradle-serialization test-check-gradle-serialization check-required-tags test-check-required-tags check-bucket-flat-parity check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+
+# Fail closed if any operation in openapi.json carries other than exactly one
+# tag. catalog.Load groups operations into MCP domain tools by tag and the SDK
+# generators route service grouping off tags[0]; an untagged operation is
+# silently dropped or folded into an unrelated domain (#878, #898). Reads only
+# the committed openapi.json — bash/ruby, no toolchain — so it belongs in the
+# spec-gates CI job beside kt-check-drift.
+check-required-tags:
+	@echo "==> Checking every operation carries exactly one tag..."
+	@ruby ./scripts/check-required-tags.rb
+
+# Drive that gate from outside with crafted openapi documents. Its live run only
+# ever exercises the all-tagged PASSING case, so nothing there proves it rejects
+# an untagged, empty-tagged, multi-tagged, or empty spec; this asserts each.
+test-check-required-tags:
+	@ruby ./scripts/test-check-required-tags.rb
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1739,7 +1755,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift rs-check-drift go-check ts-check rb-check kt-check swift-check py-check rs-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift rs-check-drift go-check ts-check rb-check kt-check swift-check py-check rs-check check-required-tags test-check-required-tags check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts

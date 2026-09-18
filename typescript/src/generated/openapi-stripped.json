@@ -12618,7 +12618,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Recordings"
         ],
         "x-basecamp-pagination": {
           "style": "link",
@@ -17139,7 +17139,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Recordings"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -17241,7 +17241,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Recordings"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -17328,7 +17328,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Recordings"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -17415,7 +17415,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Recordings"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -17509,7 +17509,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Recordings"
         ],
         "x-basecamp-idempotent": {
           "natural": true
