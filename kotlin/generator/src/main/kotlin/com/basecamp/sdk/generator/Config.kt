@@ -58,7 +58,6 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
     "Automation" to mapOf(
         "Tools" to listOf("GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"),
         "Webhooks" to listOf("ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"),
-        "Events" to listOf("ListEvents"),
         "Lineup" to listOf("CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"),
         "Search" to listOf("Search", "GetSearchMetadata"),
         "Templates" to listOf(
@@ -70,6 +69,9 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
             "GetQuestionnaire", "ListQuestions", "CreateQuestion", "GetQuestion",
             "UpdateQuestion", "ListAnswers", "CreateAnswer", "GetAnswer", "UpdateAnswer",
         ),
+    ),
+    "Recordings" to mapOf(
+        "Events" to listOf("ListEvents"),
     ),
     "Messages" to mapOf(
         "Messages" to listOf("GetMessage", "UpdateMessage", "CreateMessage", "ListMessages", "PinMessage", "UnpinMessage"),

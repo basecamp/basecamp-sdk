@@ -165,13 +165,12 @@ apply ListClientReplies @tags(["ClientFeatures"])
 apply GetClientReply @tags(["ClientFeatures"])
 apply SetClientVisibility @tags(["ClientFeatures"])
 
-// Automation (Webhooks, Events, Search, Templates, Tools, Lineup)
+// Automation (Webhooks, Search, Templates, Tools, Lineup)
 apply ListWebhooks @tags(["Automation"])
 apply GetWebhook @tags(["Automation"])
 apply CreateWebhook @tags(["Automation"])
 apply UpdateWebhook @tags(["Automation"])
 apply DeleteWebhook @tags(["Automation"])
-apply ListEvents @tags(["Automation"])
 apply Search @tags(["Automation"])
 apply GetSearchMetadata @tags(["Automation"])
 apply ListTemplates @tags(["Automation"])
@@ -320,18 +319,47 @@ apply PollEvents @tags(["EventFeed"])
 apply PollInbox @tags(["EventFeed"])
 apply CreateStreamTicket @tags(["EventFeed"])
 
-// Recordings (recording lifecycle: list, spotlight, trash, archive). New
-// domain tag mirroring the Recordings service every SDK generator already
-// emits (each generator's SERVICE_SPLITS routed these under Automation ->
-// Recordings while they were tagged Automation). These ops previously folded
-// into the Automation domain, which left MCP catalog generation with no
-// dedicated recordings tool. Recording boosts stay under Boosts and the
-// recording timesheet stays under Schedule -> Timesheets, matching the SDK
-// service groupings. Tagging these Recordings keeps the generated grouping
-// byte-identical and gives catalog.Load one tag per op.
+// Recordings (recording lifecycle: list, spotlight, trash, archive; and the
+// recording's own event history).
+//
+// The six lifecycle operations came first (#922), and this paragraph is about
+// them alone: their new domain tag mirrors the Recordings service every SDK
+// generator already emits for exactly those six (each generator's
+// SERVICE_SPLITS routed them under Automation -> Recordings while they were
+// tagged Automation). They previously folded into the Automation domain, which
+// left MCP catalog generation with no dedicated recordings tool. Recording
+// boosts stay under Boosts and the recording timesheet stays under Schedule ->
+// Timesheets, matching the SDK service groupings. Tagging those six Recordings
+// keeps the generated grouping byte-identical and gives catalog.Load one tag
+// per op.
+//
+// ListEvents is the same domain: GET /{accountId}/recordings/{recordingId}/
+// events.json is a recording's own change history — the timeline of the very
+// lifecycle transitions above — so it belongs with them rather than in the
+// Automation catch-all. Unlike the six above it keeps a service of its own,
+// Events, and the two kinds of generator reach that service differently. The
+// five tag-keyed ones (ruby, python, typescript, swift, kotlin) look an
+// operation up in SERVICE_SPLITS under its tag, so their 'Events' entry moved
+// from the Automation key to a Recordings one; leaving it under Automation
+// would make it unreachable and fold ListEvents into RecordingsService.
+// Rust resolves names.toml's [operation_services] by operationId BEFORE
+// consulting the tag, so its ListEvents = "Events" row is unchanged and stays
+// load-bearing: the service it names differs from the tag both before and
+// after this retag, which is the opposite of the six rows #928 removed for
+// merely restating theirs.
+//
+// The URL prefix is not the argument and must not be read as one: sub-resources
+// under /recordings/ are tagged by what they are, so the same prefix carries
+// Bookmarks, Boosts, BubbleUps, ClientFeatures, Messages, People and Schedule
+// operations, and ListEventBoosts (.../events/{eventId}/boosts.json) is Boosts
+// even though it hangs off this very sub-resource. EnableTool, DisableTool and
+// RepositionTool stay Automation: their /{accountId}/recordings/{toolId}/
+// position.json path takes a toolId, not a recordingId — they are dock-tool
+// operations that happen to share the prefix.
 apply ListRecordings @tags(["Recordings"])
 apply SpotlightRecording @tags(["Recordings"])
 apply UnspotlightRecording @tags(["Recordings"])
 apply TrashRecording @tags(["Recordings"])
 apply ArchiveRecording @tags(["Recordings"])
 apply UnarchiveRecording @tags(["Recordings"])
+apply ListEvents @tags(["Recordings"])

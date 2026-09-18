@@ -75,7 +75,6 @@ class ServiceGenerator
     'Automation' => {
       'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool],
       'Webhooks' => %w[ListWebhooks CreateWebhook GetWebhook UpdateWebhook DeleteWebhook],
-      'Events' => %w[ListEvents],
       'Lineup' => %w[CreateLineupMarker UpdateLineupMarker DeleteLineupMarker],
       'Search' => %w[Search GetSearchMetadata],
       'Templates' => %w[
@@ -87,6 +86,9 @@ class ServiceGenerator
         GetQuestionnaire ListQuestions CreateQuestion GetQuestion
         UpdateQuestion ListAnswers CreateAnswer GetAnswer UpdateAnswer
       ]
+    },
+    'Recordings' => {
+      'Events' => %w[ListEvents]
     },
     'Messages' => {
       'Messages' => %w[GetMessage UpdateMessage CreateMessage ListMessages PinMessage UnpinMessage],

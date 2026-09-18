@@ -8192,7 +8192,7 @@
     },
     {
       "operationId": "ListEvents",
-      "tag": "Automation",
+      "tag": "Recordings",
       "method": "GET",
       "path": "/{accountId}/recordings/{recordingId}/events.json",
       "doc": "List all events for a recording\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
