@@ -3485,10 +3485,14 @@ is refused, over every key rather than the ones a given arm happens to read, sin
 was mangled is what cannot be known in advance, and **at every depth** rather than at the
 envelope's top level: a row's `performed_by_id` arriving mangled reads as absent, which
 attributes a delegated action to its creator — the attribution `exclude_performers=self` is
-computed from — while the page's position commits over it. The walk's one stopping boundary is
-`details`: its bytes are carried verbatim and never decoded into strings, so nothing inside it
-is substituted, and refusing an escape there would contradict the byte-identical carriage the
-push lane depends on. Structural member names are validated; opaque `details` contents are not.
+computed from — while the page's position commits over it. The walk's one stopping boundary is a
+FeedEvent's `details`: its bytes are carried verbatim and never decoded into strings, so nothing
+inside it is substituted, and refusing an escape there would contradict the byte-identical
+carriage the push lane depends on. Structural member names are validated; opaque `details`
+contents are not. The boundary belongs to the shape that declares a verbatim member, not to the
+name: the error bodies declare none, so they are walked whole — a body carrying a member that
+happens to be named `details` is not carrying raw bytes, and exempting it would be an escape
+hatch for nothing.
 
 Every refusal carries what §6 records from the RESPONSE rather than from its body — the request
 id and the server's `Retry-After` — on the 200 paths as much as the error ones, because

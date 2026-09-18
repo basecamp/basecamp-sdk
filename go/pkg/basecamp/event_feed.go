@@ -543,7 +543,7 @@ func checkFeedResponse(resp *http.Response, body []byte, lane feedLaneKind) erro
 // JSON spells "no value" for one, and refusing it would make a body the
 // contract permits terminal.
 func feedRequestErrorFrom(base *Error, body []byte) error {
-	fields, ok := jsonObject(body)
+	fields, ok := jsonObject(body, false)
 	if !ok {
 		return malformedFeedResponse(factsOfError(base), "a 400 whose body is not the shape this contract declares", base)
 	}
@@ -570,7 +570,7 @@ func feedRequestErrorFrom(base *Error, body []byte) error {
 // not the documented conflict, so it must not be the value that triggers that
 // recovery.
 func feedFilterMismatchFrom(base *Error, body []byte) error {
-	fields, ok := jsonObject(body)
+	fields, ok := jsonObject(body, false)
 	if !ok {
 		return malformedFeedResponse(factsOfError(base), "a 409 whose body is not the shape this contract declares", base)
 	}
@@ -591,7 +591,7 @@ func feedFilterMismatchFrom(base *Error, body []byte) error {
 // decided on its own lane only, so one lane can never be handed the other's
 // recovery.
 func feedGoneFrom(base *Error, body []byte, lane feedLaneKind) error {
-	fields, ok := jsonObject(body)
+	fields, ok := jsonObject(body, false)
 	if !ok {
 		return malformedFeedResponse(factsOfError(base), "a 410 whose body is not the shape this contract declares", base)
 	}
@@ -633,12 +633,12 @@ func feedGoneFrom(base *Error, body []byte, lane feedLaneKind) error {
 // top level, because which key was mangled is exactly what cannot be known in
 // advance — the same walk the poll envelope uses, so one rule covers all four
 // bodies these lanes decode.
-func jsonObject(body []byte) (map[string]json.RawMessage, bool) {
+func jsonObject(body []byte, carriesRawDetails bool) (map[string]json.RawMessage, bool) {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(body, &fields) != nil || fields == nil {
 		return nil, false
 	}
-	if !memberNamesSurvived(body) {
+	if !memberNamesSurvived(body, carriesRawDetails) {
 		return nil, false
 	}
 	return fields, true
@@ -686,22 +686,32 @@ func factsOfError(base *Error) feedResponseFacts {
 // acted, with the page's position committing over it. That attribution is
 // also what the loop guard (exclude_performers=self) is computed from.
 //
-// `details` is the one member whose interior is skipped. Its bytes are
-// carried verbatim and never decoded into strings, so nothing in there is
-// substituted; refusing an escape inside it would contradict that carriage.
+// carriesRawDetails says whether this body can contain the one member whose
+// interior is skipped: a FeedEvent's `details`, whose bytes are carried
+// verbatim and never decoded into strings, so nothing in there is substituted
+// and refusing an escape inside it would contradict that carriage. Only a
+// poll page can carry one. The error bodies declare no verbatim member, so
+// they are walked whole — a name-level exemption applied to them would let a
+// 409 carrying `details` past the check for no reason at all.
+//
+// Within a page the exemption is by name rather than by path, which
+// over-approximates by one case: a `details` at the envelope's top level,
+// which the shape does not declare and nothing reads. An undeclared member's
+// interior cannot change the reading of the body, which is what the walk is
+// for.
 //
 // The fast path is the whole reason this is affordable on a continuous
 // poller: a substitution can only come from a lone surrogate ESCAPE or an
 // invalid raw byte, so a body with neither cannot contain one, and the walk
 // never runs. That check is two linear scans with no allocation.
-func memberNamesSurvived(body []byte) bool {
+func memberNamesSurvived(body []byte, carriesRawDetails bool) bool {
 	if utf8.Valid(body) && !bytes.Contains(body, []byte(`\u`)) {
 		return true
 	}
-	return namesSurvived(body)
+	return namesSurvived(body, carriesRawDetails)
 }
 
-func namesSurvived(raw json.RawMessage) bool {
+func namesSurvived(raw json.RawMessage, carriesRawDetails bool) bool {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
 		return true
@@ -717,10 +727,10 @@ func namesSurvived(raw json.RawMessage) bool {
 			if !survivedDecoding(name) {
 				return false
 			}
-			if name == "details" {
+			if carriesRawDetails && name == "details" {
 				continue
 			}
-			if !namesSurvived(value) {
+			if !namesSurvived(value, carriesRawDetails) {
 				return false
 			}
 		}
@@ -730,7 +740,7 @@ func namesSurvived(raw json.RawMessage) bool {
 			return true
 		}
 		for _, value := range array {
-			if !namesSurvived(value) {
+			if !namesSurvived(value, carriesRawDetails) {
 				return false
 			}
 		}
@@ -920,10 +930,7 @@ func feedDecodeError(facts feedResponseFacts, err error) error {
 // collection is `events` or `items`: which rows the lane serves is the one
 // difference between the two envelopes.
 func checkPollEnvelope(facts feedResponseFacts, body []byte, collection string) error {
-	if !memberNamesSurvived(body) {
-		return malformedFeedResponse(facts, "a page whose member names did not survive decoding", nil)
-	}
-	fields, ok := jsonObject(body)
+	fields, ok := jsonObject(body, true)
 	if !ok {
 		return malformedFeedResponse(facts, "a page whose body is not the shape this contract declares", nil)
 	}

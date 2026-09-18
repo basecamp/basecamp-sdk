@@ -744,6 +744,10 @@ func TestEventFeedService_RefusesEveryOffContractErrorBody(t *testing.T) {
 		// depth rule covers the error bodies too, not only the page.
 		{409, "a substituted key nested in a member the arm never reads", `{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":"44136fa355b3678a","metadata":{"bad\ud800key":1}}`},
 		{400, "a substituted key nested in a member the arm never reads", `{"error":"Unrecognized position.","reason":"invalid_position","metadata":{"bad\ud800key":1}}`},
+		// An error body declares no verbatim-carried member, so nothing in
+		// it is exempt — including a member that happens to be NAMED
+		// details, which only a page can carry raw.
+		{409, "a substituted key under a member named details", `{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":"44136fa355b3678a","details":{"bad\ud800key":1}}`},
 		{410, "no error member", `{"epoch_after_id":7,"resume":"https://3.basecampapi.com/99999/events.json?since=7"}`},
 		{410, "an empty resume", `{"error":"gone","epoch_after_id":7,"resume":""}`},
 		{409, "not an object", `<html><body>Conflict</body></html>`},
