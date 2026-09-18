@@ -93,9 +93,10 @@ fi
 failures=0
 scenario_number=0
 
-# run_scenario <description> <spec> <verbs-declaration> <expected verb> <expected operationId>
+# run_scenario <description> <spec> <verbs> <expect-a> <expect-b> [behavior-model]
 run_scenario() {
   local description="$1" spec="$2" verbs="$3" expect_verb="$4" expect_name="$5"
+  local behavior="${6:-$ROOT_DIR/behavior-model.json}"
   scenario_number=$((scenario_number + 1))
   local out="$TMP/out-$scenario_number" log="$TMP/generate-$scenario_number.log"
   local status=0
@@ -140,12 +141,12 @@ run_scenario() {
         echo "  Build the generator distribution first; make kt-test-verb-refusal does it for you." >&2
         exit 1
       fi
-      "$generator" --openapi "$spec" --behavior "$ROOT_DIR/behavior-model.json" \
+      "$generator" --openapi "$spec" --behavior "$behavior" \
         --verbs "$verbs" --output "$out" > "$log" 2>&1 || status=$?
       ;;
     swift)
       (cd "$ROOT_DIR/swift" && swift run BasecampGenerator \
-        --openapi "$spec" --behavior "$ROOT_DIR/behavior-model.json" \
+        --openapi "$spec" --behavior "$behavior" \
         --verbs "$verbs" --output "$out") > "$log" 2>&1 || status=$?
       ;;
     rust)
@@ -166,7 +167,9 @@ run_scenario() {
     scenario_failed=1
   fi
 
-  if ! grep -qi "$expect_verb" "$log" || ! grep -q "$expect_name" "$log"; then
+  # An empty expectation means "fail somehow" — used by the malformed-behavior
+  # scenario, whose message is a library exception this repo does not word.
+  if [[ -n "$expect_verb" ]] && { ! grep -qi "$expect_verb" "$log" || ! grep -q "$expect_name" "$log"; }; then
     echo "FAIL [$LANGUAGE] $description: the failure message does not name the offending operation." >&2
     echo "  Expected $expect_verb and $expect_name in the output; got:" >&2
     sed 's/^/    /' "$log" >&2
@@ -240,5 +243,47 @@ jq --arg p "$PATH_KEY" '.paths[$p].get.operationId = 123' \
 run_scenario "an operationId that is not a string is refused" \
   "$TMP/openapi-numeric-id.json" "$ROOT_DIR/spec/generated-verbs.json" \
   "operationId" "$PATH_KEY"
+
+# Scenario 6: a malformed behavior model, and the ONLY scenario whose failure
+# happens late in generation. Every other one fails during the spec parse, which
+# any "parse before delete" ordering already survives — so they cannot tell a
+# generator that renders before destroying from one that merely hoisted its first
+# failure. This one can: a missing `retry.max` reaches MetadataEmitter at the far
+# end of generation, which is where the Kotlin generator used to have already
+# deleted the committed tree. Reverting the render-then-clean ordering makes this
+# scenario, and only this scenario, report four destroyed sentinels.
+#
+# IT ONLY APPLIES WHERE THE INPUT IS ACTUALLY FATAL. Kotlin dereferences the
+# retry fields with `!!`; Swift and Rust default a missing one and generate
+# successfully, so for them this fixture exercises nothing and a "must fail"
+# assertion would fail for the wrong reason. They are skipped BY NAME rather than
+# quietly, because the gap is real: their render-before-delete ordering is
+# verified by reading the code, not by this test. Neither has a crafted input
+# that currently reaches its emission stage as a failure; when one exists, it
+# belongs here.
+case "$LANGUAGE" in
+  kotlin)
+    retry_op="$(jq -r 'first(.operations | to_entries[] | select(.value.retry) | .key)' \
+      "$ROOT_DIR/behavior-model.json")"
+    jq --arg op "$retry_op" 'del(.operations[$op].retry.max)' \
+      "$ROOT_DIR/behavior-model.json" > "$TMP/behavior-malformed.json"
+    # ONE document out, and one edit: an iterating `as $op` binding would have
+    # emitted 265 concatenated documents and failed at the JSON parse instead —
+    # an early failure, which is precisely what this scenario must not be.
+    if [[ "$(jq -s 'length' "$TMP/behavior-malformed.json")" != "1" ]] \
+       || jq -e --arg op "$retry_op" '.operations[$op].retry | has("max")' \
+            "$TMP/behavior-malformed.json" > /dev/null; then
+      echo "FAIL [$LANGUAGE]: the malformed behavior fixture is not what this scenario needs" >&2
+      exit 1
+    fi
+    run_scenario "a malformed retry entry fails late without destroying the tree" \
+      "$ROOT_DIR/openapi.json" "$ROOT_DIR/spec/generated-verbs.json" \
+      "" "" "$TMP/behavior-malformed.json"
+    ;;
+  *)
+    echo "SKIP [$LANGUAGE] malformed behavior model: this generator either takes no --behavior" \
+         "input or defaults a missing retry field, so the fixture is not fatal for it"
+    ;;
+esac
 
 exit "$failures"
