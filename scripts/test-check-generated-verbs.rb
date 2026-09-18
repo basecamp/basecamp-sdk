@@ -135,6 +135,28 @@ Dir.mktmpdir("generated-verbs") do |dir|
   end
 end
 
+# And it WINS over the self-test's own variable. Giving the test variable
+# precedence let a valid GENERATED_VERBS_FILE mask a malformed
+# BASECAMP_GENERATED_VERBS, passing the gate immediately before the generator
+# loaded the bad one — the invariant defeated by the gate's own plumbing.
+Dir.mktmpdir("generated-verbs") do |dir|
+  good = File.join(dir, "good.json")
+  bad = File.join(dir, "bad.json")
+  File.write(good, JSON.generate({ "verbs" => %w[get post put delete] }))
+  File.write(bad, JSON.generate({ "verbs" => ["get", 1] }))
+  env = { "GENERATED_VERBS_FILE" => good, "BASECAMP_GENERATED_VERBS" => bad }
+  output = IO.popen(env, [CHECKER], err: %i[child out], &:read)
+  status = $?.exitstatus
+  name = "BASECAMP_GENERATED_VERBS wins over GENERATED_VERBS_FILE"
+  if status != 0 && output.include?("number")
+    PASSES << name
+    puts "  PASS  #{name}"
+  else
+    FAILURES << name
+    puts "  FAIL  #{name} — exit #{status}: #{output}"
+  end
+end
+
 puts
 if FAILURES.empty?
   puts "==> generated-verb declaration gate self-test: all #{PASSES.length} cases passed"

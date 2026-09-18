@@ -60,10 +60,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# BASECAMP_GENERATED_VERBS first: it is what the LOADERS honour, so the gate has
-# to validate whatever they are about to read. GENERATED_VERBS_FILE is the
-# self-test's own handle on this script.
-VERBS_FILE="${GENERATED_VERBS_FILE:-${BASECAMP_GENERATED_VERBS:-$ROOT_DIR/spec/generated-verbs.json}}"
+# BASECAMP_GENERATED_VERBS WINS. It is what the LOADERS honour, so the gate must
+# validate whatever they are about to read — the whole invariant is that the file
+# validated is the file consumed. GENERATED_VERBS_FILE is the self-test's own
+# handle on this script and is only consulted when the loaders' variable is
+# unset; giving the test variable precedence (as the first version of this line
+# did) let a valid GENERATED_VERBS_FILE mask a malformed BASECAMP_GENERATED_VERBS
+# and pass the gate immediately before the generator loaded the bad one.
+VERBS_FILE="${BASECAMP_GENERATED_VERBS:-${GENERATED_VERBS_FILE:-$ROOT_DIR/spec/generated-verbs.json}}"
 
 die() {
   echo "ERROR: $VERBS_FILE is not a declaration the generators can read verbatim." >&2
