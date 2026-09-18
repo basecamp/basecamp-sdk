@@ -28,14 +28,18 @@
 # operationId to ALLOWLIST below WITH a reason and a tracking reference — do not
 # widen the check to accept absent tags in general.
 #
-# WHAT THIS GATE DOES NOT SEE. It reads `paths` only. A 3.1 document may also
-# carry operations under `webhooks` or `components.pathItems`; this artifact has
-# neither, and the check would not notice if it grew one. It also does not judge
-# whether the single tag is the RIGHT tag, only that there is exactly one. And
-# the six per-language generators still iterate a five-verb list of their own, so
-# an operation on any other verb would be dropped from the generated services
-# outright rather than merely shipping untagged — a larger hole, one cross-SDK
-# regeneration away from this file, and deliberately not addressed here.
+# WHAT THIS GATE DOES NOT SEE. It reads both places a 3.1 document keeps path
+# items, `paths` and `webhooks`, so the remaining gap is references: a path item
+# behind a `$ref` is refused by name rather than followed, which is also what
+# closes `components.pathItems`, reachable only through one. Teaching it to
+# resolve a local reference would turn that refusal into a check.
+#
+# It does not judge whether the single tag is the RIGHT tag, only that there is
+# exactly one and that it names something. And the six per-language generators
+# still iterate a five-verb list of their own, so an operation on any other verb
+# would be dropped from the generated services outright rather than merely
+# shipping untagged — a larger hole, one cross-SDK regeneration away from this
+# file, deliberately not addressed here, and tracked in #925.
 #
 # Paths default to the repo layout but honour the REQUIRED_TAGS_OPENAPI and
 # REQUIRED_TAGS_ALLOWLIST env overrides so the negative-case self-test
