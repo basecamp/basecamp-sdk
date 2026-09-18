@@ -3482,7 +3482,17 @@ The same totality covers member NAMES, which are subject to the substitution bel
 values are — and worse, because a substituted key does not arrive wrong, it arrives missing: an
 optional member reads as absent and a required one as omitted. A body with any substituted key
 is refused, over every key rather than the ones a given arm happens to read, since which key
-was mangled is what cannot be known in advance.
+was mangled is what cannot be known in advance, and **at every depth** rather than at the
+envelope's top level: a row's `performed_by_id` arriving mangled reads as absent, which
+attributes a delegated action to its creator — the attribution `exclude_performers=self` is
+computed from — while the page's position commits over it. The walk's one stopping boundary is
+`details`: its bytes are carried verbatim and never decoded into strings, so nothing inside it
+is substituted, and refusing an escape there would contradict the byte-identical carriage the
+push lane depends on. Structural member names are validated; opaque `details` contents are not.
+
+Every refusal carries the response's request id, on the 200 paths as much as the error ones —
+those are the refusals a caller cannot look up any other way, and `errors.As` stops at the
+malformed error rather than walking to its cause.
 
 The totality is the mechanism, not the individual checks. A permissive arm — *if the body
 looks like the documented shape, judge it; otherwise fall through to the canonical error* —

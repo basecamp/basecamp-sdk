@@ -295,14 +295,14 @@ func (s *EventFeedService) PollEvents(ctx context.Context, opts *PollEventsOptio
 	httpResp.Body = markBodyReadFailures(httpResp.Body)
 	resp, decodeErr := generated.ParsePollEventsResponse(httpResp)
 	if decodeErr != nil {
-		err = feedDecodeError(decodeErr)
+		err = feedDecodeError(requestIDOf(httpResp), decodeErr)
 		return nil, err
 	}
 	if err = checkFeedResponse(resp.HTTPResponse, resp.Body, feedLane); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		err = feedDecodeError(errors.New("the response carried no page"))
+		err = feedDecodeError(requestIDOf(resp.HTTPResponse), errors.New("the response carried no page"))
 		return nil, err
 	}
 	page := eventFeedPageFromGenerated(*resp.JSON200)
@@ -310,10 +310,10 @@ func (s *EventFeedService) PollEvents(ctx context.Context, opts *PollEventsOptio
 	for _, e := range page.Events {
 		rows = feedEventStrings(rows, e)
 	}
-	if err = checkPollEnvelope(resp.Body, "events"); err != nil {
+	if err = checkPollEnvelope(requestIDOf(resp.HTTPResponse), resp.Body, "events"); err != nil {
 		return nil, err
 	}
-	if err = checkPollPage(page.Position, page.Next, rows); err != nil {
+	if err = checkPollPage(requestIDOf(resp.HTTPResponse), page.Position, page.Next, rows); err != nil {
 		return nil, err
 	}
 	return &page, nil
@@ -357,14 +357,14 @@ func (s *EventFeedService) PollInbox(ctx context.Context, opts *PollInboxOptions
 	httpResp.Body = markBodyReadFailures(httpResp.Body)
 	resp, decodeErr := generated.ParsePollInboxResponse(httpResp)
 	if decodeErr != nil {
-		err = feedDecodeError(decodeErr)
+		err = feedDecodeError(requestIDOf(httpResp), decodeErr)
 		return nil, err
 	}
 	if err = checkFeedResponse(resp.HTTPResponse, resp.Body, inboxLane); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		err = feedDecodeError(errors.New("the response carried no page"))
+		err = feedDecodeError(requestIDOf(resp.HTTPResponse), errors.New("the response carried no page"))
 		return nil, err
 	}
 	page := inboxPageFromGenerated(*resp.JSON200)
@@ -372,10 +372,10 @@ func (s *EventFeedService) PollInbox(ctx context.Context, opts *PollInboxOptions
 	for _, item := range page.Items {
 		rows = feedEventStrings(append(rows, item.Reason), item.Event)
 	}
-	if err = checkPollEnvelope(resp.Body, "items"); err != nil {
+	if err = checkPollEnvelope(requestIDOf(resp.HTTPResponse), resp.Body, "items"); err != nil {
 		return nil, err
 	}
-	if err = checkPollPage(page.Position, page.Next, rows); err != nil {
+	if err = checkPollPage(requestIDOf(resp.HTTPResponse), page.Position, page.Next, rows); err != nil {
 		return nil, err
 	}
 	return &page, nil
@@ -545,10 +545,10 @@ func checkFeedResponse(resp *http.Response, body []byte, lane feedLaneKind) erro
 func feedRequestErrorFrom(base *Error, body []byte) error {
 	fields, ok := jsonObject(body)
 	if !ok {
-		return malformedFeedResponse("a 400 whose body is not the shape this contract declares", base)
+		return malformedFeedResponse(base.RequestID, "a 400 whose body is not the shape this contract declares", base)
 	}
 	if _, ok := requiredString(fields, "error"); !ok {
-		return malformedFeedResponse("a 400 without the error member its shape requires", base)
+		return malformedFeedResponse(base.RequestID, "a 400 without the error member its shape requires", base)
 	}
 	raw, present := fields["reason"]
 	if !present || isJSONNull(raw) {
@@ -556,7 +556,7 @@ func feedRequestErrorFrom(base *Error, body []byte) error {
 	}
 	named, isString := jsonString(raw)
 	if !isString || (named != FeedReasonInvalidPosition && named != FeedReasonInvalidFilter) {
-		return malformedFeedResponse("a 400 whose reason is not one this contract names", base)
+		return malformedFeedResponse(base.RequestID, "a 400 whose reason is not one this contract names", base)
 	}
 	return &FeedRequestError{Err: base, Reason: named}
 }
@@ -572,15 +572,15 @@ func feedRequestErrorFrom(base *Error, body []byte) error {
 func feedFilterMismatchFrom(base *Error, body []byte) error {
 	fields, ok := jsonObject(body)
 	if !ok {
-		return malformedFeedResponse("a 409 whose body is not the shape this contract declares", base)
+		return malformedFeedResponse(base.RequestID, "a 409 whose body is not the shape this contract declares", base)
 	}
 	if _, ok := requiredString(fields, "error"); !ok {
-		return malformedFeedResponse("a 409 without the error member its shape requires", base)
+		return malformedFeedResponse(base.RequestID, "a 409 without the error member its shape requires", base)
 	}
 	position, _ := jsonString(fields["position_digest"])
 	filters, _ := jsonString(fields["filters_digest"])
 	if !isFeedDigest(position) || !isFeedDigest(filters) {
-		return malformedFeedResponse("a 409 whose filter digests are missing or not the published srv2 form", base)
+		return malformedFeedResponse(base.RequestID, "a 409 whose filter digests are missing or not the published srv2 form", base)
 	}
 	return &FeedFilterMismatchError{Err: base, PositionDigest: position, FiltersDigest: filters}
 }
@@ -593,17 +593,17 @@ func feedFilterMismatchFrom(base *Error, body []byte) error {
 func feedGoneFrom(base *Error, body []byte, lane feedLaneKind) error {
 	fields, ok := jsonObject(body)
 	if !ok {
-		return malformedFeedResponse("a 410 whose body is not the shape this contract declares", base)
+		return malformedFeedResponse(base.RequestID, "a 410 whose body is not the shape this contract declares", base)
 	}
 	if _, ok := requiredString(fields, "error"); !ok {
-		return malformedFeedResponse("a 410 without the error member its shape requires", base)
+		return malformedFeedResponse(base.RequestID, "a 410 without the error member its shape requires", base)
 	}
 	resume, ok := requiredString(fields, "resume")
 	if !ok {
-		return malformedFeedResponse("a 410 without the resume URL its shape requires", base)
+		return malformedFeedResponse(base.RequestID, "a 410 without the resume URL its shape requires", base)
 	}
 	if !survivedDecoding(resume) {
-		return malformedFeedResponse("a 410 whose resume URL did not survive decoding", base)
+		return malformedFeedResponse(base.RequestID, "a 410 whose resume URL did not survive decoding", base)
 	}
 	if lane == inboxLane {
 		return &InboxPositionGoneError{Err: base, Resume: resume}
@@ -613,7 +613,7 @@ func feedGoneFrom(base *Error, body []byte, lane feedLaneKind) error {
 	// re-enters at the bottom of history.
 	epoch, isNumber := jsonInt64(fields["epoch_after_id"])
 	if !isNumber {
-		return malformedFeedResponse("a feed 410 without the epoch its shape requires", base)
+		return malformedFeedResponse(base.RequestID, "a feed 410 without the epoch its shape requires", base)
 	}
 	return &FeedPositionGoneError{Err: base, EpochAfterID: epoch, Resume: resume}
 }
@@ -642,6 +642,75 @@ func jsonObject(body []byte) (map[string]json.RawMessage, bool) {
 		}
 	}
 	return fields, true
+}
+
+// requestIDOf reads the id §6 records on every response error, from the one
+// header that carries it.
+func requestIDOf(resp *http.Response) string {
+	if resp == nil {
+		return ""
+	}
+	return resp.Header.Get(requestIDHeader)
+}
+
+// memberNamesSurvived walks a decoded document and reports whether every
+// member NAME in it came through the decode as the server wrote it, at every
+// depth — not only the top level. A row's key is where this bites hardest: a
+// substituted `performed_by_id` does not arrive wrong, it arrives absent, and
+// the event is then attributed to its creator rather than to the agent that
+// acted, with the page's position committing over it. That attribution is
+// also what the loop guard (exclude_performers=self) is computed from.
+//
+// `details` is the one member whose interior is skipped. Its bytes are
+// carried verbatim and never decoded into strings, so nothing in there is
+// substituted; refusing an escape inside it would contradict that carriage.
+//
+// The fast path is the whole reason this is affordable on a continuous
+// poller: a substitution can only come from a lone surrogate ESCAPE or an
+// invalid raw byte, so a body with neither cannot contain one, and the walk
+// never runs. That check is two linear scans with no allocation.
+func memberNamesSurvived(body []byte) bool {
+	if utf8.Valid(body) && !bytes.Contains(body, []byte(`\u`)) {
+		return true
+	}
+	return namesSurvived(body)
+}
+
+func namesSurvived(raw json.RawMessage) bool {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 {
+		return true
+	}
+	switch trimmed[0] {
+	case '{':
+		var object map[string]json.RawMessage
+		if json.Unmarshal(trimmed, &object) != nil {
+			// Not a shape this can judge; the decode that follows reports it.
+			return true
+		}
+		for name, value := range object {
+			if !survivedDecoding(name) {
+				return false
+			}
+			if name == "details" {
+				continue
+			}
+			if !namesSurvived(value) {
+				return false
+			}
+		}
+	case '[':
+		var array []json.RawMessage
+		if json.Unmarshal(trimmed, &array) != nil {
+			return true
+		}
+		for _, value := range array {
+			if !namesSurvived(value) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // requiredString reads a member the shape DECLARES: present, a JSON string,
@@ -732,17 +801,16 @@ func isFeedDigest(s string) bool {
 // reason nobody defined must not reach. The canonical error rides as Cause so
 // the exchange is still legible to anyone debugging it.
 //
-// The request id rides along, because §6 wants it on every response error and
-// errors.As stops at this one: a refused body is precisely the response
-// somebody needs to look up server-side.
+// The request id is a PARAMETER rather than something sniffed off the cause,
+// because §6 wants it on every response error and errors.As stops at this one:
+// a refused body is precisely the response somebody needs to look up
+// server-side. Sniffing worked only where the cause happened to be the
+// canonical error, which silently left the 200 paths without one; a parameter
+// is a question the compiler makes every call site answer.
 //
 // what names the member, never its value: these bodies are server-written
 // text and SPEC §23 keeps such text out of every rendering.
-func malformedFeedResponse(what string, cause error) error {
-	requestID := ""
-	if base, ok := cause.(*Error); ok {
-		requestID = base.RequestID
-	}
+func malformedFeedResponse(requestID, what string, cause error) error {
 	return &Error{
 		Code:      CodeAPI,
 		RequestID: requestID,
@@ -807,11 +875,11 @@ func survivedDecoding(s string) bool {
 // piece of help it needs is that io.ReadAll runs INSIDE the parse (#773), so a
 // failed READ arrives here looking like a failed decode; markBodyReadFailures
 // tags those at the read and they pass through verbatim.
-func feedDecodeError(err error) error {
+func feedDecodeError(requestID string, err error) error {
 	if marked, ok := errors.AsType[*bodyReadError](err); ok {
 		return marked.err
 	}
-	return malformedFeedResponse("a page that does not decode as the envelope this contract declares", err)
+	return malformedFeedResponse(requestID, "a page that does not decode as the envelope this contract declares", err)
 }
 
 // checkPollEnvelope holds the 200 to the members its shape declares, the way
@@ -823,27 +891,30 @@ func feedDecodeError(err error) error {
 //
 // collection is `events` or `items`: which rows the lane serves is the one
 // difference between the two envelopes.
-func checkPollEnvelope(body []byte, collection string) error {
+func checkPollEnvelope(requestID string, body []byte, collection string) error {
+	if !memberNamesSurvived(body) {
+		return malformedFeedResponse(requestID, "a page whose member names did not survive decoding", nil)
+	}
 	fields, ok := jsonObject(body)
 	if !ok {
-		return malformedFeedResponse("a page whose body is not the shape this contract declares", nil)
+		return malformedFeedResponse(requestID, "a page whose body is not the shape this contract declares", nil)
 	}
 	if _, ok := requiredString(fields, "position"); !ok {
-		return malformedFeedResponse("a page without the position its shape requires", nil)
+		return malformedFeedResponse(requestID, "a page without the position its shape requires", nil)
 	}
 	if raw, present := fields[collection]; !present || isJSONNull(raw) {
-		return malformedFeedResponse("a page without the rows its shape requires", nil)
+		return malformedFeedResponse(requestID, "a page without the rows its shape requires", nil)
 	}
 	return nil
 }
 
-func checkPollPage(position, next string, rows []string) error {
+func checkPollPage(requestID, position, next string, rows []string) error {
 	if !survivedDecoding(position) || !survivedDecoding(next) {
-		return malformedFeedResponse("a page whose position or continuation did not survive decoding", nil)
+		return malformedFeedResponse(requestID, "a page whose position or continuation did not survive decoding", nil)
 	}
 	for _, s := range rows {
 		if !survivedDecoding(s) {
-			return malformedFeedResponse("a page whose rows did not survive decoding", nil)
+			return malformedFeedResponse(requestID, "a page whose rows did not survive decoding", nil)
 		}
 	}
 	return nil

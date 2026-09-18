@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -979,5 +980,77 @@ func TestEventFeedService_MalformedResponseCarriesTheRequestID(t *testing.T) {
 	}
 	if base.RequestID != "req-abc123" {
 		t.Errorf("requestID = %q, want the response's — errors.As stops here, not at the cause", base.RequestID)
+	}
+}
+
+// A member name inside a ROW, which the top-level key walk cannot see. The
+// harm is sharper than a mangled token: `performed_by_id` does not arrive
+// wrong, it arrives absent, so the event reads as performed directly by its
+// creator — the attribution the loop guard (exclude_performers=self) is
+// computed from — and the page's position commits over it.
+func TestEventFeedService_RefusesASubstitutedMemberNameInsideARow(t *testing.T) {
+	cases := map[string]string{
+		"a feed row":     `{"events":[{"id":1,"kind":"message_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"message.created","bucket_id":2,"creator_id":3,"performed_by_i\ud800d":7,"recording_id":9}],"position":"posAAA"}`,
+		"a nested event": `{"items":[{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-07-14T06:10:00Z","event":{"id":1,"kind":"message_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"message.created","bucket_id":2,"creator_i\ud800d":3,"performed_by_id":null,"recording_id":9}}],"position":"posAAA"}`,
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(body))
+			})
+			var err error
+			if strings.Contains(body, `"items"`) {
+				_, err = svc.PollInbox(context.Background(), nil)
+			} else {
+				_, err = svc.PollEvents(context.Background(), nil)
+			}
+			assertMalformedFeedResponse(t, err)
+		})
+	}
+}
+
+// The other side of that walk: `details` is skipped, so an escape inside it
+// is still carried verbatim. Without the skip this body would be refused,
+// which would contradict the carriage the push lane depends on.
+func TestEventFeedService_KeepsASubstitutedNameInsideDetails(t *testing.T) {
+	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"events":[{"id":1,"kind":"boost_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"boost.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":9,"details":{"boost_i\ud800d":501}}],"position":"posAAA"}`))
+	})
+	page, err := svc.PollEvents(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("details is carried verbatim, not walked: %v", err)
+	}
+	if len(page.Events) != 1 || len(page.Events[0].Details) == 0 {
+		t.Fatalf("expected the row with its details, got %+v", page)
+	}
+}
+
+// The request id is on every refusal, not only the ones whose cause happens
+// to be the canonical error — the 200 paths have no canonical error at all,
+// and they are exactly the refusals a caller cannot look up any other way.
+func TestEventFeedService_MalformedPageCarriesTheRequestID(t *testing.T) {
+	cases := map[string]string{
+		"a page that does not decode":    `{"events":[`,
+		"an envelope without a position": `{"events":[]}`,
+		"a substituted position":         `{"events":[],"position":"pos\ud800AAA"}`,
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("X-Request-Id", "req-page-1")
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(body))
+			})
+			_, err := svc.PollEvents(context.Background(), nil)
+			var base *Error
+			if !errors.As(err, &base) {
+				t.Fatalf("expected the canonical *Error, got %T: %v", err, err)
+			}
+			if base.RequestID != "req-page-1" {
+				t.Errorf("requestID = %q, want the response's", base.RequestID)
+			}
+		})
 	}
 }
