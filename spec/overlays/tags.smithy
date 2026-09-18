@@ -320,13 +320,16 @@ apply PollInbox @tags(["EventFeed"])
 apply CreateStreamTicket @tags(["EventFeed"])
 
 // Recordings (recording lifecycle: list, spotlight, trash, archive; and the
-// recording's own event history). New domain tag mirroring the Recordings
-// service every SDK generator already emits (each generator's SERVICE_SPLITS
-// routed these under Automation -> Recordings while they were tagged
-// Automation). These ops previously folded into the Automation domain, which
+// recording's own event history).
+//
+// The six lifecycle operations came first (#922), and this paragraph is about
+// them alone: their new domain tag mirrors the Recordings service every SDK
+// generator already emits for exactly those six (each generator's
+// SERVICE_SPLITS routed them under Automation -> Recordings while they were
+// tagged Automation). They previously folded into the Automation domain, which
 // left MCP catalog generation with no dedicated recordings tool. Recording
 // boosts stay under Boosts and the recording timesheet stays under Schedule ->
-// Timesheets, matching the SDK service groupings. Tagging these Recordings
+// Timesheets, matching the SDK service groupings. Tagging those six Recordings
 // keeps the generated grouping byte-identical and gives catalog.Load one tag
 // per op.
 //
