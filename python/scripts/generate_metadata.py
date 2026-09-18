@@ -8,7 +8,13 @@ Usage: python scripts/generate_metadata.py [--openapi ../openapi.json] [--behavi
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+# Importable whether this file is run as a script (its dir is already sys.path[0])
+# or loaded via importlib in tests.
+sys.path.insert(0, str(Path(__file__).parent))
+from gen_common import iter_operations  # noqa: E402
 
 
 def main() -> None:
@@ -29,11 +35,10 @@ def main() -> None:
     metadata: dict[str, dict] = {}
 
     # Extract all operation IDs from the spec
-    for path_item in spec.get("paths", {}).values():
-        for method in ("get", "post", "put", "patch", "delete"):
-            op = path_item.get(method)
-            if not op:
-                continue
+    # Verb-agnostic by construction: metadata is keyed by operationId, so this
+    # walk takes no emission bound and extracts an operation on any verb.
+    for path, path_item in spec.get("paths", {}).items():
+        for _method, op in iter_operations(path, path_item):
             op_id = op.get("operationId")
             if not op_id:
                 continue

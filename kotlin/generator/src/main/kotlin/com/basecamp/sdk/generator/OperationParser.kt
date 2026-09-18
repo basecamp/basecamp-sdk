@@ -48,7 +48,16 @@ data class ServiceDefinition(
 /**
  * Parses operations from the OpenAPI spec.
  */
-class OperationParser(private val api: OpenApiParser) {
+class OperationParser(
+    private val api: OpenApiParser,
+    // Discovery is total (PathItems.operationsOf reads a path item by excluding
+    // its closed set of non-operation fields). This bounds what the generator
+    // can RENDER — each verb has an httpGet/httpPost/… behind it — and comes
+    // from the one declaration every SDK generator reads. An operation on any
+    // other verb stops the run by name rather than disappearing from the
+    // client, which is the failure basecamp-sdk#925 closed.
+    private val emittableVerbs: List<String>,
+) {
 
     fun extractMethodName(operationId: String): String {
         METHOD_NAME_OVERRIDES[operationId]?.let { return it }
@@ -301,8 +310,9 @@ class OperationParser(private val api: OpenApiParser) {
         val services = mutableMapOf<String, ServiceDefinition>()
 
         for ((path, pathItem) in api.paths) {
-            for (method in listOf("get", "post", "put", "patch", "delete")) {
-                val operation = pathItem.jsonObject[method]?.jsonObject ?: continue
+            for ((method, operation) in PathItems.operationsOf(
+                path, pathItem.jsonObject, emittableVerbs, emittableVerbs
+            )) {
                 val operationId = operation["operationId"]!!.jsonPrimitive.content
                 val tag = operation["tags"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content ?: "Untagged"
 

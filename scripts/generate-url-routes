@@ -27,6 +27,15 @@ fi
 
 # Generate url-routes using jq
 jq '
+# A $ref path item points at operations this filter cannot see without
+# resolving the reference. Skipping it would hand back exactly the silent
+# under-count the exclusion walk below exists to prevent, so refuse instead.
+def refuse_path_item_refs:
+  [.paths | to_entries[] | select(.value | has("$ref")) | .key] as $refs |
+  if ($refs | length) > 0 then
+    error("openapi.json path items are behind a $ref this generator cannot resolve: \($refs | join(", ")). Inline them, or teach this filter to resolve local references -- skipping them would hide every operation behind them from the route table.")
+  else . end;
+
 # Infer parameter role from its name.
 # - accountId → "account"
 # - projectId → "bucket"
@@ -51,6 +60,7 @@ def param_type:
   else "string"
   end;
 
+refuse_path_item_refs |
 {
   "$schema": "https://basecamp.com/schemas/url-routes.json",
   version: "1.0.0",
@@ -61,9 +71,24 @@ def param_type:
     (.key | gsub("\\.json$"; "")) as $pattern |
     .value as $path_item |
 
-    # Collect all operations on this path
+    # Collect all operations on this path.
+    #
+    # A Path Item Object is read by EXCLUSION: its non-operation fields are a
+    # closed, spec-defined set and its extensions are x- prefixed, so every
+    # OTHER field is an operation. Selecting a list of verbs instead is the
+    # defect this replaces (#925) -- the Smithy @http trait takes the method as
+    # a free-form string that Smithy "will use literally and will perform no
+    # validation on", so an operation on any unlisted verb was dropped from the
+    # route table in silence.
+    #
+    # Nothing downstream of here is verb-specific (a route operations map is
+    # method -> operationId), so this walk takes no emission bound: it
+    # represents whatever the spec declares. A $ref path item is refused above,
+    # before the walk, because its operations cannot be counted without
+    # resolving it.
     ($path_item | to_entries | map(
-      select(.key | IN("get","post","put","patch","delete"))
+      select((.key | IN("summary","description","servers","parameters") | not)
+             and (.key | startswith("x-") | not))
     )) as $ops |
 
     # Use the first operation tags as the resource tag

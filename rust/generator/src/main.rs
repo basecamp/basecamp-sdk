@@ -38,6 +38,7 @@ fn run() -> Result<(), String> {
     let mut openapi_path = None;
     let mut behavior_path = None;
     let mut names_path = None;
+    let mut verbs_path = None;
     let mut arguments = env::args().skip(1);
     while let Some(argument) = arguments.next() {
         let mut path = |flag: &str| -> Result<PathBuf, String> {
@@ -53,6 +54,7 @@ fn run() -> Result<(), String> {
             "--openapi" => openapi_path = Some(path("--openapi")?),
             "--behavior" => behavior_path = Some(path("--behavior")?),
             "--names" => names_path = Some(path("--names")?),
+            "--verbs" => verbs_path = Some(path("--verbs")?),
             other => return Err(format!("unknown argument {other}")),
         }
     }
@@ -61,7 +63,27 @@ fn run() -> Result<(), String> {
     let behavior = read_json(&behavior_path.unwrap_or_else(|| root.join("behavior-model.json")))?;
     let names = read(&names_path.unwrap_or_else(|| root.join("rust/generator/names.toml")))?;
     let naming = Naming::parse(&names)?;
-    let model = Model::build(&openapi, &behavior, &naming)?;
+    // The ordered HTTP methods the SDK generators emit — one declaration for all
+    // six SDKs. See spec/generated-verbs.json for why it is a policy rather than
+    // six per-language capabilities.
+    let verbs_path = verbs_path.unwrap_or_else(|| root.join("spec/generated-verbs.json"));
+    let verbs = read_json(&verbs_path)?;
+    let emittable_verbs: Vec<String> = verbs["verbs"]
+        .as_array()
+        .map(|verbs| {
+            verbs
+                .iter()
+                .filter_map(|verb| verb.as_str().map(str::to_string))
+                .collect()
+        })
+        .filter(|verbs: &Vec<String>| !verbs.is_empty())
+        .ok_or_else(|| {
+            format!(
+                "{} must declare a non-empty `verbs` array of strings",
+                verbs_path.display()
+            )
+        })?;
+    let model = Model::build(&openapi, &behavior, &naming, &emittable_verbs)?;
     let files = render(&model)?;
 
     let target = output.unwrap_or_else(|| root.join("rust/basecamp-sdk/src/generated"));

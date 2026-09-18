@@ -338,11 +338,29 @@ end
 # key -> [operationId, path as openapi spells it]. The operationId is for the
 # failure message only; nothing downstream reads a service out of this.
 expected = {}
+# A Path Item Object is read by EXCLUSION: its non-operation fields are a
+# closed, spec-defined set, its extensions are `x-` prefixed, and every other
+# field is an operation. Enumerating the verbs is what #925 fixed in the
+# generators — an operation on an unlisted verb was dropped from every SDK in
+# silence — and this gate shared the same blind spot, so it would have read the
+# resulting hole as "nothing to compare" rather than as a missing operation.
+# The anchor stays verb-agnostic on purpose: an operation the generators refuse
+# to emit must show up here as absent from six SDKs, loudly.
+NON_OPERATION_FIELDS = %w[summary description servers parameters].freeze
+
 (spec["paths"] || {}).each do |path, item|
   next unless item.is_a?(Hash)
+  if item.key?("$ref")
+    die(["openapi.json path #{path} is behind a $ref this gate cannot resolve; its operations " \
+         "cannot be counted, and skipping it would read as an empty path rather than an " \
+         "uncompared one"])
+  end
   item.each do |verb, operation|
-    next unless %w[get put post delete patch].include?(verb)
-    next unless operation.is_a?(Hash)
+    next if NON_OPERATION_FIELDS.include?(verb) || verb.start_with?("x-")
+    unless operation.is_a?(Hash)
+      die(["openapi.json path #{path} field #{verb.inspect} is neither a known non-operation " \
+           "field nor an operation object; it cannot be compared and must not be skipped"])
+    end
     sdk_path = path.sub(ACCOUNT_PREFIX, "")
     key = [verb.upcase, normalize_path(sdk_path)]
     if expected.key?(key)

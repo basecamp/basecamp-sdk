@@ -198,6 +198,15 @@ jobs:
       - name: Every operation carries exactly one tag
         run: make check-required-tags
 
+      # An operation on a verb the SDKs do not generate must fail loudly, never
+      # vanish: every generator used to iterate its own five-verb list, so
+      # openapi.json carrying a HEAD operation dropped it from all six SDKs in
+      # silence (#925). Drives Ruby, Python and the jq route generator with
+      # crafted specs; the compiled generators carry the same walk and are
+      # covered by their own drift checks in their language jobs.
+      - name: Generator verb inversion self-test
+        run: make test-generator-verb-inversion
+
       - name: api-gaps registry frontmatter + allowlist schema
         run: make validate-api-gaps
         env:

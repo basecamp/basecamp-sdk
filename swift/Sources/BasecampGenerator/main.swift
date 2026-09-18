@@ -11,6 +11,7 @@ func usage() -> Never {
         Usage: BasecampGenerator [options]
           --openapi <path>    OpenAPI spec (default: ../openapi.json)
           --behavior <path>   Behavior model (default: ../behavior-model.json)
+          --verbs <path>      Generated-verb declaration (default: ../spec/generated-verbs.json)
           --output <path>     Output directory (default: Sources/Basecamp/Generated)
 
         """)
@@ -22,6 +23,7 @@ func run() throws {
     let args = CommandLine.arguments
     var openapiPath = "../openapi.json"
     var behaviorPath = "../behavior-model.json"
+    var verbsPath = "../spec/generated-verbs.json"
     var outputDir = "Sources/Basecamp/Generated"
 
     var i = 1
@@ -35,6 +37,10 @@ func run() throws {
             i += 1
             guard i < args.count else { usage() }
             behaviorPath = args[i]
+        case "--verbs":
+            i += 1
+            guard i < args.count else { usage() }
+            verbsPath = args[i]
         case "--output":
             i += 1
             guard i < args.count else { usage() }
@@ -55,6 +61,7 @@ func run() throws {
 
     let resolvedOpenAPI = resolvePath(openapiPath)
     let resolvedBehavior = resolvePath(behaviorPath)
+    let resolvedVerbs = resolvePath(verbsPath)
     let resolvedOutput = resolvePath(outputDir)
 
     // MARK: - Load inputs
@@ -76,7 +83,8 @@ func run() throws {
 
     // MARK: - Parse
 
-    let (operations, schemas) = parseAllOperations(spec: spec)
+    let (operations, schemas) = parseAllOperations(
+        spec: spec, emittableVerbs: loadGeneratedVerbs(path: resolvedVerbs))
     let retryConfigs = try parseBehaviorModel(data: behaviorData)
     let services = groupOperations(operations, schemas: schemas)
     let (discoveredEntitySchemaNames, requestSchemaNames) = collectModelSchemas(

@@ -8,6 +8,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { operationsOf } from "./path-items.js";
 
 interface RetryConfig {
   maxAttempts: number;
@@ -48,14 +49,10 @@ function extractMetadata(openapiPath: string): MetadataOutput {
 
   const operations: Record<string, OperationMetadata> = {};
 
-  // Iterate through all paths and operations
-  for (const [_pathKey, pathItem] of Object.entries(openapi.paths || {})) {
-    const pathObj = pathItem as Record<string, unknown>;
-
-    for (const method of ["get", "post", "put", "patch", "delete"]) {
-      const operation = pathObj[method] as Record<string, unknown> | undefined;
-      if (!operation) continue;
-
+  // Verb-agnostic by construction: metadata is keyed by operationId, so this
+  // walk takes no emission bound and extracts an operation on any verb.
+  for (const [pathKey, pathItem] of Object.entries(openapi.paths || {})) {
+    for (const [_method, operation] of operationsOf(pathKey, pathItem)) {
       const operationId = operation.operationId as string;
       if (!operationId) continue;
 

@@ -24,6 +24,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { operationsOf } from "./path-items.js";
 
 const FLEXIBLE_INT64 = "types.FlexibleInt64";
 
@@ -63,10 +64,11 @@ function collectSites(spec: Schema): Record<string, string[]> {
   }
 
   const sites: Record<string, string[]> = {};
-  for (const pathItem of Object.values(spec.paths ?? {}) as Schema[]) {
-    for (const method of ["get", "post", "put", "patch", "delete"]) {
-      const operation = pathItem[method];
-      if (!operation?.operationId) continue;
+  // Verb-agnostic by construction: sites are keyed by operationId, so this walk
+  // takes no emission bound and covers an operation on any verb.
+  for (const [pathKey, pathItem] of Object.entries(spec.paths ?? {}) as [string, Schema][]) {
+    for (const [_method, operation] of operationsOf(pathKey, pathItem)) {
+      if (!operation.operationId) continue;
       const out = new Set<string>();
       for (const [code, raw] of Object.entries(operation.responses ?? {}) as [string, Schema][]) {
         if (!code.startsWith("2")) continue;

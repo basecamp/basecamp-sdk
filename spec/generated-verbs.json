@@ -1,0 +1,12 @@
+{
+  "$schema": "https://basecamp.com/schemas/generated-verbs.json",
+  "version": "1.0.0",
+  "what": "The HTTP methods the SDK generators emit. One declaration, read by every generator.",
+  "why": [
+    "This is a POLICY, not six capabilities. check-operation-assignment-parity requires all six SDKs to expose the same operation set, so six independently-maintained bounds could never legitimately differ — they were one fact written six times, which is how #925 happened.",
+    "It is an EMISSION bound, never a discovery filter. Generators find operations by walking a path item and excluding its closed set of non-operation fields ($ref, summary, description, servers, parameters, and x- extensions); everything else is an operation. An operation on a verb outside this list is REFUSED BY NAME, never skipped. That is the whole of #925: Smithy's @http trait takes the method as a free-form string it 'will use literally and will perform no validation on', so a model author writing method: \"HEAD\" produced a valid model, a valid openapi.json, and no method on any client in any language.",
+    "The array is ORDERED, and the order is emission order. Keeping order here rather than in a second per-generator list means there is exactly one place the verb set is written."
+  ],
+  "adding_a_verb": "Adding an entry here does not implement it. Each SDK's runtime needs the transport helper the generated call site names (Basecamp::Http#http_head, BaseService.httpHead, and so on) before the verb belongs in this list, and the operation needs a tag in spec/overlays/tags.smithy. Add the six implementations first, this entry last.",
+  "verbs": ["get", "post", "put", "patch", "delete"]
+}

@@ -21,9 +21,15 @@ from pathlib import Path
 # Make the shared generator helper importable whether this file is run as a
 # script (its dir is already sys.path[0]) or loaded via importlib in tests.
 sys.path.insert(0, str(Path(__file__).parent))
-from gen_common import escape_py_string  # noqa: E402
+from gen_common import escape_py_string, generated_verbs, iter_operations  # noqa: E402
 
-METHODS = ("get", "post", "put", "patch", "delete")
+# Discovery is total (see gen_common.iter_operations, which reads a path item by
+# excluding its closed set of non-operation fields). EMITTABLE_METHODS bounds
+# what this generator can RENDER — each verb has a `_request_*` helper behind it
+# — and comes from the one declaration every SDK generator reads. An operation
+# on any other verb stops the run by name rather than disappearing from the
+# client, which is the failure basecamp-sdk#925 closed.
+EMITTABLE_METHODS = generated_verbs()
 
 # Tag to service name mapping overrides
 TAG_TO_SERVICE = {
@@ -552,11 +558,7 @@ def group_operations(spec: dict) -> dict[str, dict]:
     services: dict[str, dict] = {}
 
     for path, path_item in spec["paths"].items():
-        for method in METHODS:
-            operation = path_item.get(method)
-            if not operation:
-                continue
-
+        for method, operation in iter_operations(path, path_item, EMITTABLE_METHODS):
             tag = (operation.get("tags") or ["Untagged"])[0]
             parsed = parse_operation(path, method, operation, schemas)
             service_name = find_service_for_operation(tag, operation["operationId"])
@@ -1206,10 +1208,9 @@ def person_id_sites(spec: dict) -> dict[str, list[tuple[str, ...]]]:
             walk(additional, (*path, "{}"), stack, found)
 
     table: dict[str, list[tuple[str, ...]]] = {}
-    for path_item in spec.get("paths", {}).values():
-        for method in METHODS:
-            op = path_item.get(method)
-            if not isinstance(op, dict) or "operationId" not in op:
+    for path, path_item in spec.get("paths", {}).items():
+        for _method, op in iter_operations(path, path_item, EMITTABLE_METHODS):
+            if "operationId" not in op:
                 continue
             found: set[tuple[str, ...]] = set()
             for code, response in op.get("responses", {}).items():
