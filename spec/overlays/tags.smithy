@@ -333,8 +333,17 @@ apply CreateStreamTicket @tags(["EventFeed"])
 // ListEvents is the same domain: GET /{accountId}/recordings/{recordingId}/
 // events.json is a recording's own change history — the timeline of the very
 // lifecycle transitions above — so it belongs with them rather than in the
-// Automation catch-all. It keeps its own Events service in every generator's
-// split table, now reached through the Recordings tag.
+// Automation catch-all. Unlike the six above it keeps a service of its own,
+// Events, and the two kinds of generator reach that service differently. The
+// five tag-keyed ones (ruby, python, typescript, swift, kotlin) look an
+// operation up in SERVICE_SPLITS under its tag, so their 'Events' entry moved
+// from the Automation key to a Recordings one; leaving it under Automation
+// would make it unreachable and fold ListEvents into RecordingsService.
+// Rust resolves names.toml's [operation_services] by operationId BEFORE
+// consulting the tag, so its ListEvents = "Events" row is unchanged and stays
+// load-bearing: the service it names differs from the tag both before and
+// after this retag, which is the opposite of the six rows #928 removed for
+// merely restating theirs.
 //
 // The URL prefix is not the argument and must not be read as one: sub-resources
 // under /recordings/ are tagged by what they are, so the same prefix carries
