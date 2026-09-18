@@ -44,6 +44,13 @@ OPENAPI_FILE = ENV.fetch("REQUIRED_TAGS_OPENAPI", File.join(PROJECT_ROOT, "opena
 # operation. The list has to be complete or an operation on an unlisted verb
 # slips past a gate whose whole claim is "every operation"; it matches
 # scripts/check-projected-examples.rb.
+#
+# The six per-language generators still iterate only get/post/put/patch/delete,
+# so an operation on one of the other three verbs would be dropped from the
+# generated services entirely, not merely untagged. The Smithy model has no such
+# operation today (GET/POST/PUT/DELETE only), and widening those tables is a
+# cross-SDK regeneration, not this gate's job — but this check will name the
+# operation, which is how that day gets noticed.
 HTTP_METHODS = %w[get put post delete options head patch trace].freeze
 
 # operationIds permitted to carry no tag. Keep empty; see the header note.
