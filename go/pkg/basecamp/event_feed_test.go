@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1281,6 +1282,50 @@ func TestEventFeedService_RefusesASubstitutedNameUnderTheOtherLanesDetailsPath(t
 				_, err = svc.PollEvents(context.Background(), nil)
 			}
 			assertMalformedFeedResponse(t, err)
+		})
+	}
+}
+
+// The split that lets a non-decoding page be one verdict rests on
+// markBodyReadFailures: io.ReadAll runs INSIDE the generated parse (#773), so
+// a body that never finished ARRIVING reaches feedDecodeError by the same
+// path as one that failed to decode. Only the marker tells them apart, and
+// the two are opposite verdicts — a truncated read is a transport failure the
+// connector retries, while a malformed body is the statusless refusal that
+// terminates it. Untested, an omitted marker would quietly turn every
+// transient read into a terminal poll failure.
+//
+// Both lanes wire the marker separately, so both are pinned.
+func TestEventFeedService_ATruncatedReadStaysTheTransportsError(t *testing.T) {
+	const truncatedPage = "HTTP/1.1 200 OK\r\n" +
+		"Content-Type: application/json\r\n" +
+		"Content-Length: 4096\r\n" +
+		"\r\n" +
+		`{"events":[],"position":"po`
+
+	for _, lane := range []string{"events", "items"} {
+		t.Run(lane, func(t *testing.T) {
+			srv, _ := brokenBodyServer(t, truncatedPage)
+			cfg := DefaultConfig()
+			cfg.BaseURL = srv.URL
+			svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").EventFeed()
+
+			var err error
+			if lane == "items" {
+				_, err = svc.PollInbox(context.Background(), nil)
+			} else {
+				_, err = svc.PollEvents(context.Background(), nil)
+			}
+			if err == nil {
+				t.Fatal("expected the truncated read to fail the call")
+			}
+			if apiErr, ok := errors.AsType[*Error](err); ok {
+				t.Fatalf("a body that never finished arriving must reach the caller as the transport's error, not a %q *Error (retryable=%v): %v",
+					apiErr.Code, apiErr.Retryable, err)
+			}
+			if !errors.Is(err, io.ErrUnexpectedEOF) {
+				t.Fatalf("expected io.ErrUnexpectedEOF to survive, got %T: %v", err, err)
+			}
 		})
 	}
 }
