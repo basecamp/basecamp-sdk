@@ -3493,7 +3493,10 @@ computed from — while the page's position commits over it. The walk's one stop
 FeedEvent's `details`: its bytes are carried verbatim and never decoded into strings, so nothing
 inside it is substituted, and refusing an escape there would contradict the byte-identical
 carriage the push lane depends on. Structural member names are validated; opaque `details`
-contents are not. The walk is one linear token pass over the body: decoding each nested value
+contents are not. The exemption is by member PATH, not by name — `events[*].details` and
+`items[*].event.details`, the two places the shape declares one — so a member that merely
+happens to be named `details` carries no raw bytes the SDK reads and is walked like any other
+subtree. The walk is one linear token pass over the body: decoding each nested value
 from its raw bytes re-reads every suffix, which is quadratic in nesting depth and costs seconds
 on a body of a few tens of kilobytes — a cost a continuous poller cannot carry. The boundary belongs to the shape that declares a verbatim member, not to the
 name: the error bodies declare none, so they are walked whole — a body carrying a member that

@@ -1134,23 +1134,68 @@ func TestEventFeedService_KeepsABodyWhoseVALUESRepeatOrCarryASubstitution(t *tes
 	}
 }
 
-// An additive `details` on a shape that does not declare one keeps its
-// exemption, and that is the documented residue of naming the boundary rather
-// than tracking the path: the exemption is by member name within a page, so a
-// `details` nothing reads is skipped too. Skipping the interior of a member
-// no code reads cannot change the reading of the body, which is what the walk
-// is for.
-func TestEventFeedService_KeepsAnAdditiveDetailsOnAShapeThatDeclaresNone(t *testing.T) {
-	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-07-14T06:10:00Z","details":{"bad\ud800key":1},"event":{"id":1,"kind":"message_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"message.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":9}}],"position":"posAAA"}`))
-	})
-	page, err := svc.PollInbox(context.Background(), nil)
-	if err != nil {
-		t.Fatalf("an additive member nothing reads must not refuse the page: %v", err)
+// The exemption is by PATH, not by name: `details` is skipped at the two
+// places a FeedEvent lives and nowhere else. An additive member that happens
+// to be named `details` carries no raw bytes the SDK reads, so nothing
+// exempts it from the walk.
+func TestEventFeedService_RefusesASubstitutedNameUnderADetailsNothingDeclares(t *testing.T) {
+	cases := map[string]string{
+		"nested under an additive member": `{"events":[],"position":"posAAA","metadata":{"details":{"bad\ud800key":1}}}`,
+		"at the envelope's top level":     `{"events":[],"position":"posAAA","details":{"bad\ud800key":1}}`,
+		"on an inbox item":                `{"items":[{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-07-14T06:10:00Z","details":{"bad\ud800key":1},"event":{"id":1,"kind":"message_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"message.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":9}}],"position":"posAAA"}`,
 	}
-	if len(page.Items) != 1 || page.Items[0].AddressingID != 991 {
-		t.Fatalf("expected the item, got %+v", page)
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(body))
+			})
+			var err error
+			if strings.Contains(body, `"items"`) {
+				_, err = svc.PollInbox(context.Background(), nil)
+			} else {
+				_, err = svc.PollEvents(context.Background(), nil)
+			}
+			assertMalformedFeedResponse(t, err)
+		})
+	}
+}
+
+// And the two paths that DO declare one keep their exemption, on both lanes:
+// those bytes are carried verbatim, so judging their names would contradict
+// the carriage the push lane depends on.
+func TestEventFeedService_KeepsASubstitutedNameInTheDetailsTheShapeDeclares(t *testing.T) {
+	cases := map[string]struct {
+		inbox bool
+		body  string
+	}{
+		"a feed row":            {false, `{"events":[{"id":1,"kind":"boost_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"boost.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":9,"details":{"boost_i\ud800d":501}}],"position":"posAAA"}`},
+		"an inbox item's event": {true, `{"items":[{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-07-14T06:10:00Z","event":{"id":1,"kind":"boost_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"boost.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":9,"details":{"boost_i\ud800d":501}}}],"position":"posAAA"}`},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tc.body))
+			})
+			if tc.inbox {
+				page, err := svc.PollInbox(context.Background(), nil)
+				if err != nil {
+					t.Fatalf("the declared details is carried verbatim, not walked: %v", err)
+				}
+				if len(page.Items) != 1 || len(page.Items[0].Event.Details) == 0 {
+					t.Fatalf("expected the item with its details, got %+v", page)
+				}
+				return
+			}
+			page, err := svc.PollEvents(context.Background(), nil)
+			if err != nil {
+				t.Fatalf("the declared details is carried verbatim, not walked: %v", err)
+			}
+			if len(page.Events) != 1 || len(page.Events[0].Details) == 0 {
+				t.Fatalf("expected the row with its details, got %+v", page)
+			}
+		})
 	}
 }
 

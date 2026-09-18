@@ -706,7 +706,10 @@ func factsOfError(base *Error) feedResponseFacts {
 // FeedEvent's `details`, whose bytes are carried verbatim and never decoded
 // into strings, so nothing in there is substituted and judging it would
 // contradict that carriage. Only a poll page can carry one; the error bodies
-// declare no verbatim member and are walked whole.
+// declare no verbatim member and are walked whole. Within a page the
+// exemption is by PATH rather than by name (declaresRawDetails), so a member
+// that merely happens to be named `details` — an additive one on an inbox
+// item, say — is walked like any other subtree.
 func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	// Numbers are never inspected here, and json.Number keeps them as their
@@ -717,12 +720,28 @@ func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
 	// in the same stream with nothing to tell them apart, so the frame
 	// carries the alternation: inside an object, a scalar is a name exactly
 	// when a name is what comes next.
-	type frame struct {
-		object    bool
-		expectKey bool
-		seen      map[string]struct{}
+	//
+	// path is the member path of the frame's own container, with array
+	// indices elided, which is what makes the details exemption exact rather
+	// than name-shaped: a member named details is exempt at the two paths the
+	// contract declares one and nowhere else, so an additive
+	// `metadata.details` is walked like any other subtree.
+	var stack []feedWalkFrame
+	push := func(object bool, name string) {
+		f := feedWalkFrame{object: object, expectKey: object, name: name}
+		if n := len(stack) - 1; n >= 0 {
+			f.path = stack[n].path
+			if stack[n].object {
+				// A container held under a member name extends the path;
+				// an array's elements inherit the array's own path.
+				f.path = append(append(make([]string, 0, len(f.path)+1), f.path...), name)
+			}
+		}
+		if object {
+			f.seen = map[string]struct{}{}
+		}
+		stack = append(stack, f)
 	}
-	var stack []frame
 	for {
 		tok, err := dec.Token()
 		if err != nil {
@@ -734,9 +753,9 @@ func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
 		if delim, ok := tok.(json.Delim); ok {
 			switch delim {
 			case '{':
-				stack = append(stack, frame{object: true, expectKey: true, seen: map[string]struct{}{}})
+				push(true, pendingName(stack))
 			case '[':
-				stack = append(stack, frame{})
+				push(false, pendingName(stack))
 			default:
 				stack = stack[:top]
 				if top--; top >= 0 && stack[top].object {
@@ -759,6 +778,7 @@ func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
 			continue
 		}
 		stack[top].expectKey = false
+		stack[top].name = name
 		if _, repeated := stack[top].seen[name]; repeated {
 			return false
 		}
@@ -766,13 +786,49 @@ func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
 		if !survivedDecoding(name) {
 			return false
 		}
-		if carriesRawDetails && name == "details" {
+		if carriesRawDetails && name == detailsMember && declaresRawDetails(stack[top].path) {
 			if skipValue(dec) != nil {
 				return true
 			}
 			stack[top].expectKey = true
 		}
 	}
+}
+
+// feedWalkFrame is one open object or array in feedBodyWellFormed's walk.
+type feedWalkFrame struct {
+	object    bool
+	expectKey bool
+	name      string
+	path      []string
+	seen      map[string]struct{}
+}
+
+// pendingName is the member name the container about to be pushed is held
+// under, or "" for an array's element and for the document's own root.
+func pendingName(stack []feedWalkFrame) string {
+	if n := len(stack) - 1; n >= 0 && stack[n].object {
+		return stack[n].name
+	}
+	return ""
+}
+
+// detailsMember is the one member a poll page carries as raw bytes.
+const detailsMember = "details"
+
+// declaresRawDetails reports the two member paths where a FeedEvent lives in
+// a poll page, array indices elided: the feed's rows, and the event nested in
+// an inbox item. A `details` anywhere else is an additive member like any
+// other — the SDK reads no raw bytes out of it, so nothing exempts it from
+// the walk.
+func declaresRawDetails(path []string) bool {
+	switch len(path) {
+	case 1:
+		return path[0] == "events"
+	case 2:
+		return path[0] == "items" && path[1] == "event"
+	}
+	return false
 }
 
 // skipValue consumes exactly one value from the token stream, whatever its
