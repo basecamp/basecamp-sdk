@@ -1,6 +1,7 @@
 package basecamp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -474,39 +475,49 @@ func checkFeedResponse(resp *http.Response, body []byte, lane feedLaneKind) erro
 	if !ok {
 		return err
 	}
+	// Both typed arms below read their members off a raw member map rather
+	// than the generated struct, because a typed decode conflates two
+	// different bodies: one member of the wrong JSON type fails the whole
+	// Unmarshal, and the arm then falls through to the canonical error the
+	// refusal was meant to displace. {"reason": 42} would reach the message
+	// classifier by that door with the enum check right above it.
+	fields, isObject := feedErrorFields(body)
 	switch resp.StatusCode {
 	case http.StatusBadRequest:
-		var request generated.FeedRequestErrorResponseContent
-		if json.Unmarshal(body, &request) == nil && request.Error != "" {
+		if isObject {
 			// Absent and unrecognized are two different states and only one
 			// of them is the undifferentiated 400. A server predating bc3
 			// #13362 sends no reason at all, and the consumer's message
 			// classifier is documented for that case alone; a present value
 			// the contract does not name would arrive at that classifier
 			// looking exactly like it, and "Unrecognized position" then
-			// buys a position reset off a reason nobody defined.
-			switch {
-			case request.Reason == nil:
+			// buys a position reset off a reason nobody defined. An explicit
+			// null IS the absent case — the member is optional, and the same
+			// reading as the 410's nulled epoch below.
+			if reason, present := fields["reason"]; present && !isJSONNull(reason) {
+				named := stringFromRaw(reason)
+				if named != FeedReasonInvalidPosition && named != FeedReasonInvalidFilter {
+					return malformedFeedResponse("a 400 whose reason is not one this contract names", base)
+				}
+				return &FeedRequestError{Err: base, Reason: named}
+			}
+			if stringFromRaw(fields["error"]) != "" {
 				return &FeedRequestError{Err: base}
-			case *request.Reason == FeedReasonInvalidPosition || *request.Reason == FeedReasonInvalidFilter:
-				return &FeedRequestError{Err: base, Reason: *request.Reason}
-			default:
-				return malformedFeedResponse("a 400 whose reason is not one this contract names", base)
 			}
 		}
 	case http.StatusConflict:
-		var mismatch generated.FeedFilterMismatchErrorResponseContent
-		if json.Unmarshal(body, &mismatch) == nil {
+		if isObject {
 			// Both digests are @required and both are the bare srv2 form.
 			// The status is the conflict verdict; the digests are what a
 			// consumer reports, compares and keys its checkpoint lineage on,
 			// and acting on the verdict means discarding a held position. A
 			// 409 that cannot supply them is not the documented conflict, so
 			// it must not be the value that triggers that recovery.
-			if !isFeedDigest(mismatch.PositionDigest) || !isFeedDigest(mismatch.FiltersDigest) {
+			position, filters := stringFromRaw(fields["position_digest"]), stringFromRaw(fields["filters_digest"])
+			if !isFeedDigest(position) || !isFeedDigest(filters) {
 				return malformedFeedResponse("a 409 whose filter digests are missing or not the published srv2 form", base)
 			}
-			return &FeedFilterMismatchError{Err: base, PositionDigest: mismatch.PositionDigest, FiltersDigest: mismatch.FiltersDigest}
+			return &FeedFilterMismatchError{Err: base, PositionDigest: position, FiltersDigest: filters}
 		}
 	case http.StatusGone:
 		if lane == inboxLane {
@@ -534,6 +545,24 @@ func checkFeedResponse(resp *http.Response, body []byte, lane feedLaneKind) erro
 		}
 	}
 	return err
+}
+
+// feedErrorFields decodes a feed error body into its raw members, reporting
+// whether the body was a JSON object at all. Raw because the members are read
+// one at a time: a wrong-typed member is then a fact about that member, not a
+// decode failure that discards its siblings and the verdict with them.
+func feedErrorFields(body []byte) (map[string]json.RawMessage, bool) {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil {
+		return nil, false
+	}
+	return fields, true
+}
+
+// isJSONNull reports the explicit null literal, which for an optional member
+// is the absent case rather than a value.
+func isJSONNull(raw json.RawMessage) bool {
+	return bytes.Equal(bytes.TrimSpace(raw), []byte("null"))
 }
 
 // feedDigestLength is the width of the bare srv2 filter digest BC3 publishes

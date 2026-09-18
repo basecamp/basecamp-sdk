@@ -3464,7 +3464,16 @@ own family stays under `conformance/event-feed/`.
 **Decode validation.** A wrapper that types these bodies holds them to the shape above at
 the decode, before the typed value reaches any caller (#915): a 409's `position_digest` and
 `filters_digest` must BOTH be the bare 16-lowercase-hex srv2 form, and a 400's `reason` must
-be absent or one of the two values named here. A body that is not decodes as the SDK's
+be absent or one of the two values named here. Members are read one at a time rather than
+through a whole-body typed decode, which conflates two different bodies: one member of the
+wrong JSON type fails such a decode outright, and the body then falls through to the very
+canonical error the refusal displaces — `{"reason": 42}` reaching the message classifier with
+the enum check sitting right above it. An explicit `null` reason is the ABSENT case, as a
+nulled `epoch_after_id` is on the 410: the member is optional, and a server saying it has no
+reason is the undifferentiated 400, not a malformed one. A body that is not a JSON object at
+all is not one of these shapes to judge and keeps its canonical status — a 500 behind an HTML
+error page stays a retryable 500. A body that claims one of these shapes and does not carry
+it decodes as the SDK's
 malformed-response error — `api_error`, non-retryable, and **statusless**, the shape §6
 gives every malformed body — never as the typed recovery value. These members are not
 decoration: the digests are what a consumer discards a held position on and keys its

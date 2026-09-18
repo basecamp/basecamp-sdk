@@ -476,6 +476,12 @@ func TestEventFeedService_PollEvents_ConflictWithoutTwoSrv2DigestsIsNotAFilterCh
 		{"a missing digest", `{"error":"conflict","position_digest":"38b223c13c89dc89"}`},
 		{"a null digest", `{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":null}`},
 		{"no digests at all", `{"error":"conflict"}`},
+		// A member of the wrong JSON type fails a typed decode outright. Read
+		// one member at a time, that is a fact about the member; read as a
+		// struct, it discards the verdict with the body and falls back to the
+		// canonical error this refusal exists to displace.
+		{"a wrong-typed digest", `{"error":"conflict","position_digest":42,"filters_digest":"44136fa355b3678a"}`},
+		{"a digest that is an object", `{"error":"conflict","position_digest":{"hex":"38b223c13c89dc89"},"filters_digest":"44136fa355b3678a"}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -505,6 +511,12 @@ func TestEventFeedService_PollEvents_BadRequestWithAnUnnamedReasonIsNotARequestE
 		{"a reason the contract does not name", `{"error":"Unrecognized position. Resume with since=<id>.","reason":"invalid_something"}`},
 		{"a present but empty reason", `{"error":"Unrecognized position. Resume with since=<id>.","reason":""}`},
 		{"a reason in the wrong case", `{"error":"Unrecognized position. Resume with since=<id>.","reason":"INVALID_POSITION"}`},
+		// The wrong-typed shapes are the ones that reach the classifier by
+		// the back door: a typed decode fails on them whole, and the body
+		// then arrives as the canonical 400 with the server's own
+		// "Unrecognized position" message intact.
+		{"a numeric reason", `{"error":"Unrecognized position. Resume with since=<id>.","reason":42}`},
+		{"a reason that is an array", `{"error":"Unrecognized position. Resume with since=<id>.","reason":["invalid_position"]}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -662,4 +674,50 @@ func TestEventFeedService_PollInbox_RefusesAResumeThatDidNotSurviveDecoding(t *t
 		t.Fatalf("the inbox's 410 shares the feed's decode, got %+v", gone)
 	}
 	assertMalformedFeedResponse(t, err)
+}
+
+// A null reason is the ABSENT case, not a present value the contract does not
+// name: the member is optional, and this is the same reading the feed's 410
+// gives a nulled epoch. Undifferentiated is the documented answer for it, so
+// the message fallback stays available — refusing it would turn a server's
+// explicit "I have no reason" into a malformed response.
+func TestEventFeedService_PollEvents_ANullReasonIsTheUndifferentiated400(t *testing.T) {
+	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+		_, _ = w.Write([]byte(`{"error":"Unrecognized position. Resume with since=<id> or since=now.","reason":null}`))
+	})
+	_, err := svc.PollEvents(context.Background(), &PollEventsOptions{Position: "garbage"})
+	var request *FeedRequestError
+	if !errors.As(err, &request) {
+		t.Fatalf("expected *FeedRequestError, got %T: %v", err, err)
+	}
+	if request.Reason != "" {
+		t.Errorf("a null reason must read as absent, got %q", request.Reason)
+	}
+	var base *Error
+	if !errors.As(err, &base) || base.HTTPStatus != 400 || base.Code != CodeValidation {
+		t.Errorf("expected validation/400 underneath, got %+v", base)
+	}
+}
+
+// A body that is not a JSON object at all — an error page from something in
+// front of the API — is not a feed error body to judge. It keeps the canonical
+// status: the refusals above are about a body that CLAIMS one of these shapes
+// and does not carry it, and a 500 whose body is HTML must stay a retryable
+// 500 rather than becoming a malformed feed response.
+func TestEventFeedService_PollEvents_ANonObjectBodyStaysCanonical(t *testing.T) {
+	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(409)
+		_, _ = w.Write([]byte(`<html><body>Conflict</body></html>`))
+	})
+	_, err := svc.PollEvents(context.Background(), &PollEventsOptions{Position: "posAAA"})
+	var mismatch *FeedFilterMismatchError
+	if errors.As(err, &mismatch) {
+		t.Fatalf("an unparsable body must not be typed, got %+v", mismatch)
+	}
+	var base *Error
+	if !errors.As(err, &base) || base.HTTPStatus != 409 || base.Code != CodeAPI {
+		t.Fatalf("expected the canonical 409 *Error, got %+v", base)
+	}
 }

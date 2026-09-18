@@ -1289,6 +1289,11 @@ func TestMalformedConflictNeverReachesTheReset(t *testing.T) {
 		{"a 409 whose digests are not the published srv2 form", 409, `{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":"x"}`},
 		{"a 400 whose reason the contract does not name", 400, `{"error":"Unrecognized position. Resume with since=<id>.","reason":"invalid_something"}`},
 		{"a page whose position did not survive decoding", 200, `{"events":[],"position":"pos\ud800AAA"}`},
+		// The wrong-typed member is the same defect through a different
+		// door: a typed decode fails on it whole, and the body then arrives
+		// as the canonical 400 carrying the server's own "Unrecognized
+		// position" — which IS the classifier's trigger.
+		{"a 400 whose reason is not even a string", 400, `{"error":"Unrecognized position. Resume with since=<id>.","reason":42}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
