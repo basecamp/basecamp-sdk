@@ -47,8 +47,11 @@ class ServiceGenerator
 
   EMITTABLE_METHODS = begin
     verbs = JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8'))['verbs']
-    unless verbs.is_a?(Array) && !verbs.empty? && verbs.all? { |v| v.is_a?(String) && !v.empty? }
-      abort "Error: #{GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of strings."
+    # Non-BLANK, not merely non-empty, and the same rule in all six loaders: a
+    # declaration one generator accepts and another refuses is the cross-SDK
+    # divergence a shared file exists to prevent.
+    unless verbs.is_a?(Array) && !verbs.empty? && verbs.all? { |v| v.is_a?(String) && !v.strip.empty? }
+      abort "Error: #{GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of non-blank strings."
     end
     verbs.freeze
   rescue Errno::ENOENT, JSON::ParserError => e

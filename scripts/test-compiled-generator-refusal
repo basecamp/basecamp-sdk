@@ -17,7 +17,8 @@
 # pointed at is UNTOUCHED. The last is the one with teeth: a generator that
 # clears its output directory before validating turns a refusal into data loss,
 # which the Kotlin generator did until this test was written — and an empty
-# output directory cannot show it, so the directory is seeded first.
+# output directory cannot show it, so the directory is seeded first, and the
+# seeds are compared by CONTENT so an overwrite is caught alongside a delete.
 #
 # Usage: ./test-compiled-generator-refusal <typescript|kotlin|swift|rust>
 #
@@ -75,6 +76,12 @@ SENTINELS=(
 for sentinel in "${SENTINELS[@]}"; do
   echo "committed generated output; a refusal must not destroy this" > "$sentinel"
 done
+# Hashed, not merely listed. A generator that OVERWRITES one of these — a
+# refusal that rewrites Metadata.kt or mod.rs before bailing out — leaves the
+# file present, so an existence check would call the tree untouched while its
+# contents had already been replaced.
+SENTINEL_DIGESTS="$TMP/sentinels.sha"
+shasum "${SENTINELS[@]}" > "$SENTINEL_DIGESTS"
 
 case "$LANGUAGE" in
   typescript)
@@ -131,14 +138,13 @@ if ! grep -qi "head" "$LOG" || ! grep -q "$OPERATION" "$LOG"; then
   failures=1
 fi
 
-for sentinel in "${SENTINELS[@]}"; do
-  if [[ ! -f "$sentinel" ]]; then
-    echo "FAIL [$LANGUAGE]: the refusal DESTROYED committed output ($sentinel)." >&2
-    echo "  Validate the whole spec before clearing or writing the output tree, so a refusal" >&2
-    echo "  leaves the committed generated code exactly as it found it." >&2
-    failures=1
-  fi
-done
+if ! shasum --check --status "$SENTINEL_DIGESTS"; then
+  echo "FAIL [$LANGUAGE]: the refusal DESTROYED or REWROTE committed output:" >&2
+  shasum --check "$SENTINEL_DIGESTS" 2>&1 | grep -v ': OK$' | sed 's/^/    /' >&2
+  echo "  Validate the whole spec before clearing or writing the output tree, so a refusal" >&2
+  echo "  leaves the committed generated code exactly as it found it." >&2
+  failures=1
+fi
 
 written="$(find "$OUT" -type f ! -name 'Sentinel.*' ! -name 'sentinel.*' \
   ! -name 'Metadata.kt' ! -name 'ServiceAccessors.kt' ! -name 'mod.rs' | head -5)"

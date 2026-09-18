@@ -34,8 +34,15 @@ class MetadataExtractor
   )
 
   METHOD_ORDER = begin
-    JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8')).fetch('verbs').freeze
-  rescue Errno::ENOENT, JSON::ParserError, KeyError => e
+    verbs = JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8'))['verbs']
+    # Same rule as the other five loaders even though this file only orders by
+    # it: a declaration read differently by one generator is the divergence a
+    # shared file exists to prevent.
+    unless verbs.is_a?(Array) && !verbs.empty? && verbs.all? { |v| v.is_a?(String) && !v.strip.empty? }
+      abort "Error: #{GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of non-blank strings."
+    end
+    verbs.freeze
+  rescue Errno::ENOENT, JSON::ParserError => e
     abort "Error: cannot read the generated-verb declaration #{GENERATED_VERBS_FILE}: #{e.message}"
   end
 

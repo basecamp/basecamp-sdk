@@ -69,9 +69,17 @@ def generated_verbs() -> tuple[str, ...]:
             f"Error: cannot read the generated-verb declaration {GENERATED_VERBS_FILE}: {error}"
         ) from error
     verbs = declaration.get("verbs")
-    if not isinstance(verbs, list) or not verbs or not all(isinstance(v, str) and v for v in verbs):
+    # Non-BLANK, not merely non-empty, and the same rule in all six loaders: a
+    # declaration one generator accepts and another refuses is the cross-SDK
+    # divergence a shared file exists to prevent.
+    if (
+        not isinstance(verbs, list)
+        or not verbs
+        or not all(isinstance(v, str) and v.strip() for v in verbs)
+    ):
         raise SystemExit(
-            f"Error: {GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of strings."
+            f"Error: {GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of "
+            "non-blank strings."
         )
     return tuple(verbs)
 

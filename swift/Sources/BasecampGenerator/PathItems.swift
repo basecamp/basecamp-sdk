@@ -29,9 +29,12 @@ func loadGeneratedVerbs(path: String) -> [String] {
         let declaration = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
         let verbs = declaration["verbs"] as? [String],
         !verbs.isEmpty,
-        verbs.allSatisfy({ !$0.isEmpty })
+        // Non-BLANK, not merely non-empty, and the same rule in all six loaders:
+        // a declaration one generator accepts and another refuses is the
+        // cross-SDK divergence a shared file exists to prevent.
+        verbs.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
     else {
-        failGeneration("Error: \(path) must declare a non-empty `verbs` array of strings.")
+        failGeneration("Error: \(path) must declare a non-empty `verbs` array of non-blank strings.")
     }
     return verbs
 }
