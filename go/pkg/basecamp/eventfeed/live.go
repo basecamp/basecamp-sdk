@@ -709,14 +709,11 @@ func mapPollError(ctx context.Context, err error, hop *refusedHop, lane Lane) er
 	}
 	var mismatch *basecamp.FeedFilterMismatchError
 	if errors.As(err, &mismatch) {
-		if !isServerDigest(mismatch.PositionDigest) || !isServerDigest(mismatch.FiltersDigest) {
-			// The conflict verdict is the status; the digests are what the
-			// connector reports and compares. A 409 whose digests are
-			// missing or not bare 16-hex is not the documented conflict but
-			// a malformed response. (Holding the shape at the wrapper's
-			// decode, for every consumer, is tracked in #915.)
-			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the 409's digests are missing or malformed")}
-		}
+		// The digests arrive already held to the bare 16-hex srv2 form: the
+		// wrapper's decode refuses a 409 that cannot supply two of them
+		// (#915), so this value is the documented conflict or it does not
+		// exist. Nothing to re-check here — a second check would be a copy
+		// of the contract, drifting from the one that enforces it.
 		return &PollError{Kind: PollFilterChanged, PositionDigest: mismatch.PositionDigest, FiltersDigest: mismatch.FiltersDigest, Err: err}
 	}
 	// The two lanes' 410s are two generated types on purpose (the feed's
@@ -748,18 +745,16 @@ func mapPollError(ctx context.Context, err error, hop *refusedHop, lane Lane) er
 		// The 400's reason keys the recover-versus-stop split. A server
 		// that sent none (it predates bc3 #13362) leaves the message as its
 		// only signal, and that is the fallback below — never a guess
-		// between the two on any other basis.
+		// between the two on any other basis. Empty here means absent and
+		// nothing else: the wrapper's decode refuses a 400 carrying a
+		// reason the contract does not name (#915), and refuses it
+		// STATUSLESS, so it cannot reach that fallback by the status arm
+		// below either.
 		switch request.Reason {
 		case basecamp.FeedReasonInvalidPosition:
 			return &PollError{Kind: PollPositionInvalid, Msg: request.Err.Message, Err: err}
 		case basecamp.FeedReasonInvalidFilter:
 			return &PollError{Kind: PollFilterInvalid, Msg: request.Err.Message, Err: err}
-		case "":
-			// Falls through to the message fallback below.
-		default:
-			// A reason the contract does not name: the 400 is surfaced
-			// as undifferentiated, never guessed from its message.
-			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the 400 carries a reason the contract does not name")}
 		}
 	}
 	if !errors.As(err, &apiErr) {
@@ -854,20 +849,6 @@ func sameSet[T comparable](a, b []T) bool {
 	}
 	for v := range as {
 		if _, ok := bs[v]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-// isServerDigest reports a bare srv2 digest: exactly 16 lowercase hex.
-func isServerDigest(s string) bool {
-	if len(s) != 16 {
-		return false
-	}
-	for _, r := range s {
-		digit, hex := r >= '0' && r <= '9', r >= 'a' && r <= 'f'
-		if !digit && !hex {
 			return false
 		}
 	}

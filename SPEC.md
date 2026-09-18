@@ -3461,6 +3461,46 @@ fetches one page and leaves the walk to the caller, so its runner stays green; t
 route-table test (`guarantees.rs`) is what pins these two lanes to the cursor style there. The connector's
 own family stays under `conformance/event-feed/`.
 
+**Decode validation.** A wrapper that types these bodies holds them to the shape above at
+the decode, before the typed value reaches any caller (#915): a 409's `position_digest` and
+`filters_digest` must BOTH be the bare 16-lowercase-hex srv2 form, and a 400's `reason` must
+be absent or one of the two values named here. A body that is not decodes as the SDK's
+malformed-response error — `api_error`, non-retryable, and **statusless**, the shape §6
+gives every malformed body — never as the typed recovery value. These members are not
+decoration: the digests are what a consumer discards a held position on and keys its
+checkpoint lineage by, and `reason` is the recover-versus-stop split, with the message
+classifier documented for an ABSENT reason alone. An unrecognized one left to look absent
+buys a position reset off a reason nobody defined; a nonempty digest that is not a digest
+buys the same reset off a 409 the server did not make. Statuslessness is what keeps the
+refused body out of a consumer's status-keyed fallbacks, so it is part of the contract
+rather than a rendering choice.
+
+The strings a consumer PERSISTS or RE-ISSUES are held to the same standard: a page's
+`position` and `next`, and a 410's `resume`, must reach the caller as the server wrote them,
+and the 200 body must be valid UTF-8 whole. A JSON decoder that substitutes U+FFFD for an
+invalid byte or a lone surrogate escape — Go's does, and it is not alone — otherwise hands
+back a position the feed cannot resolve (which answers 400 or 410, and provokes the reset
+that loses the walk), a continuation followed somewhere the walk was not, or a re-entry
+whose preserved filters are no longer the ones the position was minted for. U+FFFD in one of
+those members is the fingerprint of that substitution and a shape they can afford to refuse
+on: an opaque signed cursor and an absolute URL are machine-written ASCII. Whole-body
+validity is a separate claim from the members' and is not implied by them — an `event_type`
+the decoder rewrote is one a consumer dispatches on while the page's `position` commits over
+it. The mint's `url` and an event's `details` are out of scope: the URL is held to
+cable-URL policy before it is dialed and the ticket is signed, and `details` is refused by
+the push decoder's own rule, but neither is persisted or re-issued.
+
+The verdict belongs at the decode rather than in a connector adapter because the adapter is
+one consumer of the wrapper and this is a property of the response: an adapter check leaves
+every other consumer — and every other SDK's port — reading the unchecked value, and makes
+the contract two copies that drift. Go is the only SDK that types these bodies today, so it
+is the only one where the rule has anything to enforce; the rule is written here so that
+each remaining SDK inherits it with its typed layer rather than rediscovering it. The
+cross-SDK conformance suite does not pin it for the same reason: those cases assert one
+behavior for all seven runners, and an SDK that hands back the canonical error cannot
+answer differently for a body it never types. Go's own tests carry it
+(`go/pkg/basecamp/event_feed_test.go`), including that the refusal is statusless.
+
 ### Provenance `[manual]`
 
 Everything bc3-derived in this section was drafted against bc3 `8be5c67de5` (pre-merge;

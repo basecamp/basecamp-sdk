@@ -18,6 +18,7 @@ import (
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp/eventfeed"
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp/eventfeed/feedtest"
 )
 
 // The Layer-1 adapters against a real generated client and a loopback API:
@@ -436,6 +437,18 @@ func TestLivePolls_ErrorMatrix(t *testing.T) {
 			func(t *testing.T, pe *eventfeed.PollError) {
 				if pe.Kind != eventfeed.PollUnrecoverable || pe.RetryAfter != 0 {
 					t.Fatalf("pe = %+v, want unrecoverable with no wait", pe)
+				}
+			}},
+		{"a page whose position did not survive decoding is unrecoverable", eventfeed.AccountLane, 200, "", `{"events":[],"position":"pos\ud800AAA"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable {
+					t.Fatalf("kind = %s, want unrecoverable (the cursor is not the one the server issued)", pe.Kind)
+				}
+			}},
+		{"a 410 whose resume did not survive decoding is unrecoverable", eventfeed.AccountLane, 410, "", `{"error":"gone","epoch_after_id":7,"resume":"https://3.basecampapi.com/99999/events.json?since=7&types=message.cr\ud800eated"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable {
+					t.Fatalf("kind = %s, want unrecoverable (the re-entry would carry filters the walk never had)", pe.Kind)
 				}
 			}},
 		{"a 200 that does not decode is unrecoverable", eventfeed.AccountLane, 200, "", `{"events": [`,
@@ -1251,6 +1264,69 @@ func TestNewLiveValidatesAndConnects(t *testing.T) {
 			}
 			if strings.Contains(err.Error(), "s3cret-leak") {
 				t.Fatalf("the construction error renders the base URL: %v", err)
+			}
+		})
+	}
+}
+
+// TestMalformedConflictNeverReachesTheReset runs the three malformed bodies
+// the wrapper now refuses (#915) through the WHOLE connector — real seam, real
+// decode, scripted mint and socket — because refusing at the decode is only
+// half the fix. A decode refusal closes these defects only if the connector
+// routes it somewhere terminal: mapped to a re-entry or a retry it would
+// discard the held position exactly as the unchecked value did, and a unit
+// test that stops at "the decode returned an error" passes either way.
+//
+// What is asserted is the absence of the 409's recovery, not just the
+// presence of a terminal: no FilterConflict, no PositionRejected, and nothing
+// written to the checkpoint store — the held position survives the run.
+func TestMalformedConflictNeverReachesTheReset(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{"a 409 whose digests are not the published srv2 form", 409, `{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":"x"}`},
+		{"a 400 whose reason the contract does not name", 400, `{"error":"Unrecognized position. Resume with since=<id>.","reason":"invalid_something"}`},
+		{"a page whose position did not survive decoding", 200, `{"events":[],"position":"pos\ud800AAA"}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+				jsonResponse(w, tc.status, tc.body)
+			})
+			store := feedtest.NewStore()
+			store.Stored("pos-0")
+			var conflicts, rejected int
+			h := newHarnessOverPolls(t, f.live.Polls(),
+				eventfeed.WithCheckpointStore(store),
+				eventfeed.WithConsumerNamespace("agent"),
+				eventfeed.WithObserver(eventfeed.Observer{
+					PositionRejected: func(eventfeed.PollErrorKind) { rejected++ },
+					FilterConflict:   func(string, string) { conflicts++ },
+				}))
+			h.minter.ScriptTicket(ticket(1))
+			h.start()
+
+			conn := h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			h.join()
+
+			_, terminal, _ := h.snapshot()
+			if terminal == nil || terminal.Reason != eventfeed.ReasonPollFailed {
+				t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonPollFailed)
+			}
+			if conflicts != 0 {
+				t.Errorf("Observer.FilterConflict fired %d times: a malformed body must not be reported as the documented conflict", conflicts)
+			}
+			if rejected != 0 {
+				t.Errorf("Observer.PositionRejected fired %d times: a malformed body must not reset the position", rejected)
+			}
+			if saves := store.Saves(); len(saves) != 0 {
+				t.Errorf("checkpoint saves = %v, want none: the held position survives a malformed response", saves)
+			}
+			if got := f.requests.Load(); got != 1 {
+				t.Errorf("requests = %d, want exactly one: a malformed body is not retried", got)
 			}
 		})
 	}

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
@@ -151,7 +152,8 @@ type PollInboxOptions struct {
 // FeedFilterMismatchError is the feed's 409: the held position was minted for
 // a different filter set than the request presented. Re-enter with Since to
 // acknowledge the filter change. Both digests are the bare srv2 filter digest
-// BC3 publishes.
+// BC3 publishes, and both are held to that shape at the decode: a 409 that
+// does not carry two of them is a malformed response, not this value.
 type FeedFilterMismatchError struct {
 	// Err is the canonical SDK error (code api_error, HTTPStatus 409).
 	Err *Error
@@ -172,7 +174,9 @@ func (e *FeedFilterMismatchError) Unwrap() error { return e.Err }
 // filters; a position reset will not help) — and Reason tells them apart:
 // FeedReasonInvalidPosition or FeedReasonInvalidFilter. Reason is empty when
 // the server predates bc3 #13362; treat that 400 as undifferentiated and
-// surface it rather than guess between recovering and stopping.
+// surface it rather than guess between recovering and stopping. Empty means
+// absent and nothing else: a 400 carrying a reason this contract does not
+// name is a malformed response, not this value with an empty Reason.
 type FeedRequestError struct {
 	// Err is the canonical SDK error (code validation, HTTPStatus 400).
 	Err *Error
@@ -292,6 +296,9 @@ func (s *EventFeedService) PollEvents(ctx context.Context, opts *PollEventsOptio
 		return nil, err
 	}
 	page := eventFeedPageFromGenerated(*resp.JSON200)
+	if err = checkPollBody(resp.Body, page.Position, page.Next); err != nil {
+		return nil, err
+	}
 	return &page, nil
 }
 
@@ -336,6 +343,9 @@ func (s *EventFeedService) PollInbox(ctx context.Context, opts *PollInboxOptions
 		return nil, err
 	}
 	page := inboxPageFromGenerated(*resp.JSON200)
+	if err = checkPollBody(resp.Body, page.Position, page.Next); err != nil {
+		return nil, err
+	}
 	return &page, nil
 }
 
@@ -468,17 +478,43 @@ func checkFeedResponse(resp *http.Response, body []byte, lane feedLaneKind) erro
 	case http.StatusBadRequest:
 		var request generated.FeedRequestErrorResponseContent
 		if json.Unmarshal(body, &request) == nil && request.Error != "" {
-			return &FeedRequestError{Err: base, Reason: deref(request.Reason)}
+			// Absent and unrecognized are two different states and only one
+			// of them is the undifferentiated 400. A server predating bc3
+			// #13362 sends no reason at all, and the consumer's message
+			// classifier is documented for that case alone; a present value
+			// the contract does not name would arrive at that classifier
+			// looking exactly like it, and "Unrecognized position" then
+			// buys a position reset off a reason nobody defined.
+			switch {
+			case request.Reason == nil:
+				return &FeedRequestError{Err: base}
+			case *request.Reason == FeedReasonInvalidPosition || *request.Reason == FeedReasonInvalidFilter:
+				return &FeedRequestError{Err: base, Reason: *request.Reason}
+			default:
+				return malformedFeedResponse("a 400 whose reason is not one this contract names", base)
+			}
 		}
 	case http.StatusConflict:
 		var mismatch generated.FeedFilterMismatchErrorResponseContent
-		if json.Unmarshal(body, &mismatch) == nil && (mismatch.PositionDigest != "" || mismatch.FiltersDigest != "") {
+		if json.Unmarshal(body, &mismatch) == nil {
+			// Both digests are @required and both are the bare srv2 form.
+			// The status is the conflict verdict; the digests are what a
+			// consumer reports, compares and keys its checkpoint lineage on,
+			// and acting on the verdict means discarding a held position. A
+			// 409 that cannot supply them is not the documented conflict, so
+			// it must not be the value that triggers that recovery.
+			if !isFeedDigest(mismatch.PositionDigest) || !isFeedDigest(mismatch.FiltersDigest) {
+				return malformedFeedResponse("a 409 whose filter digests are missing or not the published srv2 form", base)
+			}
 			return &FeedFilterMismatchError{Err: base, PositionDigest: mismatch.PositionDigest, FiltersDigest: mismatch.FiltersDigest}
 		}
 	case http.StatusGone:
 		if lane == inboxLane {
 			var gone generated.InboxPositionGoneErrorResponseContent
 			if json.Unmarshal(body, &gone) == nil && gone.Resume != "" {
+				if !survivedDecoding(gone.Resume) {
+					return malformedFeedResponse("a 410 whose resume URL did not survive decoding", base)
+				}
 				return &InboxPositionGoneError{Err: base, Resume: gone.Resume}
 			}
 			return err
@@ -491,10 +527,102 @@ func checkFeedResponse(resp *http.Response, body []byte, lane feedLaneKind) erro
 			Resume       string `json:"resume"`
 		}
 		if json.Unmarshal(body, &gone) == nil && gone.Resume != "" && gone.EpochAfterID != nil {
+			if !survivedDecoding(gone.Resume) {
+				return malformedFeedResponse("a 410 whose resume URL did not survive decoding", base)
+			}
 			return &FeedPositionGoneError{Err: base, EpochAfterID: *gone.EpochAfterID, Resume: gone.Resume}
 		}
 	}
 	return err
+}
+
+// feedDigestLength is the width of the bare srv2 filter digest BC3 publishes
+// in a 409 (doc/api/sections/event_feed.md, "Filter digests"). Bare: the
+// `srv2-` prefix is the SDK's own checkpoint-lineage namespace and never
+// appears on the wire.
+const feedDigestLength = 16
+
+// isFeedDigest reports a bare srv2 filter digest: exactly 16 lowercase hex.
+func isFeedDigest(s string) bool {
+	if len(s) != feedDigestLength {
+		return false
+	}
+	for _, r := range s {
+		digit, hex := r >= '0' && r <= '9', r >= 'a' && r <= 'f'
+		if !digit && !hex {
+			return false
+		}
+	}
+	return true
+}
+
+// malformedFeedResponse renders a poll lane's unusable body in the SPEC §6
+// shape every other malformed-response guard uses (fieldsFromTodolist,
+// documentDecodeError): api_error, non-retryable, and STATUSLESS.
+//
+// Statuslessness is the load-bearing part, not a formality. A status is the
+// server's verdict on the request, and these bodies are how the verdict is
+// acted on — the 409's digests discard a held position, the 400's reason
+// keys recover-versus-stop. A body that does not carry the shape its verdict
+// is documented to carry answers neither question, and leaving the status on
+// would hand it straight to the fallbacks that key off one: a 400 kept at 400
+// still reaches a consumer's message classifier, which is the exact path a
+// reason nobody defined must not reach. The canonical error rides as Cause so
+// the exchange is still legible to anyone debugging it.
+//
+// what names the member, never its value: these bodies are server-written
+// text and SPEC §23 keeps such text out of every rendering.
+func malformedFeedResponse(what string, cause error) error {
+	return &Error{
+		Code:    CodeAPI,
+		Message: "the event feed answered " + what,
+		Hint: "A malformed response is not a recovery signal. Re-entering the feed, or discarding a held " +
+			"position, on a body the server did not make would lose events; report it rather than recover from it.",
+		Retryable: false,
+		Cause:     cause,
+	}
+}
+
+// survivedDecoding reports a server-supplied string that reached us as the
+// server wrote it.
+//
+// Go's JSON decoder fails on neither a body that is not valid UTF-8 nor a
+// lone surrogate escape: it substitutes U+FFFD and hands back a string
+// nobody sent. U+FFFD is therefore the fingerprint of the substitution, and
+// it is a fingerprint these members can afford to refuse on — an opaque
+// signed cursor and an absolute URL are machine-written ASCII, so a literal
+// replacement character in one is already the malformed case.
+//
+// The values held to this are the ones the SDK hands back for a consumer to
+// PERSIST or RE-ISSUE: the page's position and continuation, and a 410's
+// resume URL. Each one substituted is a durable wrong turn — a saved
+// position the feed cannot resolve (which answers 400 or 410, and provokes
+// the reset that loses the walk), a continuation followed somewhere the walk
+// was not, a re-entry whose preserved filters are no longer the ones the
+// walk was minted for. The mint's URL and an event's details are not held to
+// it: the URL is checked against cable-URL policy before it is dialed and
+// the ticket is signed, and details are refused by the push decoder's own
+// rule, but neither is persisted or re-issued.
+func survivedDecoding(s string) bool {
+	return !strings.ContainsRune(s, utf8.RuneError)
+}
+
+// checkPollBody refuses a poll page the decode did not carry through whole.
+//
+// Two halves, and neither subsumes the other. Raw invalid bytes are visible
+// only in the body, before the decode substitutes for them, and they matter
+// beyond the cursors: an event_type the decoder rewrote is one a consumer
+// dispatches on while the page's position commits over it. An escaped lone
+// surrogate is the other direction — well-formed ASCII on the wire that no
+// byte scan can see, and only the decoded value shows.
+func checkPollBody(body []byte, position, next string) error {
+	if !utf8.Valid(body) {
+		return malformedFeedResponse("a page that is not valid UTF-8", nil)
+	}
+	if !survivedDecoding(position) || !survivedDecoding(next) {
+		return malformedFeedResponse("a page whose position or continuation did not survive decoding", nil)
+	}
+	return nil
 }
 
 func eventFeedPageFromGenerated(gp generated.PollEventsResponseContent) EventFeedPage {
