@@ -65,7 +65,13 @@ OPENAPI_FILE = ENV.fetch("REQUIRED_TAGS_OPENAPI", File.join(PROJECT_ROOT, "opena
 # 3.1.0, so the case is unreachable today; were it to appear, the check reads it
 # as one untagged operation and fails naming the field, which is the outcome
 # worth having. Teach it the map shape then — not now, on spec.
-NON_OPERATION_FIELDS = %w[$ref summary description servers parameters].freeze
+NON_OPERATION_FIELDS = %w[summary description servers parameters].freeze
+
+# `$ref` is NOT in that list. It is not an operation, but it POINTS at a path
+# item whose operations this check cannot see without resolving the reference.
+# Skipping it would hand back exactly the silent under-count the design above
+# exists to prevent, so an unresolved reference is a hard failure until someone
+# teaches the check to follow one.
 
 def non_operation_field?(field)
   NON_OPERATION_FIELDS.include?(field) || field.start_with?("x-")
@@ -115,11 +121,24 @@ def main
   multi_tagged = []
   unusable_tag = []
   unreadable = []
+  unfollowable = []
   seen = 0
 
-  paths.each do |path, item|
+  # An OpenAPI 3.1 document holds path items in two places. `webhooks` is
+  # usually absent, and was invisible to this check while it read `paths` alone.
+  items = paths.map { |path, item| ["#{path}", item] }
+  (spec["webhooks"].is_a?(Hash) ? spec["webhooks"] : {}).each do |name, item|
+    items << ["webhooks -> #{name}", item]
+  end
+
+  items.each do |path, item|
     unless item.is_a?(Hash)
       unreadable << "#{path} (path item is #{item.class}, expected an object)"
+      next
+    end
+
+    if item.key?("$ref")
+      unfollowable << "#{path} (-> #{item['$ref'].inspect})"
       next
     end
 
@@ -149,9 +168,13 @@ def main
 
   # Fail closed on a spec that yielded no operations at all — a broken or
   # truncated openapi.json must not pass this gate vacuously.
-  die "openapi file declared no HTTP operations" if seen.zero? && unreadable.empty?
+  die "openapi file declared no HTTP operations" if seen.zero? && unreadable.empty? && unfollowable.empty?
 
   problems = []
+  unless unfollowable.empty?
+    problems << "#{unfollowable.length} path item(s) are behind a $ref this check cannot follow:\n" \
+                "#{unfollowable.sort.map { |o| "  - #{o}" }.join("\n")}"
+  end
   unless unreadable.empty?
     problems << "#{unreadable.length} path item field(s) could not be read as an operation:\n" \
                 "#{unreadable.sort.map { |o| "  - #{o}" }.join("\n")}"
@@ -178,6 +201,9 @@ def main
     warn "A field named above that you did not expect to be an operation is either a " \
          "path item verb this spec had not used before (tag it) or a new non-operation " \
          "field from a later OpenAPI version (add it to NON_OPERATION_FIELDS with a reason)."
+    warn "A path item behind a $ref must either be inlined or this check taught to " \
+         "resolve references — it is refused rather than skipped so its operations " \
+         "cannot go uncounted."
     exit 1
   end
 

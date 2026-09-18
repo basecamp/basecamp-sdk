@@ -132,12 +132,13 @@ end
 end
 
 # 12. Each non-operation field the Path Item Object defines is skipped, not
-#     mistaken for an untagged operation. All five together, beside a real one.
+#     mistaken for an untagged operation. `$ref` is deliberately absent here —
+#     it is not an operation either, but it hides operations, so it is refused
+#     rather than skipped. See cases 19 and 20.
 every_non_operation_field = {
   "openapi" => "3.1.0",
   "paths" => {
     "/{accountId}/thing" => {
-      "$ref" => "#/components/pathItems/Thing",
       "summary" => "Thing",
       "description" => "A thing.",
       "servers" => [{ "url" => "https://example.com" }],
@@ -194,6 +195,52 @@ expect("a non-array tags value fails", status == 1)
 #     a name is. This pins the rule to "names a domain", not "is trimmed".
 status, = run_check(spec_with(op([" Recordings "])))
 expect("a tag with surrounding whitespace still passes", status.zero?)
+
+# 19. A path item behind a $ref is refused, not skipped. The reference can point
+#     into components.pathItems, whose operations this check cannot see, so
+#     skipping it would under-count exactly as a short verb list did. Copilot's
+#     case: a $ref beside a real operation, where `seen` stays nonzero and the
+#     document would otherwise pass.
+ref_beside_real_operation = {
+  "openapi" => "3.1.0",
+  "paths" => {
+    "/{accountId}/thing" => op(["Recordings"]).then { |o| { "get" => o } },
+    "/{accountId}/other" => { "$ref" => "#/components/pathItems/Other" }
+  },
+  "components" => { "pathItems" => { "Other" => { "get" => { "operationId" => "HiddenOp" } } } }
+}
+status, out = run_check(ref_beside_real_operation)
+expect("a $ref path item beside a real operation fails", status == 1)
+expect("the $ref failure names the referencing path", out.include?("/{accountId}/other"))
+
+# 20. A document whose only path item is a $ref fails too, rather than tripping
+#     the "no operations" message and looking like a truncated file.
+status, out = run_check({
+  "openapi" => "3.1.0",
+  "paths" => { "/{accountId}/thing" => { "$ref" => "#/components/pathItems/Thing" } }
+})
+expect("a $ref-only document fails", status == 1)
+expect("a $ref-only document reports the reference, not a missing spec", out.include?("$ref"))
+
+# 21. webhooks holds path items too, and was invisible while this check read
+#     paths alone. An untagged operation there must fail.
+status, out = run_check({
+  "openapi" => "3.1.0",
+  "paths" => { "/{accountId}/thing" => { "get" => op(["Recordings"]) } },
+  "webhooks" => { "somethingHappened" => { "post" => { "operationId" => "UntaggedHook" } } }
+})
+expect("an untagged webhook operation fails", status == 1)
+expect("the webhook failure names the operation", out.include?("UntaggedHook"))
+
+# 22. A tagged webhook operation passes and is counted, so webhooks are checked
+#     rather than merely rejected.
+status, out = run_check({
+  "openapi" => "3.1.0",
+  "paths" => { "/{accountId}/thing" => { "get" => op(["Recordings"]) } },
+  "webhooks" => { "somethingHappened" => { "post" => { "operationId" => "TaggedHook", "tags" => ["Webhooks"] } } }
+})
+expect("a tagged webhook operation passes", status.zero?)
+expect("the webhook operation is counted", out.include?("2 operations"))
 
 if FAILURES.empty?
   puts "check-required-tags self-test: all cases passed"
