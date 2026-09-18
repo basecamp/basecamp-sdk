@@ -995,22 +995,6 @@ func survivedDecoding(s string) bool {
 	return !strings.ContainsRune(s, utf8.RuneError)
 }
 
-// checkPollPage refuses a poll page the decode did not carry through: every
-// string it decoded must be the string the server wrote.
-//
-// The cursors carry the durable harm. The rows carry a quieter one — an
-// event_type the decoder rewrote is a token a consumer dispatches on, and the
-// page's position commits over it, so the event is not delivered and never
-// comes back.
-//
-// Between them those are every string the page decodes. Details is not one:
-// it is json.RawMessage, so its bytes are never decoded into a string and no
-// substitution can reach them — they arrive verbatim, which is the point of
-// carrying them raw, and it is the push decoder's rule that judges their
-// shape at the layer comparing the two lanes. A whole-body byte scan would
-// therefore add nothing but a second verdict on those same bytes.
-// TestFeedEventStringsHoldsEveryDecodedString keeps "every string" true as
-// the shapes grow.
 // feedDecodeError renders a poll body that never became a page at all in the
 // same shape as one that became a wrong page — the malformed response — so
 // the lane has one verdict for "this is not the envelope" instead of two.
@@ -1053,6 +1037,21 @@ func checkPollEnvelope(facts feedResponseFacts, body []byte, collection string) 
 	return nil
 }
 
+// checkPollPage refuses a poll page whose decoded VALUES are not the ones the
+// server wrote — the other half of feedBodyWellFormed, which reads the same
+// page's member names.
+//
+// The cursors carry the durable harm. The rows carry a quieter one: an
+// event_type the decoder rewrote is a token a consumer dispatches on, and the
+// page's position commits over it, so the event is not delivered and never
+// comes back.
+//
+// Between them those are every string the page decodes. Details is not one:
+// it is json.RawMessage, so its bytes are never decoded into a string and no
+// substitution can reach them — they arrive verbatim, which is the point of
+// carrying them raw, and their shape is the push decoder's rule at the layer
+// comparing the two lanes. TestFeedEventStringsHoldsEveryDecodedString keeps
+// "every string" true as the shapes grow.
 func checkPollPage(facts feedResponseFacts, position, next string, rows []string) error {
 	if !survivedDecoding(position) || !survivedDecoding(next) {
 		return malformedFeedResponse(facts, "a page whose position or continuation did not survive decoding", nil)
