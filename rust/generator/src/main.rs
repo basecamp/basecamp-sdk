@@ -68,21 +68,32 @@ fn run() -> Result<(), String> {
     // six per-language capabilities.
     let verbs_path = verbs_path.unwrap_or_else(|| root.join("spec/generated-verbs.json"));
     let verbs = read_json(&verbs_path)?;
-    let emittable_verbs: Vec<String> = verbs["verbs"]
+    // Every entry must be a non-blank STRING. Filtering invalid entries out would
+    // let `["get", 1]` read as `["get"]` here while the Ruby, Python and
+    // TypeScript loaders reject it — a shared declaration that six generators
+    // read differently is worse than six literals.
+    let declared = verbs["verbs"]
         .as_array()
-        .map(|verbs| {
-            verbs
-                .iter()
-                .filter_map(|verb| verb.as_str().map(str::to_string))
-                .collect()
-        })
-        .filter(|verbs: &Vec<String>| !verbs.is_empty())
-        .ok_or_else(|| {
-            format!(
-                "{} must declare a non-empty `verbs` array of strings",
-                verbs_path.display()
-            )
-        })?;
+        .ok_or_else(|| format!("{} must declare a `verbs` array", verbs_path.display()))?;
+    let mut emittable_verbs: Vec<String> = Vec::with_capacity(declared.len());
+    for verb in declared {
+        let verb = verb
+            .as_str()
+            .filter(|verb| !verb.trim().is_empty())
+            .ok_or_else(|| {
+                format!(
+                    "{} must declare a non-empty `verbs` array of non-blank strings; got {verb}",
+                    verbs_path.display()
+                )
+            })?;
+        emittable_verbs.push(verb.to_string());
+    }
+    if emittable_verbs.is_empty() {
+        return Err(format!(
+            "{} must declare a non-empty `verbs` array",
+            verbs_path.display()
+        ));
+    }
     let model = Model::build(&openapi, &behavior, &naming, &emittable_verbs)?;
     let files = render(&model)?;
 

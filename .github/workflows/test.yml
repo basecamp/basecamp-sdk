@@ -605,6 +605,15 @@ jobs:
       - name: Check generated code drift
         run: ../scripts/check-typescript-service-drift.sh
 
+      # The drift check above regenerates from the committed openapi.json, which
+      # declares only verbs the SDKs emit — so this generator could revert to
+      # silently skipping an unknown verb and stay green (#925). This runs it
+      # against a spec carrying a HEAD operation and asserts a named refusal that
+      # writes nothing and destroys nothing in the output tree.
+      - name: Generator refuses an operation on an unemitted verb
+        working-directory: .
+        run: ./scripts/test-compiled-generator-refusal typescript
+
       - name: Verify root pack includes compiled SDK
         working-directory: .
         run: |
@@ -1091,6 +1100,15 @@ jobs:
         working-directory: .
         run: make swift-check-drift
 
+      # The drift check above regenerates from the committed openapi.json, which
+      # declares only verbs the SDKs emit — so this generator could revert to
+      # silently skipping an unknown verb and stay green (#925). This runs it
+      # against a spec carrying a HEAD operation and asserts a named refusal that
+      # writes nothing and destroys nothing in the output tree.
+      - name: Generator refuses an operation on an unemitted verb
+        working-directory: .
+        run: ./scripts/test-compiled-generator-refusal swift
+
       - name: Run Swift conformance runner unit tests
         # Unit-tests the runner's own assertion helpers. Their bounds
         # branches never execute against a fixture that passes, so a
@@ -1175,6 +1193,17 @@ jobs:
         # from repo root regardless of this job's `working-directory: kotlin`.
         working-directory: .
         run: make kt-check-generated-drift
+
+      # The drift check above regenerates from the committed openapi.json, which
+      # declares only verbs the SDKs emit — so this generator could revert to
+      # silently skipping an unknown verb and stay green (#925). This runs it
+      # against a spec carrying a HEAD operation and asserts a named refusal that
+      # writes nothing and destroys nothing in the output tree.
+      - name: Generator refuses an operation on an unemitted verb
+        working-directory: .
+        # Via the make target, which builds the generator distribution the test
+        # runs. Its order-only edge is inert here: this is a single invocation.
+        run: make kt-test-verb-refusal
 
       - name: Check optional array/scalar invariant
         run: ruby ../scripts/check-kotlin-optional-arrays-and-scalars.rb

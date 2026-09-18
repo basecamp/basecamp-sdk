@@ -466,6 +466,68 @@ fn string_type(property: &Value, go_type: Option<&str>, format: Option<&str>) ->
 /// so the operation was stepped over in silence.
 const NON_OPERATION_FIELDS: [&str; 4] = ["summary", "description", "servers", "parameters"];
 
+/// Every operation in one path item, as (verb, operation) pairs.
+///
+/// A Path Item Object is read by EXCLUSION (see `NON_OPERATION_FIELDS`), so a
+/// verb this generator has never heard of is still found. `emittable_verbs`
+/// bounds what it can RENDER and is checked after discovery: an operation on any
+/// other verb is refused BY NAME rather than dropped, which is the failure
+/// basecamp-sdk#925 closed.
+fn operations_of<'a>(
+    path: &str,
+    item: &'a Value,
+    emittable_verbs: &[String],
+) -> Result<Vec<(&'a String, &'a Value)>, String> {
+    let item = item.as_object().ok_or(format!("{path} is not an object"))?;
+    let mut found = Vec::new();
+    for (http_method, operation) in item {
+        if NON_OPERATION_FIELDS.contains(&http_method.as_str()) || http_method.starts_with("x-") {
+            continue;
+        }
+        // A `$ref` path item points at operations this walk cannot see without
+        // resolving the reference. Skipping it is the same silent under-count
+        // the exclusion walk exists to prevent, so refuse.
+        if http_method == "$ref" {
+            return Err(format!(
+                "openapi.json path {path} is a $ref; resolving a path-item reference is not \
+                 implemented, and skipping it would hide every operation behind it from the SDK"
+            ));
+        }
+        // OpenAPI 3.2's `additionalOperations` is a MAP of method to Operation,
+        // not an operation. Read as one it carries no operationId, so refuse by
+        // name until the walk learns the map shape.
+        if http_method == "additionalOperations" {
+            return Err(format!(
+                "openapi.json path {path} declares `additionalOperations`, which OpenAPI 3.2 \
+                 defines as a map of method to Operation. This walk reads a path-item field as a \
+                 single operation, so it would drop every operation inside it. Teach the walk the \
+                 map shape, or take the field out of the spec"
+            ));
+        }
+        if !emittable_verbs.iter().any(|verb| verb == http_method) {
+            let id = operation["operationId"]
+                .as_str()
+                .unwrap_or("(no operationId)");
+            return Err(format!(
+                "openapi.json declares {} {path} ({id}), and this generator emits only {}. \
+                 Generating the rest of the SDK without it would drop the operation from every \
+                 client in silence, which is the failure basecamp-sdk#925 closed. Give the runtime \
+                 a {http_method} helper and add \"{http_method}\" to spec/generated-verbs.json \
+                 (read that file first — the other SDKs need the same helper), or take the \
+                 operation out of the Smithy model",
+                http_method.to_uppercase(),
+                emittable_verbs
+                    .iter()
+                    .map(|verb| verb.to_uppercase())
+                    .collect::<Vec<_>>()
+                    .join("/"),
+            ));
+        }
+        found.push((http_method, operation));
+    }
+    Ok(found)
+}
+
 fn build_services(
     openapi: &Value,
     behavior: &Value,
@@ -481,45 +543,7 @@ fn build_services(
     let mut services: BTreeMap<String, Vec<Operation>> = BTreeMap::new();
 
     for (path, item) in paths {
-        for (http_method, operation) in
-            item.as_object().ok_or(format!("{path} is not an object"))?
-        {
-            if NON_OPERATION_FIELDS.contains(&http_method.as_str()) || http_method.starts_with("x-")
-            {
-                continue;
-            }
-            // A `$ref` path item points at operations this walk cannot see
-            // without resolving the reference. Skipping it is the same silent
-            // under-count the exclusion walk exists to prevent, so refuse.
-            if http_method == "$ref" {
-                return Err(format!(
-                    "openapi.json path {path} is a $ref; resolving a path-item reference is not \
-                     implemented, and skipping it would hide every operation behind it from the SDK"
-                ));
-            }
-            // Discovery above is total; emission is bounded by the one
-            // declaration every SDK generator reads. An operation on any other
-            // verb stops the run by name rather than disappearing from the
-            // client, which is the failure basecamp-sdk#925 closed.
-            if !emittable_verbs.iter().any(|verb| verb == http_method) {
-                let id = operation["operationId"]
-                    .as_str()
-                    .unwrap_or("(no operationId)");
-                return Err(format!(
-                    "openapi.json declares {} {path} ({id}), and this generator emits only {}. \
-                     Generating the rest of the SDK without it would drop the operation from every \
-                     client in silence, which is the failure basecamp-sdk#925 closed. Give the \
-                     runtime a {http_method} helper and add \"{http_method}\" to \
-                     spec/generated-verbs.json (read that file first — the other five SDKs need \
-                     the same helper), or take the operation out of the Smithy model",
-                    http_method.to_uppercase(),
-                    emittable_verbs
-                        .iter()
-                        .map(|verb| verb.to_uppercase())
-                        .collect::<Vec<_>>()
-                        .join("/"),
-                ));
-            }
+        for (http_method, operation) in operations_of(path, item, emittable_verbs)? {
             let id = operation["operationId"]
                 .as_str()
                 .ok_or(format!("{http_method} {path} has no operationId"))?;

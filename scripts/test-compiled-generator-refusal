@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+#
+# Self-test: the COMPILED generators refuse an operation on a verb no SDK emits.
+#
+# WHY THIS EXISTS SEPARATELY. scripts/test-generator-verb-inversion.rb drives the
+# Ruby, Python and jq generators, because those run on the stdlib toolchains the
+# Spec Gates job already has. TypeScript, Kotlin, Swift and Rust carry four more
+# independent copies of the same walk, and nothing else in the repository can
+# see a regression in them: their drift checks regenerate from the committed
+# openapi.json, which declares four verbs and no unreadable path-item fields, so
+# all four could revert to silently skipping an unknown verb with every drift
+# check still green. This is the only gate that gives them one.
+#
+# It runs the REAL generator binary the language job already builds, against a
+# crafted spec, and asserts four things: a non-zero exit, a message naming the
+# operation, that no generated file was written, and that the output tree it was
+# pointed at is UNTOUCHED. The last is the one with teeth: a generator that
+# clears its output directory before validating turns a refusal into data loss,
+# which the Kotlin generator did until this test was written — and an empty
+# output directory cannot show it, so the directory is seeded first.
+#
+# Usage: ./test-compiled-generator-refusal <typescript|kotlin|swift|rust>
+#
+# Each language's own CI job runs its own language, so nothing here can skip:
+# the toolchain is present by construction wherever this is invoked.
+
+set -euo pipefail
+
+LANGUAGE="${1:-}"
+if [[ -z "$LANGUAGE" ]]; then
+  echo "usage: $0 <typescript|kotlin|swift|rust>" >&2
+  exit 2
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/verb-refusal.XXXXXX")"
+trap 'rm -rf "$TMP"' EXIT
+
+# The crafted spec is the committed openapi.json with one operation's verb moved
+# from `get` to `head` — a change a Smithy author can make today, since @http's
+# method is a free-form string Smithy performs no validation on. Deriving it from
+# the real spec rather than a fixture means this cannot drift away from what the
+# generators actually read.
+OPERATION="GetProject"
+PATH_KEY="$(jq -r --arg op "$OPERATION" \
+  'first(.paths | to_entries[] | select(.value.get.operationId == $op) | .key)' \
+  "$ROOT_DIR/openapi.json")"
+if [[ -z "$PATH_KEY" || "$PATH_KEY" == "null" ]]; then
+  echo "FAIL: openapi.json no longer has a GET whose operationId is $OPERATION; pick another" >&2
+  exit 1
+fi
+jq --arg p "$PATH_KEY" '.paths[$p].head = .paths[$p].get | del(.paths[$p].get)' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi.json"
+
+OUT="$TMP/out"
+LOG="$TMP/generate.log"
+status=0
+
+# Seed the output directory the way a real run finds it: already holding the
+# committed generated tree. An EMPTY output directory cannot show data loss —
+# clearing nothing leaves nothing — so a generator that validated after clearing
+# would pass a test that only checked for new files. These sentinels are what
+# makes the "no output destroyed" assertion mean something; the Kotlin generator
+# deleted its models/ and services/ .kt files and its Metadata.kt before parsing,
+# so a refusal erased the committed tree, and only this seeding catches that.
+mkdir -p "$OUT/models" "$OUT/services" "$OUT/Models" "$OUT/Services"
+SENTINELS=(
+  "$OUT/models/Sentinel.kt" "$OUT/services/Sentinel.kt"
+  "$OUT/Models/Sentinel.swift" "$OUT/Services/Sentinel.swift"
+  "$OUT/Metadata.kt" "$OUT/ServiceAccessors.kt"
+  "$OUT/sentinel.ts" "$OUT/sentinel.rs" "$OUT/mod.rs"
+)
+for sentinel in "${SENTINELS[@]}"; do
+  echo "committed generated output; a refusal must not destroy this" > "$sentinel"
+done
+
+case "$LANGUAGE" in
+  typescript)
+    (cd "$ROOT_DIR/typescript" && npx tsx scripts/generate-services.ts \
+      --openapi "$TMP/openapi.json" --output "$OUT") > "$LOG" 2>&1 || status=$?
+    ;;
+  kotlin)
+    # The INSTALLED distribution, not the Gradle run task. Running the packaged
+    # binary is what the other three languages do, and it keeps every Gradle
+    # invocation in the Makefile recipe where scripts/check-gradle-serialization
+    # can classify it: that gate resolves one level of script delegation and
+    # attributes a delegated Gradle call to EVERY target that calls the script,
+    # so invoking the wrapper from here would have marked the TypeScript, Swift
+    # and Rust targets as Kotlin-project builds and demanded order-only edges
+    # between them that describe no real collision. (The same reason this
+    # comment names the wrapper in prose instead of spelling its command: the
+    # gate reads text, and errs toward reporting.)
+    GENERATOR="$ROOT_DIR/kotlin/generator/build/install/generator/bin/generator"
+    if [[ ! -x "$GENERATOR" ]]; then
+      echo "FAIL [kotlin]: $GENERATOR is missing." >&2
+      echo "  Build the generator distribution first; make kt-test-verb-refusal does it for you." >&2
+      exit 1
+    fi
+    "$GENERATOR" --openapi "$TMP/openapi.json" --behavior "$ROOT_DIR/behavior-model.json" \
+      --verbs "$ROOT_DIR/spec/generated-verbs.json" --output "$OUT" > "$LOG" 2>&1 || status=$?
+    ;;
+  swift)
+    (cd "$ROOT_DIR/swift" && swift run BasecampGenerator \
+      --openapi "$TMP/openapi.json" --behavior "$ROOT_DIR/behavior-model.json" --output "$OUT") \
+      > "$LOG" 2>&1 || status=$?
+    ;;
+  rust)
+    (cd "$ROOT_DIR/rust" && cargo run -q --locked -p basecamp-sdk-generator -- \
+      --openapi "$TMP/openapi.json" --output "$OUT") > "$LOG" 2>&1 || status=$?
+    ;;
+  *)
+    echo "unknown language: $LANGUAGE" >&2
+    exit 2
+    ;;
+esac
+
+failures=0
+
+if [[ "$status" -eq 0 ]]; then
+  echo "FAIL [$LANGUAGE]: the generator exited 0 on a spec carrying HEAD $PATH_KEY ($OPERATION)." >&2
+  echo "  An operation on a verb no SDK emits must stop the run, not vanish from the client." >&2
+  failures=1
+fi
+
+if ! grep -qi "head" "$LOG" || ! grep -q "$OPERATION" "$LOG"; then
+  echo "FAIL [$LANGUAGE]: the failure message does not name the offending operation." >&2
+  echo "  Expected HEAD and $OPERATION in the output; got:" >&2
+  sed 's/^/    /' "$LOG" >&2
+  failures=1
+fi
+
+for sentinel in "${SENTINELS[@]}"; do
+  if [[ ! -f "$sentinel" ]]; then
+    echo "FAIL [$LANGUAGE]: the refusal DESTROYED committed output ($sentinel)." >&2
+    echo "  Validate the whole spec before clearing or writing the output tree, so a refusal" >&2
+    echo "  leaves the committed generated code exactly as it found it." >&2
+    failures=1
+  fi
+done
+
+written="$(find "$OUT" -type f ! -name 'Sentinel.*' ! -name 'sentinel.*' \
+  ! -name 'Metadata.kt' ! -name 'ServiceAccessors.kt' ! -name 'mod.rs' | head -5)"
+if [[ -n "$written" ]]; then
+  echo "FAIL [$LANGUAGE]: the refusal still wrote generated files:" >&2
+  echo "$written" | sed 's/^/    /' >&2
+  failures=1
+fi
+
+if [[ "$failures" -ne 0 ]]; then
+  exit 1
+fi
+
+echo "OK [$LANGUAGE]: HEAD $PATH_KEY ($OPERATION) refused by name, exit $status, no output written"

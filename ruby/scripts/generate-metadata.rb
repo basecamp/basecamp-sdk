@@ -151,6 +151,17 @@ class MetadataExtractor
             'every operation behind it without runtime metadata.'
     end
 
+    # OpenAPI 3.2's `additionalOperations` is a MAP of method to Operation, not an
+    # operation. Read as one it carries no operationId, so it would drop every
+    # operation inside it without saying so. Refuse by name until the walk learns
+    # the map shape.
+    if path_item.key?('additionalOperations')
+      abort "Error: openapi.json path #{path} declares `additionalOperations`, which OpenAPI 3.2 " \
+            'defines as a map of method to Operation. This walk reads a path-item field as a ' \
+            'single operation, so it would drop every operation inside it. Teach the walk the map ' \
+            'shape, or take the field out of the spec.'
+    end
+
     fields = path_item.keys.reject { |f| NON_OPERATION_FIELDS.include?(f) || f.start_with?('x-') }
     fields.sort_by! { |f| [ METHOD_ORDER.index(f) || METHOD_ORDER.length, f ] }
 

@@ -36,6 +36,30 @@ def refuse_path_item_refs:
     error("openapi.json path items are behind a $ref this generator cannot resolve: \($refs | join(", ")). Inline them, or teach this filter to resolve local references -- skipping them would hide every operation behind them from the route table.")
   else . end;
 
+# OpenAPI 3.2 additionalOperations is a MAP of method to Operation, not an
+# operation. The exclusion walk below would read it as one field with no
+# operationId and emit a route entry naming nothing, so refuse by name until this
+# filter learns the map shape.
+def refuse_additional_operations:
+  [.paths | to_entries[] | select(.value | has("additionalOperations")) | .key] as $maps |
+  if ($maps | length) > 0 then
+    error("openapi.json path items declare additionalOperations, which OpenAPI 3.2 defines as a map of method to Operation: \($maps | join(", ")). This filter reads a path-item field as a single operation, so it would drop every operation inside it.")
+  else . end;
+
+# Every field the exclusion walk takes for an operation has to BE one. A scalar
+# reaches .value.operationId and errors obliquely; an object with no operationId
+# would reach the route table as a method naming null. Both are the silent
+# under-report the walk exists to prevent, so both are named here instead.
+def refuse_unreadable_operations:
+  [ .paths | to_entries[] | .key as $p | .value | to_entries[]
+    | select((.key | IN("summary","description","servers","parameters") | not)
+             and (.key | startswith("x-") | not))
+    | select((.value | type) != "object" or (.value.operationId | type) != "string" or (.value.operationId == ""))
+    | "\($p) -> \(.key)" ] as $bad |
+  if ($bad | length) > 0 then
+    error("openapi.json path-item fields are neither a known non-operation field nor an operation with an operationId: \($bad | join(", ")). A later OpenAPI version may have added a non-operation field -- add it to the exclusion list with a reason rather than letting it reach the route table unnamed.")
+  else . end;
+
 # Infer parameter role from its name.
 # - accountId → "account"
 # - projectId → "bucket"
@@ -61,6 +85,8 @@ def param_type:
   end;
 
 refuse_path_item_refs |
+refuse_additional_operations |
+refuse_unreadable_operations |
 {
   "$schema": "https://basecamp.com/schemas/url-routes.json",
   version: "1.0.0",

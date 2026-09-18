@@ -59,6 +59,14 @@ fun main(args: Array<String>) {
     val modelsDir = File(outputBase, "models")
     val servicesDir = File(outputBase, "services")
 
+    // Parse BEFORE cleaning. Parsing refuses a spec this generator cannot render
+    // — an operation on a verb no SDK emits, an unreadable path-item field — and
+    // a refusal that fired after the delete below would leave the committed tree
+    // erased, turning a validation failure into data loss.
+    val api = OpenApiParser(spec)
+    val parser = OperationParser(api, PathItems.generatedVerbs(verbsPath))
+    val services = parser.groupOperations()
+
     modelsDir.mkdirs()
     servicesDir.mkdirs()
 
@@ -67,11 +75,6 @@ fun main(args: Array<String>) {
     servicesDir.listFiles { f -> f.extension == "kt" }?.forEach { it.delete() }
     File(outputBase, "Metadata.kt").delete()
     File(outputBase, "ServiceAccessors.kt").delete()
-
-    // Parse
-    val api = OpenApiParser(spec)
-    val parser = OperationParser(api, PathItems.generatedVerbs(verbsPath))
-    val services = parser.groupOperations()
 
     // 1. Generate entity models
     val modelEmitter = ModelEmitter(api)

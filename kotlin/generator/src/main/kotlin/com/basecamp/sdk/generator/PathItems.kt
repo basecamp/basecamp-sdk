@@ -17,6 +17,7 @@ import java.io.File
  */
 object PathItems {
     private val NON_OPERATION_FIELDS = setOf("summary", "description", "servers", "parameters")
+    private const val ADDITIONAL_OPERATIONS = "additionalOperations"
 
     /**
      * The ordered HTTP methods the SDK generators emit — one declaration for
@@ -26,13 +27,22 @@ object PathItems {
     fun generatedVerbs(path: String): List<String> {
         val file = File(path)
         require(file.exists()) { "Generated-verb declaration not found: ${file.absolutePath}" }
-        val verbs = (Json.parseToJsonElement(file.readText()) as JsonObject)["verbs"]
+        val declared = (Json.parseToJsonElement(file.readText()) as JsonObject)["verbs"]
             ?.jsonArray
-            ?.map { it.jsonPrimitive.content }
             ?: error("$path must declare a `verbs` array")
-        require(verbs.isNotEmpty() && verbs.none { it.isEmpty() }) {
-            "$path must declare a non-empty `verbs` array of strings"
+        // Every entry must be a JSON STRING. `jsonPrimitive.content` renders a
+        // number or a boolean as text too, so `["get", 1]` would read as
+        // `get`/`1` here while the Ruby, Python and TypeScript loaders reject it
+        // — a shared declaration that six generators read differently is worse
+        // than six literals.
+        val verbs = declared.map { element ->
+            val primitive = element as? JsonPrimitive
+            require(primitive != null && primitive.isString && primitive.content.isNotBlank()) {
+                "$path must declare a non-empty `verbs` array of non-blank strings; got $element"
+            }
+            primitive.content
         }
+        require(verbs.isNotEmpty()) { "$path must declare a non-empty `verbs` array" }
         return verbs
     }
 
@@ -59,6 +69,17 @@ object PathItems {
         require(!pathItem.containsKey("\$ref")) {
             "openapi.json path $path is a \$ref; resolving a path-item reference is not " +
                 "implemented, and skipping it would hide every operation behind it from the SDK."
+        }
+
+        // OpenAPI 3.2's `additionalOperations` is a MAP of method to Operation,
+        // not an operation. Read as one operation it carries no operationId, so
+        // a verb-agnostic caller would drop every operation inside it without
+        // saying so. Refuse by name until someone teaches the walk the map shape.
+        require(!pathItem.containsKey(ADDITIONAL_OPERATIONS)) {
+            "openapi.json path $path declares `$ADDITIONAL_OPERATIONS`, which OpenAPI 3.2 defines " +
+                "as a map of method to Operation. This walk reads a path-item field as a single " +
+                "operation, so it would drop every operation inside it. Teach the walk the map " +
+                "shape, or take the field out of the spec."
         }
 
         return pathItem.keys

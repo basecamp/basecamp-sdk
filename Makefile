@@ -544,7 +544,35 @@ ts-lint-test-timers: ts-install
 	cd typescript && npm run --silent lint:test-timers
 
 # Run all TypeScript checks
-ts-check: ts-check-drift ts-typecheck ts-lint-test-timers ts-test
+# The compiled generators' half of the verb-inversion gate. Nothing else in the
+# repository can see a regression in them: their drift checks regenerate from the
+# committed openapi.json, which declares only verbs they emit, so all four could
+# revert to silently skipping an unknown verb with every drift check still green.
+# Each runs the real generator binary against a spec carrying a HEAD operation
+# and asserts a named refusal that writes nothing and destroys nothing.
+# scripts/test-generator-verb-inversion.rb covers Ruby, Python and jq.
+.PHONY: ts-test-verb-refusal kt-test-verb-refusal swift-test-verb-refusal rs-test-verb-refusal
+
+ts-test-verb-refusal: ts-install
+	@./scripts/test-compiled-generator-refusal typescript
+
+# This target builds the generator distribution in kotlin/, so it collides with
+# every other Gradle build in that project directory and joins the kotlin/ chain
+# (rationale at smithy-mapper-test). It goes at the HEAD rather than the tail:
+# scripts/test-check-gradle-serialization.rb chains its probe targets after
+# conformance-kotlin, so the tail is load-bearing for that self-test and a new
+# target appended there would read as an unordered sibling of every probe.
+kt-test-verb-refusal:
+	cd kotlin && ./gradlew --quiet :generator:installDist
+	@./scripts/test-compiled-generator-refusal kotlin
+
+swift-test-verb-refusal:
+	@./scripts/test-compiled-generator-refusal swift
+
+rs-test-verb-refusal:
+	@./scripts/test-compiled-generator-refusal rust
+
+ts-check: ts-check-drift ts-typecheck ts-lint-test-timers ts-test ts-test-verb-refusal
 	@echo "==> TypeScript SDK checks passed"
 
 # Clean TypeScript build artifacts
@@ -721,7 +749,7 @@ rs-publish-check:
 	cd rust && cargo publish -p $(RS_CRATE) --dry-run --locked --allow-dirty
 
 # The {lang}-check contract: exactly what CI's test-rust job runs on stable.
-rs-check: rs-lint rs-test rs-doc rs-deny rs-check-drift rs-publish-check
+rs-check: rs-lint rs-test rs-doc rs-deny rs-check-drift rs-publish-check rs-test-verb-refusal
 
 rs-clean:
 	rm -rf rust/target conformance/runner/rust/target
@@ -894,7 +922,8 @@ conformance-runner-tests-ruby:
 		bundle exec ruby "$$f" || exit 1; \
 	done
 
-conformance-runner-tests-kotlin:
+# ORDER-ONLY EDGE: head of the kotlin/ chain; rationale at smithy-mapper-test.
+conformance-runner-tests-kotlin: | kt-test-verb-refusal
 	@echo "==> Running Kotlin conformance runner unit tests..."
 	cd kotlin && ./gradlew --quiet :conformance:test
 
@@ -1172,7 +1201,7 @@ kt-test: | conformance-runner-tests-kotlin
 	cd kotlin && ./gradlew :basecamp-sdk:check :generator:test
 
 # Run all Kotlin checks
-kt-check: kt-test
+kt-check: kt-test kt-test-verb-refusal
 	@echo "==> Kotlin SDK checks passed"
 
 # Check for drift between generated Kotlin services and OpenAPI spec.
@@ -1239,6 +1268,11 @@ ifdef IS_MACOS
 	@$(MAKE) -C swift check
 else
 	@echo "SKIP: swift-check (macOS only)"
+endif
+ifdef HAS_SWIFT
+	@./scripts/test-compiled-generator-refusal swift
+else
+	@echo "SKIP: swift-test-verb-refusal (swift toolchain not found)"
 endif
 
 # Run Swift conformance tests (macOS only — the SDK requires Apple platforms).

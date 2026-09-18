@@ -185,17 +185,41 @@ check("9. the bound is read from spec/generated-verbs.json, not a private litera
   [status != 0 && output.include?("DELETE /{accountId}/widgets/{widgetId}.json"), "exit #{status}: #{output}"]
 end
 
+check("10. OpenAPI 3.2's `additionalOperations` map is refused by name, not read as one operation") do
+  status, output, = ruby_services(spec({ "/{accountId}/widgets.json" => {
+    "get" => operation("ListWidgets"),
+    "additionalOperations" => { "PURGE" => operation("PurgeWidgets") }
+  } }))
+  [status != 0 && output.include?("additionalOperations"), "exit #{status}: #{output}"]
+end
+
+check("11. a declaration entry that is not a non-blank string is rejected") do
+  with_files(spec({ "/{accountId}/widgets.json" => { "get" => operation("ListWidgets") } })) do |dir, spec_path, _b, _v|
+    verbs_path = File.join(dir, "bad-verbs.json")
+    File.write(verbs_path, JSON.generate({ "verbs" => ["get", 1] }))
+    status, output = run(["ruby", File.join(ROOT, "ruby/scripts/generate-services.rb"),
+                          "--openapi", spec_path, "--output", File.join(dir, "out")],
+                         { "BASECAMP_GENERATED_VERBS" => verbs_path })
+    [status != 0 && output.include?("verbs"), "exit #{status}: #{output}"]
+  end
+end
+
+check("12. PATCH is refused — the declaration does not name it, and two runtimes cannot serve it") do
+  status, output, = ruby_services(spec({ "/{accountId}/widgets/{widgetId}.json" => { "patch" => operation("PatchWidget") } }))
+  [status != 0 && output.include?("PATCH /{accountId}/widgets/{widgetId}.json"), "exit #{status}: #{output}"]
+end
+
 puts
 puts "Ruby metadata extractor (verb-agnostic: it must EXTRACT the unemitted verb, not skip it)"
 
-check("10. a HEAD operation's retry metadata is extracted") do
+check("13. a HEAD operation's retry metadata is extracted") do
   with_files(spec({ "/{accountId}/widgets.json" => { "head" => operation("HeadWidgets") } })) do |_dir, spec_path, _b, _v|
     status, output = run(["ruby", File.join(ROOT, "ruby/scripts/generate-metadata.rb"), spec_path])
     [status.zero? && output.include?("HeadWidgets"), "exit #{status}: #{output[0, 400]}"]
   end
 end
 
-check("11. an unreadable path-item field is named rather than skipped") do
+check("14. an unreadable path-item field is named rather than skipped") do
   with_files(spec({ "/{accountId}/widgets.json" => { "get" => operation("ListWidgets"), "frobnicate" => 7 } })) do |_dir, spec_path, _b, _v|
     status, output = run(["ruby", File.join(ROOT, "ruby/scripts/generate-metadata.rb"), spec_path])
     [status != 0 && output.include?("frobnicate"), "exit #{status}: #{output[0, 400]}"]
@@ -218,25 +242,25 @@ def python_services(spec_doc, verbs: nil)
   end
 end
 
-check("12. a GET alone still generates") do
+check("15. a GET alone still generates") do
   status, output, emitted, = python_services(spec({ "/{accountId}/widgets.json" => { "get" => operation("ListWidgets") } }))
   [status.zero? && !emitted.empty?, "exit #{status}, files #{emitted.inspect}: #{output}"]
 end
 
-check("13. a HEAD operation stops the run and names it") do
+check("16. a HEAD operation stops the run and names it") do
   status, output, = python_services(spec({ "/{accountId}/widgets.json" => { "head" => operation("HeadWidgets") } }))
   [status != 0 && output.include?("HEAD /{accountId}/widgets.json") && output.include?("HeadWidgets"),
    "exit #{status}: #{output}"]
 end
 
-check("14. a HEAD beside a GET stops the run rather than silently emitting one of two") do
+check("17. a HEAD beside a GET stops the run rather than silently emitting one of two") do
   status, output, _emitted, bodies = python_services(spec({ "/{accountId}/widgets.json" => {
     "get" => operation("ListWidgets"), "head" => operation("HeadWidgets")
   } }))
   [status != 0 && !bodies.include?("def list_widgets"), "exit #{status}: #{output}"]
 end
 
-check("15. non-operation path-item fields are skipped, not treated as operations") do
+check("18. non-operation path-item fields are skipped, not treated as operations") do
   status, output, _emitted, bodies = python_services(spec({ "/{accountId}/widgets.json" => {
     "summary" => "Widgets", "parameters" => [], "x-basecamp-note" => { "anything" => true },
     "get" => operation("ListWidgets")
@@ -244,12 +268,12 @@ check("15. non-operation path-item fields are skipped, not treated as operations
   [status.zero? && bodies.include?("def list_widgets"), "exit #{status}: #{output}"]
 end
 
-check("16. a $ref path item is refused rather than read as empty") do
+check("19. a $ref path item is refused rather than read as empty") do
   status, output, = python_services(spec({ "/{accountId}/widgets.json" => { "$ref" => "#/components/pathItems/Widgets" } }))
   [status != 0 && output.include?("$ref"), "exit #{status}: #{output}"]
 end
 
-check("17. the bound is read from spec/generated-verbs.json, not a private literal") do
+check("20. the bound is read from spec/generated-verbs.json, not a private literal") do
   status, output, = python_services(
     spec({ "/{accountId}/widgets/{widgetId}.json" => { "delete" => operation("DeleteWidget") } }),
     verbs: %w[get post put patch]
@@ -257,10 +281,18 @@ check("17. the bound is read from spec/generated-verbs.json, not a private liter
   [status != 0 && output.include?("DELETE /{accountId}/widgets/{widgetId}.json"), "exit #{status}: #{output}"]
 end
 
+check("21. OpenAPI 3.2's `additionalOperations` map is refused by name") do
+  status, output, = python_services(spec({ "/{accountId}/widgets.json" => {
+    "get" => operation("ListWidgets"),
+    "additionalOperations" => { "PURGE" => operation("PurgeWidgets") }
+  } }))
+  [status != 0 && output.include?("additionalOperations"), "exit #{status}: #{output}"]
+end
+
 puts
 puts "Python metadata extractor (verb-agnostic)"
 
-check("18. a HEAD operation's retry metadata is extracted") do
+check("22. a HEAD operation's retry metadata is extracted") do
   with_files(spec({ "/{accountId}/widgets.json" => { "head" => operation("HeadWidgets") } }),
              behavior(%w[HeadWidgets])) do |dir, spec_path, behavior_path, _v|
     out = File.join(dir, "metadata.json")
@@ -274,7 +306,7 @@ end
 puts
 puts "Route generator (jq; verb-agnostic — a route's operations map is method -> operationId)"
 
-check("19. a HEAD operation reaches url-routes.json rather than being dropped") do
+check("23. a HEAD operation reaches url-routes.json rather than being dropped") do
   with_files(spec({ "/{accountId}/widgets.json" => { "head" => operation("HeadWidgets") } })) do |dir, spec_path, _b, _v|
     out = File.join(dir, "url-routes.json")
     status, output = run([File.join(ROOT, "scripts/generate-url-routes"), spec_path, out])
@@ -283,7 +315,7 @@ check("19. a HEAD operation reaches url-routes.json rather than being dropped") 
   end
 end
 
-check("20. non-operation path-item fields do not become routes") do
+check("24. non-operation path-item fields do not become routes") do
   with_files(spec({ "/{accountId}/widgets.json" => {
     "summary" => "Widgets", "parameters" => [], "x-basecamp-note" => { "anything" => true },
     "get" => operation("ListWidgets")
@@ -295,11 +327,42 @@ check("20. non-operation path-item fields do not become routes") do
   end
 end
 
-check("21. a $ref path item is refused rather than read as empty") do
+check("25. a $ref path item is refused rather than read as empty") do
   with_files(spec({ "/{accountId}/widgets.json" => { "$ref" => "#/components/pathItems/Widgets" } })) do |dir, spec_path, _b, _v|
     out = File.join(dir, "url-routes.json")
     status, output = run([File.join(ROOT, "scripts/generate-url-routes"), spec_path, out])
     [status != 0 && output.include?("$ref"), "exit #{status}: #{output}"]
+  end
+end
+
+check("26. OpenAPI 3.2's `additionalOperations` map is refused by name") do
+  with_files(spec({ "/{accountId}/widgets.json" => {
+    "get" => operation("ListWidgets"),
+    "additionalOperations" => { "PURGE" => operation("PurgeWidgets") }
+  } })) do |dir, spec_path, _b, _v|
+    out = File.join(dir, "url-routes.json")
+    status, output = run([File.join(ROOT, "scripts/generate-url-routes"), spec_path, out])
+    [status != 0 && output.include?("additionalOperations"), "exit #{status}: #{output}"]
+  end
+end
+
+check("27. a field with no operationId is named rather than reaching the route table unnamed") do
+  with_files(spec({ "/{accountId}/widgets.json" => {
+    "get" => operation("ListWidgets"), "frobnicate" => { "responses" => {} }
+  } })) do |dir, spec_path, _b, _v|
+    out = File.join(dir, "url-routes.json")
+    status, output = run([File.join(ROOT, "scripts/generate-url-routes"), spec_path, out])
+    [status != 0 && output.include?("frobnicate"), "exit #{status}: #{output}"]
+  end
+end
+
+check("28. a scalar path-item field is named rather than erroring obliquely") do
+  with_files(spec({ "/{accountId}/widgets.json" => {
+    "get" => operation("ListWidgets"), "frobnicate" => "not an object"
+  } })) do |dir, spec_path, _b, _v|
+    out = File.join(dir, "url-routes.json")
+    status, output = run([File.join(ROOT, "scripts/generate-url-routes"), spec_path, out])
+    [status != 0 && output.include?("frobnicate"), "exit #{status}: #{output}"]
   end
 end
 

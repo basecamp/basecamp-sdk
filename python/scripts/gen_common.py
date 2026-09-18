@@ -107,6 +107,18 @@ def iter_operations(
             "behind it from the SDK."
         )
 
+    # OpenAPI 3.2's ``additionalOperations`` is a MAP of method to Operation, not
+    # an operation. Read as one it carries no operationId, so a verb-agnostic
+    # caller would drop every operation inside it without saying so. Refuse by
+    # name until the walk learns the map shape.
+    if "additionalOperations" in path_item:
+        raise SystemExit(
+            f"Error: openapi.json path {path} declares `additionalOperations`, which OpenAPI 3.2 "
+            "defines as a map of method to Operation. This walk reads a path-item field as a "
+            "single operation, so it would drop every operation inside it. Teach the walk the map "
+            "shape, or take the field out of the spec."
+        )
+
     fields = [
         field
         for field in path_item
