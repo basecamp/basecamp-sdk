@@ -11,6 +11,51 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Go: the event feed's poll lanes refuse a malformed response instead of typing it
+
+`EventFeedService.PollEvents` and `PollInbox` now decide each response against the
+shape the contract declares. A body that does not carry it is returned as the SDK's
+malformed-response error — `Code: api_error`, non-retryable, and **statusless** —
+rather than as the typed recovery value or the canonical status error. Only Go is
+affected: the other SDKs surface the canonical error for these bodies and type
+nothing.
+
+This is the fix for a defect, not a tightening for its own sake. A 409 whose digests
+were `"x"` used to arrive as `*FeedFilterMismatchError`, which tells a consumer to
+discard its held position and re-enter; a 400 carrying a `reason` nobody defined fell
+through to the message classifier that is only valid when `reason` is ABSENT, where
+`Unrecognized position` bought the same reset. Both are now refused before the value
+reaches a caller.
+
+**What changes, all of it silent.**
+
+| Response | before | after |
+|---|---|---|
+| 409 without two bare 16-lowercase-hex `srv2` digests | `*FeedFilterMismatchError`, or a canonical `*Error` with `HTTPStatus: 409` | malformed, `HTTPStatus: 0` |
+| 400 whose `reason` is present and not `invalid_position` / `invalid_filter` | `*FeedRequestError` with that `Reason` | malformed, `HTTPStatus: 0` |
+| 400 / 409 / 410 missing a required member, or whose body is not a JSON object | canonical `*Error` with its status | malformed, `HTTPStatus: 0` |
+| 200 whose envelope lacks `position` or its rows, or that does not decode | an empty position, or the JSON decoder's own error | malformed |
+| any decoded string — cursors, a 410 `resume`, a row's `kind`/`action`/`event_type`, the inbox's `reason`, or a member name at any depth — carrying U+FFFD | returned as substituted | malformed |
+
+*Silent, all of it.* Nothing here is a compile error. A caller that switches on
+`err.(*basecamp.Error).HTTPStatus`, or on `errors.As(err, &mismatch)`, simply stops
+matching for these bodies — which is the point, since matching was what drove the
+position reset. Handle the refusal as a terminal condition and report it; the
+canonical error rides as `Cause` if you need the status for a log line, and the
+response's request id and `Retry-After` are carried on the refusal itself.
+
+**What has NOT changed.** A 400 with no `reason` at all — including an explicit
+`null`, since the member is optional — is still `*FeedRequestError` with an empty
+`Reason`, the documented undifferentiated case. A member the contract does not declare
+is still ignored: a response that grows a member is not malformed. Statuses with no
+typed body are untouched — a 500 behind an HTML error page is still a retryable 500.
+
+The `eventfeed` connector needs no change: a refusal maps to `PollUnrecoverable`, which
+is terminal and leaves the held position alone, where the values it used to be handed
+drove a reset.
+
 # v0.19.0
 
 ### Rust changes the exit code for `bucket_mismatch`, Swift's classification accessors stop being optional
