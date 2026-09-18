@@ -22,13 +22,14 @@ const (
 	// (EVENT_FEED_LIVE_BUFFER_CAPACITY, 10,000 events; configurable via
 	// WithLiveBufferCapacity; deliberately decoupled from the dedupe
 	// capacity — only event-bearing frames are buffered, where the dedupe
-	// LRU holds every delivered key from every lane). That the two are
-	// decoupled in the code and not only in intent is measured rather than
-	// asserted here: TestLiveBufferCapacityIsDecoupledFromTheDedupeCapacity
-	// drives each capacity to its own threshold while the other is set
-	// somewhere else. It has to, because this default and
-	// DefaultDedupeCapacity are the same number, and a pair set equal is
-	// blind to a swap or a clamp.
+	// LRU is a window over the lane's most recent deliveries that every
+	// delivery path records into: poll page, drain and streaming alike).
+	// That the two are decoupled in the code and not only in intent is
+	// measured rather than asserted here:
+	// TestLiveBufferCapacityIsDecoupledFromTheDedupeCapacity drives each
+	// capacity to its own threshold while the other is set somewhere else.
+	// It has to, because this default and DefaultDedupeCapacity are the same
+	// number, and a pair set equal is blind to a swap or a clamp.
 	DefaultLiveBufferCapacity = 10_000
 	// MaxCapacity is the inclusive ceiling on both configurable capacities
 	// (EVENT_FEED_MAX_CAPACITY; SPEC.md §23 states it as a shared API
