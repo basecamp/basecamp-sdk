@@ -484,8 +484,7 @@ fn build_services(
         for (http_method, operation) in
             item.as_object().ok_or(format!("{path} is not an object"))?
         {
-            if NON_OPERATION_FIELDS.contains(&http_method.as_str())
-                || http_method.starts_with("x-")
+            if NON_OPERATION_FIELDS.contains(&http_method.as_str()) || http_method.starts_with("x-")
             {
                 continue;
             }
@@ -503,7 +502,9 @@ fn build_services(
             // verb stops the run by name rather than disappearing from the
             // client, which is the failure basecamp-sdk#925 closed.
             if !emittable_verbs.iter().any(|verb| verb == http_method) {
-                let id = operation["operationId"].as_str().unwrap_or("(no operationId)");
+                let id = operation["operationId"]
+                    .as_str()
+                    .unwrap_or("(no operationId)");
                 return Err(format!(
                     "openapi.json declares {} {path} ({id}), and this generator emits only {}. \
                      Generating the rest of the SDK without it would drop the operation from every \

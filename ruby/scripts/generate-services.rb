@@ -423,7 +423,7 @@ class ServiceGenerator
     end
 
     fields = path_item.keys.reject { |f| NON_OPERATION_FIELDS.include?(f) || f.start_with?('x-') }
-    fields.sort_by! { |f| [EMITTABLE_METHODS.index(f) || EMITTABLE_METHODS.length, f] }
+    fields.sort_by! { |f| [ EMITTABLE_METHODS.index(f) || EMITTABLE_METHODS.length, f ] }
 
     fields.each do |field|
       operation = path_item[field]

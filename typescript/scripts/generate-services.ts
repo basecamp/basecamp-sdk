@@ -903,7 +903,7 @@ function groupOperations(spec: OpenAPISpec): Map<string, ServiceDefinition> {
   // an operation on any other verb stops the run by name rather than
   // disappearing from the client, which is the failure basecamp-sdk#925 closed.
   for (const [path, pathItem] of Object.entries(spec.paths)) {
-    for (const [method, operation] of operationsOf(path, pathItem, EMITTABLE_VERBS)) {
+    for (const [method, operation] of operationsOf<Operation>(path, pathItem, EMITTABLE_VERBS)) {
       const tag = operation.tags?.[0] || "Untagged";
       const parsed = parseOperation(path, method, operation);
 

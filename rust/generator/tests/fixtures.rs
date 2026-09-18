@@ -14,9 +14,17 @@ fn fixtures() -> PathBuf {
 }
 
 fn generate(root: &Path, output: &Path) -> std::process::Output {
+    // `--verbs` points at the repository's own spec/generated-verbs.json rather
+    // than a per-fixture copy. That declaration is the single source for the
+    // HTTP methods every SDK generator emits (basecamp-sdk#925); copying it into
+    // each fixture root would reintroduce, in the tests, exactly the duplicated
+    // literal it exists to remove.
+    let verbs = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/generated-verbs.json");
     Command::new(env!("CARGO_BIN_EXE_basecamp-sdk-generator"))
         .arg("--root")
         .arg(root)
+        .arg("--verbs")
+        .arg(verbs)
         .arg("--output")
         .arg(output)
         .output()

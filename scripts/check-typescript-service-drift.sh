@@ -50,6 +50,12 @@ trap 'rm -rf "$TMPBASE"' EXIT
 # `../openapi.json` (from the project dir) resolves to it.
 cp "$ROOT_DIR/openapi.json" "$TMPBASE/openapi.json"
 
+# Same trick for the generated-verb declaration, which scripts/path-items.ts
+# resolves as `../../spec/generated-verbs.json` from its own location — the
+# repository layout this throwaway project stands in for.
+mkdir -p "$TMPBASE/spec"
+cp "$ROOT_DIR/spec/generated-verbs.json" "$TMPBASE/spec/generated-verbs.json"
+
 PROJ="$TMPBASE/proj"
 mkdir -p "$PROJ/src/generated"
 cp -R "$TS_DIR/scripts" "$PROJ/scripts"

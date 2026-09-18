@@ -152,7 +152,7 @@ class MetadataExtractor
     end
 
     fields = path_item.keys.reject { |f| NON_OPERATION_FIELDS.include?(f) || f.start_with?('x-') }
-    fields.sort_by! { |f| [METHOD_ORDER.index(f) || METHOD_ORDER.length, f] }
+    fields.sort_by! { |f| [ METHOD_ORDER.index(f) || METHOD_ORDER.length, f ] }
 
     fields.each do |field|
       operation = path_item[field]

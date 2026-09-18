@@ -69,11 +69,11 @@ export function generatedVerbs(): string[] {
  * a verb outside it sorts deterministically to the end by name, which is
  * ordering, not membership.
  */
-export function operationsOf(
+export function operationsOf<T = Record<string, any>>(
   path: string,
   pathItem: unknown,
   emittable?: readonly string[]
-): [string, Record<string, any>][] {
+): [string, T][] {
   const order = generatedVerbs();
 
   if (typeof pathItem !== "object" || pathItem === null || Array.isArray(pathItem)) {
@@ -100,7 +100,7 @@ export function operationsOf(
     .filter((field) => !NON_OPERATION_FIELDS.has(field) && !field.startsWith("x-"))
     .sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0));
 
-  return fields.map((field) => {
+  return fields.map((field): [string, T] => {
     const operation = item[field];
     if (typeof operation !== "object" || operation === null || Array.isArray(operation)) {
       die(
@@ -120,6 +120,6 @@ export function operationsOf(
           `other five SDKs need the same helper), or take the operation out of the Smithy model.`
       );
     }
-    return [field, operation as Record<string, any>];
+    return [field, operation as T];
   });
 }
