@@ -454,6 +454,16 @@ class ServiceGenerator
               'of the Smithy model.'
       end
 
+      # An operation has to be IDENTIFIABLE. OpenAPI lets operationId be omitted,
+      # and every walker here used to step over one that was — a silent drop of a
+      # real operation, which is #925 wearing a different field.
+      op_id = operation['operationId']
+      unless op_id.is_a?(String) && !op_id.empty?
+        abort "Error: openapi.json declares #{field.upcase} #{path} with no operationId. " \
+              'Everything downstream is keyed by it, and skipping the operation would drop it ' \
+              'from the SDK in silence.'
+      end
+
       yield field, operation
     end
   end

@@ -107,6 +107,19 @@ func operationsOf(
                     + "the same helper), or take the operation out of the Smithy model."
             )
         }
+        // An operation has to be IDENTIFIABLE. OpenAPI lets operationId be
+        // omitted, and every walker here used to step over one that was — a
+        // silent drop of a real operation, which is the whole of #925 wearing a
+        // different field. Every operation in this spec carries one, and
+        // check-operation-assignment-parity already refuses a spec without.
+        let operationId = operation["operationId"] as? String
+        if operationId == nil || operationId!.isEmpty {
+            failGeneration(
+                "Error: openapi.json declares \(field.uppercased()) \(path) with no operationId. "
+                    + "The generator names every emitted method from it, and skipping the operation "
+                    + "would drop it from the client in silence."
+            )
+        }
         return (field, operation)
     }
 }

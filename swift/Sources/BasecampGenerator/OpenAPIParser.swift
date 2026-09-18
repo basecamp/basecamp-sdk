@@ -82,8 +82,6 @@ func parseAllOperations(
         for (method, operation) in operationsOf(
             path: path, pathItem: paths[path]!, order: emittableVerbs, emittable: emittableVerbs
         ) {
-            guard operation["operationId"] is String else { continue }
-
             guard let parsed = parseOperation(
                 path: path, method: method, operation: operation, schemas: schemas
             ) else {

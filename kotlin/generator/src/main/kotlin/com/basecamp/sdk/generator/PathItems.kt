@@ -116,6 +116,16 @@ object PathItems {
                             "need the same helper), or take the operation out of the Smithy model."
                     )
                 }
+                // An operation has to be IDENTIFIABLE. OpenAPI lets operationId
+                // be omitted, and every walker here used to step over one that
+                // was — a silent drop of a real operation, which is
+                // basecamp-sdk#925 wearing a different field.
+                val operationId = operation["operationId"]?.jsonPrimitive?.contentOrNull
+                require(!operationId.isNullOrEmpty()) {
+                    "openapi.json declares ${field.uppercase()} $path with no operationId. " +
+                        "Everything downstream is keyed by it, and skipping the operation would " +
+                        "drop it from the SDK in silence."
+                }
                 field to operation
             }
     }

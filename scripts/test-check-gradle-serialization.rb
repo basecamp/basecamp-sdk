@@ -79,6 +79,13 @@ edges = {
     ["kt-test: | conformance-runner-tests-kotlin", "kt-test:"],
   "3: conformance-kotlin edge removed" =>
     ["conformance-kotlin: | kt-test", "conformance-kotlin:"],
+  # kt-test-verb-refusal builds the generator distribution in kotlin/, so it
+  # joins the chain — at its HEAD, because the probe targets below chain after
+  # conformance-kotlin and a new tail would read as their unordered sibling.
+  # Registered here for the same reason as the three above: an edge whose
+  # deletion nothing notices is an edge nobody is keeping.
+  "3b: kt-test-verb-refusal edge removed" =>
+    ["conformance-runner-tests-kotlin: | kt-test-verb-refusal", "conformance-runner-tests-kotlin:"],
 }
 
 edges.each do |name, (from, to)|

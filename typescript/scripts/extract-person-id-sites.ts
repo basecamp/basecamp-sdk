@@ -68,7 +68,6 @@ function collectSites(spec: Schema): Record<string, string[]> {
   // takes no emission bound and covers an operation on any verb.
   for (const [pathKey, pathItem] of Object.entries(spec.paths ?? {}) as [string, Schema][]) {
     for (const [_method, operation] of operationsOf(pathKey, pathItem)) {
-      if (!operation.operationId) continue;
       const out = new Set<string>();
       for (const [code, raw] of Object.entries(operation.responses ?? {}) as [string, Schema][]) {
         if (!code.startsWith("2")) continue;

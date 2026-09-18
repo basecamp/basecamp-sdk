@@ -141,6 +141,17 @@ export function operationsOf<T = Record<string, any>>(
           `other five SDKs need the same helper), or take the operation out of the Smithy model.`
       );
     }
+    // An operation has to be IDENTIFIABLE. OpenAPI lets operationId be omitted,
+    // and every walker here used to step over one that was — a silent drop of a
+    // real operation, which is basecamp-sdk#925 wearing a different field.
+    const operationId = (operation as Record<string, unknown>).operationId;
+    if (typeof operationId !== "string" || operationId.length === 0) {
+      die(
+        `Error: openapi.json declares ${field.toUpperCase()} ${path} with no operationId. ` +
+          `Everything downstream is keyed by it, and skipping the operation would drop it from ` +
+          `the SDK in silence.`
+      );
+    }
     return [field, operation as T];
   });
 }

@@ -523,6 +523,17 @@ fn operations_of<'a>(
                     .join("/"),
             ));
         }
+        // An operation has to be IDENTIFIABLE. OpenAPI lets operationId be
+        // omitted, and every walker here used to step over one that was — a
+        // silent drop of a real operation, which is basecamp-sdk#925 wearing a
+        // different field.
+        if operation["operationId"].as_str().is_none_or(str::is_empty) {
+            return Err(format!(
+                "openapi.json declares {} {path} with no operationId. Everything downstream is \
+                 keyed by it, and skipping the operation would drop it from the SDK in silence",
+                http_method.to_uppercase()
+            ));
+        }
         found.push((http_method, operation));
     }
     Ok(found)

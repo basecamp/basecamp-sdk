@@ -16,7 +16,7 @@
 # WHY IT IS A TEST RATHER THAN A PARAGRAPH. The live run only ever sees
 # openapi.json, which declares four verbs and no non-operation path-item fields,
 # so it exercises the passing case alone. The mutation is what states the case:
-# restore the walks below to the ORIGINAL five-verb list and 13 of these 32 cases
+# restore the walks below to the ORIGINAL five-verb list and 13 of these 38 cases
 # fail; restore them to the EIGHT verbs OpenAPI 3.1 names and 6 still fail —
 # OpenAPI 3.2's `query` and `additionalOperations`, and the cases where a field
 # that is neither a known non-operation field nor a readable operation is stepped
@@ -178,6 +178,13 @@ check("a $ref path item is refused rather than read as empty") do
   [status != 0 && output.include?("$ref"), "exit #{status}: #{output}"]
 end
 
+check("an operation with no operationId is refused rather than skipped") do
+  status, output, = ruby_services(spec({ "/{accountId}/widgets.json" => {
+    "get" => operation("ListWidgets").tap { |op| op.delete("operationId") }
+  } }))
+  [status != 0 && output.include?("operationId"), "exit #{status}: #{output}"]
+end
+
 check("emission order follows the declaration, not the document") do
   _status, _output, _emitted, bodies = ruby_services(spec({ "/{accountId}/widgets/{widgetId}.json" => {
     "delete" => operation("DeleteWidget"), "get" => operation("GetWidget")
@@ -211,7 +218,8 @@ end
 # any language's definition of whitespace.
 [["a non-string entry", ["get", 1]],
  ["an ASCII-blank entry", ["get", "  "]],
- ["a Unicode-blank entry (U+00A0)", ["get", "\u00a0"]],
+ ["a Unicode-blank entry (U+00A0, which Ruby's strip keeps)", ["get", "\u00a0"]],
+ ["a Unicode-blank entry (U+2003, which Ruby's strip keeps and Python's removes)", ["get", "\u2003"]],
  ["an entry with a leading BOM", ["get", "\ufeffdelete"]],
  ["an uppercase entry", ["get", "DELETE"]],
  ["an empty array", []]].each_with_index do |(what, verbs), i|
@@ -309,6 +317,13 @@ end
 check("a $ref path item is refused rather than read as empty") do
   status, output, = python_services(spec({ "/{accountId}/widgets.json" => { "$ref" => "#/components/pathItems/Widgets" } }))
   [status != 0 && output.include?("$ref"), "exit #{status}: #{output}"]
+end
+
+check("an operation with no operationId is refused rather than skipped") do
+  status, output, = python_services(spec({ "/{accountId}/widgets.json" => {
+    "get" => operation("ListWidgets").tap { |op| op.delete("operationId") }
+  } }))
+  [status != 0 && output.include?("operationId"), "exit #{status}: #{output}"]
 end
 
 check("the bound is read from spec/generated-verbs.json, not a private literal") do

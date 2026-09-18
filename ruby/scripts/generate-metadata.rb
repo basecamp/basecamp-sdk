@@ -66,7 +66,6 @@ class MetadataExtractor
     (@openapi['paths'] || {}).each do |path, path_item|
       each_operation(path, path_item) do |_method, operation|
         operation_id = operation['operationId']
-        next unless operation_id
 
         metadata = extract_operation_metadata(operation)
         operations[operation_id] = metadata if metadata.any?
@@ -99,8 +98,6 @@ class MetadataExtractor
     sites = {}
     (@openapi['paths'] || {}).each do |path, path_item|
       each_operation(path, path_item) do |_method, operation|
-        next unless operation['operationId']
-
         paths = (operation['responses'] || {}).flat_map do |code, response|
           next [] unless code.to_s.start_with?('2')
 
@@ -187,6 +184,16 @@ class MetadataExtractor
         abort "Error: openapi.json path #{path} field #{field.inspect} is a #{operation.class}, " \
               'which is neither a known non-operation field nor an operation object. If a later ' \
               'OpenAPI version added it, add it to NON_OPERATION_FIELDS with a reason.'
+      end
+
+      # An operation has to be IDENTIFIABLE. OpenAPI lets operationId be omitted,
+      # and every walker here used to step over one that was — a silent drop of a
+      # real operation, which is #925 wearing a different field.
+      op_id = operation['operationId']
+      unless op_id.is_a?(String) && !op_id.empty?
+        abort "Error: openapi.json declares #{field.upcase} #{path} with no operationId. " \
+              'Everything downstream is keyed by it, and skipping the operation would drop it ' \
+              'from the SDK in silence.'
       end
 
       yield field, operation

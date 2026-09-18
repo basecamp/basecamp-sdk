@@ -20,7 +20,9 @@
 # which the Kotlin generator did until this test was written. An EMPTY output
 # directory cannot show that, so the directory is seeded first.
 #
-# TWO SCENARIOS, and the second is what makes the first mean something:
+# FOUR SCENARIOS, one per guard the walk carries. They are a table rather than a
+# list that grows by one each review round: a new guard in the shared walk gets a
+# row here, because the live spec exercises none of them.
 #
 #   1. UNEMITTED VERB. A spec carrying a HEAD operation must be refused by name.
 #   2. DECLARATION-SOURCED BOUND. Pointed at a declaration that omits a verb the
@@ -73,6 +75,10 @@ jq --arg p "$PATH_KEY" '.paths[$p].head = .paths[$p].get | del(.paths[$p].get)' 
 # not name. DELETE is chosen from the live declaration rather than hardcoded, so
 # this keeps working if the declaration changes.
 WITHHELD="$(jq -r '.verbs | map(select(. != "get")) | last' "$ROOT_DIR/spec/generated-verbs.json")"
+# Uppercased with tr, not ${VAR^^}: the Swift job runs on macos-15, whose runner
+# image ships Bash 3.2, where that expansion is a `bad substitution` and the
+# script dies before any scenario runs.
+WITHHELD_UPPER="$(printf '%s' "$WITHHELD" | tr '[:lower:]' '[:upper:]')"
 jq --arg withheld "$WITHHELD" 'del(.verbs[] | select(. == $withheld))' \
   "$ROOT_DIR/spec/generated-verbs.json" > "$TMP/verbs-withheld.json"
 WITHHELD_PATH="$(jq -r --arg v "$WITHHELD" \
@@ -197,8 +203,8 @@ run_scenario() {
 run_scenario "HEAD $PATH_KEY ($OPERATION) is not an emitted verb" \
   "$TMP/openapi-head.json" "$ROOT_DIR/spec/generated-verbs.json" "HEAD" "$OPERATION"
 
-run_scenario "the declaration withholds ${WITHHELD^^}, so ${WITHHELD^^} $WITHHELD_PATH ($WITHHELD_OPERATION) is refused" \
-  "$ROOT_DIR/openapi.json" "$TMP/verbs-withheld.json" "${WITHHELD^^}" "$WITHHELD_OPERATION"
+run_scenario "the declaration withholds $WITHHELD_UPPER, so $WITHHELD_UPPER $WITHHELD_PATH ($WITHHELD_OPERATION) is refused" \
+  "$ROOT_DIR/openapi.json" "$TMP/verbs-withheld.json" "$WITHHELD_UPPER" "$WITHHELD_OPERATION"
 
 # Scenario 3: a MALFORMED declaration. A verb is `[a-z]+` in all six loaders, a
 # positive rule chosen because two review rounds of "what counts as blank"
@@ -209,5 +215,18 @@ run_scenario "the declaration withholds ${WITHHELD^^}, so ${WITHHELD^^} $WITHHEL
 jq '.verbs += ["\u00a0"]' "$ROOT_DIR/spec/generated-verbs.json" > "$TMP/verbs-malformed.json"
 run_scenario "a declaration entry that is not [a-z]+ is refused" \
   "$ROOT_DIR/openapi.json" "$TMP/verbs-malformed.json" "verbs" "a-z"
+
+# Scenario 4: OpenAPI 3.2's additionalOperations, a MAP of method to Operation.
+# The bounded walkers would reject an unknown VERB, but this field is not a verb
+# — read as one operation it carries no operationId, and before the guard the
+# verb-agnostic walkers dropped every operation inside it in silence. Neither
+# scenario above contains the map and neither does the live spec, so without this
+# the guard could regress in all four binaries with every check green.
+jq --arg p "$PATH_KEY" \
+  '.paths[$p].additionalOperations = {"PURGE": .paths[$p].get}' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-additional.json"
+run_scenario "an additionalOperations map is refused rather than read as one operation" \
+  "$TMP/openapi-additional.json" "$ROOT_DIR/spec/generated-verbs.json" \
+  "additionalOperations" "$PATH_KEY"
 
 exit "$failures"

@@ -54,7 +54,6 @@ function extractMetadata(openapiPath: string): MetadataOutput {
   for (const [pathKey, pathItem] of Object.entries(openapi.paths || {})) {
     for (const [_method, operation] of operationsOf(pathKey, pathItem)) {
       const operationId = operation.operationId as string;
-      if (!operationId) continue;
 
       const metadata: OperationMetadata = {};
 
