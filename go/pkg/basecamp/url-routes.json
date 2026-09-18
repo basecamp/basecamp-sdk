@@ -332,7 +332,7 @@
     },
     {
       "pattern": "/{accountId}/buckets/{bucketId}/dock/tools",
-      "resource": "Automation",
+      "resource": "Dock",
       "operations": {
         "POST": "CreateTool"
       },
@@ -412,7 +412,7 @@
     },
     {
       "pattern": "/{accountId}/buckets/{bucketId}/webhooks",
-      "resource": "Automation",
+      "resource": "Webhooks",
       "operations": {
         "GET": "ListWebhooks",
         "POST": "CreateWebhook"
@@ -933,7 +933,7 @@
     },
     {
       "pattern": "/{accountId}/dock/tools/{toolId}",
-      "resource": "Automation",
+      "resource": "Dock",
       "operations": {
         "DELETE": "DeleteTool",
         "GET": "GetTool",
@@ -1161,7 +1161,7 @@
     },
     {
       "pattern": "/{accountId}/lineup/markers",
-      "resource": "Automation",
+      "resource": "Lineup",
       "operations": {
         "GET": "ListLineupMarkers",
         "POST": "CreateLineupMarker"
@@ -1175,7 +1175,7 @@
     },
     {
       "pattern": "/{accountId}/lineup/markers/{markerId}",
-      "resource": "Automation",
+      "resource": "Lineup",
       "operations": {
         "DELETE": "DeleteLineupMarker",
         "PUT": "UpdateLineupMarker"
@@ -1758,7 +1758,7 @@
     },
     {
       "pattern": "/{accountId}/question_answers/{answerId}",
-      "resource": "Automation",
+      "resource": "Checkins",
       "operations": {
         "GET": "GetAnswer",
         "PUT": "UpdateAnswer"
@@ -1776,7 +1776,7 @@
     },
     {
       "pattern": "/{accountId}/questionnaires/{questionnaireId}",
-      "resource": "Automation",
+      "resource": "Checkins",
       "operations": {
         "GET": "GetQuestionnaire"
       },
@@ -1793,7 +1793,7 @@
     },
     {
       "pattern": "/{accountId}/questionnaires/{questionnaireId}/questions",
-      "resource": "Automation",
+      "resource": "Checkins",
       "operations": {
         "GET": "ListQuestions",
         "POST": "CreateQuestion"
@@ -1811,7 +1811,7 @@
     },
     {
       "pattern": "/{accountId}/questions/{questionId}",
-      "resource": "Automation",
+      "resource": "Checkins",
       "operations": {
         "GET": "GetQuestion",
         "PUT": "UpdateQuestion"
@@ -1829,7 +1829,7 @@
     },
     {
       "pattern": "/{accountId}/questions/{questionId}/answers",
-      "resource": "Automation",
+      "resource": "Checkins",
       "operations": {
         "GET": "ListAnswers",
         "POST": "CreateAnswer"
@@ -2190,7 +2190,7 @@
     },
     {
       "pattern": "/{accountId}/recordings/{toolId}/position",
-      "resource": "Automation",
+      "resource": "Dock",
       "operations": {
         "DELETE": "DisableTool",
         "POST": "EnableTool",
@@ -2396,7 +2396,7 @@
     },
     {
       "pattern": "/{accountId}/search",
-      "resource": "Automation",
+      "resource": "Search",
       "operations": {
         "GET": "Search"
       },
@@ -2409,7 +2409,7 @@
     },
     {
       "pattern": "/{accountId}/searches/metadata",
-      "resource": "Automation",
+      "resource": "Search",
       "operations": {
         "GET": "GetSearchMetadata"
       },
@@ -2455,7 +2455,7 @@
     },
     {
       "pattern": "/{accountId}/template_library",
-      "resource": "Automation",
+      "resource": "Templates",
       "operations": {
         "GET": "GetTemplateLibrary"
       },
@@ -2468,7 +2468,7 @@
     },
     {
       "pattern": "/{accountId}/template_library/copies",
-      "resource": "Automation",
+      "resource": "Templates",
       "operations": {
         "POST": "CreateTemplateLibraryCopy"
       },
@@ -2481,7 +2481,7 @@
     },
     {
       "pattern": "/{accountId}/template_library/copies/{copyId}",
-      "resource": "Automation",
+      "resource": "Templates",
       "operations": {
         "GET": "GetTemplateLibraryCopy"
       },
@@ -2498,7 +2498,7 @@
     },
     {
       "pattern": "/{accountId}/templates",
-      "resource": "Automation",
+      "resource": "Templates",
       "operations": {
         "GET": "ListTemplates",
         "POST": "CreateTemplate"
@@ -2512,7 +2512,7 @@
     },
     {
       "pattern": "/{accountId}/templates/{templateId}",
-      "resource": "Automation",
+      "resource": "Templates",
       "operations": {
         "DELETE": "DeleteTemplate",
         "GET": "GetTemplate",
@@ -2531,7 +2531,7 @@
     },
     {
       "pattern": "/{accountId}/templates/{templateId}/project_constructions",
-      "resource": "Automation",
+      "resource": "Templates",
       "operations": {
         "POST": "CreateProjectFromTemplate"
       },
@@ -2548,7 +2548,7 @@
     },
     {
       "pattern": "/{accountId}/templates/{templateId}/project_constructions/{constructionId}",
-      "resource": "Automation",
+      "resource": "Templates",
       "operations": {
         "GET": "GetProjectConstruction"
       },
@@ -2971,7 +2971,7 @@
     },
     {
       "pattern": "/{accountId}/webhooks/{webhookId}",
-      "resource": "Automation",
+      "resource": "Webhooks",
       "operations": {
         "DELETE": "DeleteWebhook",
         "GET": "GetWebhook",
