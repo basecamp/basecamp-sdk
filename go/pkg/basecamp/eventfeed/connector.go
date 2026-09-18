@@ -21,7 +21,14 @@ const (
 	// DefaultLiveBufferCapacity is the default live-buffer capacity
 	// (EVENT_FEED_LIVE_BUFFER_CAPACITY, 10,000 events; configurable via
 	// WithLiveBufferCapacity; deliberately decoupled from the dedupe
-	// capacity — only event-bearing frames are buffered).
+	// capacity — only event-bearing frames are buffered, where the dedupe
+	// LRU holds every delivered key from every lane). That the two are
+	// decoupled in the code and not only in intent is measured rather than
+	// asserted here: TestLiveBufferCapacityIsDecoupledFromTheDedupeCapacity
+	// drives each capacity to its own threshold while the other is set
+	// somewhere else. It has to, because this default and
+	// DefaultDedupeCapacity are the same number, and a pair set equal is
+	// blind to a swap or a clamp.
 	DefaultLiveBufferCapacity = 10_000
 	// MaxCapacity is the inclusive ceiling on both configurable capacities
 	// (EVENT_FEED_MAX_CAPACITY; SPEC.md §23 states it as a shared API
@@ -32,10 +39,12 @@ const (
 	// newLoop, where newDedupe sizes its index map by the capacity eagerly,
 	// so an absurd value is not a slow run but an allocation the first Events
 	// iteration cannot decline. The live buffer grows to its capacity lazily
-	// and pays only for the events it admits; it carries the same ceiling
-	// because the two are one published contract, not because it allocates up
-	// front. That New itself spends nothing on either capacity is proven
-	// rather than asserted here: TestNewAllocationSizeDoesNotVaryWithCapacity
+	// and pays only for the events it admits, which
+	// TestLiveBufferPaysOnlyForTheEventsItAdmits measures in bytes across a
+	// grid of capacity and admitted count; it carries the same ceiling
+	// because the two are one published contract, not because it allocates
+	// up front. That New itself spends nothing on either capacity is proven
+	// rather than asserted here too: TestNewAllocationSizeDoesNotVaryWithCapacity
 	// measures it. #900 refused the value at fixture load, after a scenario
 	// asking for 2,147,483,647 took the test process down. The options are
 	// the same request on a path the loader does not cover.
