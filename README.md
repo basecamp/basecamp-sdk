@@ -250,7 +250,7 @@ All SDKs provide:
 | **Files** | Vaults, Documents, Uploads, Attachments |
 | **Card Tables** | CardTables, Cards, CardColumns, CardSteps, Wormholes |
 | **Client Portal** | ClientApprovals, ClientCorrespondences, ClientReplies |
-| **Automation** | Webhooks, Subscriptions, Events, Lineup |
+| **Automation** | Webhooks, Subscriptions, Events |
 | **Reporting** | Search, Reports, Timesheets, Recordings |
 
 ## Specification

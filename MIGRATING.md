@@ -44,6 +44,28 @@ splitting it into real domains is what the rest of that change does. `Automation
 existed only because this one operation fell through the tag's split table while its
 three siblings were routed out of it; the tag it was named after no longer exists.
 
+### The `Automation` tag is gone, and two public fields carry it
+
+Splitting that catch-all retags 37 operations into `Templates`, `Webhooks`, `Dock`,
+`Lineup`, `Search` and `Checkins`. Two public surfaces restate an operation's tag
+verbatim, so both change value for those 37 — **silently, with no compile error.**
+
+*Go's URL router.* `Router.Match(url).Resource` is the route table's resource field,
+which is the tag. A URL under `/templates/`, `/webhooks/`, `/dock/tools/`,
+`/recordings/{toolId}/position`, `/lineup/markers`, `/search`, `/searches/metadata`,
+`/questionnaires/`, `/questions/` or `/question_answers/` used to classify as
+`"Automation"` and now classifies as its own domain. A `switch m.Resource` or
+`if m.Resource == "Automation"` compiles and stops matching. Match the new label, or
+switch on `m.Operation`, which did not change.
+
+*The embedded catalog.* `catalog.Operation.Tag` and the keys of `Catalog.ByTag()`
+move the same way for the same 37 operations. A consumer that groups by tag — which
+is what the catalog is for — gets six groups where it got one, which is the point of
+the change; a consumer that hard-codes `"Automation"` gets nothing.
+
+Nothing else reads the tag. Service names, method names, signatures, URLs and
+operation ids are unchanged for all 37; only `ListLineupMarkers` moves service, above.
+
 ### Go: the event feed's poll lanes refuse a malformed response instead of typing it
 
 `EventFeedService.PollEvents` and `PollInbox` now decide each response against the
