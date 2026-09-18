@@ -74,7 +74,6 @@ class ServiceGenerator
     },
     'Automation' => {
       'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool],
-      'Recordings' => %w[ArchiveRecording UnarchiveRecording TrashRecording ListRecordings SpotlightRecording UnspotlightRecording],
       'Webhooks' => %w[ListWebhooks CreateWebhook GetWebhook UpdateWebhook DeleteWebhook],
       'Events' => %w[ListEvents],
       'Lineup' => %w[CreateLineupMarker UpdateLineupMarker DeleteLineupMarker],

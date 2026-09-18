@@ -57,7 +57,6 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
     ),
     "Automation" to mapOf(
         "Tools" to listOf("GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"),
-        "Recordings" to listOf("ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings", "SpotlightRecording", "UnspotlightRecording"),
         "Webhooks" to listOf("ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"),
         "Events" to listOf("ListEvents"),
         "Lineup" to listOf("CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"),
