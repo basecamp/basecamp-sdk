@@ -543,7 +543,7 @@ func checkFeedResponse(resp *http.Response, body []byte, lane feedLaneKind) erro
 // JSON spells "no value" for one, and refusing it would make a body the
 // contract permits terminal.
 func feedRequestErrorFrom(base *Error, body []byte) error {
-	fields, ok := jsonObject(body, false)
+	fields, ok := jsonObject(body, "")
 	if !ok {
 		return malformedFeedResponse(factsOfError(base), "a 400 whose body is not the shape this contract declares", base)
 	}
@@ -570,7 +570,7 @@ func feedRequestErrorFrom(base *Error, body []byte) error {
 // not the documented conflict, so it must not be the value that triggers that
 // recovery.
 func feedFilterMismatchFrom(base *Error, body []byte) error {
-	fields, ok := jsonObject(body, false)
+	fields, ok := jsonObject(body, "")
 	if !ok {
 		return malformedFeedResponse(factsOfError(base), "a 409 whose body is not the shape this contract declares", base)
 	}
@@ -591,7 +591,7 @@ func feedFilterMismatchFrom(base *Error, body []byte) error {
 // decided on its own lane only, so one lane can never be handed the other's
 // recovery.
 func feedGoneFrom(base *Error, body []byte, lane feedLaneKind) error {
-	fields, ok := jsonObject(body, false)
+	fields, ok := jsonObject(body, "")
 	if !ok {
 		return malformedFeedResponse(factsOfError(base), "a 410 whose body is not the shape this contract declares", base)
 	}
@@ -633,12 +633,12 @@ func feedGoneFrom(base *Error, body []byte, lane feedLaneKind) error {
 // top level, because which key was mangled is exactly what cannot be known in
 // advance — the same walk the poll envelope uses, so one rule covers all four
 // bodies these lanes decode.
-func jsonObject(body []byte, carriesRawDetails bool) (map[string]json.RawMessage, bool) {
+func jsonObject(body []byte, rawDetailsIn string) (map[string]json.RawMessage, bool) {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(body, &fields) != nil || fields == nil {
 		return nil, false
 	}
-	if !feedBodyWellFormed(body, carriesRawDetails) {
+	if !feedBodyWellFormed(body, rawDetailsIn) {
 		return nil, false
 	}
 	return fields, true
@@ -711,15 +711,17 @@ func factsOfError(base *Error) feedResponseFacts {
 // megabytes on a body of a few tens of kilobytes, on a poller that runs
 // continuously. BenchmarkFeedBodyWellFormed pins the linear cost.
 //
-// carriesRawDetails names the one member whose interior is skipped: a
-// FeedEvent's `details`, whose bytes are carried verbatim and never decoded
-// into strings, so nothing in there is substituted and judging it would
-// contradict that carriage. Only a poll page can carry one; the error bodies
-// declare no verbatim member and are walked whole. Within a page the
-// exemption is by PATH rather than by name (declaresRawDetails), so a member
-// that merely happens to be named `details` — an additive one on an inbox
-// item, say — is walked like any other subtree.
-func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
+// rawDetailsIn names the collection whose rows carry the one member whose
+// interior is skipped: a FeedEvent's `details`, whose bytes are carried
+// verbatim and never decoded into strings, so nothing in there is substituted
+// and judging it would contradict that carriage. It is the OPERATION's own
+// collection — `events` or `items` — because each answers with one of the two
+// shapes, and "" for the error bodies, which declare no verbatim member and
+// are walked whole. Naming the lane rather than a flag is what keeps a feed
+// page from exempting an additive `items[*].event.details`, or an inbox page
+// an additive `events[*].details`: those are members nothing reads, and the
+// exemption belongs to the raw bytes this response actually carries.
+func feedBodyWellFormed(body []byte, rawDetailsIn string) bool {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	// Numbers are never inspected here, and json.Number keeps them as their
 	// literal text instead of parsing each one into a float.
@@ -798,7 +800,7 @@ func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
 		if !survivedDecoding(name) {
 			return false
 		}
-		if carriesRawDetails && name == detailsMember && declaresRawDetails(stack[top].pathLen, stack[top].tail) {
+		if name == detailsMember && declaresRawDetails(rawDetailsIn, stack[top].pathLen, stack[top].tail) {
 			if skipValue(dec) != nil {
 				return true
 			}
@@ -832,20 +834,21 @@ func pendingName(stack []feedWalkFrame) string {
 // detailsMember is the one member a poll page carries as raw bytes.
 const detailsMember = "details"
 
-// declaresRawDetails reports the two member paths where a FeedEvent lives in
-// a poll page, array indices elided: `events`, the feed's rows, and
-// `items.event`, the event nested in an inbox item. A `details` anywhere else
-// is an additive member like any other — the SDK reads no raw bytes out of
-// it, so nothing exempts it from the walk.
+// declaresRawDetails reports the ONE member path where the lane under
+// rawDetailsIn carries a FeedEvent, array indices elided: `events` for the
+// feed's rows, `items.event` for the event nested in an inbox item. A
+// `details` anywhere else — including the other lane's path, which on this
+// response is an additive member — is walked like any other subtree, because
+// the SDK reads no raw bytes out of it.
 //
 // pathLen is what keeps a deeper path from matching on its tail alone:
-// `x.items.event` ends the same way and is not one of these.
-func declaresRawDetails(pathLen int, tail [2]string) bool {
-	switch pathLen {
-	case 1:
-		return tail[1] == "events"
-	case 2:
-		return tail[0] == "items" && tail[1] == "event"
+// `x.items.event` ends the same way and is not the declared one.
+func declaresRawDetails(rawDetailsIn string, pathLen int, tail [2]string) bool {
+	switch rawDetailsIn {
+	case "events":
+		return pathLen == 1 && tail[1] == "events"
+	case "items":
+		return pathLen == 2 && tail[0] == "items" && tail[1] == "event"
 	}
 	return false
 }
@@ -1043,7 +1046,7 @@ func feedDecodeError(facts feedResponseFacts, err error) error {
 // collection is `events` or `items`: which rows the lane serves is the one
 // difference between the two envelopes.
 func checkPollEnvelope(facts feedResponseFacts, body []byte, collection string) error {
-	fields, ok := jsonObject(body, true)
+	fields, ok := jsonObject(body, collection)
 	if !ok {
 		return malformedFeedResponse(facts, "a page whose body is not the shape this contract declares", nil)
 	}

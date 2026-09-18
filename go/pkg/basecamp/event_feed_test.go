@@ -1249,8 +1249,38 @@ func BenchmarkFeedBodyWellFormed(b *testing.B) {
 	b.SetBytes(int64(len(body)))
 	b.ReportAllocs()
 	for b.Loop() {
-		if !feedBodyWellFormed(body, true) {
+		if !feedBodyWellFormed(body, "events") {
 			b.Fatal("the fixture page must be well formed")
 		}
+	}
+}
+
+// The exemption belongs to the raw bytes THIS response carries, so each lane
+// exempts only its own path. The other lane's path, on this page, is an
+// additive member nothing reads — and is walked like any other subtree.
+func TestEventFeedService_RefusesASubstitutedNameUnderTheOtherLanesDetailsPath(t *testing.T) {
+	cases := map[string]struct {
+		inbox bool
+		body  string
+	}{
+		"a feed page carrying an additive items[*].event.details": {false,
+			`{"events":[],"position":"posAAA","items":[{"event":{"details":{"bad\ud800key":1}}}]}`},
+		"an inbox page carrying an additive events[*].details": {true,
+			`{"items":[],"position":"posAAA","events":[{"details":{"bad\ud800key":1}}]}`},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tc.body))
+			})
+			var err error
+			if tc.inbox {
+				_, err = svc.PollInbox(context.Background(), nil)
+			} else {
+				_, err = svc.PollEvents(context.Background(), nil)
+			}
+			assertMalformedFeedResponse(t, err)
+		})
 	}
 }
