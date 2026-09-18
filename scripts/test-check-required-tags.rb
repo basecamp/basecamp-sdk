@@ -242,6 +242,16 @@ status, out = run_check({
 expect("a tagged webhook operation passes", status.zero?)
 expect("the webhook operation is counted", out.include?("2 operations"))
 
+# 23. A webhooks value that is not an object of path items is reported rather
+#     than quietly ignored — the same posture the rest of this check takes.
+status, out = run_check({
+  "openapi" => "3.1.0",
+  "paths" => { "/{accountId}/thing" => { "get" => op(["Recordings"]) } },
+  "webhooks" => ["somethingHappened"]
+})
+expect("a malformed webhooks value fails", status == 1)
+expect("the malformed webhooks failure names webhooks", out.include?("webhooks"))
+
 if FAILURES.empty?
   puts "check-required-tags self-test: all cases passed"
 else

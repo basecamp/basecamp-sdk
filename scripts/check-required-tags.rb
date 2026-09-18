@@ -127,8 +127,11 @@ def main
   # An OpenAPI 3.1 document holds path items in two places. `webhooks` is
   # usually absent, and was invisible to this check while it read `paths` alone.
   items = paths.map { |path, item| ["#{path}", item] }
-  (spec["webhooks"].is_a?(Hash) ? spec["webhooks"] : {}).each do |name, item|
-    items << ["webhooks -> #{name}", item]
+  webhooks = spec["webhooks"]
+  case webhooks
+  when nil then nil
+  when Hash then webhooks.each { |name, item| items << ["webhooks -> #{name}", item] }
+  else unreadable << "webhooks (#{webhooks.class}, expected an object of path items)"
   end
 
   items.each do |path, item|
