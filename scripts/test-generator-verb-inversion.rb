@@ -223,7 +223,7 @@ end
  ["an entry with a leading BOM", ["get", "\ufeffdelete"]],
  ["an uppercase entry", ["get", "DELETE"]],
  ["an empty array", []]].each_with_index do |(what, verbs), i|
-  check("the declaration rejects #{what}, in Ruby and in Python") do
+  check("the declaration rejects #{what}, in both Ruby readers and in Python") do
     results = {}
     with_files(spec({ "/{accountId}/widgets.json" => { "get" => operation("ListWidgets") } })) do |dir, spec_path, _b, _v|
       verbs_path = File.join(dir, "bad-verbs.json")
@@ -231,6 +231,11 @@ end
       env = { "BASECAMP_GENERATED_VERBS" => verbs_path }
       results[:ruby] = run(["ruby", File.join(ROOT, "ruby/scripts/generate-services.rb"),
                             "--openapi", spec_path, "--output", File.join(dir, "rb")], env)
+      # Ruby has TWO independent readers of the declaration. Driving only the
+      # service generator would let the metadata one regress while this stays
+      # green, which is the same cross-reader disagreement the cases exist for.
+      results[:ruby_metadata] = run(["ruby", File.join(ROOT, "ruby/scripts/generate-metadata.rb"),
+                                     spec_path], env)
       results[:python] = run(["python3", File.join(ROOT, "python/scripts/generate_services.py"),
                               "--openapi", spec_path, "--output", File.join(dir, "py")],
                              env.merge("PYTHONDONTWRITEBYTECODE" => "1"))

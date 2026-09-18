@@ -59,13 +59,21 @@ fun main(args: Array<String>) {
     val modelsDir = File(outputBase, "models")
     val servicesDir = File(outputBase, "services")
 
-    // Parse BEFORE cleaning. Parsing refuses a spec this generator cannot render
-    // — an operation on a verb no SDK emits, an unreadable path-item field — and
-    // a refusal that fired after the delete below would leave the committed tree
-    // erased, turning a validation failure into data loss.
+    // EVERY fallible read of an input happens BEFORE anything is deleted. A
+    // refusal that fires after the clean below leaves the committed tree erased,
+    // turning a validation failure into data loss — which is what the spec parse
+    // did until #925's follow-up, and what the options-order read would still do
+    // if it stayed at its call site further down.
+    //
+    // This does not make the whole run atomic: a failure BETWEEN the first write
+    // and the last still leaves a partial tree. That is a different class from a
+    // refusal — the guards added here reject bad INPUT, and none of them can fire
+    // once writing starts — and closing it means rendering into a temporary tree
+    // and swapping, which is a larger change than this fix.
     val api = OpenApiParser(spec)
     val parser = OperationParser(api, PathItems.generatedVerbs(verbsPath))
     val services = parser.groupOperations()
+    val optionsParamOrder = readOptionsParamOrder(File(optionsOrderPath))
 
     modelsDir.mkdirs()
     servicesDir.mkdirs()
@@ -117,7 +125,7 @@ fun main(args: Array<String>) {
     println("Generated $serviceCount services with $opCount operations")
 
     // 3. Generate body/options types
-    val typeEmitter = TypeEmitter(readOptionsParamOrder(File(optionsOrderPath)))
+    val typeEmitter = TypeEmitter(optionsParamOrder)
     val typesCode = typeEmitter.generateTypes(services)
     File(servicesDir, "Types.kt").writeText(typesCode)
     println("  types: Types.kt")
