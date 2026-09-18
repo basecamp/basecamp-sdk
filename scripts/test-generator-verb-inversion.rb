@@ -206,8 +206,14 @@ end
 # Every loader has to read the declaration the SAME way. A file one generator
 # accepts and another refuses is the cross-SDK divergence a shared declaration
 # exists to prevent, so the bad shapes are asserted against Ruby AND Python.
+# The shapes are the ones two review rounds produced plus the ones the next
+# round would have: a verb is `[a-z]+`, so none of these is a question about
+# any language's definition of whitespace.
 [["a non-string entry", ["get", 1]],
- ["a blank entry", ["get", "  "]],
+ ["an ASCII-blank entry", ["get", "  "]],
+ ["a Unicode-blank entry (U+00A0)", ["get", "\u00a0"]],
+ ["an entry with a leading BOM", ["get", "\ufeffdelete"]],
+ ["an uppercase entry", ["get", "DELETE"]],
  ["an empty array", []]].each_with_index do |(what, verbs), i|
   check("the declaration rejects #{what}, in Ruby and in Python") do
     results = {}

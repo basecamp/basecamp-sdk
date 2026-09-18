@@ -35,11 +35,19 @@ class MetadataExtractor
 
   METHOD_ORDER = begin
     verbs = JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8'))['verbs']
-    # Same rule as the other five loaders even though this file only orders by
-    # it: a declaration read differently by one generator is the divergence a
-    # shared file exists to prevent.
-    unless verbs.is_a?(Array) && !verbs.empty? && verbs.all? { |v| v.is_a?(String) && !v.strip.empty? }
-      abort "Error: #{GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of non-blank strings."
+    # An HTTP method is a TOKEN, so the rule is a positive character class rather
+    # than a blankness predicate: `[a-z]+`, identical in all six loaders. Two
+    # review rounds chased "blank" across languages — Kotlin and Rust rejected a
+    # space while the others accepted it, then Ruby's ASCII `strip` accepted a
+    # non-breaking space the Unicode-aware ones rejected — and the next
+    # disagreement was guaranteed, because every language defines whitespace
+    # differently (Java's Character.isWhitespace excludes U+00A0; Rust's
+    # char::is_whitespace includes it; Ruby's String#strip is ASCII-only). A
+    # closed positive rule has no such seam: "", " ", "\u00a0", "GET" and 1 are
+    # all rejected the same way everywhere.
+    unless verbs.is_a?(Array) && !verbs.empty? && verbs.all? { |v| v.is_a?(String) && v.match?(/\A[a-z]+\z/) }
+      abort "Error: #{GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of lowercase " \
+            'ASCII method names (/\A[a-z]+\z/).'
     end
     verbs.freeze
   rescue Errno::ENOENT, JSON::ParserError => e

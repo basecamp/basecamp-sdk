@@ -29,12 +29,16 @@ func loadGeneratedVerbs(path: String) -> [String] {
         let declaration = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
         let verbs = declaration["verbs"] as? [String],
         !verbs.isEmpty,
-        // Non-BLANK, not merely non-empty, and the same rule in all six loaders:
-        // a declaration one generator accepts and another refuses is the
-        // cross-SDK divergence a shared file exists to prevent.
-        verbs.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+        // A positive character class rather than a blankness predicate. An HTTP
+        // method is a token, so `[a-z]+` says what a verb IS and is written the
+        // same way in all six loaders; a "not blank" rule would keep diverging,
+        // because every language defines whitespace differently.
+        verbs.allSatisfy({ $0.allSatisfy { $0.isASCII && $0.isLowercase && $0.isLetter } })
     else {
-        failGeneration("Error: \(path) must declare a non-empty `verbs` array of non-blank strings.")
+        failGeneration(
+            "Error: \(path) must declare a non-empty `verbs` array of lowercase ASCII method "
+                + "names (/[a-z]+/)."
+        )
     }
     return verbs
 }

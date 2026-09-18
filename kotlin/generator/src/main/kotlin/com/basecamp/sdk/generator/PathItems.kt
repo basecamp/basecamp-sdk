@@ -18,6 +18,7 @@ import java.io.File
 object PathItems {
     private val NON_OPERATION_FIELDS = setOf("summary", "description", "servers", "parameters")
     private const val ADDITIONAL_OPERATIONS = "additionalOperations"
+    private val VERB_PATTERN = Regex("[a-z]+")
 
     /**
      * The ordered HTTP methods the SDK generators emit — one declaration for
@@ -30,15 +31,26 @@ object PathItems {
         val declared = (Json.parseToJsonElement(file.readText()) as JsonObject)["verbs"]
             ?.jsonArray
             ?: error("$path must declare a `verbs` array")
-        // Every entry must be a JSON STRING. `jsonPrimitive.content` renders a
-        // number or a boolean as text too, so `["get", 1]` would read as
-        // `get`/`1` here while the Ruby, Python and TypeScript loaders reject it
-        // — a shared declaration that six generators read differently is worse
-        // than six literals.
+        // Every entry must be a JSON STRING matching VERB_PATTERN. The type check
+        // is not redundant: `jsonPrimitive.content` renders a number or a boolean
+        // as text, so `["get", 1]` would otherwise read as `get`/`1` here while
+        // the other loaders reject it.
+        //
+        // The shape rule is a positive character class rather than a blankness
+        // predicate, and deliberately so. Two review rounds chased "blank" across
+        // languages — a space, then a non-breaking space — and the next
+        // disagreement was guaranteed, because every language defines whitespace
+        // differently (Java's Character.isWhitespace, which backs Kotlin's
+        // isBlank, excludes U+00A0; Rust's char::is_whitespace includes it;
+        // Ruby's String#strip is ASCII-only). An HTTP method is a token, so
+        // `[a-z]+` says what a verb IS, is written the same way in all six
+        // loaders, and leaves no seam for case, normalisation or a leading BOM
+        // to open later.
         val verbs = declared.map { element ->
             val primitive = element as? JsonPrimitive
-            require(primitive != null && primitive.isString && primitive.content.isNotBlank()) {
-                "$path must declare a non-empty `verbs` array of non-blank strings; got $element"
+            require(primitive != null && primitive.isString && VERB_PATTERN.matches(primitive.content)) {
+                "$path must declare a non-empty `verbs` array of lowercase ASCII method names " +
+                    "(/[a-z]+/); got $element"
             }
             primitive.content
         }

@@ -68,10 +68,12 @@ fn run() -> Result<(), String> {
     // six per-language capabilities.
     let verbs_path = verbs_path.unwrap_or_else(|| root.join("spec/generated-verbs.json"));
     let verbs = read_json(&verbs_path)?;
-    // Every entry must be a non-blank STRING. Filtering invalid entries out would
-    // let `["get", 1]` read as `["get"]` here while the Ruby, Python and
-    // TypeScript loaders reject it — a shared declaration that six generators
-    // read differently is worse than six literals.
+    // Every entry must be a STRING matching `[a-z]+`. Filtering invalid entries
+    // out would let `["get", 1]` read as `["get"]` here while the other loaders
+    // reject it. The shape rule is a positive character class rather than a
+    // blankness predicate: an HTTP method is a token, so `[a-z]+` says what a
+    // verb IS and is written the same way in all six loaders, where "not blank"
+    // kept diverging on each language's whitespace definition.
     let declared = verbs["verbs"]
         .as_array()
         .ok_or_else(|| format!("{} must declare a `verbs` array", verbs_path.display()))?;
@@ -79,10 +81,11 @@ fn run() -> Result<(), String> {
     for verb in declared {
         let verb = verb
             .as_str()
-            .filter(|verb| !verb.trim().is_empty())
+            .filter(|verb| !verb.is_empty() && verb.chars().all(|c| c.is_ascii_lowercase()))
             .ok_or_else(|| {
                 format!(
-                    "{} must declare a non-empty `verbs` array of non-blank strings; got {verb}",
+                    "{} must declare a non-empty `verbs` array of lowercase ASCII method names \
+                     (/[a-z]+/); got {verb}",
                     verbs_path.display()
                 )
             })?;

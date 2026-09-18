@@ -47,16 +47,19 @@ export function generatedVerbs(): string[] {
     );
   }
   const verbs = declaration.verbs;
-  // Non-BLANK, not merely non-empty, and the same rule in all six loaders: a
-  // declaration one generator accepts and another refuses is the cross-SDK
-  // divergence a shared file exists to prevent.
+  // An HTTP method is a TOKEN, so the rule is a positive character class rather
+  // than a blankness predicate: `[a-z]+`, identical in all six loaders. Two
+  // review rounds chased "blank" across languages and the next disagreement was
+  // guaranteed, because every language defines whitespace differently. A closed
+  // positive rule has no such seam.
   if (
     !Array.isArray(verbs) ||
     verbs.length === 0 ||
-    !verbs.every((v) => typeof v === "string" && v.trim().length > 0)
+    !verbs.every((v) => typeof v === "string" && /^[a-z]+$/.test(v))
   ) {
     die(
-      `Error: ${GENERATED_VERBS_FILE} must declare a non-empty \`verbs\` array of non-blank strings.`
+      `Error: ${GENERATED_VERBS_FILE} must declare a non-empty \`verbs\` array of lowercase ` +
+        `ASCII method names (/[a-z]+/).`
     );
   }
   return verbs as string[];

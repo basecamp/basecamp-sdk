@@ -29,6 +29,10 @@
 #      HEAD while ignoring spec/generated-verbs.json entirely — which is how
 #      PATCH's removal from the declaration could go unenforced in four
 #      languages.
+#   3. MALFORMED DECLARATION. A verb is `[a-z]+` in all six loaders, and the
+#      compiled four have to agree with the scripted two about that. Six
+#      hand-written loaders that merely look equivalent are how a non-breaking
+#      space came to be accepted in one language and refused in three.
 #
 # Usage: ./test-compiled-generator-refusal <typescript|kotlin|swift|rust>
 #
@@ -195,5 +199,15 @@ run_scenario "HEAD $PATH_KEY ($OPERATION) is not an emitted verb" \
 
 run_scenario "the declaration withholds ${WITHHELD^^}, so ${WITHHELD^^} $WITHHELD_PATH ($WITHHELD_OPERATION) is refused" \
   "$ROOT_DIR/openapi.json" "$TMP/verbs-withheld.json" "${WITHHELD^^}" "$WITHHELD_OPERATION"
+
+# Scenario 3: a MALFORMED declaration. A verb is `[a-z]+` in all six loaders, a
+# positive rule chosen because two review rounds of "what counts as blank"
+# diverged by language (Java's Character.isWhitespace excludes U+00A0, Rust's
+# char::is_whitespace includes it, Ruby's String#strip is ASCII-only). The entry
+# below is a non-breaking space: it is the shape that told those loaders apart,
+# so it is the one worth asserting against the compiled ones.
+jq '.verbs += ["\u00a0"]' "$ROOT_DIR/spec/generated-verbs.json" > "$TMP/verbs-malformed.json"
+run_scenario "a declaration entry that is not [a-z]+ is refused" \
+  "$ROOT_DIR/openapi.json" "$TMP/verbs-malformed.json" "verbs" "a-z"
 
 exit "$failures"

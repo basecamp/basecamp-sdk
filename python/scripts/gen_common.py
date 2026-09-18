@@ -48,6 +48,8 @@ NON_OPERATION_FIELDS = frozenset({"summary", "description", "servers", "paramete
 
 # The self-test points this at a crafted declaration to prove the bound is sourced
 # from the shared file rather than a private literal; production runs never set it.
+VERB_PATTERN = re.compile(r"[a-z]+")
+
 GENERATED_VERBS_FILE = Path(
     os.environ.get(
         "BASECAMP_GENERATED_VERBS",
@@ -69,17 +71,19 @@ def generated_verbs() -> tuple[str, ...]:
             f"Error: cannot read the generated-verb declaration {GENERATED_VERBS_FILE}: {error}"
         ) from error
     verbs = declaration.get("verbs")
-    # Non-BLANK, not merely non-empty, and the same rule in all six loaders: a
-    # declaration one generator accepts and another refuses is the cross-SDK
-    # divergence a shared file exists to prevent.
+    # An HTTP method is a TOKEN, so the rule is a positive character class rather
+    # than a blankness predicate: ``[a-z]+``, identical in all six loaders. Two
+    # review rounds chased "blank" across languages and the next disagreement was
+    # guaranteed, because every language defines whitespace differently. A closed
+    # positive rule has no such seam.
     if (
         not isinstance(verbs, list)
         or not verbs
-        or not all(isinstance(v, str) and v.strip() for v in verbs)
+        or not all(isinstance(v, str) and VERB_PATTERN.fullmatch(v) for v in verbs)
     ):
         raise SystemExit(
-            f"Error: {GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of "
-            "non-blank strings."
+            f"Error: {GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of lowercase "
+            "ASCII method names (/[a-z]+/)."
         )
     return tuple(verbs)
 
