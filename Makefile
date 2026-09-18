@@ -125,6 +125,36 @@ url-routes-check:
 	@rm -f go/pkg/basecamp/url-routes.json.tmp
 	@echo "url-routes.json is up to date"
 
+.PHONY: catalog catalog-check
+
+# Generate go/pkg/basecamp/catalog/catalog.json — the distilled, embedded tool
+# Catalog. Joins openapi.json (identity, wire shape, body schemas) with
+# behavior-model.json (per-operation traits) into one self-contained artifact
+# (request-body $refs inlined) that downstream catalog consumers read straight
+# from the pinned SDK dependency instead of vendoring and re-joining the two
+# raw model files. `go run` uses the go.work module scripts/gen-catalog; the
+# module is stdlib-only, so it needs no network. See that command's package
+# doc for the join contract and the destructive-trait gap.
+catalog:
+	@echo "==> Generating tool catalog..."
+	@go run ./scripts/gen-catalog/
+	@echo "Updated go/pkg/basecamp/catalog/catalog.json"
+
+# Check that catalog.json is up to date. Byte-for-byte, matching the
+# url-routes/behavior-model gates: the embedded catalog is a pure function of
+# the two model files, so any drift means someone changed a model without
+# regenerating. First runs the generator's own unit tests, then regenerates to
+# a temp file and diffs.
+catalog-check:
+	@echo "==> Running catalog generator tests..."
+	@go test ./scripts/gen-catalog/
+	@echo "==> Checking tool catalog freshness..."
+	@go run ./scripts/gen-catalog/ openapi.json behavior-model.json go/pkg/basecamp/catalog/catalog.json.tmp
+	@diff -q go/pkg/basecamp/catalog/catalog.json go/pkg/basecamp/catalog/catalog.json.tmp > /dev/null 2>&1 || \
+		(rm -f go/pkg/basecamp/catalog/catalog.json.tmp && echo "ERROR: catalog.json is out of date. Run 'make catalog'" && exit 1)
+	@rm -f go/pkg/basecamp/catalog/catalog.json.tmp
+	@echo "catalog.json is up to date"
+
 .PHONY: bc3-routes bc3-route-parity test-bc3-route-parity bc3-routes-check check-known-defect-issues-open test-check-known-defect-issues-open
 
 # Regenerate spec/bc3-routes.json — the vendored table of routes bc3 actually
@@ -1716,7 +1746,7 @@ test-assert-lockfiles-unchanged:
 # from sources that are now current, and writes nothing when they already match.
 generate:
 	@$(MAKE) smithy-build
-	@$(MAKE) behavior-model url-routes provenance-sync
+	@$(MAKE) behavior-model url-routes catalog provenance-sync
 	@$(MAKE) ts-generate ts-generate-services \
 	         rb-generate rb-generate-services \
 	         py-generate \
@@ -1755,7 +1785,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift rs-check-drift go-check ts-check rb-check kt-check swift-check py-check rs-check check-required-tags test-check-required-tags check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check catalog-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift rs-check-drift go-check ts-check rb-check kt-check swift-check py-check rs-check check-required-tags test-check-required-tags check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts
@@ -1781,6 +1811,8 @@ help:
 	@echo "URL Routes:"
 	@echo "  url-routes           Generate url-routes.json from OpenAPI spec"
 	@echo "  url-routes-check     Verify url-routes.json is up to date"
+	@echo "  catalog              Generate catalog.json (distilled embedded tool Catalog)"
+	@echo "  catalog-check        Verify catalog.json is up to date"
 	@echo ""
 	@echo "Go SDK:"
 	@echo "  go-test          Run Go tests"

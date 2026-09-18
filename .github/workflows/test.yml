@@ -458,6 +458,16 @@ jobs:
         working-directory: .
         run: make url-routes-check
 
+      - name: Check tool catalog freshness
+        # catalog.json is a generated Go artifact (//go:embed in
+        # pkg/basecamp/catalog/catalog.go), distilled from openapi.json +
+        # behavior-model.json. Its own step, not `make check` membership: no CI
+        # job runs the full `make check`, so a gate only wired there is unrun
+        # (see this file's header note). Also runs the generator's unit tests.
+        # Runs from repo root regardless of this job's `working-directory: go`.
+        working-directory: .
+        run: make catalog-check
+
       - name: Check auth-routable consumer invariants
         run: ../scripts/check-auth-routable-consumers.sh
 
@@ -1448,10 +1458,10 @@ jobs:
           # pinned build, so none of it needs owning here.
           #
           # GOWORK=off, for two reasons. The repository root carries a `go.work`
-          # covering three modules, so a bare `go list -m` prints all three and
-          # `apidiff -m` would be handed a "module path" three lines long — it
+          # covering four modules, so a bare `go list -m` prints all four and
+          # `apidiff -m` would be handed a "module path" four lines long — it
           # fails, but only after the workspace has been read, and the failure
-          # names all three. And the module a consumer resolves is this one
+          # names all four. And the module a consumer resolves is this one
           # alone, from its own go.mod and go.sum, not one wired to sibling
           # directories that are never published; measuring the published shape
           # is the whole point of the gate. Both spellings export byte-identical

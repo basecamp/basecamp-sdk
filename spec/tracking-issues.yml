@@ -135,3 +135,7 @@ prose_tracking_issues:
     file: "scripts/check-required-tags.rb"
     site: "scripts/check-required-tags.rb — the six per-language generators iterate a five-verb list, so an operation on any other verb is dropped from the generated services rather than merely shipping untagged"
     mentions: 1
+  - issue: 925
+    file: "scripts/gen-catalog/main.go"
+    site: "scripts/gen-catalog/main.go — generatedVerbs restates the get/put/post/delete/patch set to bound the catalog to the generated surface; #925 consolidates the six per-generator copies of that list"
+    mentions: 1
