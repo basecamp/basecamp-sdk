@@ -13,6 +13,37 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### `listLineupMarkers` moves from the Automation service to the Lineup service
+
+`AutomationService` is gone. Its only method, the lineup-marker listing, now hangs
+off `LineupService` beside `create`, `update` and `delete`, where the other three
+lineup-marker operations already were. The method name does not change — only the
+service you reach it through.
+
+| SDK | before | after |
+|---|---|---|
+| Ruby | `account.automation.list_lineup_markers` | `account.lineup.list_lineup_markers` |
+| Python | `account.automation.list_lineup_markers()` | `account.lineup.list_lineup_markers()` |
+| TypeScript | `client.automation.listLineupMarkers()` | `client.lineup.listLineupMarkers()` |
+| Kotlin | `account.automation.listLineupMarkers()` | `account.lineup.listLineupMarkers()` |
+| Swift | `account.automation.listLineupMarkers()` | `account.lineup.listLineupMarkers()` |
+| Rust | `account.automation().list_lineup_markers()` | `account.lineup().list_lineup_markers()` |
+| Go | `account.Lineup().ListMarkers(...)` | unchanged |
+
+TypeScript also re-exports the `LineupMarker` type from `lineup.js` rather than
+`automation.js`; the type itself is unchanged. `AutomationService` is no longer
+exported by any SDK.
+
+**Loud, not silent.** Every one of these is a compile error, an `AttributeError`,
+or a `NoMethodError` on the first call — there is no version of this that silently
+returns the wrong thing. Go is unaffected: it never had an `Automation()` accessor
+and has always exposed this operation on `LineupService`.
+
+**Why.** The `Automation` tag was a catch-all over seven unrelated surfaces, and
+splitting it into real domains is what the rest of that change does. `AutomationService`
+existed only because this one operation fell through the tag's split table while its
+three siblings were routed out of it; the tag it was named after no longer exists.
+
 ### Go: the event feed's poll lanes refuse a malformed response instead of typing it
 
 `EventFeedService.PollEvents` and `PollInbox` now decide each response against the

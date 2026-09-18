@@ -21,6 +21,15 @@ public final class LineupService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func listLineupMarkers() async throws -> [LineupMarker] {
+        return try await request(
+            OperationInfo(service: "Lineup", operation: "ListLineupMarkers", resourceType: "lineup_marker", isMutation: false),
+            method: "GET",
+            path: "/lineup/markers.json",
+            retryConfig: Metadata.retryConfig(for: "ListLineupMarkers")
+        )
+    }
+
     public func update(markerId: Int, req: UpdateLineupMarkerRequest) async throws {
         try await requestVoid(
             OperationInfo(service: "Lineup", operation: "UpdateLineupMarker", resourceType: "lineup_marker", isMutation: true, resourceId: markerId),

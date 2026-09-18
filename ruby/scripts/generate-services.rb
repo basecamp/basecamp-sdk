@@ -110,9 +110,6 @@ class ServiceGenerator
     'Dock' => {
       'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool]
     },
-    'Lineup' => {
-      'Automation' => %w[ListLineupMarkers]
-    },
     'Recordings' => {
       'Events' => %w[ListEvents]
     },

@@ -57,9 +57,6 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
     "Dock" to mapOf(
         "Tools" to listOf("GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"),
     ),
-    "Lineup" to mapOf(
-        "Automation" to listOf("ListLineupMarkers"),
-    ),
     "Recordings" to mapOf(
         "Events" to listOf("ListEvents"),
     ),

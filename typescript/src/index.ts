@@ -291,7 +291,7 @@ export {
   ClientVisibilityService,
 } from "./generated/services/client-visibility.js";
 
-// Automation services - generated
+// Webhooks service - generated
 export {
   WebhooksService,
   type Webhook,
@@ -523,15 +523,10 @@ export {
 // Lineup service - generated
 export {
   LineupService,
+  type LineupMarker,
   type CreateLineupRequest,
   type UpdateLineupRequest,
 } from "./generated/services/lineup.js";
-
-// Automation service - generated
-export {
-  AutomationService,
-  type LineupMarker,
-} from "./generated/services/automation.js";
 
 // Organization services - generated
 //

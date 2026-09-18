@@ -12,6 +12,8 @@ import { Errors } from "../../errors.js";
 // Types
 // =============================================================================
 
+/** LineupMarker entity from the Basecamp API. */
+export type LineupMarker = components["schemas"]["LineupMarker"];
 
 /**
  * Request parameters for create.
@@ -42,6 +44,30 @@ export interface UpdateLineupRequest {
  * Service for Lineup operations.
  */
 export class LineupService extends BaseService {
+
+  /**
+   * List all lineup markers for the account
+   * @returns Array of LineupMarker
+   *
+   * @example
+   * ```ts
+   * const result = await client.lineup.listLineupMarkers();
+   * ```
+   */
+  async listLineupMarkers(): Promise<LineupMarker[]> {
+    const response = await this.request(
+      {
+        service: "Lineup",
+        operation: "ListLineupMarkers",
+        resourceType: "lineup_marker",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/lineup/markers.json", {
+        })
+    );
+    return response ?? [];
+  }
 
   /**
    * Create a new lineup marker

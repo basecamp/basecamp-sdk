@@ -29,7 +29,6 @@
 # says. Ordered by service, then operation, so a diff against Config.kt reads in blocks.
 [operation_services]
 CreateAttachment = "Attachments"
-ListLineupMarkers = "Automation"
 CreateCampfireLine = "Campfires"
 CreateCampfireUpload = "Campfires"
 CreateChatbot = "Campfires"

@@ -4,7 +4,6 @@
 
 pub mod account;
 pub mod attachments;
-pub mod automation;
 pub mod bookmarks;
 pub mod boosts;
 pub mod bubble_ups;

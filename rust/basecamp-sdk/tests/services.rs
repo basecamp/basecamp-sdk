@@ -53,7 +53,7 @@ async fn attachments_create_reaches_the_wire() {
 }
 
 #[tokio::test]
-async fn automation_list_lineup_markers_reaches_the_wire() {
+async fn lineup_list_lineup_markers_reaches_the_wire() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/999/lineup/markers.json"))
@@ -68,7 +68,7 @@ async fn automation_list_lineup_markers_reaches_the_wire() {
         .mount(&server)
         .await;
     account(&server)
-        .automation()
+        .lineup()
         .list_lineup_markers()
         .await
         .unwrap();
@@ -1210,10 +1210,8 @@ error_case!(
 );
 
 error_case!(
-    automation_list_lineup_markers_maps_a_rejection,
-    |account: basecamp_sdk::AccountClient| async move {
-        account.automation().list_lineup_markers().await
-    }
+    lineup_list_lineup_markers_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.lineup().list_lineup_markers().await }
 );
 
 error_case!(

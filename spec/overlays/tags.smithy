@@ -226,16 +226,14 @@ apply RepositionTool @tags(["Dock"])
 
 // Lineup (account-wide schedule markers)
 //
-// ListLineupMarkers is the one operation here whose SERVICE is not Lineup. It
-// has always generated into AutomationService — it was the only operation the
-// Automation tag reached without a SERVICE_SPLITS entry, so it fell through to
-// the tag-derived service while its three siblings were split out. Retagging it
-// Lineup without saying so would move a public method between services, so each
-// tag-keyed generator now carries 'Lineup' => { 'Automation' => [...] } and the
-// Rust table an explicit ListLineupMarkers = "Automation" row. The tag is gone;
-// the service it named survives, holding exactly this one method, as it did
-// before. Merging it into LineupService is a breaking change and a separate
-// decision.
+// ListLineupMarkers moves SERVICE as well as tag, and it is the only operation
+// in this split that does. It was the one operation the Automation tag reached
+// without a SERVICE_SPLITS entry, so it fell through to the tag-derived service
+// and generated into AutomationService alone while its three siblings were
+// split into Lineup. With no entry carrying it, retagging lands it on Lineup
+// with them, AutomationService stops being emitted, and every SDK's
+// AutomationService#list_lineup_markers becomes LineupService#list. That is a
+// breaking change, taken deliberately and recorded in MIGRATING.md.
 apply ListLineupMarkers @tags(["Lineup"])
 apply CreateLineupMarker @tags(["Lineup"])
 apply UpdateLineupMarker @tags(["Lineup"])

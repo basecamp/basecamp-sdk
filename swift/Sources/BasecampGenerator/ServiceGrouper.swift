@@ -56,9 +56,6 @@ let serviceSplits: [String: [String: [String]]] = [
     "Dock": [
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
     ],
-    "Lineup": [
-        "Automation": ["ListLineupMarkers"],
-    ],
     "Recordings": [
         "Events": ["ListEvents"],
     ],

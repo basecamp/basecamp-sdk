@@ -217,9 +217,6 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
   Dock: {
     Tools: ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
   },
-  Lineup: {
-    Automation: ["ListLineupMarkers"],
-  },
   Recordings: {
     Events: ["ListEvents"],
   },

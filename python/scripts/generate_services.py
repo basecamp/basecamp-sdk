@@ -83,9 +83,6 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
     "Dock": {
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
     },
-    "Lineup": {
-        "Automation": ["ListLineupMarkers"],
-    },
     "Recordings": {
         "Events": ["ListEvents"],
     },

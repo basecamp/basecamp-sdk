@@ -493,7 +493,6 @@ All services are constructed from an `AccountClient`, obtained via `client.for_a
 | **Automation** | Webhooks | `account.webhooks` |
 | | Subscriptions | `account.subscriptions` |
 | | Events | `account.events` |
-| | Automation | `account.automation` |
 | | Boosts | `account.boosts` |
 | **Reporting** | Search | `account.search` |
 | | Reports | `account.reports` |

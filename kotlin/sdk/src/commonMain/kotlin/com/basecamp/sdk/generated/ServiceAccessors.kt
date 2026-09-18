@@ -19,10 +19,6 @@ val AccountClient.account: AccountService
 val AccountClient.attachments: AttachmentsService
     get() = service("Attachments") { AttachmentsService(this) }
 
-/** Automation operations. */
-val AccountClient.automation: AutomationService
-    get() = service("Automation") { AutomationService(this) }
-
 /** Bookmarks operations. */
 val AccountClient.bookmarks: BookmarksService
     get() = service("Bookmarks") { BookmarksService(this) }

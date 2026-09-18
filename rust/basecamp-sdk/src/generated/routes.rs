@@ -3530,7 +3530,7 @@ pub static LIST_GAUGES: Route = Route {
 /// `GET /lineup/markers.json`.
 pub static LIST_LINEUP_MARKERS: Route = Route {
     id: "ListLineupMarkers",
-    service: "Automation",
+    service: "Lineup",
     method: Method::GET,
     path: "/lineup/markers.json",
     pattern: "/lineup/markers",
