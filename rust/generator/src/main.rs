@@ -68,35 +68,28 @@ fn run() -> Result<(), String> {
     // six per-language capabilities.
     let verbs_path = verbs_path.unwrap_or_else(|| root.join("spec/generated-verbs.json"));
     let verbs = read_json(&verbs_path)?;
-    // Every entry must be a STRING matching `[a-z]+`. Filtering invalid entries
-    // out would let `["get", 1]` read as `["get"]` here while the other loaders
-    // reject it. The shape rule is a positive character class rather than a
-    // blankness predicate: an HTTP method is a token, so `[a-z]+` says what a
-    // verb IS and is written the same way in all six loaders, where "not blank"
-    // kept diverging on each language's whitespace definition.
-    let declared = verbs["verbs"]
+    // Read VERBATIM. scripts/check-generated-verbs.rb is the only thing that
+    // rejects a malformed declaration, and it is a prerequisite of every
+    // *-generate target and a member of `make check`, so nothing gets here
+    // without passing it. This loader deliberately performs NO validation: six
+    // loaders that each validated disagreed five times in four review rounds,
+    // every one of them on invalid input, and each surviving predicate is
+    // another chance to disagree.
+    let emittable_verbs: Vec<String> = verbs["verbs"]
         .as_array()
-        .ok_or_else(|| format!("{} must declare a `verbs` array", verbs_path.display()))?;
-    let mut emittable_verbs: Vec<String> = Vec::with_capacity(declared.len());
-    for verb in declared {
-        let verb = verb
-            .as_str()
-            .filter(|verb| !verb.is_empty() && verb.chars().all(|c| c.is_ascii_lowercase()))
-            .ok_or_else(|| {
-                format!(
-                    "{} must declare a non-empty `verbs` array of lowercase ASCII method names \
-                     (/[a-z]+/); got {verb}",
-                    verbs_path.display()
-                )
-            })?;
-        emittable_verbs.push(verb.to_string());
-    }
-    if emittable_verbs.is_empty() {
-        return Err(format!(
-            "{} must declare a non-empty `verbs` array",
-            verbs_path.display()
-        ));
-    }
+        .map(|verbs| {
+            verbs
+                .iter()
+                .filter_map(|verb| verb.as_str().map(str::to_string))
+                .collect()
+        })
+        .ok_or_else(|| {
+            format!(
+                "cannot read {}. Run `make check-generated-verbs` — it is a prerequisite of \
+                 every generate target",
+                verbs_path.display()
+            )
+        })?;
     let model = Model::build(&openapi, &behavior, &naming, &emittable_verbs)?;
     let files = render(&model)?;
 

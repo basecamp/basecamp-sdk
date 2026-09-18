@@ -20,7 +20,7 @@
 # which the Kotlin generator did until this test was written. An EMPTY output
 # directory cannot show that, so the directory is seeded first.
 #
-# FIVE SCENARIOS, one per guard the walk carries. They are a table rather than a
+# FOUR SCENARIOS, one per guard the walk carries. They are a table rather than a
 # list that grows by one each review round: a new guard in the shared walk gets a
 # row here, because the live spec exercises none of them.
 #
@@ -31,10 +31,6 @@
 #      HEAD while ignoring spec/generated-verbs.json entirely — which is how
 #      PATCH's removal from the declaration could go unenforced in four
 #      languages.
-#   3. MALFORMED DECLARATION. A verb is `[a-z]+` in all six loaders, and the
-#      compiled four have to agree with the scripted two about that. Six
-#      hand-written loaders that merely look equivalent are how a non-breaking
-#      space came to be accepted in one language and refused in three.
 #
 # Usage: ./test-compiled-generator-refusal <typescript|kotlin|swift|rust>
 #
@@ -206,15 +202,12 @@ run_scenario "HEAD $PATH_KEY ($OPERATION) is not an emitted verb" \
 run_scenario "the declaration withholds $WITHHELD_UPPER, so $WITHHELD_UPPER $WITHHELD_PATH ($WITHHELD_OPERATION) is refused" \
   "$ROOT_DIR/openapi.json" "$TMP/verbs-withheld.json" "$WITHHELD_UPPER" "$WITHHELD_OPERATION"
 
-# Scenario 3: a MALFORMED declaration. A verb is `[a-z]+` in all six loaders, a
-# positive rule chosen because two review rounds of "what counts as blank"
-# diverged by language (Java's Character.isWhitespace excludes U+00A0, Rust's
-# char::is_whitespace includes it, Ruby's String#strip is ASCII-only). The entry
-# below is a non-breaking space: it is the shape that told those loaders apart,
-# so it is the one worth asserting against the compiled ones.
-jq '.verbs += ["\u00a0"]' "$ROOT_DIR/spec/generated-verbs.json" > "$TMP/verbs-malformed.json"
-run_scenario "a declaration entry that is not [a-z]+ is refused" \
-  "$ROOT_DIR/openapi.json" "$TMP/verbs-malformed.json" "verbs" "a-z"
+# There is no malformed-declaration scenario here any more, deliberately. The six
+# loaders stopped validating the declaration: scripts/check-generated-verbs.rb is
+# the only thing that rejects one, it is a prerequisite of every *-generate
+# target, and its own self-test drives every shape that used to tell the loaders
+# apart. Feeding a malformed declaration to a binary now would assert the absence
+# of a check rather than its presence.
 
 # Scenario 4: OpenAPI 3.2's additionalOperations, a MAP of method to Operation.
 # The bounded walkers would reject an unknown VERB, but this field is not a verb

@@ -18,26 +18,24 @@ func failGeneration(_ message: String) -> Never {
     exit(1)
 }
 
-/// The ordered HTTP methods the SDK generators emit — one declaration for all
-/// six SDKs. See spec/generated-verbs.json for why it is a policy rather than
-/// six per-language capabilities.
+/// The ordered HTTP methods the SDK generators emit.
+///
+/// Read VERBATIM. `scripts/check-generated-verbs.rb` is the only thing that
+/// rejects a malformed declaration, and it is a prerequisite of every
+/// `*-generate` target and a member of `make check`, so nothing gets here
+/// without passing it. This loader deliberately performs NO validation: six
+/// loaders that each validated disagreed five times in four review rounds,
+/// every one of them on invalid input, and each surviving predicate is another
+/// chance to disagree.
 func loadGeneratedVerbs(path: String) -> [String] {
-    guard let data = FileManager.default.contents(atPath: path) else {
-        failGeneration("Error: generated-verb declaration not found: \(path)")
-    }
     guard
+        let data = FileManager.default.contents(atPath: path),
         let declaration = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-        let verbs = declaration["verbs"] as? [String],
-        !verbs.isEmpty,
-        // A positive character class rather than a blankness predicate. An HTTP
-        // method is a token, so `[a-z]+` says what a verb IS and is written the
-        // same way in all six loaders; a "not blank" rule would keep diverging,
-        // because every language defines whitespace differently.
-        verbs.allSatisfy({ $0.allSatisfy { $0.isASCII && $0.isLowercase && $0.isLetter } })
+        let verbs = declaration["verbs"] as? [String]
     else {
         failGeneration(
-            "Error: \(path) must declare a non-empty `verbs` array of lowercase ASCII method "
-                + "names (/[a-z]+/)."
+            "Error: cannot read \(path). Run 'make check-generated-verbs' — it is a "
+                + "prerequisite of every generate target."
         )
     }
     return verbs

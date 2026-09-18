@@ -18,44 +18,29 @@ import java.io.File
 object PathItems {
     private val NON_OPERATION_FIELDS = setOf("summary", "description", "servers", "parameters")
     private const val ADDITIONAL_OPERATIONS = "additionalOperations"
-    private val VERB_PATTERN = Regex("[a-z]+")
 
     /**
-     * The ordered HTTP methods the SDK generators emit — one declaration for
-     * all six SDKs. See spec/generated-verbs.json for why it is a policy
-     * rather than six per-language capabilities.
+     * The ordered HTTP methods the SDK generators emit.
+     *
+     * Read VERBATIM. scripts/check-generated-verbs.rb is the only thing that
+     * rejects a malformed declaration, and it is a prerequisite of every
+     * *-generate target and a member of `make check`, so nothing gets here
+     * without passing it. This loader deliberately performs NO validation: six
+     * loaders that each validated disagreed five times in four review rounds,
+     * every one of them on invalid input, and each surviving predicate is
+     * another chance to disagree. Kotlin's own instance was in the PARSE rather
+     * than a check — `JsonPrimitive.content` renders a number as text — which is
+     * why "validate less" was not the answer and "do not validate" is.
      */
     fun generatedVerbs(path: String): List<String> {
         val file = File(path)
-        require(file.exists()) { "Generated-verb declaration not found: ${file.absolutePath}" }
-        val declared = (Json.parseToJsonElement(file.readText()) as JsonObject)["verbs"]
-            ?.jsonArray
-            ?: error("$path must declare a `verbs` array")
-        // Every entry must be a JSON STRING matching VERB_PATTERN. The type check
-        // is not redundant: `jsonPrimitive.content` renders a number or a boolean
-        // as text, so `["get", 1]` would otherwise read as `get`/`1` here while
-        // the other loaders reject it.
-        //
-        // The shape rule is a positive character class rather than a blankness
-        // predicate, and deliberately so. Two review rounds chased "blank" across
-        // languages — a space, then a non-breaking space — and the next
-        // disagreement was guaranteed, because every language defines whitespace
-        // differently (Java's Character.isWhitespace, which backs Kotlin's
-        // isBlank, excludes U+00A0; Rust's char::is_whitespace includes it;
-        // Ruby's String#strip is ASCII-only). An HTTP method is a token, so
-        // `[a-z]+` says what a verb IS, is written the same way in all six
-        // loaders, and leaves no seam for case, normalisation or a leading BOM
-        // to open later.
-        val verbs = declared.map { element ->
-            val primitive = element as? JsonPrimitive
-            require(primitive != null && primitive.isString && VERB_PATTERN.matches(primitive.content)) {
-                "$path must declare a non-empty `verbs` array of lowercase ASCII method names " +
-                    "(/[a-z]+/); got $element"
-            }
-            primitive.content
+        require(file.exists()) {
+            "Generated-verb declaration not found: ${file.absolutePath}. Run " +
+                "'make check-generated-verbs' — it is a prerequisite of every generate target."
         }
-        require(verbs.isNotEmpty()) { "$path must declare a non-empty `verbs` array" }
-        return verbs
+        return (Json.parseToJsonElement(file.readText()) as JsonObject)["verbs"]!!
+            .jsonArray
+            .map { it.jsonPrimitive.content }
     }
 
     /**

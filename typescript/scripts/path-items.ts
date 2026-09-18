@@ -31,38 +31,20 @@ function die(message: string): never {
 }
 
 /**
- * The ordered HTTP methods the SDK generators emit — one declaration for all
- * six SDKs. See spec/generated-verbs.json for why it is a policy rather than
- * six per-language capabilities.
+ * The ordered HTTP methods the SDK generators emit.
+ *
+ * Read VERBATIM. scripts/check-generated-verbs.rb is the only thing that rejects a malformed declaration, and it is a prerequisite of every *-generate target and a member of `make check`, so nothing gets here without passing it. This loader deliberately performs NO validation: six loaders that each validated disagreed five times in four review rounds, every one of them on invalid input, and each surviving predicate is another chance to disagree.
  */
 export function generatedVerbs(): string[] {
-  let declaration: { verbs?: unknown };
   try {
-    declaration = JSON.parse(fs.readFileSync(GENERATED_VERBS_FILE, "utf-8"));
+    return JSON.parse(fs.readFileSync(GENERATED_VERBS_FILE, "utf-8")).verbs;
   } catch (error) {
     die(
-      `Error: cannot read the generated-verb declaration ${GENERATED_VERBS_FILE}: ${
+      `Error: cannot read ${GENERATED_VERBS_FILE}: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }. Run 'make check-generated-verbs' — it is a prerequisite of every generate target.`
     );
   }
-  const verbs = declaration.verbs;
-  // An HTTP method is a TOKEN, so the rule is a positive character class rather
-  // than a blankness predicate: `[a-z]+`, identical in all six loaders. Two
-  // review rounds chased "blank" across languages and the next disagreement was
-  // guaranteed, because every language defines whitespace differently. A closed
-  // positive rule has no such seam.
-  if (
-    !Array.isArray(verbs) ||
-    verbs.length === 0 ||
-    !verbs.every((v) => typeof v === "string" && /^[a-z]+$/.test(v))
-  ) {
-    die(
-      `Error: ${GENERATED_VERBS_FILE} must declare a non-empty \`verbs\` array of lowercase ` +
-        `ASCII method names (/[a-z]+/).`
-    );
-  }
-  return verbs as string[];
 }
 
 /**

@@ -496,12 +496,12 @@ ts-test: ts-install
 ts-typecheck: ts-install
 
 # Generate TypeScript types and metadata from OpenAPI
-ts-generate:
+ts-generate: | check-generated-verbs
 	@echo "==> Generating TypeScript SDK..."
 	cd typescript && npm run generate
 
 # Generate TypeScript services from OpenAPI
-ts-generate-services:
+ts-generate-services: | check-generated-verbs
 	@echo "==> Generating TypeScript services..."
 	cd typescript && npx tsx scripts/generate-services.ts
 
@@ -587,14 +587,14 @@ ts-clean:
 .PHONY: rb-generate rb-generate-services rb-build rb-test rb-check rb-check-drift rb-doc rb-clean
 
 # Generate Ruby types and metadata from OpenAPI
-rb-generate:
+rb-generate: | check-generated-verbs
 	@echo "==> Generating Ruby SDK types and metadata..."
 	cd ruby && ruby scripts/generate-metadata.rb > lib/basecamp/generated/metadata.json
 	cd ruby && ruby scripts/generate-types.rb > lib/basecamp/generated/types.rb
 	@echo "Generated lib/basecamp/generated/metadata.json and types.rb"
 
 # Generate Ruby services from OpenAPI
-rb-generate-services:
+rb-generate-services: | check-generated-verbs
 	@echo "==> Generating Ruby services..."
 	cd ruby && ruby scripts/generate-services.rb
 
@@ -644,12 +644,12 @@ rb-clean:
 
 .PHONY: py-generate py-generate-services py-build py-test py-typecheck py-check py-check-drift py-clean
 
-py-generate: py-generate-services
+py-generate: py-generate-services | check-generated-verbs
 	cd python && uv run python scripts/generate_types.py
 	cd python && uv run python scripts/generate_metadata.py
 	cd python && uv run ruff format src/basecamp/generated/
 
-py-generate-services:
+py-generate-services: | check-generated-verbs
 	cd python && uv run python scripts/generate_services.py
 
 py-build:
@@ -731,7 +731,7 @@ rs-deny:
 # The generator resolves openapi.json, behavior-model.json and its own names.toml
 # from the repository root (`--root`, defaulting to the workspace's parent) and
 # writes rust/basecamp-sdk/src/generated unless `--output` says otherwise.
-rs-generate-services:
+rs-generate-services: | check-generated-verbs
 	@echo "==> Generating Rust SDK from OpenAPI..."
 	cd rust && cargo run -q --locked -p $(RS_CRATE)-generator
 
@@ -1175,7 +1175,7 @@ conformance-canary:
 .PHONY: kt-generate-services kt-build kt-test kt-check kt-check-drift kt-check-generated-drift kt-clean gradle-stop
 
 # Generate Kotlin services from OpenAPI
-kt-generate-services:
+kt-generate-services: | check-generated-verbs
 	@echo "==> Generating Kotlin services..."
 	cd kotlin && ./gradlew :generator:run --args="--openapi ../openapi.json --behavior ../behavior-model.json --output sdk/src/commonMain/kotlin/com/basecamp/sdk/generated"
 
@@ -1361,7 +1361,7 @@ else
 endif
 
 # Regenerate Swift SDK services from OpenAPI spec (needs swift on any platform)
-swift-generate:
+swift-generate: | check-generated-verbs
 ifdef HAS_SWIFT
 	@$(MAKE) -C swift generate
 else
@@ -1465,7 +1465,32 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-gradle-serialization test-check-gradle-serialization check-required-tags test-check-required-tags check-bucket-flat-parity check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples test-generator-verb-inversion
+.PHONY: check-gradle-serialization test-check-gradle-serialization check-required-tags test-check-required-tags check-bucket-flat-parity check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples test-generator-verb-inversion check-generated-verbs test-check-generated-verbs
+
+# The ONE validator of spec/generated-verbs.json, and the only thing that rejects
+# a malformed declaration. The six loaders read that file WITHOUT validating,
+# which is what stops them disagreeing about malformed content: when each of them
+# validated too, they disagreed five times in four review rounds — Kotlin's
+# JsonPrimitive coercion, Rust's filter_map, Ruby's ASCII String#strip, Swift's
+# allSatisfy on the empty string, JavaScript's $ before a line terminator — every
+# one of those on INVALID input, which this gate now makes unreachable.
+#
+# It is an ORDER-ONLY PREREQUISITE of every *-generate target rather than a CI
+# job, because there is no single generation entry point: ts-generate,
+# rb-generate, py-generate, swift-generate, kt-generate-services and
+# rs-generate-services are each directly invokable and `generate` only aggregates
+# them, so a CI-only gate is bypassed by the `make rb-generate` that a hand-edit
+# is made next to. It is ALSO in check-targets, so a hand-edit that never
+# regenerates is caught too.
+check-generated-verbs:
+	@echo "==> Checking the generated-verb declaration..."
+	@ruby ./scripts/check-generated-verbs.rb
+
+# Drive that gate from outside with crafted declarations. Its live run only ever
+# exercises the passing case, so nothing there proves it rejects the shapes that
+# told the six loaders apart.
+test-check-generated-verbs:
+	@ruby ./scripts/test-check-generated-verbs.rb
 
 # Prove an operation on a verb the SDKs do not generate can never vanish. Each
 # generator used to find operations by iterating its own five-verb list, so an
@@ -1830,7 +1855,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check catalog-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift rs-check-drift go-check ts-check rb-check kt-check swift-check py-check rs-check check-required-tags test-check-required-tags check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples test-generator-verb-inversion
+check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check catalog-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift rs-check-drift go-check ts-check rb-check kt-check swift-check py-check rs-check check-required-tags test-check-required-tags check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples test-generator-verb-inversion check-generated-verbs test-check-generated-verbs
 	@:
 
 # Clean all build artifacts

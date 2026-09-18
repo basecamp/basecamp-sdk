@@ -45,25 +45,17 @@ class ServiceGenerator
     'BASECAMP_GENERATED_VERBS', File.expand_path('../../spec/generated-verbs.json', __dir__)
   )
 
+  # Read VERBATIM. scripts/check-generated-verbs.rb is the only thing that
+  # rejects a malformed declaration, and it is a prerequisite of every
+  # *-generate target and a member of `make check`, so nothing gets here without
+  # passing it. This loader deliberately performs NO validation: six loaders that
+  # each validated disagreed five times in four review rounds, every one of them
+  # on invalid input, and each surviving predicate is another chance to disagree.
   EMITTABLE_METHODS = begin
-    verbs = JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8'))['verbs']
-    # An HTTP method is a TOKEN, so the rule is a positive character class rather
-    # than a blankness predicate: `[a-z]+`, identical in all six loaders. Two
-    # review rounds chased "blank" across languages — Kotlin and Rust rejected a
-    # space while the others accepted it, then Ruby's ASCII `strip` accepted a
-    # non-breaking space the Unicode-aware ones rejected — and the next
-    # disagreement was guaranteed, because every language defines whitespace
-    # differently (Java's Character.isWhitespace excludes U+00A0; Rust's
-    # char::is_whitespace includes it; Ruby's String#strip is ASCII-only). A
-    # closed positive rule has no such seam: "", " ", "\u00a0", "GET" and 1 are
-    # all rejected the same way everywhere.
-    unless verbs.is_a?(Array) && !verbs.empty? && verbs.all? { |v| v.is_a?(String) && v.match?(/\A[a-z]+\z/) }
-      abort "Error: #{GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of lowercase " \
-            'ASCII method names (/\A[a-z]+\z/).'
-    end
-    verbs.freeze
-  rescue Errno::ENOENT, JSON::ParserError => e
-    abort "Error: cannot read the generated-verb declaration #{GENERATED_VERBS_FILE}: #{e.message}"
+    JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8')).fetch('verbs').freeze
+  rescue Errno::ENOENT, JSON::ParserError, KeyError => e
+    abort "Error: cannot read #{GENERATED_VERBS_FILE}: #{e.message}. Run " \
+          "'make check-generated-verbs' — it is a prerequisite of every generate target."
   end
 
   # Schema reference cache for resolving $ref

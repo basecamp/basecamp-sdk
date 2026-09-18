@@ -210,40 +210,16 @@ check("OpenAPI 3.2's `additionalOperations` map is refused by name, not read as 
   [status != 0 && output.include?("additionalOperations"), "exit #{status}: #{output}"]
 end
 
-# Every loader has to read the declaration the SAME way. A file one generator
-# accepts and another refuses is the cross-SDK divergence a shared declaration
-# exists to prevent, so the bad shapes are asserted against Ruby AND Python.
-# The shapes are the ones two review rounds produced plus the ones the next
-# round would have: a verb is `[a-z]+`, so none of these is a question about
-# any language's definition of whitespace.
-[["a non-string entry", ["get", 1]],
- ["an ASCII-blank entry", ["get", "  "]],
- ["a Unicode-blank entry (U+00A0, which Ruby's strip keeps)", ["get", "\u00a0"]],
- ["a Unicode-blank entry (U+2003, which Ruby's strip keeps and Python's removes)", ["get", "\u2003"]],
- ["an entry with a leading BOM", ["get", "\ufeffdelete"]],
- ["an uppercase entry", ["get", "DELETE"]],
- ["an empty array", []]].each_with_index do |(what, verbs), i|
-  check("the declaration rejects #{what}, in both Ruby readers and in Python") do
-    results = {}
-    with_files(spec({ "/{accountId}/widgets.json" => { "get" => operation("ListWidgets") } })) do |dir, spec_path, _b, _v|
-      verbs_path = File.join(dir, "bad-verbs.json")
-      File.write(verbs_path, JSON.generate({ "verbs" => verbs }))
-      env = { "BASECAMP_GENERATED_VERBS" => verbs_path }
-      results[:ruby] = run(["ruby", File.join(ROOT, "ruby/scripts/generate-services.rb"),
-                            "--openapi", spec_path, "--output", File.join(dir, "rb")], env)
-      # Ruby has TWO independent readers of the declaration. Driving only the
-      # service generator would let the metadata one regress while this stays
-      # green, which is the same cross-reader disagreement the cases exist for.
-      results[:ruby_metadata] = run(["ruby", File.join(ROOT, "ruby/scripts/generate-metadata.rb"),
-                                     spec_path], env)
-      results[:python] = run(["python3", File.join(ROOT, "python/scripts/generate_services.py"),
-                              "--openapi", spec_path, "--output", File.join(dir, "py")],
-                             env.merge("PYTHONDONTWRITEBYTECODE" => "1"))
-    end
-    ok = results.values.all? { |status, output| status != 0 && output.include?("verbs") }
-    [ok, results.map { |lang, (status, output)| "#{lang} exit #{status}: #{output.lines.first}" }.join(" | ")]
-  end
-end
+# The malformed-declaration shapes are NOT asserted here any more. The six
+# loaders stopped validating: scripts/check-generated-verbs.rb is the only thing
+# that rejects a malformed declaration, and its own self-test
+# (scripts/test-check-generated-verbs.rb) drives every shape that used to tell
+# the loaders apart. Asserting them against a loader now would be asserting the
+# absence of the check, which is the point rather than a regression.
+#
+# What IS still asserted here is the other half — that each loader takes its
+# bound FROM the declaration rather than from a private literal (see the case
+# below that withholds a verb).
 
 check("PATCH is refused — the declaration does not name it, and two runtimes cannot serve it") do
   status, output, = ruby_services(spec({ "/{accountId}/widgets/{widgetId}.json" => { "patch" => operation("PatchWidget") } }))

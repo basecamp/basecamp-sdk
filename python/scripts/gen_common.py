@@ -48,8 +48,6 @@ NON_OPERATION_FIELDS = frozenset({"summary", "description", "servers", "paramete
 
 # The self-test points this at a crafted declaration to prove the bound is sourced
 # from the shared file rather than a private literal; production runs never set it.
-VERB_PATTERN = re.compile(r"[a-z]+")
-
 GENERATED_VERBS_FILE = Path(
     os.environ.get(
         "BASECAMP_GENERATED_VERBS",
@@ -61,31 +59,16 @@ GENERATED_VERBS_FILE = Path(
 def generated_verbs() -> tuple[str, ...]:
     """The ordered HTTP methods the SDK generators emit.
 
-    One declaration for all six SDKs; see ``spec/generated-verbs.json`` for why
-    it is a policy rather than six per-language capabilities.
+    Read VERBATIM. scripts/check-generated-verbs.rb is the only thing that rejects a malformed declaration, and it is a prerequisite of every *-generate target and a member of ``make check``, so nothing gets here without passing it. This loader deliberately performs NO validation: six loaders that each validated disagreed five times in four review rounds, every one of them on invalid input, and each surviving predicate is another chance to disagree.
     """
     try:
         declaration = json.loads(GENERATED_VERBS_FILE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
+        return tuple(declaration["verbs"])
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as error:
         raise SystemExit(
-            f"Error: cannot read the generated-verb declaration {GENERATED_VERBS_FILE}: {error}"
+            f"Error: cannot read {GENERATED_VERBS_FILE}: {error}. Run "
+            "'make check-generated-verbs' — it is a prerequisite of every generate target."
         ) from error
-    verbs = declaration.get("verbs")
-    # An HTTP method is a TOKEN, so the rule is a positive character class rather
-    # than a blankness predicate: ``[a-z]+``, identical in all six loaders. Two
-    # review rounds chased "blank" across languages and the next disagreement was
-    # guaranteed, because every language defines whitespace differently. A closed
-    # positive rule has no such seam.
-    if (
-        not isinstance(verbs, list)
-        or not verbs
-        or not all(isinstance(v, str) and VERB_PATTERN.fullmatch(v) for v in verbs)
-    ):
-        raise SystemExit(
-            f"Error: {GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of lowercase "
-            "ASCII method names (/[a-z]+/)."
-        )
-    return tuple(verbs)
 
 
 def iter_operations(

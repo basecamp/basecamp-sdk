@@ -207,6 +207,20 @@ jobs:
       - name: Generator verb inversion self-test
         run: make test-generator-verb-inversion
 
+      # The ONE validator of spec/generated-verbs.json. The six generators read
+      # that file without validating it — which is what stops them disagreeing
+      # about malformed content — so this gate is the only thing between a
+      # hand-edit and six loaders parsing whatever it says. It is also an
+      # order-only prerequisite of every *-generate target, because there is no
+      # single generation entry point and a CI-only gate is bypassed by the
+      # `make rb-generate` a hand-edit is made next to; this step catches the
+      # hand-edit that never regenerates at all.
+      - name: Generated-verb declaration
+        run: make check-generated-verbs
+
+      - name: Generated-verb declaration gate self-test
+        run: make test-check-generated-verbs
+
       - name: api-gaps registry frontmatter + allowlist schema
         run: make validate-api-gaps
         env:
