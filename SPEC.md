@@ -3490,9 +3490,13 @@ computed from — while the page's position commits over it. The walk's one stop
 is substituted, and refusing an escape there would contradict the byte-identical carriage the
 push lane depends on. Structural member names are validated; opaque `details` contents are not.
 
-Every refusal carries the response's request id, on the 200 paths as much as the error ones —
-those are the refusals a caller cannot look up any other way, and `errors.As` stops at the
-malformed error rather than walking to its cause.
+Every refusal carries what §6 records from the RESPONSE rather than from its body — the request
+id and the server's `Retry-After` — on the 200 paths as much as the error ones, because
+`errors.As` stops at the malformed error rather than walking to its cause, and those are the
+refusals a caller cannot otherwise look up or reschedule against. `Retry-After` rides even
+though a malformed response is never retryable: retryability is the SDK's verdict about
+repeating the call, and the delay is the server's instruction to a caller who reschedules the
+work themselves.
 
 The totality is the mechanism, not the individual checks. A permissive arm — *if the body
 looks like the documented shape, judge it; otherwise fall through to the canonical error* —

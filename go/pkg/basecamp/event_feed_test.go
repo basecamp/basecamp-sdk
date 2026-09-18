@@ -968,11 +968,15 @@ func TestEventFeedService_RefusesEveryOffContractPageEnvelope(t *testing.T) {
 }
 
 // A refused body is precisely the response someone has to look up
-// server-side, and errors.As stops at the malformed error rather than at its
-// cause — so the request id has to be on it.
-func TestEventFeedService_MalformedResponseCarriesTheRequestID(t *testing.T) {
+// server-side, or reschedule against, and errors.As stops at the malformed
+// error rather than at its cause — so what §6 records from the RESPONSE has
+// to be on it. Retry-After rides even though the refusal is not Retryable:
+// retryability is this SDK's verdict about repeating the call, Retry-After is
+// the server's delay for a caller who reschedules the work themselves.
+func TestEventFeedService_MalformedResponseCarriesTheResponseFacts(t *testing.T) {
 	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Request-Id", "req-abc123")
+		w.Header().Set("Retry-After", "7")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(409)
 		_, _ = w.Write([]byte(`{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":"x"}`))
@@ -984,6 +988,12 @@ func TestEventFeedService_MalformedResponseCarriesTheRequestID(t *testing.T) {
 	}
 	if base.RequestID != "req-abc123" {
 		t.Errorf("requestID = %q, want the response's — errors.As stops here, not at the cause", base.RequestID)
+	}
+	if base.RetryAfter != 7 {
+		t.Errorf("retryAfter = %d, want the server's delay carried onto the refusal", base.RetryAfter)
+	}
+	if base.Retryable {
+		t.Error("a malformed body is still not retryable: the same request draws the same body")
 	}
 }
 
@@ -1034,7 +1044,7 @@ func TestEventFeedService_KeepsASubstitutedNameInsideDetails(t *testing.T) {
 // The request id is on every refusal, not only the ones whose cause happens
 // to be the canonical error — the 200 paths have no canonical error at all,
 // and they are exactly the refusals a caller cannot look up any other way.
-func TestEventFeedService_MalformedPageCarriesTheRequestID(t *testing.T) {
+func TestEventFeedService_MalformedPageCarriesTheResponseFacts(t *testing.T) {
 	cases := map[string]string{
 		"a page that does not decode":    `{"events":[`,
 		"an envelope without a position": `{"events":[]}`,
@@ -1044,6 +1054,7 @@ func TestEventFeedService_MalformedPageCarriesTheRequestID(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("X-Request-Id", "req-page-1")
+				w.Header().Set("Retry-After", "3")
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(body))
 			})
@@ -1054,6 +1065,9 @@ func TestEventFeedService_MalformedPageCarriesTheRequestID(t *testing.T) {
 			}
 			if base.RequestID != "req-page-1" {
 				t.Errorf("requestID = %q, want the response's", base.RequestID)
+			}
+			if base.RetryAfter != 3 {
+				t.Errorf("retryAfter = %d, want the response's, on the 200 paths too", base.RetryAfter)
 			}
 		})
 	}
