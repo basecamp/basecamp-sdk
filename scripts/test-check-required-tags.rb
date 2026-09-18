@@ -92,9 +92,9 @@ mixed = {
 status, = run_check(mixed)
 expect("path-level parameters are ignored", status.zero?)
 
-# 9. The exact regression the verb list guards: a tagged GET beside an untagged
-#    HEAD. A short HTTP_METHODS list never visits the HEAD, so the document
-#    passes and reports one operation.
+# 9. The regression both reviewers found: a tagged GET beside an untagged HEAD.
+#    A gate that enumerates verbs and misses HEAD never visits the second
+#    operation, so this document passes and reports one operation.
 tagged_get_untagged_head = {
   "openapi" => "3.1.0",
   "paths" => {
@@ -108,13 +108,65 @@ status, out = run_check(tagged_get_untagged_head)
 expect("untagged HEAD beside a tagged GET fails", status == 1)
 expect("untagged-HEAD failure names the HEAD operation", out.include?("HeadThing"))
 
-# 10. Every verb a Path Item Object may carry is visited, not just the five the
-#     Basecamp API happens to use today.
+# 10. Every verb OpenAPI 3.1 names as a Path Item operation is checked.
 %w[get put post delete options head patch trace].each do |verb|
-  spec = { "openapi" => "3.1.0", "paths" => { "/{accountId}/thing" => { verb => { "operationId" => "Untagged#{verb.capitalize}" } } } }
+  spec = {
+    "openapi" => "3.1.0",
+    "paths" => { "/{accountId}/thing" => { verb => { "operationId" => "Untagged#{verb.capitalize}" } } }
+  }
   status, out = run_check(spec)
   expect("untagged #{verb.upcase} fails", status == 1 && out.include?("Untagged#{verb.capitalize}"))
 end
+
+# 11. The case a verb list cannot reach however carefully it is maintained: a
+#     method nobody wrote down. `query` is real (OpenAPI 3.2 adds it) and
+#     Smithy's @http trait would emit any string at all. This is why the check
+#     identifies operations by what they are NOT.
+%w[query purge notify].each do |verb|
+  spec = {
+    "openapi" => "3.1.0",
+    "paths" => { "/{accountId}/thing" => { verb => { "operationId" => "Untagged#{verb.capitalize}" } } }
+  }
+  status, out = run_check(spec)
+  expect("untagged #{verb.upcase} (verb not in any fixed list) fails", status == 1 && out.include?("Untagged#{verb.capitalize}"))
+end
+
+# 12. Each non-operation field the Path Item Object defines is skipped, not
+#     mistaken for an untagged operation. All five together, beside a real one.
+every_non_operation_field = {
+  "openapi" => "3.1.0",
+  "paths" => {
+    "/{accountId}/thing" => {
+      "$ref" => "#/components/pathItems/Thing",
+      "summary" => "Thing",
+      "description" => "A thing.",
+      "servers" => [{ "url" => "https://example.com" }],
+      "parameters" => [{ "name" => "accountId", "in" => "path" }],
+      "x-vendor-note" => { "anything" => true },
+      "get" => op(["Recordings"])
+    }
+  }
+}
+status, out = run_check(every_non_operation_field)
+expect("non-operation path item fields are skipped", status.zero?)
+expect("skipping them still counts the one real operation", out.include?("1 operations"))
+
+# 13. A field that is neither a known non-operation field nor a readable
+#     operation object is reported, not stepped over. This is the fail-closed
+#     half of the inversion: the check says what it could not understand.
+malformed = {
+  "openapi" => "3.1.0",
+  "paths" => { "/{accountId}/thing" => { "get" => op(["Recordings"]), "sideband" => "not an object" } }
+}
+status, out = run_check(malformed)
+expect("an unreadable path item field fails", status == 1)
+expect("unreadable-field failure names the field", out.include?("sideband"))
+
+# 14. A path item that is not an object at all is reported rather than silently
+#     contributing nothing.
+status, out = run_check({ "openapi" => "3.1.0", "paths" => { "/{accountId}/thing" => "nonsense" } })
+expect("a non-object path item fails", status == 1)
+expect("non-object path item is named", out.include?("/{accountId}/thing"))
 
 if FAILURES.empty?
   puts "check-required-tags self-test: all cases passed"

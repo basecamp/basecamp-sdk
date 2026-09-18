@@ -28,6 +28,15 @@
 # operationId to ALLOWLIST below WITH a reason and a tracking reference — do not
 # widen the check to accept absent tags in general.
 #
+# WHAT THIS GATE DOES NOT SEE. It reads `paths` only. A 3.1 document may also
+# carry operations under `webhooks` or `components.pathItems`; this artifact has
+# neither, and the check would not notice if it grew one. It also does not judge
+# whether the single tag is the RIGHT tag, only that there is exactly one. And
+# the six per-language generators still iterate a five-verb list of their own, so
+# an operation on any other verb would be dropped from the generated services
+# outright rather than merely shipping untagged — a larger hole, one cross-SDK
+# regeneration away from this file, and deliberately not addressed here.
+#
 # Paths default to the repo layout but honour the REQUIRED_TAGS_OPENAPI and
 # REQUIRED_TAGS_ALLOWLIST env overrides so the negative-case self-test
 # (scripts/test-check-required-tags.rb) can point it at crafted inputs. Stdlib
@@ -39,19 +48,28 @@ require "set"
 PROJECT_ROOT = File.expand_path("..", __dir__)
 OPENAPI_FILE = ENV.fetch("REQUIRED_TAGS_OPENAPI", File.join(PROJECT_ROOT, "openapi.json"))
 
-# All eight HTTP methods an OpenAPI Path Item Object may carry. Anything else at
-# that level (`parameters`, `summary`, `servers`, `$ref`, `x-*`) is not an
-# operation. The list has to be complete or an operation on an unlisted verb
-# slips past a gate whose whole claim is "every operation"; it matches
-# scripts/check-projected-examples.rb.
+# A Path Item Object is identified by what it is NOT. Its non-operation fields
+# are a closed, spec-defined set; specification extensions are `x-` prefixed.
+# EVERY other field is an operation.
 #
-# The six per-language generators still iterate only get/post/put/patch/delete,
-# so an operation on one of the other three verbs would be dropped from the
-# generated services entirely, not merely untagged. The Smithy model has no such
-# operation today (GET/POST/PUT/DELETE only), and widening those tables is a
-# cross-SDK regeneration, not this gate's job — but this check will name the
-# operation, which is how that day gets noticed.
-HTTP_METHODS = %w[get put post delete options head patch trace].freeze
+# Enumerating the operation verbs instead would fail open in the one dimension
+# this gate exists to hold. The list would have to be complete forever: OpenAPI
+# 3.0 added `trace`, 3.2 adds `query`, and Smithy's own `@http` trait takes the
+# method as a free-form string it "will use literally and will perform no
+# validation on" — so this repo's generator can put any key in a path item, and
+# a verb list would skip it in silence. Inverted, an unfamiliar field is caught
+# and named instead of stepped over.
+#
+# That inversion is already earning its keep in one known case: OpenAPI 3.2 adds
+# `additionalOperations`, a MAP of method to Operation. This artifact declares
+# 3.1.0, so the case is unreachable today; were it to appear, the check reads it
+# as one untagged operation and fails naming the field, which is the outcome
+# worth having. Teach it the map shape then — not now, on spec.
+NON_OPERATION_FIELDS = %w[$ref summary description servers parameters].freeze
+
+def non_operation_field?(field)
+  NON_OPERATION_FIELDS.include?(field) || field.start_with?("x-")
+end
 
 # operationIds permitted to carry no tag. Keep empty; see the header note.
 ALLOWLIST = [].freeze
@@ -84,17 +102,27 @@ def main
   permitted = allowlist
   untagged = []
   multi_tagged = []
+  unreadable = []
   seen = 0
 
-  paths.each do |path, methods|
-    next unless methods.is_a?(Hash)
+  paths.each do |path, item|
+    unless item.is_a?(Hash)
+      unreadable << "#{path} (path item is #{item.class}, expected an object)"
+      next
+    end
 
-    methods.each do |method, operation|
-      next unless HTTP_METHODS.include?(method.to_s.downcase)
-      next unless operation.is_a?(Hash)
+    item.each do |field, operation|
+      next if non_operation_field?(field.to_s)
+
+      # Not a known non-operation field, so it is an operation. A value that is
+      # not an object cannot be one — say so rather than stepping over it.
+      unless operation.is_a?(Hash)
+        unreadable << "#{path} -> #{field} (#{operation.class}, expected an operation object)"
+        next
+      end
 
       seen += 1
-      op_id = operation["operationId"] || "#{method.upcase} #{path}"
+      op_id = operation["operationId"] || "#{field.upcase} #{path}"
       tags = operation["tags"]
 
       if tags.nil? || tags.empty?
@@ -107,9 +135,13 @@ def main
 
   # Fail closed on a spec that yielded no operations at all — a broken or
   # truncated openapi.json must not pass this gate vacuously.
-  die "openapi file declared no HTTP operations" if seen.zero?
+  die "openapi file declared no HTTP operations" if seen.zero? && unreadable.empty?
 
   problems = []
+  unless unreadable.empty?
+    problems << "#{unreadable.length} path item field(s) could not be read as an operation:\n" \
+                "#{unreadable.sort.map { |o| "  - #{o}" }.join("\n")}"
+  end
   unless untagged.empty?
     problems << "#{untagged.length} operation(s) carry no tag (each must have exactly one):\n" \
                 "#{untagged.sort.map { |o| "  - #{o}" }.join("\n")}"
@@ -125,6 +157,9 @@ def main
     warn "\nTag each operation in spec/overlays/tags.smithy and run 'make smithy-build', " \
          "or, for a genuinely tag-less operation, add its operationId to ALLOWLIST in " \
          "scripts/check-required-tags.rb with a reason."
+    warn "A field named above that you did not expect to be an operation is either a " \
+         "path item verb this spec had not used before (tag it) or a new non-operation " \
+         "field from a later OpenAPI version (add it to NON_OPERATION_FIELDS with a reason)."
     exit 1
   end
 
