@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+#
+# The ONE validator of spec/generated-verbs.json.
+#
+# WHY THERE IS EXACTLY ONE. The declaration names the HTTP methods every SDK
+# generator emits, and six generators read it — Ruby (twice), Python,
+# TypeScript, Kotlin, Swift and Rust. When each of them also VALIDATED it, they
+# disagreed about what it meant five times in four review rounds, each in a
+# different language for a different reason:
+#
+#   ["get", 1]        Kotlin's JsonPrimitive.content rendered it "1"; Rust's
+#                     filter_map dropped it and accepted the rest.
+#   ["get", " "]      Kotlin and Rust rejected it, the other four accepted it.
+#   ["get", " "] Ruby's ASCII String#strip kept it; Python's str.strip
+#                     removed it. Java's Character.isWhitespace excludes it, so
+#                     Kotlin took it too.
+#   ["get", ""]       Swift's String.allSatisfy is vacuously true for "".
+#   ["get", "get\n"]  JavaScript's $ matches before a final line terminator.
+#
+# Two repairs were tried and neither held. Requiring a non-BLANK string moved the
+# disagreement from "is this a string" to "what counts as blank". A positive
+# [a-z]+ format rule moved it again, to "what does this language's predicate
+# actually match". The population was never bounded by the rule being expressed;
+# it is bounded by the union of six standard libraries' string and regex
+# semantics — and Kotlin's instance was in the PARSE rather than in a check, so
+# "validate more carefully" could not have reached it either.
+#
+# So the loaders stopped validating. This is the only thing that rejects a
+# malformed declaration, and it is strict enough that VALID input has no
+# interpretive room left: a non-empty array of distinct lowercase ASCII tokens,
+# with no unexpected top-level keys. Every JSON parser in the six languages
+# agrees about a file like that — the divergences all occurred on INVALID input,
+# which after this gate cannot reach a loader.
+#
+# WHY BASH AND jq RATHER THAN RUBY. This runs in front of EVERY generator, so it
+# may only depend on what every contributor has. CONTRIBUTING.md lists bash and
+# jq as the shared tooling and Ruby as the Ruby SDK's own requirement; a Ruby
+# validator would have made `make ts-generate-services` fail with
+# `ruby: command not found` for a TypeScript-only contributor.
+#
+# WHY IT IS A PREREQUISITE RATHER THAN A CI JOB. There is no single generation
+# entry point: the root ts-generate, rb-generate, py-generate, swift-generate,
+# kt-generate-services and rs-generate-services are each directly invokable,
+# `generate` only aggregates them, and swift/Makefile and rust/Makefile expose
+# their own `generate` targets besides. A CI-only validator is bypassed by the
+# `make rb-generate` a hand-edit is made next to. It is an order-only
+# prerequisite of all of those, a member of `make check`, and a step in
+# smithy-verify.yml, which every release workflow calls.
+#
+# THE FILE IT VALIDATES IS THE FILE THE LOADER WILL READ. The loaders honour
+# BASECAMP_GENERATED_VERBS so the self-tests can point them at a crafted
+# declaration; this gate honours the same variable first. Validating the
+# committed file while the generator read another one would defeat the whole
+# invariant for a single `BASECAMP_GENERATED_VERBS=... make rb-generate`.
+#
+# Exercised by scripts/test-check-generated-verbs.rb.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# BASECAMP_GENERATED_VERBS first: it is what the LOADERS honour, so the gate has
+# to validate whatever they are about to read. GENERATED_VERBS_FILE is the
+# self-test's own handle on this script.
+VERBS_FILE="${GENERATED_VERBS_FILE:-${BASECAMP_GENERATED_VERBS:-$ROOT_DIR/spec/generated-verbs.json}}"
+
+die() {
+  echo "ERROR: $VERBS_FILE is not a declaration the generators can read verbatim." >&2
+  while IFS= read -r problem; do
+    [[ -n "$problem" ]] && echo "  - $problem" >&2
+  done
+  echo "" >&2
+  echo "  This file is the single source for the HTTP methods the SDK generators emit," >&2
+  echo "  and the six loaders read it WITHOUT validating — that is what stops them" >&2
+  echo "  disagreeing about malformed content. So it has to be exactly right here." >&2
+  exit 1
+}
+
+if [[ ! -f "$VERBS_FILE" ]]; then
+  echo "the file does not exist (every generate target depends on this check)" | die
+fi
+
+if ! jq -e . "$VERBS_FILE" > /dev/null 2>&1; then
+  jq . "$VERBS_FILE" 2>&1 | head -3 | sed 's/^/it is not valid JSON: /' | die
+fi
+
+# One jq pass, emitting one problem per line. Everything the file may contain
+# besides `verbs` is prose for the reader; an unrecognised key is reported rather
+# than ignored, so a typo (`verb` for `verbs`) cannot sit there while the real key
+# is absent.
+problems="$(jq -r '
+  ["$schema", "version", "what", "why", "adding_a_verb", "not_patch", "verbs"] as $known |
+  if type != "object" then
+    "the top level is \(type), not a JSON object"
+  else
+    ([ (keys_unsorted - $known) | select(length > 0) |
+       "unrecognised top-level key(s): \(map("\"" + . + "\"") | join(", ")) (a typo here leaves the real key absent; add it to the known list if it is intended)" ]
+     +
+     (if (.verbs | type) != "array" then
+        ["`verbs` is \(.verbs | type), not an array"]
+      elif (.verbs | length) == 0 then
+        ["`verbs` is empty; the generators would emit nothing"]
+      else
+        [ .verbs | to_entries[] |
+          if (.value | type) != "string" then
+            "verbs[\(.key)] is \(.value | type) (\(.value | tojson)); every entry must be a string"
+          elif (.value | test("^[a-z]+$") | not) or (.value | test("[^a-z]")) then
+            "verbs[\(.key)] is \(.value | tojson); every entry must be lowercase ASCII letters only, which is how an OpenAPI path item spells a method"
+          else
+            empty
+          end ]
+        +
+        [ .verbs | map(select(type == "string")) | group_by(.) | map(select(length > 1) | .[0]) |
+          select(length > 0) | "duplicate entr\(if length == 1 then "y" else "ies" end): \(map("\"" + . + "\"") | join(", "))" ]
+      end)
+    ) | .[]
+  end
+' "$VERBS_FILE")"
+
+# NO ORDER RULE, deliberately. The array is ordered and that order is emission
+# order in every generator, so it is CONTENT rather than formatting: sorting it
+# would reorder every generated method in seven SDKs, and there is nothing to
+# canonicalise because the file declares the order rather than spelling a set in
+# some arbitrary sequence. Determinism — what a canonical form usually buys — a
+# JSON array already gives.
+
+if [[ -n "$problems" ]]; then
+  printf '%s\n' "$problems" | die
+fi
+
+echo "generated-verbs: $(jq -r '.verbs | length' "$VERBS_FILE") verb(s) — $(jq -r '.verbs | join(", ")' "$VERBS_FILE")"

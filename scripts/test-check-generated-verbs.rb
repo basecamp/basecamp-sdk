@@ -27,13 +27,17 @@
 # Every one of those now dies here instead, once, in one language — which is the
 # whole argument for the restructure, so it is a test rather than a paragraph.
 #
-# Stdlib only. Wired into `make check`.
+# The gate itself is bash + jq so it can run in front of every generator without
+# putting Ruby in a TypeScript-only contributor's way; this self-test is Ruby,
+# which is fine because it only ever runs from `make check`.
+#
+# Wired into `make check`.
 
 require "json"
 require "tmpdir"
 
 ROOT = File.expand_path("..", __dir__)
-CHECKER = File.join(ROOT, "scripts", "check-generated-verbs.rb")
+CHECKER = File.join(ROOT, "scripts", "check-generated-verbs")
 
 FAILURES = []
 PASSES = []
@@ -42,7 +46,7 @@ def run(declaration)
   Dir.mktmpdir("generated-verbs") do |dir|
     path = File.join(dir, "generated-verbs.json")
     File.write(path, declaration.is_a?(String) ? declaration : JSON.pretty_generate(declaration))
-    output = IO.popen({ "GENERATED_VERBS_FILE" => path }, ["ruby", CHECKER], err: %i[child out], &:read)
+    output = IO.popen({ "GENERATED_VERBS_FILE" => path }, [CHECKER], err: %i[child out], &:read)
     [$?.exitstatus, output]
   end
 end
@@ -83,7 +87,7 @@ check("a non-alphabetical order passes — the array order IS emission order",
 puts
 puts "The shapes that told the six loaders apart"
 [
-  ["a non-string entry (Kotlin rendered it as text, Rust dropped it)", 1, "Integer"],
+  ["a non-string entry (Kotlin rendered it as text, Rust dropped it)", 1, "number"],
   ["an ASCII-blank entry", " ", "\" \""],
   ["a U+00A0 entry (Ruby's strip keeps it, Python's removes it)", " ", "verbs[1]"],
   ["a U+2003 entry (same split, different character)", " ", "verbs[1]"],
@@ -99,7 +103,7 @@ check("a duplicate entry", { "verbs" => %w[get post get] },
 
 puts
 puts "Shapes that would leave the loaders with nothing to read"
-check("no `verbs` key at all", { "what" => "words" }, expect_pass: false, expect_fragment: "NilClass")
+check("no `verbs` key at all", { "what" => "words" }, expect_pass: false, expect_fragment: "`verbs` is null")
 check("`verbs` is not an array", { "verbs" => "get" }, expect_pass: false, expect_fragment: "not an array")
 check("`verbs` is empty", { "verbs" => [] }, expect_pass: false, expect_fragment: "empty")
 check("the top level is not an object", ["get"], expect_pass: false, expect_fragment: "not a JSON object")
@@ -109,6 +113,27 @@ puts
 puts "A typo that would otherwise sit there being ignored"
 check("a misspelled `verb` key is named, not skipped", { "verb" => %w[get] },
       expect_pass: false, expect_fragment: "unrecognised top-level key")
+
+puts
+puts "The file it validates is the file the loaders will read"
+# BASECAMP_GENERATED_VERBS is what the six loaders honour. A gate that validated
+# the committed declaration while the generator read another one would let
+# `BASECAMP_GENERATED_VERBS=/tmp/bad.json make rb-generate` pass and then load
+# /tmp/bad.json, which defeats the single-validator invariant outright.
+Dir.mktmpdir("generated-verbs") do |dir|
+  path = File.join(dir, "bad.json")
+  File.write(path, JSON.generate({ "verbs" => ["get", 1] }))
+  output = IO.popen({ "BASECAMP_GENERATED_VERBS" => path }, [CHECKER], err: %i[child out], &:read)
+  status = $?.exitstatus
+  name = "BASECAMP_GENERATED_VERBS is validated, not just the committed file"
+  if status != 0 && output.include?("number")
+    PASSES << name
+    puts "  PASS  #{name}"
+  else
+    FAILURES << name
+    puts "  FAIL  #{name} — exit #{status}: #{output}"
+  end
+end
 
 puts
 if FAILURES.empty?

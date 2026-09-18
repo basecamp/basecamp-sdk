@@ -6,8 +6,13 @@ CARGO := cargo
 all: check
 
 # Regenerate basecamp-sdk/src/generated from ../openapi.json and ../behavior-model.json
+# The declaration every generator reads is validated FIRST. This target is
+# directly invokable, so the root Makefile's prerequisite does not cover it —
+# the gate has to sit at each generation entry point, not only at the root
+# wrappers. See scripts/check-generated-verbs.
 .PHONY: generate
 generate:
+	@../scripts/check-generated-verbs
 	@echo "Generating Rust types, routes, metadata and services from openapi.json..."
 	$(CARGO) run -q -p basecamp-sdk-generator
 

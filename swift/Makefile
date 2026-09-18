@@ -15,7 +15,12 @@ check: build test
 	@echo "==> Swift SDK checks passed"
 
 # Regenerate service files from OpenAPI spec and behavior model
+# The declaration every generator reads is validated FIRST. This target is
+# directly invokable, so the root Makefile's prerequisite does not cover it —
+# the gate has to sit at each generation entry point, not only at the root
+# wrappers. See scripts/check-generated-verbs.
 generate:
+	@../scripts/check-generated-verbs
 	@echo "==> Generating Swift SDK services..."
 	swift run BasecampGenerator --openapi ../openapi.json --behavior ../behavior-model.json --output Sources/Basecamp/Generated
 

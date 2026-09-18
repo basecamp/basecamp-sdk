@@ -1484,7 +1484,7 @@ tools:
 # regenerates is caught too.
 check-generated-verbs:
 	@echo "==> Checking the generated-verb declaration..."
-	@ruby ./scripts/check-generated-verbs.rb
+	@./scripts/check-generated-verbs
 
 # Drive that gate from outside with crafted declarations. Its live run only ever
 # exercises the passing case, so nothing there proves it rejects the shapes that
