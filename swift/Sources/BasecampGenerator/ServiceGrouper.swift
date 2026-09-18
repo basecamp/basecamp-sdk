@@ -57,7 +57,6 @@ let serviceSplits: [String: [String: [String]]] = [
     "Automation": [
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
         "Webhooks": ["ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"],
-        "Events": ["ListEvents"],
         "Lineup": ["CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"],
         "Search": ["Search", "GetSearchMetadata"],
         "Templates": [
@@ -69,6 +68,9 @@ let serviceSplits: [String: [String: [String]]] = [
             "GetQuestionnaire", "ListQuestions", "CreateQuestion", "GetQuestion",
             "UpdateQuestion", "ListAnswers", "CreateAnswer", "GetAnswer", "UpdateAnswer",
         ],
+    ],
+    "Recordings": [
+        "Events": ["ListEvents"],
     ],
     "Messages": [
         "Messages": ["GetMessage", "UpdateMessage", "CreateMessage", "ListMessages", "PinMessage", "UnpinMessage"],

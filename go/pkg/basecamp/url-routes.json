@@ -2028,7 +2028,7 @@
     },
     {
       "pattern": "/{accountId}/recordings/{recordingId}/events",
-      "resource": "Automation",
+      "resource": "Recordings",
       "operations": {
         "GET": "ListEvents"
       },

@@ -165,13 +165,12 @@ apply ListClientReplies @tags(["ClientFeatures"])
 apply GetClientReply @tags(["ClientFeatures"])
 apply SetClientVisibility @tags(["ClientFeatures"])
 
-// Automation (Webhooks, Events, Search, Templates, Tools, Lineup)
+// Automation (Webhooks, Search, Templates, Tools, Lineup)
 apply ListWebhooks @tags(["Automation"])
 apply GetWebhook @tags(["Automation"])
 apply CreateWebhook @tags(["Automation"])
 apply UpdateWebhook @tags(["Automation"])
 apply DeleteWebhook @tags(["Automation"])
-apply ListEvents @tags(["Automation"])
 apply Search @tags(["Automation"])
 apply GetSearchMetadata @tags(["Automation"])
 apply ListTemplates @tags(["Automation"])
@@ -320,18 +319,35 @@ apply PollEvents @tags(["EventFeed"])
 apply PollInbox @tags(["EventFeed"])
 apply CreateStreamTicket @tags(["EventFeed"])
 
-// Recordings (recording lifecycle: list, spotlight, trash, archive). New
-// domain tag mirroring the Recordings service every SDK generator already
-// emits (each generator's SERVICE_SPLITS routed these under Automation ->
-// Recordings while they were tagged Automation). These ops previously folded
-// into the Automation domain, which left MCP catalog generation with no
-// dedicated recordings tool. Recording boosts stay under Boosts and the
-// recording timesheet stays under Schedule -> Timesheets, matching the SDK
-// service groupings. Tagging these Recordings keeps the generated grouping
-// byte-identical and gives catalog.Load one tag per op.
+// Recordings (recording lifecycle: list, spotlight, trash, archive; and the
+// recording's own event history). New domain tag mirroring the Recordings
+// service every SDK generator already emits (each generator's SERVICE_SPLITS
+// routed these under Automation -> Recordings while they were tagged
+// Automation). These ops previously folded into the Automation domain, which
+// left MCP catalog generation with no dedicated recordings tool. Recording
+// boosts stay under Boosts and the recording timesheet stays under Schedule ->
+// Timesheets, matching the SDK service groupings. Tagging these Recordings
+// keeps the generated grouping byte-identical and gives catalog.Load one tag
+// per op.
+//
+// ListEvents is the same domain: GET /{accountId}/recordings/{recordingId}/
+// events.json is a recording's own change history — the timeline of the very
+// lifecycle transitions above — so it belongs with them rather than in the
+// Automation catch-all. It keeps its own Events service in every generator's
+// split table, now reached through the Recordings tag.
+//
+// The URL prefix is not the argument and must not be read as one: sub-resources
+// under /recordings/ are tagged by what they are, so the same prefix carries
+// Bookmarks, Boosts, BubbleUps, ClientFeatures, Messages, People and Schedule
+// operations, and ListEventBoosts (.../events/{eventId}/boosts.json) is Boosts
+// even though it hangs off this very sub-resource. EnableTool, DisableTool and
+// RepositionTool stay Automation: their /{accountId}/recordings/{toolId}/
+// position.json path takes a toolId, not a recordingId — they are dock-tool
+// operations that happen to share the prefix.
 apply ListRecordings @tags(["Recordings"])
 apply SpotlightRecording @tags(["Recordings"])
 apply UnspotlightRecording @tags(["Recordings"])
 apply TrashRecording @tags(["Recordings"])
 apply ArchiveRecording @tags(["Recordings"])
 apply UnarchiveRecording @tags(["Recordings"])
+apply ListEvents @tags(["Recordings"])
