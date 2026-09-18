@@ -1,12 +1,15 @@
 package basecamp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"testing"
 )
 
@@ -228,7 +231,13 @@ func TestEventFeedService_PollEvents_PositionGone(t *testing.T) {
 	}
 }
 
-func TestEventFeedService_PollEvents_GoneWithoutEpochStaysCanonical(t *testing.T) {
+// A feed 410 without its epoch is not typed with a fabricated 0 boundary —
+// and it is not handed back as the canonical 410 either. The epoch is
+// @required, so a 410 without one is not the documented gap: the arm decides,
+// as every arm does. The connector's verdict is unchanged (unrecoverable
+// either way); what changes is that a caller cannot key recovery off a 410
+// status the body does not support.
+func TestEventFeedService_PollEvents_GoneWithoutEpochIsMalformed(t *testing.T) {
 	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(410)
@@ -239,10 +248,7 @@ func TestEventFeedService_PollEvents_GoneWithoutEpochStaysCanonical(t *testing.T
 	if errors.As(err, &gone) {
 		t.Fatalf("a feed 410 without epoch_after_id must not be typed with a fabricated epoch, got %+v", gone)
 	}
-	var base *Error
-	if !errors.As(err, &base) || base.HTTPStatus != 410 {
-		t.Fatalf("expected the canonical 410 *Error, got %v", err)
-	}
+	assertMalformedFeedResponse(t, err)
 }
 
 func TestEventFeedService_PollEvents_MalformedPositionWithoutReasonIsUndifferentiated(t *testing.T) {
@@ -549,13 +555,10 @@ func TestEventFeedService_PollInbox_BadRequestWithAnUnnamedReasonIsNotARequestEr
 	assertMalformedFeedResponse(t, err)
 }
 
-// The bad byte is in a row rather than in the position on purpose: a cursor
-// the decoder substituted is caught by the cursor half of checkPollBody, so a
-// case that puts it there would pass with the body scan deleted. Here the
-// position round-trips and only the whole-body scan can see the mutation —
-// which is the claim, since an event_type the decoder rewrote is one a
-// consumer dispatches on while the page's position commits over it.
-func TestEventFeedService_PollEvents_RefusesAPageWhoseRowsAreNotValidUTF8(t *testing.T) {
+// The raw-bytes form of the row mutation, with a clean position: the decoder
+// substitutes U+FFFD for the invalid byte in event_type and returns a token
+// the server never wrote. Its escape-form sibling is below.
+func TestEventFeedService_PollEvents_RefusesARowWhoseBytesAreNotValidUTF8(t *testing.T) {
 	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		head := []byte(`{"events":[{"id":1,"kind":"message_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"message.`)
@@ -701,23 +704,205 @@ func TestEventFeedService_PollEvents_ANullReasonIsTheUndifferentiated400(t *test
 	}
 }
 
-// A body that is not a JSON object at all — an error page from something in
-// front of the API — is not a feed error body to judge. It keeps the canonical
-// status: the refusals above are about a body that CLAIMS one of these shapes
-// and does not carry it, and a 500 whose body is HTML must stay a retryable
-// 500 rather than becoming a malformed feed response.
-func TestEventFeedService_PollEvents_ANonObjectBodyStaysCanonical(t *testing.T) {
+// The arms are TOTAL over the body, and this is the test that says so: one
+// table of off-contract shapes per status, every one refused, none of them
+// enumerated in the code. It is written as a totality claim rather than a
+// list of known doors on purpose — the doors are what kept reappearing
+// (a null, a number, a missing member, a body that is not an object), and a
+// default that refuses is the only thing that closes the ones nobody has
+// thought of yet.
+//
+// Statuses other than these three are untouched: a 500 behind an HTML error
+// page is still a retryable 500, because no arm claims it.
+func TestEventFeedService_RefusesEveryOffContractErrorBody(t *testing.T) {
+	cases := []struct {
+		status int
+		name   string
+		body   string
+	}{
+		{400, "not an object", `<html><body>Bad request</body></html>`},
+		{400, "a top-level null", `null`},
+		{400, "a top-level array", `[{"error":"nope"}]`},
+		{400, "an empty body", ``},
+		{400, "no error member", `{"reason":"invalid_position"}`},
+		{400, "a null error member", `{"error":null,"reason":"invalid_position"}`},
+		{400, "a wrong-typed error member", `{"error":{"message":"nope"},"reason":"invalid_position"}`},
+		{409, "not an object", `<html><body>Conflict</body></html>`},
+		{409, "a top-level null", `null`},
+		{409, "an empty body", ``},
+		{409, "no digests", `{"error":"conflict"}`},
+		{409, "a null digest", `{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":null}`},
+		{410, "not an object", `<html><body>Gone</body></html>`},
+		{410, "a top-level null", `null`},
+		{410, "no resume", `{"error":"gone","epoch_after_id":7}`},
+		{410, "a null resume", `{"error":"gone","epoch_after_id":7,"resume":null}`},
+		{410, "a wrong-typed resume", `{"error":"gone","epoch_after_id":7,"resume":42}`},
+		{410, "a wrong-typed epoch", `{"error":"gone","epoch_after_id":"7","resume":"https://3.basecampapi.com/99999/events.json?since=7"}`},
+		{410, "a null epoch", `{"error":"gone","epoch_after_id":null,"resume":"https://3.basecampapi.com/99999/events.json?since=7"}`},
+	}
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("%d %s", tc.status, tc.name), func(t *testing.T) {
+			svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			})
+			_, err := svc.PollEvents(context.Background(), &PollEventsOptions{Position: "posAAA"})
+			var mismatch *FeedFilterMismatchError
+			var request *FeedRequestError
+			var gone *FeedPositionGoneError
+			if errors.As(err, &mismatch) || errors.As(err, &request) || errors.As(err, &gone) {
+				t.Fatalf("an off-contract body must not be typed, got %T", err)
+			}
+			assertMalformedFeedResponse(t, err)
+		})
+	}
+}
+
+// The other half of the same rule, and the reason the totality above is not
+// "reject anything unexpected": a member the contract does not declare is not
+// a violation of it. The server may grow the body; it may not omit or
+// mistype what it promised. (The inbox 410 with a stray epoch_after_id in
+// eventfeed/live_test.go is this rule seen from the connector.)
+func TestEventFeedService_KeepsABodyThatGrewAMember(t *testing.T) {
 	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(409)
-		_, _ = w.Write([]byte(`<html><body>Conflict</body></html>`))
+		_, _ = w.Write([]byte(`{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":"44136fa355b3678a","digest_scheme":"srv3","retry_after_filters_settle":30}`))
 	})
 	_, err := svc.PollEvents(context.Background(), &PollEventsOptions{Position: "posAAA"})
 	var mismatch *FeedFilterMismatchError
-	if errors.As(err, &mismatch) {
-		t.Fatalf("an unparsable body must not be typed, got %+v", mismatch)
+	if !errors.As(err, &mismatch) {
+		t.Fatalf("a body that grew a member is not malformed, got %T: %v", err, err)
 	}
-	var base *Error
-	if !errors.As(err, &base) || base.HTTPStatus != 409 || base.Code != CodeAPI {
-		t.Fatalf("expected the canonical 409 *Error, got %+v", base)
+	if mismatch.PositionDigest != "38b223c13c89dc89" || mismatch.FiltersDigest != "44136fa355b3678a" {
+		t.Errorf("unexpected digests: %+v", mismatch)
+	}
+}
+
+// The escape form of the substitution outside the cursors: the body is
+// well-formed ASCII, so the byte scan cannot see it, and the position is
+// clean, so the cursor check cannot either. The row's event_type is what a
+// consumer dispatches on, and the page's position commits over it — the event
+// is not delivered and never comes back.
+func TestEventFeedService_PollEvents_RefusesARowTokenThatDidNotSurviveDecoding(t *testing.T) {
+	cases := map[string]string{
+		"an event_type": `{"events":[{"id":1,"kind":"message_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"message.\ud800created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":9}],"position":"posAAA"}`,
+		"a kind":        `{"events":[{"id":1,"kind":"message_\ud800created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"message.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":9}],"position":"posAAA"}`,
+		"an action":     `{"events":[{"id":1,"kind":"message_created","action":"cre\ud800ated","created_at":"2026-07-14T06:10:00Z","event_type":"message.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":9}],"position":"posAAA"}`,
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(body))
+			})
+			page, err := svc.PollEvents(context.Background(), nil)
+			if page != nil {
+				t.Fatalf("a row token the decoder rewrote must not reach the caller, got %+v", page)
+			}
+			assertMalformedFeedResponse(t, err)
+		})
+	}
+}
+
+func TestEventFeedService_PollInbox_RefusesARowTokenThatDidNotSurviveDecoding(t *testing.T) {
+	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// The addressing reason is the inbox's own routing token, beside the
+		// event's three.
+		_, _ = w.Write([]byte(`{"items":[{"addressing_id":991,"reason":"ment\ud800ioned","addressed_at":"2026-07-14T06:10:00Z","event":{"id":1,"kind":"message_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"message.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":9}}],"position":"posAAA"}`))
+	})
+	page, err := svc.PollInbox(context.Background(), nil)
+	if page != nil {
+		t.Fatalf("a substituted addressing reason must not reach the caller, got %+v", page)
+	}
+	assertMalformedFeedResponse(t, err)
+}
+
+// Details is not among the row strings, and that is a decision rather than an
+// omission: it is json.RawMessage, so no substitution can reach it — the
+// bytes arrive verbatim in both mutation forms, which is the whole point of
+// carrying them raw, and the push decoder's rule is what judges their shape
+// where the two lanes are compared. This pins the verbatim part, so a future
+// guard that "helpfully" decodes details cannot land quietly.
+func TestEventFeedService_PollEvents_CarriesDetailsVerbatimThroughBothMutationForms(t *testing.T) {
+	cases := map[string][]byte{
+		"a lone surrogate escape": []byte(`{"note":"a\ud800b"}`),
+		"a raw invalid byte":      append(append([]byte(`{"note":"a`), 0xff), []byte(`b"}`)...),
+	}
+	for name, details := range cases {
+		t.Run(name, func(t *testing.T) {
+			body := append([]byte(`{"events":[{"id":1,"kind":"boost_created","action":"created","created_at":"2026-07-14T06:10:00Z","event_type":"boost.created","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":9,"details":`), details...)
+			body = append(body, []byte(`}],"position":"posAAA"}`)...)
+			svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write(body)
+			})
+			page, err := svc.PollEvents(context.Background(), nil)
+			if err != nil {
+				t.Fatalf("details is the push decoder's to judge, not this guard's: %v", err)
+			}
+			if len(page.Events) != 1 || !bytes.Equal(page.Events[0].Details, details) {
+				t.Fatalf("details = %q, want the server's bytes verbatim", page.Events[0].Details)
+			}
+		})
+	}
+}
+
+// The substitution guard is only as complete as its enumeration, and an
+// enumeration is the kind of thing a new member gets added next to without
+// being added to. This drives the real function with a distinct sentinel in
+// every string member and asserts each one comes back, so it fails both ways:
+// a member added to FeedEvent and not to feedEventStrings, and a member
+// dropped from feedEventStrings. Details is exempt in code, with the reason,
+// so the exemption is a decision rather than an oversight.
+func TestFeedEventStringsHoldsEveryDecodedString(t *testing.T) {
+	// Details is json.RawMessage, not a string: nothing decodes it, so no
+	// substitution can reach it.
+	exempt := map[string]bool{"Details": true}
+
+	event := reflect.New(reflect.TypeOf(FeedEvent{})).Elem()
+	want := map[string]string{}
+	for i := range event.NumField() {
+		f := event.Type().Field(i)
+		if f.Type.Kind() != reflect.String || exempt[f.Name] {
+			continue
+		}
+		sentinel := "sentinel-" + f.Name
+		event.Field(i).SetString(sentinel)
+		want[f.Name] = sentinel
+	}
+	if len(want) == 0 {
+		t.Fatal("no string members found: the reflection walk is not looking at FeedEvent")
+	}
+
+	held := map[string]bool{}
+	for _, s := range feedEventStrings(nil, event.Interface().(FeedEvent)) {
+		held[s] = true
+	}
+	for name, sentinel := range want {
+		if !held[sentinel] {
+			t.Errorf("FeedEvent.%s is a decoded string feedEventStrings does not hold: add it, or exempt it here with the reason", name)
+		}
+	}
+
+	// The page and item envelopes carry the rest, and checkPollPage's own
+	// arms hold those: position, next, and the inbox's addressing reason.
+	for _, shape := range []struct {
+		name string
+		typ  reflect.Type
+		held map[string]bool
+	}{
+		{"EventFeedPage", reflect.TypeOf(EventFeedPage{}), map[string]bool{"Position": true, "Next": true}},
+		{"InboxPage", reflect.TypeOf(InboxPage{}), map[string]bool{"Position": true, "Next": true}},
+		{"InboxItem", reflect.TypeOf(InboxItem{}), map[string]bool{"Reason": true}},
+	} {
+		for i := range shape.typ.NumField() {
+			f := shape.typ.Field(i)
+			if f.Type.Kind() == reflect.String && !shape.held[f.Name] {
+				t.Errorf("%s.%s is a decoded string no substitution check holds", shape.name, f.Name)
+			}
+		}
 	}
 }

@@ -3461,54 +3461,70 @@ fetches one page and leaves the walk to the caller, so its runner stays green; t
 route-table test (`guarantees.rs`) is what pins these two lanes to the cursor style there. The connector's
 own family stays under `conformance/event-feed/`.
 
-**Decode validation.** A wrapper that types these bodies holds them to the shape above at
-the decode, before the typed value reaches any caller (#915): a 409's `position_digest` and
-`filters_digest` must BOTH be the bare 16-lowercase-hex srv2 form, and a 400's `reason` must
-be absent or one of the two values named here. Members are read one at a time rather than
-through a whole-body typed decode, which conflates two different bodies: one member of the
-wrong JSON type fails such a decode outright, and the body then falls through to the very
-canonical error the refusal displaces — `{"reason": 42}` reaching the message classifier with
-the enum check sitting right above it. An explicit `null` reason is the ABSENT case, as a
-nulled `epoch_after_id` is on the 410: the member is optional, and a server saying it has no
-reason is the undifferentiated 400, not a malformed one. A body that is not a JSON object at
-all is not one of these shapes to judge and keeps its canonical status — a 500 behind an HTML
-error page stays a retryable 500. A body that claims one of these shapes and does not carry
-it decodes as the SDK's
-malformed-response error — `api_error`, non-retryable, and **statusless**, the shape §6
-gives every malformed body — never as the typed recovery value. These members are not
-decoration: the digests are what a consumer discards a held position on and keys its
-checkpoint lineage by, and `reason` is the recover-versus-stop split, with the message
-classifier documented for an ABSENT reason alone. An unrecognized one left to look absent
-buys a position reset off a reason nobody defined; a nonempty digest that is not a digest
-buys the same reset off a 409 the server did not make. Statuslessness is what keeps the
-refused body out of a consumer's status-keyed fallbacks, so it is part of the contract
-rather than a rendering choice.
+**Decode validation.** A wrapper that types these bodies decides each of the three typed
+statuses TOTALLY (#915): the arm returns either the typed value or the SDK's
+malformed-response error — `api_error`, non-retryable, and **statusless**, the shape §6 gives
+every malformed body — and never hands the body back for something further down to interpret.
+The contract gives each status exactly one body shape, so "not that shape" is a decidable
+verdict: a 400 is `{error, reason?}` with `reason` absent or one of the two values named here,
+a 409 is `{error, position_digest, filters_digest}` with both digests the bare
+16-lowercase-hex srv2 form, and each 410 is its own lane's shape with `resume` present and the
+feed's `epoch_after_id` a number.
 
-The strings a consumer PERSISTS or RE-ISSUES are held to the same standard: a page's
-`position` and `next`, and a 410's `resume`, must reach the caller as the server wrote them,
-and the 200 body must be valid UTF-8 whole. A JSON decoder that substitutes U+FFFD for an
-invalid byte or a lone surrogate escape — Go's does, and it is not alone — otherwise hands
-back a position the feed cannot resolve (which answers 400 or 410, and provokes the reset
-that loses the walk), a continuation followed somewhere the walk was not, or a re-entry
-whose preserved filters are no longer the ones the position was minted for. U+FFFD in one of
-those members is the fingerprint of that substitution and a shape they can afford to refuse
-on: an opaque signed cursor and an absolute URL are machine-written ASCII. Whole-body
-validity is a separate claim from the members' and is not implied by them — an `event_type`
-the decoder rewrote is one a consumer dispatches on while the page's `position` commits over
-it. The mint's `url` and an event's `details` are out of scope: the URL is held to
-cable-URL policy before it is dialed and the ticket is signed, and `details` is refused by
-the push decoder's own rule, but neither is persisted or re-issued.
+The totality is the mechanism, not the individual checks. A permissive arm — *if the body
+looks like the documented shape, judge it; otherwise fall through to the canonical error* —
+leaves one escape door per shape it fails to recognize, and the doors are not enumerable: a
+`null` where a string belongs, a number where a string belongs, an omitted required member, a
+body that is not an object, a top-level `null`. Every one of them opens onto the status-keyed
+recovery paths this validation exists to close, because the canonical error still carries the
+status. Only the default is enumerable, so the default refuses. Statuslessness is the second
+half: it is what keeps a refused body out of a consumer's status-keyed fallbacks, so it is
+part of the contract rather than a rendering choice.
 
-The verdict belongs at the decode rather than in a connector adapter because the adapter is
-one consumer of the wrapper and this is a property of the response: an adapter check leaves
-every other consumer — and every other SDK's port — reading the unchecked value, and makes
-the contract two copies that drift. Go is the only SDK that types these bodies today, so it
-is the only one where the rule has anything to enforce; the rule is written here so that
-each remaining SDK inherits it with its typed layer rather than rediscovering it. The
-cross-SDK conformance suite does not pin it for the same reason: those cases assert one
-behavior for all seven runners, and an SDK that hands back the canonical error cannot
-answer differently for a body it never types. Go's own tests carry it
-(`go/pkg/basecamp/event_feed_test.go`), including that the refusal is statusless.
+These members are not decoration. The digests are what a consumer discards a held position on
+and keys its checkpoint lineage by; `reason` is the recover-versus-stop split, with the message
+classifier documented for an ABSENT reason alone; the epoch is a boundary, so a missing one
+typed as `0` re-enters at the bottom of history. An unrecognized reason left to look absent buys
+a position reset off a reason nobody defined, and a digest that is not a digest buys the same
+reset off a 409 the server did not make.
+
+**Required members are enforced; unknown members are ignored.** That is one rule read from both
+ends: the contract binds what the server must send, not what it may add. A response that grows a
+member is not malformed — refusing it would make every additive server change a client outage,
+on a wire format that is expected to grow (`reason` itself arrived that way, and `details` is
+carried verbatim precisely so members of newly cataloged types survive). One consequence to
+state plainly: `null` is not a way to satisfy a required member. A JSON decoder that accepts
+`null` into any type — Go's does, leaving the zero value — would otherwise let a nulled epoch
+read back as `0`; for the one OPTIONAL member, `reason`, `null` is the absent case and the
+undifferentiated 400 is the documented answer for it.
+
+The strings a consumer PERSISTS or RE-ISSUES carry a second, unrelated defect class, which no
+decoder strictness reaches: a page's `position` and `next`, a 410's `resume`, and the rows'
+catalog tokens (`kind`, `action`, `event_type`, the inbox's `reason`) must reach the caller as
+the server wrote them. A JSON decoder that substitutes U+FFFD for an invalid byte or a lone
+surrogate escape — Go's does, and it is not alone — hands back a position the feed cannot
+resolve (which answers 400 or 410, and provokes the reset that loses the walk), a continuation
+followed somewhere the walk was not, a re-entry whose preserved filters are no longer the ones
+the position was minted for, or an `event_type` a consumer fails to dispatch on while the
+page's position commits over it. The value is what is checked, not the bytes: the escape form
+is well-formed ASCII on the wire and exists only after decoding. U+FFFD is a shape these
+members can afford to refuse on — an opaque signed cursor, an absolute URL and a catalog token
+are machine-written ASCII. The mint's `url` and an event's `details` are out of scope: the URL
+is held to cable-URL policy before it is dialed and the ticket is signed, and `details` is
+`json.RawMessage`, never decoded into a string, so no substitution can reach it — its shape is
+the push decoder's rule at the layer comparing the two lanes.
+
+The verdict belongs at the decode rather than in a connector adapter because the adapter is one
+consumer of the wrapper and this is a property of the response: an adapter check leaves every
+other consumer — and every other SDK's port — reading the unchecked value, and makes the
+contract two copies that drift. Go is the only SDK that types these bodies today, so it is the
+only one where the rule has anything to enforce; the rule is written here so that each remaining
+SDK inherits it with its typed layer rather than rediscovering it. The cross-SDK conformance
+suite does not pin it for the same reason: those cases assert one behavior for all seven
+runners, and an SDK that hands back the canonical error cannot answer differently for a body it
+never types. Go's own tests carry it (`go/pkg/basecamp/event_feed_test.go`), including the
+totality as a table of off-contract bodies, a body that grew a member, and that the refusal is
+statusless.
 
 ### Provenance `[manual]`
 

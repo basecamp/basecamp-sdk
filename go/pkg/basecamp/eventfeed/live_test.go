@@ -596,8 +596,10 @@ func TestLivePolls_A410OfTheOtherLanesShapeIsMalformed(t *testing.T) {
 		// turn a gap that recovers correctly at since=0 into an
 		// unrecoverable one, which is worse for the case it claims to guard.
 		// Holding a response to the members its shape declares belongs at
-		// the wrapper's decode, for every consumer and every response, and
-		// is tracked separately in #915.
+		// the wrapper's decode, and that is where it now lives: the decode
+		// enforces the members the shape REQUIRES and ignores the ones it
+		// does not declare, so this body is typed as the gap it is — with
+		// the stray member inert, exactly as here.
 		{"inbox with a stray epoch and its own fence", eventfeed.InboxLane, epochWithInboxFence, eventfeed.PollGone, 0, "https://3.basecampapi.com/99999/inbox.json?since=0"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
