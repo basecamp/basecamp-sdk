@@ -638,7 +638,7 @@ func jsonObject(body []byte, carriesRawDetails bool) (map[string]json.RawMessage
 	if json.Unmarshal(body, &fields) != nil || fields == nil {
 		return nil, false
 	}
-	if !memberNamesSurvived(body, carriesRawDetails) {
+	if !feedBodyWellFormed(body, carriesRawDetails) {
 		return nil, false
 	}
 	return fields, true
@@ -678,74 +678,128 @@ func factsOfError(base *Error) feedResponseFacts {
 	return feedResponseFacts{requestID: base.RequestID, retryAfter: base.RetryAfter}
 }
 
-// memberNamesSurvived walks a decoded document and reports whether every
-// member NAME in it came through the decode as the server wrote it, at every
-// depth — not only the top level. A row's key is where this bites hardest: a
-// substituted `performed_by_id` does not arrive wrong, it arrives absent, and
-// the event is then attributed to its creator rather than to the agent that
-// acted, with the page's position committing over it. That attribution is
-// also what the loop guard (exclude_performers=self) is computed from.
+// feedBodyWellFormed reports whether a body's object structure is one this
+// contract can act on: every member NAME came through the decode as the
+// server wrote it, and no object names a member twice.
 //
-// carriesRawDetails says whether this body can contain the one member whose
-// interior is skipped: a FeedEvent's `details`, whose bytes are carried
-// verbatim and never decoded into strings, so nothing in there is substituted
-// and refusing an escape inside it would contradict that carriage. Only a
-// poll page can carry one. The error bodies declare no verbatim member, so
-// they are walked whole — a name-level exemption applied to them would let a
-// 409 carrying `details` past the check for no reason at all.
+// Both are about a member the SDK reads being silently not the member the
+// server sent. A substituted name does not arrive wrong, it arrives absent —
+// a row's `performed_by_id` mangled reads as a directly-performed event, so
+// the action is attributed to its creator rather than to the agent, with the
+// page's position committing over it, and that attribution is what the loop
+// guard (exclude_performers=self) is computed from. A repeated name is the
+// same silence from the other side: encoding/json keeps the LAST occurrence,
+// so a 400 carrying both `"reason":"invalid_filter"` and
+// `"reason":"invalid_position"` becomes one verdict chosen by position in the
+// body, and that verdict discards a held cursor. RFC 8259 leaves duplicate
+// names to the parser; a body that supplies two answers to a question with
+// one answer is not one to act on.
 //
-// Within a page the exemption is by name rather than by path, which
-// over-approximates by one case: a `details` at the envelope's top level,
-// which the shape does not declare and nothing reads. An undeclared member's
-// interior cannot change the reading of the body, which is what the walk is
-// for.
+// The walk is a single token pass rather than a recursive decode of each
+// subtree. Re-unmarshalling nested values from their raw bytes re-reads every
+// suffix, which is quadratic in nesting depth: a deeply nested additive
+// member — encoding/json accepts about 10,000 levels — costs seconds and
+// megabytes on a body of a few tens of kilobytes, on a poller that runs
+// continuously. BenchmarkFeedBodyWellFormed pins the linear cost.
 //
-// The fast path is the whole reason this is affordable on a continuous
-// poller: a substitution can only come from a lone surrogate ESCAPE or an
-// invalid raw byte, so a body with neither cannot contain one, and the walk
-// never runs. That check is two linear scans with no allocation.
-func memberNamesSurvived(body []byte, carriesRawDetails bool) bool {
-	if utf8.Valid(body) && !bytes.Contains(body, []byte(`\u`)) {
-		return true
+// carriesRawDetails names the one member whose interior is skipped: a
+// FeedEvent's `details`, whose bytes are carried verbatim and never decoded
+// into strings, so nothing in there is substituted and judging it would
+// contradict that carriage. Only a poll page can carry one; the error bodies
+// declare no verbatim member and are walked whole.
+func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
+	dec := json.NewDecoder(bytes.NewReader(body))
+	// Numbers are never inspected here, and json.Number keeps them as their
+	// literal text instead of parsing each one into a float.
+	dec.UseNumber()
+
+	// One frame per open object or array. Token hands names and values back
+	// in the same stream with nothing to tell them apart, so the frame
+	// carries the alternation: inside an object, a scalar is a name exactly
+	// when a name is what comes next.
+	type frame struct {
+		object    bool
+		expectKey bool
+		seen      map[string]struct{}
 	}
-	return namesSurvived(body, carriesRawDetails)
+	var stack []frame
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			// EOF, or a document that does not parse. Neither is this
+			// function's verdict: the decode around it reports the second.
+			return true
+		}
+		top := len(stack) - 1
+		if delim, ok := tok.(json.Delim); ok {
+			switch delim {
+			case '{':
+				stack = append(stack, frame{object: true, expectKey: true, seen: map[string]struct{}{}})
+			case '[':
+				stack = append(stack, frame{})
+			default:
+				stack = stack[:top]
+				if top--; top >= 0 && stack[top].object {
+					stack[top].expectKey = true
+				}
+			}
+			continue
+		}
+		if top < 0 || !stack[top].object {
+			continue
+		}
+		if !stack[top].expectKey {
+			stack[top].expectKey = true
+			continue
+		}
+		name, isString := tok.(string)
+		if !isString {
+			// Only a string can be a member name; a document that spells one
+			// otherwise does not parse, and the decode reports that.
+			continue
+		}
+		stack[top].expectKey = false
+		if _, repeated := stack[top].seen[name]; repeated {
+			return false
+		}
+		stack[top].seen[name] = struct{}{}
+		if !survivedDecoding(name) {
+			return false
+		}
+		if carriesRawDetails && name == "details" {
+			if skipValue(dec) != nil {
+				return true
+			}
+			stack[top].expectKey = true
+		}
+	}
 }
 
-func namesSurvived(raw json.RawMessage, carriesRawDetails bool) bool {
-	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) == 0 {
-		return true
+// skipValue consumes exactly one value from the token stream, whatever its
+// shape.
+func skipValue(dec *json.Decoder) error {
+	tok, err := dec.Token()
+	if err != nil {
+		return err
 	}
-	switch trimmed[0] {
-	case '{':
-		var object map[string]json.RawMessage
-		if json.Unmarshal(trimmed, &object) != nil {
-			// Not a shape this can judge; the decode that follows reports it.
-			return true
+	delim, ok := tok.(json.Delim)
+	if !ok || (delim != '{' && delim != '[') {
+		return nil
+	}
+	for depth := 1; depth > 0; {
+		tok, err := dec.Token()
+		if err != nil {
+			return err
 		}
-		for name, value := range object {
-			if !survivedDecoding(name) {
-				return false
-			}
-			if carriesRawDetails && name == "details" {
-				continue
-			}
-			if !namesSurvived(value, carriesRawDetails) {
-				return false
-			}
-		}
-	case '[':
-		var array []json.RawMessage
-		if json.Unmarshal(trimmed, &array) != nil {
-			return true
-		}
-		for _, value := range array {
-			if !namesSurvived(value, carriesRawDetails) {
-				return false
+		if delim, ok := tok.(json.Delim); ok {
+			if delim == '{' || delim == '[' {
+				depth++
+			} else {
+				depth--
 			}
 		}
 	}
-	return true
+	return nil
 }
 
 // requiredString reads a member the shape DECLARES: present, a JSON string,

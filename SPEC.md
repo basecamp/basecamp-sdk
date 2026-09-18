@@ -3478,18 +3478,24 @@ error-body parse falls back to a `message` member when `error` is empty, so an e
 carry a message the declared member never supplied into a consumer's classifier, whose answer
 is a position reset.
 
-The same totality covers member NAMES, which are subject to the substitution below exactly as
-values are — and worse, because a substituted key does not arrive wrong, it arrives missing: an
-optional member reads as absent and a required one as omitted. A body with any substituted key
-is refused, over every key rather than the ones a given arm happens to read, since which key
-was mangled is what cannot be known in advance, and **at every depth** rather than at the
-envelope's top level: a row's `performed_by_id` arriving mangled reads as absent, which
+The same totality covers the body's object STRUCTURE — its member names — in two ways a decoder
+answers silently. **A name repeated within one object makes the body malformed**: `encoding/json`
+keeps the last occurrence, RFC 8259 leaves the choice to the parser, and a 400 carrying both
+`"reason":"invalid_filter"` and `"reason":"invalid_position"` would otherwise become one verdict
+chosen by position in the body — a verdict that discards a held cursor. A body that answers a
+one-answer question twice is not one to act on. **And a substituted name makes it malformed**,
+since names are subject to the substitution below exactly as values are — and worse, because a substituted key does not arrive wrong, it arrives missing: an
+optional member reads as absent and a required one as omitted. Both are judged over every key rather than the ones a
+given arm happens to read, since which key was mangled or repeated is what cannot be known in
+advance, and **at every depth** rather than at the envelope's top level: a row's `performed_by_id` arriving mangled reads as absent, which
 attributes a delegated action to its creator — the attribution `exclude_performers=self` is
 computed from — while the page's position commits over it. The walk's one stopping boundary is a
 FeedEvent's `details`: its bytes are carried verbatim and never decoded into strings, so nothing
 inside it is substituted, and refusing an escape there would contradict the byte-identical
 carriage the push lane depends on. Structural member names are validated; opaque `details`
-contents are not. The boundary belongs to the shape that declares a verbatim member, not to the
+contents are not. The walk is one linear token pass over the body: decoding each nested value
+from its raw bytes re-reads every suffix, which is quadratic in nesting depth and costs seconds
+on a body of a few tens of kilobytes — a cost a continuous poller cannot carry. The boundary belongs to the shape that declares a verbatim member, not to the
 name: the error bodies declare none, so they are walked whole — a body carrying a member that
 happens to be named `details` is not carrying raw bytes, and exempting it would be an escape
 hatch for nothing.
