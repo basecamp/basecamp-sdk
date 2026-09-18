@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -1199,31 +1200,47 @@ func TestEventFeedService_KeepsASubstitutedNameInTheDetailsTheShapeDeclares(t *t
 	}
 }
 
-// The walk is one linear pass, not a decode of every nested subtree: a body
-// whose additive member nests deeply used to re-read each suffix, which is
-// quadratic in depth and costs seconds on a few tens of kilobytes — on a
-// poller that runs continuously. This is that claim as a test: a page with a
-// 9,000-level additive member is validated in well under a second.
-func TestEventFeedService_WalksADeeplyNestedBodyInLinearTime(t *testing.T) {
+// The walk is one linear pass over the body and carries no per-level state
+// it does not need. Both halves of that have been wrong here: it decoded each
+// nested subtree from its raw bytes (quadratic in reads), and it copied each
+// container's full member path (quadratic in memory — a 9,000-level body
+// retained tens of millions of string slots). The cost is the claim, so the
+// test states it in bytes: a deeply nested body is validated within a ceiling
+// that neither mistake can meet.
+//
+// The ceiling is generous against the measured cost (a few hundred KB for the
+// request, decode and walk) and far under either blowup, so it fails on the
+// defect rather than on the platform.
+func TestEventFeedService_ValidatesADeeplyNestedBodyWithinABoundedCost(t *testing.T) {
 	const depth = 9000
+	const ceiling = 32 << 20
 	nested := strings.Repeat(`{"a":`, depth) + "1" + strings.Repeat("}", depth)
 	body := `{"events":[],"position":"posAAA","additive":` + nested + `}`
 	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(body))
 	})
-	done := make(chan error, 1)
+
+	var before, after runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&before)
+	done := make(chan struct{})
 	go func() {
-		_, err := svc.PollEvents(context.Background(), nil)
-		done <- err
+		// encoding/json refuses beyond its own nesting limit, and either
+		// answer is fine — what is pinned is the cost of reaching one.
+		_, _ = svc.PollEvents(context.Background(), nil)
+		close(done)
 	}()
 	select {
-	case err := <-done:
-		// encoding/json refuses beyond its own nesting limit, and either
-		// answer is fine — what is pinned is that it ANSWERS.
-		_ = err
-	case <-time.After(5 * time.Second):
-		t.Fatal("validating a deeply nested body did not finish: the walk is not linear")
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("validating a deeply nested body did not finish: the walk is not linear in reads")
+	}
+	runtime.ReadMemStats(&after)
+
+	if grew := after.TotalAlloc - before.TotalAlloc; grew > ceiling {
+		t.Fatalf("validating a %d-level body allocated %d MiB, over the %d MiB ceiling: the walk is carrying per-level state it does not need",
+			depth, grew>>20, ceiling>>20)
 	}
 }
 

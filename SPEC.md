@@ -3496,9 +3496,13 @@ carriage the push lane depends on. Structural member names are validated; opaque
 contents are not. The exemption is by member PATH, not by name — `events[*].details` and
 `items[*].event.details`, the two places the shape declares one — so a member that merely
 happens to be named `details` carries no raw bytes the SDK reads and is walked like any other
-subtree. The walk is one linear token pass over the body: decoding each nested value
-from its raw bytes re-reads every suffix, which is quadratic in nesting depth and costs seconds
-on a body of a few tens of kilobytes — a cost a continuous poller cannot carry. The boundary belongs to the shape that declares a verbatim member, not to the
+subtree. The walk is one linear token pass over the body carrying O(1) state per
+level: decoding each nested value from its raw bytes re-reads every suffix, and materialising
+each container's path re-copies it, either of which is quadratic in nesting depth — seconds, or
+hundreds of megabytes, on a body of a few tens of kilobytes, which a continuous poller cannot
+carry. There is deliberately no depth cap: one would refuse a page over the shape of a member
+nothing reads, which is what the additive-member rule forbids, and a body deep enough to matter
+does not decode into a page at all. The boundary belongs to the shape that declares a verbatim member, not to the
 name: the error bodies declare none, so they are walked whole — a body carrying a member that
 happens to be named `details` is not carrying raw bytes, and exempting it would be an escape
 hatch for nothing.

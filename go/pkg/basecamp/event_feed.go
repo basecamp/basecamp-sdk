@@ -695,6 +695,15 @@ func factsOfError(base *Error) feedResponseFacts {
 // names to the parser; a body that supplies two answers to a question with
 // one answer is not one to act on.
 //
+// There is deliberately no depth cap. A cap would be the fail-closed default
+// this decode otherwise takes everywhere, and it would make an absurd body
+// unreachable rather than merely cheap — but it would refuse a page over the
+// SHAPE of a member nothing reads, which is the one thing the additive-member
+// rule above forbids. What bounds the work instead is that the pass is linear
+// and carries O(1) state per level, and that encoding/json refuses beyond its
+// own nesting limit, so a body deep enough to matter never decodes into a
+// page at all.
+//
 // The walk is a single token pass rather than a recursive decode of each
 // subtree. Re-unmarshalling nested values from their raw bytes re-reads every
 // suffix, which is quadratic in nesting depth: a deeply nested additive
@@ -721,20 +730,23 @@ func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
 	// carries the alternation: inside an object, a scalar is a name exactly
 	// when a name is what comes next.
 	//
-	// path is the member path of the frame's own container, with array
-	// indices elided, which is what makes the details exemption exact rather
-	// than name-shaped: a member named details is exempt at the two paths the
-	// contract declares one and nowhere else, so an additive
-	// `metadata.details` is walked like any other subtree.
+	// Each frame carries enough of its own member path to decide the details
+	// exemption and no more: how many named segments lead here, and the last
+	// two of them. The whole path is never materialised — copying it at every
+	// push is what makes a walk quadratic in nesting depth again, in
+	// allocation rather than in reads, and the two paths that declare a raw
+	// member are short and fixed.
 	var stack []feedWalkFrame
 	push := func(object bool, name string) {
 		f := feedWalkFrame{object: object, expectKey: object, name: name}
 		if n := len(stack) - 1; n >= 0 {
-			f.path = stack[n].path
-			if stack[n].object {
-				// A container held under a member name extends the path;
-				// an array's elements inherit the array's own path.
-				f.path = append(append(make([]string, 0, len(f.path)+1), f.path...), name)
+			parent := stack[n]
+			f.pathLen, f.tail = parent.pathLen, parent.tail
+			if parent.object {
+				// A container held under a member name extends the path; an
+				// array's elements inherit the array's own.
+				f.pathLen++
+				f.tail = [2]string{f.tail[1], name}
 			}
 		}
 		if object {
@@ -786,7 +798,7 @@ func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
 		if !survivedDecoding(name) {
 			return false
 		}
-		if carriesRawDetails && name == detailsMember && declaresRawDetails(stack[top].path) {
+		if carriesRawDetails && name == detailsMember && declaresRawDetails(stack[top].pathLen, stack[top].tail) {
 			if skipValue(dec) != nil {
 				return true
 			}
@@ -796,11 +808,15 @@ func feedBodyWellFormed(body []byte, carriesRawDetails bool) bool {
 }
 
 // feedWalkFrame is one open object or array in feedBodyWellFormed's walk.
+// pathLen counts the named segments leading to this container (array indices
+// elided) and tail holds the last two of them, which is all the details
+// exemption needs and all that can be carried without allocating per level.
 type feedWalkFrame struct {
 	object    bool
 	expectKey bool
 	name      string
-	path      []string
+	pathLen   int
+	tail      [2]string
 	seen      map[string]struct{}
 }
 
@@ -817,16 +833,19 @@ func pendingName(stack []feedWalkFrame) string {
 const detailsMember = "details"
 
 // declaresRawDetails reports the two member paths where a FeedEvent lives in
-// a poll page, array indices elided: the feed's rows, and the event nested in
-// an inbox item. A `details` anywhere else is an additive member like any
-// other — the SDK reads no raw bytes out of it, so nothing exempts it from
-// the walk.
-func declaresRawDetails(path []string) bool {
-	switch len(path) {
+// a poll page, array indices elided: `events`, the feed's rows, and
+// `items.event`, the event nested in an inbox item. A `details` anywhere else
+// is an additive member like any other — the SDK reads no raw bytes out of
+// it, so nothing exempts it from the walk.
+//
+// pathLen is what keeps a deeper path from matching on its tail alone:
+// `x.items.event` ends the same way and is not one of these.
+func declaresRawDetails(pathLen int, tail [2]string) bool {
+	switch pathLen {
 	case 1:
-		return path[0] == "events"
+		return tail[1] == "events"
 	case 2:
-		return path[0] == "items" && path[1] == "event"
+		return tail[0] == "items" && tail[1] == "event"
 	}
 	return false
 }
