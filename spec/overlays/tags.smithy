@@ -231,8 +231,9 @@ apply RepositionTool @tags(["Dock"])
 // without a SERVICE_SPLITS entry, so it fell through to the tag-derived service
 // and generated into AutomationService alone while its three siblings were
 // split into Lineup. With no entry carrying it, retagging lands it on Lineup
-// with them, AutomationService stops being emitted, and every SDK's
-// AutomationService#list_lineup_markers becomes LineupService#list. That is a
+// with them and AutomationService stops being emitted: the method keeps its
+// name and changes the service it hangs off, so every SDK's
+// automation.list_lineup_markers becomes lineup.list_lineup_markers. That is a
 // breaking change, taken deliberately and recorded in MIGRATING.md.
 apply ListLineupMarkers @tags(["Lineup"])
 apply CreateLineupMarker @tags(["Lineup"])

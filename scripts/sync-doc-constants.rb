@@ -366,9 +366,9 @@ end
 # rather than leaving it to be inferred: their entire reason to exist is hanging
 # services off AccountClient, which is exactly what §5's roster claims. Per-SDK
 # client wiring cannot answer the question — it drifts by design (Go folds
-# `clientVisibility` and spells `timesheets` singular; Python is
-# two short; TypeScript has no account-scoped tier at all), so a roster derived
-# from any one of them would assert that SDK's gaps as the canonical surface.
+# `clientVisibility` and spells `timesheets` singular; TypeScript has no
+# account-scoped tier at all), so a roster derived from any one of them would
+# assert that SDK's gaps as the canonical surface.
 KOTLIN_ACCESSORS = "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt"
 SWIFT_ACCESSORS  = "swift/Sources/Basecamp/Generated/AccountClient+Services.swift"
 
