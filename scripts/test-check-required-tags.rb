@@ -168,6 +168,33 @@ status, out = run_check({ "openapi" => "3.1.0", "paths" => { "/{accountId}/thing
 expect("a non-object path item fails", status == 1)
 expect("non-object path item is named", out.include?("/{accountId}/thing"))
 
+# 15. A tag has to name a domain. `[""]` satisfies "exactly one" while naming
+#     nothing, and the generators do not even agree what it means: TypeScript
+#     reads "" as falsy and files the operation under Miscellaneous, Ruby and
+#     Python read it as truthy and derive a service from the empty string. So a
+#     blank tag would not merely mis-file an operation, it would split the SDKs.
+[[""], ["   "], ["\t"]].each do |tags|
+  status, out = run_check(spec_with(op(tags)))
+  expect("blank tag #{tags.inspect} fails", status == 1)
+  expect("blank tag #{tags.inspect} failure names the operation", out.include?("SomeOp"))
+end
+
+# 16. A tag that is not a string names no domain either.
+[[123], [nil], [{ "name" => "Recordings" }]].each do |tags|
+  status, = run_check(spec_with(op(tags)))
+  expect("non-string tag #{tags.inspect} fails", status == 1)
+end
+
+# 17. A tags value that is not an array at all is treated as untagged rather
+#     than crashing the check.
+status, = run_check(spec_with(op("Recordings")))
+expect("a non-array tags value fails", status == 1)
+
+# 18. Surrounding whitespace is not itself disqualifying — only the absence of
+#     a name is. This pins the rule to "names a domain", not "is trimmed".
+status, = run_check(spec_with(op([" Recordings "])))
+expect("a tag with surrounding whitespace still passes", status.zero?)
+
 if FAILURES.empty?
   puts "check-required-tags self-test: all cases passed"
 else

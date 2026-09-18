@@ -81,6 +81,17 @@ def allowlist
   (ALLOWLIST + extra).to_set
 end
 
+# A tag has to NAME a domain, not merely be present. A blank or non-string entry
+# satisfies "exactly one" while carrying no domain, and the generators disagree
+# about what to do with it: TypeScript's `tags?.[0] || "Untagged"` treats "" as
+# falsy and folds the operation into Miscellaneous, while the Ruby and Python
+# equivalents find "" truthy and derive a service from the empty string. One
+# such tag would silently split the SDKs, which is the drift this gate exists to
+# stop.
+def usable_tag?(tag)
+  tag.is_a?(String) && !tag.strip.empty?
+end
+
 def die(message)
   warn "ERROR: #{message}"
   exit 1
@@ -102,6 +113,7 @@ def main
   permitted = allowlist
   untagged = []
   multi_tagged = []
+  unusable_tag = []
   unreadable = []
   seen = 0
 
@@ -125,10 +137,12 @@ def main
       op_id = operation["operationId"] || "#{field.upcase} #{path}"
       tags = operation["tags"]
 
-      if tags.nil? || tags.empty?
+      if tags.nil? || !tags.is_a?(Array) || tags.empty?
         untagged << op_id unless permitted.include?(op_id)
       elsif tags.length > 1
         multi_tagged << "#{op_id} (#{tags.join(', ')})"
+      elsif !usable_tag?(tags.first)
+        unusable_tag << "#{op_id} (#{tags.first.inspect})"
       end
     end
   end
@@ -145,6 +159,10 @@ def main
   unless untagged.empty?
     problems << "#{untagged.length} operation(s) carry no tag (each must have exactly one):\n" \
                 "#{untagged.sort.map { |o| "  - #{o}" }.join("\n")}"
+  end
+  unless unusable_tag.empty?
+    problems << "#{unusable_tag.length} operation(s) carry one tag that names no domain:\n" \
+                "#{unusable_tag.sort.map { |o| "  - #{o}" }.join("\n")}"
   end
   unless multi_tagged.empty?
     problems << "#{multi_tagged.length} operation(s) carry more than one tag (catalog.Load requires exactly one):\n" \
