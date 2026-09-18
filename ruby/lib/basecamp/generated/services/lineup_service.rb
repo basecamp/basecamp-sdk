@@ -7,6 +7,14 @@ module Basecamp
     # @generated from OpenAPI spec
     class LineupService < BaseService
 
+      # List all lineup markers for the account
+      # @return [Array<Hash>] response data
+      def list_lineup_markers()
+        with_operation(service: "lineup", operation: "list_lineup_markers", is_mutation: false) do
+          http_get("/lineup/markers.json", operation: "ListLineupMarkers").json(operation: "ListLineupMarkers")
+        end
+      end
+
       # Create a new lineup marker
       # @param name [String] name
       # @param date [String] date

@@ -14,7 +14,6 @@ val TAG_TO_SERVICE = mapOf(
     "Schedule" to "Schedules",
     "People" to "People",
     "Projects" to "Projects",
-    "Automation" to "Automation",
     "ClientFeatures" to "ClientFeatures",
     "Boosts" to "Boosts",
     "Untagged" to "Miscellaneous",
@@ -55,20 +54,8 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
         "CloudFiles" to listOf("GetCloudFile", "CreateCloudFile", "UpdateCloudFile"),
         "GoogleDocuments" to listOf("GetGoogleDocument", "CreateGoogleDocument", "UpdateGoogleDocument"),
     ),
-    "Automation" to mapOf(
+    "Dock" to mapOf(
         "Tools" to listOf("GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"),
-        "Webhooks" to listOf("ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"),
-        "Lineup" to listOf("CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"),
-        "Search" to listOf("Search", "GetSearchMetadata"),
-        "Templates" to listOf(
-            "ListTemplates", "CreateTemplate", "GetTemplate", "UpdateTemplate",
-            "DeleteTemplate", "CreateProjectFromTemplate", "GetProjectConstruction",
-            "GetTemplateLibrary", "CreateTemplateLibraryCopy", "GetTemplateLibraryCopy",
-        ),
-        "Checkins" to listOf(
-            "GetQuestionnaire", "ListQuestions", "CreateQuestion", "GetQuestion",
-            "UpdateQuestion", "ListAnswers", "CreateAnswer", "GetAnswer", "UpdateAnswer",
-        ),
     ),
     "Recordings" to mapOf(
         "Events" to listOf("ListEvents"),

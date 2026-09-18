@@ -24,7 +24,6 @@ export { DocumentsService } from "./documents.js";
 export { EventFeedService } from "./event-feed.js";
 export { GaugesService } from "./gauges.js";
 export { ForwardsService } from "./forwards.js";
-export { AutomationService } from "./automation.js";
 export { LineupService } from "./lineup.js";
 export { MessageBoardsService } from "./message-boards.js";
 export { MessagesService } from "./messages.js";

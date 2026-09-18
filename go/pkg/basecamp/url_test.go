@@ -341,6 +341,79 @@ func TestRouterMatch(t *testing.T) {
 			wantRes:      "789",
 			wantResource: "Recordings",
 		},
+		// The Automation tag was split into six domains, and Resource is the
+		// tag. One route per new label is pinned here for the same reason the
+		// recording routes above are: Match.Resource is public, and the route
+		// table it comes from is regenerated, so nothing else would notice a
+		// label going back.
+		{
+			name:         "dock tool URL",
+			input:        "https://3.basecamp.com/123/dock/tools/789",
+			wantSource:   MatchedAPI,
+			wantOp:       "GetTool",
+			wantAccount:  "123",
+			wantRes:      "789",
+			wantResource: "Dock",
+		},
+		{
+			name:         "tool position URL",
+			input:        "https://3.basecamp.com/123/recordings/789/position",
+			wantSource:   MatchedAPI,
+			wantAccount:  "123",
+			wantRes:      "789",
+			wantResource: "Dock",
+		},
+		{
+			name:         "webhook URL",
+			input:        "https://3.basecamp.com/123/webhooks/789",
+			wantSource:   MatchedAPI,
+			wantOp:       "GetWebhook",
+			wantAccount:  "123",
+			wantRes:      "789",
+			wantResource: "Webhooks",
+		},
+		{
+			name:         "template URL",
+			input:        "https://3.basecamp.com/123/templates/789",
+			wantSource:   MatchedAPI,
+			wantOp:       "GetTemplate",
+			wantAccount:  "123",
+			wantRes:      "789",
+			wantResource: "Templates",
+		},
+		{
+			name:         "template library URL",
+			input:        "https://3.basecamp.com/123/template_library",
+			wantSource:   MatchedAPI,
+			wantOp:       "GetTemplateLibrary",
+			wantAccount:  "123",
+			wantResource: "Templates",
+		},
+		{
+			name:         "lineup markers URL",
+			input:        "https://3.basecamp.com/123/lineup/markers",
+			wantSource:   MatchedAPI,
+			wantOp:       "ListLineupMarkers",
+			wantAccount:  "123",
+			wantResource: "Lineup",
+		},
+		{
+			name:         "search URL",
+			input:        "https://3.basecamp.com/123/search",
+			wantSource:   MatchedAPI,
+			wantOp:       "Search",
+			wantAccount:  "123",
+			wantResource: "Search",
+		},
+		{
+			name:         "questionnaire URL",
+			input:        "https://3.basecamp.com/123/questionnaires/789",
+			wantSource:   MatchedAPI,
+			wantOp:       "GetQuestionnaire",
+			wantAccount:  "123",
+			wantRes:      "789",
+			wantResource: "Checkins",
+		},
 	}
 
 	for _, tt := range tests {

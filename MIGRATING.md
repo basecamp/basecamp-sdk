@@ -13,6 +13,59 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### `listLineupMarkers` moves from the Automation service to the Lineup service
+
+`AutomationService` is gone. Its only method, the lineup-marker listing, now hangs
+off `LineupService` beside `create`, `update` and `delete`, where the other three
+lineup-marker operations already were. The method name does not change — only the
+service you reach it through.
+
+| SDK | before | after |
+|---|---|---|
+| Ruby | `account.automation.list_lineup_markers` | `account.lineup.list_lineup_markers` |
+| Python | `account.automation.list_lineup_markers()` | `account.lineup.list_lineup_markers()` |
+| TypeScript | `client.automation.listLineupMarkers()` | `client.lineup.listLineupMarkers()` |
+| Kotlin | `account.automation.listLineupMarkers()` | `account.lineup.listLineupMarkers()` |
+| Swift | `account.automation.listLineupMarkers()` | `account.lineup.listLineupMarkers()` |
+| Rust | `account.automation().list_lineup_markers()` | `account.lineup().list_lineup_markers()` |
+| Go | `account.Lineup().ListMarkers(...)` | unchanged |
+
+TypeScript also re-exports the `LineupMarker` type from `lineup.js` rather than
+`automation.js`; the type itself is unchanged. `AutomationService` is no longer
+exported by any SDK.
+
+**Loud, not silent.** Every one of these is a compile error, an `AttributeError`,
+or a `NoMethodError` on the first call — there is no version of this that silently
+returns the wrong thing. Go is unaffected: it never had an `Automation()` accessor
+and has always exposed this operation on `LineupService`.
+
+**Why.** The `Automation` tag was a catch-all over seven unrelated surfaces, and
+splitting it into real domains is what the rest of that change does. `AutomationService`
+existed only because this one operation fell through the tag's split table while its
+three siblings were routed out of it; the tag it was named after no longer exists.
+
+### The `Automation` tag is gone, and two public fields carry it
+
+Splitting that catch-all retags 37 operations into `Templates`, `Webhooks`, `Dock`,
+`Lineup`, `Search` and `Checkins`. Two public surfaces restate an operation's tag
+verbatim, so both change value for those 37 — **silently, with no compile error.**
+
+*Go's URL router.* `Router.Match(url).Resource` is the route table's resource field,
+which is the tag. A URL under `/templates/`, `/webhooks/`, `/dock/tools/`,
+`/recordings/{toolId}/position`, `/lineup/markers`, `/search`, `/searches/metadata`,
+`/questionnaires/`, `/questions/` or `/question_answers/` used to classify as
+`"Automation"` and now classifies as its own domain. A `switch m.Resource` or
+`if m.Resource == "Automation"` compiles and stops matching. Match the new label, or
+switch on `m.Operation`, which did not change.
+
+*The embedded catalog.* `catalog.Operation.Tag` and the keys of `Catalog.ByTag()`
+move the same way for the same 37 operations. A consumer that groups by tag — which
+is what the catalog is for — gets six groups where it got one, which is the point of
+the change; a consumer that hard-codes `"Automation"` gets nothing.
+
+Nothing else reads the tag. Service names, method names, signatures, URLs and
+operation ids are unchanged for all 37; only `ListLineupMarkers` moves service, above.
+
 ### Go: the event feed's poll lanes refuse a malformed response instead of typing it
 
 `EventFeedService.PollEvents` and `PollInbox` now decide each response against the
@@ -263,7 +316,9 @@ capability: `['id']` and `['a', 'b', 'c']` were wrong answers presented as
 successes. If you were consuming them, the new refusal is telling you something
 your code was previously acting on.
 
-The 9 unpaginated operations, sync and async: `automation.list_lineup_markers`,
+The 9 unpaginated operations, sync and async: `automation.list_lineup_markers`
+(the accessor as it stood at v0.19.0; it is `lineup.list_lineup_markers` from the
+Unreleased section above onward),
 `everything.get_everything_overdue_cards`,
 `everything.get_everything_overdue_todos`, `folders.list_folders`,
 `my_assignments.get_my_completed_assignments`,

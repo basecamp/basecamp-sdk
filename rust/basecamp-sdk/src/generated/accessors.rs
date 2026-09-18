@@ -17,11 +17,6 @@ impl AccountClient {
         services::attachments::AttachmentsService::new(self)
     }
 
-    /// `Automation` operations.
-    pub fn automation(&self) -> services::automation::AutomationService<'_> {
-        services::automation::AutomationService::new(self)
-    }
-
     /// `Bookmarks` operations.
     pub fn bookmarks(&self) -> services::bookmarks::BookmarksService<'_> {
         services::bookmarks::BookmarksService::new(self)

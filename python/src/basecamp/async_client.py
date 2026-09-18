@@ -408,12 +408,6 @@ class AsyncAccountClient:
         return self._service("lineup", lambda: AsyncLineupService(self))
 
     @property
-    def automation(self):
-        from basecamp.generated.services.automation import AsyncAutomationService
-
-        return self._service("automation", lambda: AsyncAutomationService(self))
-
-    @property
     def bookmarks(self):
         from basecamp.generated.services.bookmarks import AsyncBookmarksService
 

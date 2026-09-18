@@ -2747,7 +2747,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Dock"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
@@ -3158,7 +3158,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Webhooks"
         ],
         "x-basecamp-pagination": {
           "style": "link",
@@ -3272,7 +3272,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Webhooks"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
@@ -7456,7 +7456,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Dock"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -7538,7 +7538,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Dock"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -7637,7 +7637,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Dock"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -9420,7 +9420,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Lineup"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -9502,7 +9502,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Lineup"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
@@ -9576,7 +9576,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Lineup"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -9670,7 +9670,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Lineup"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -14408,7 +14408,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Checkins"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -14500,7 +14500,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Checkins"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -14584,7 +14584,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Checkins"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -14675,7 +14675,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Checkins"
         ],
         "x-basecamp-pagination": {
           "style": "link",
@@ -14779,7 +14779,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Checkins"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
@@ -14860,7 +14860,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Checkins"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -14958,7 +14958,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Checkins"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -15052,7 +15052,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Checkins"
         ],
         "x-basecamp-pagination": {
           "style": "link",
@@ -15156,7 +15156,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Checkins"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
@@ -18218,7 +18218,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Dock"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -18303,7 +18303,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Dock"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
@@ -18395,7 +18395,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Dock"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -20002,7 +20002,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Search"
         ],
         "x-basecamp-pagination": {
           "style": "link",
@@ -20078,7 +20078,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Search"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -20586,7 +20586,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Templates"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -20687,7 +20687,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Templates"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
@@ -20778,7 +20778,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Templates"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -20869,7 +20869,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Templates"
         ],
         "x-basecamp-pagination": {
           "style": "link",
@@ -20963,7 +20963,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Templates"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
@@ -21037,7 +21037,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Templates"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -21119,7 +21119,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Templates"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -21217,7 +21217,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Templates"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -21321,7 +21321,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Templates"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
@@ -21411,7 +21411,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Templates"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -25254,7 +25254,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Webhooks"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -25336,7 +25336,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Webhooks"
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -25444,7 +25444,7 @@
           }
         },
         "tags": [
-          "Automation"
+          "Webhooks"
         ],
         "x-basecamp-idempotent": {
           "natural": true

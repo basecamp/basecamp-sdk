@@ -165,35 +165,80 @@ apply ListClientReplies @tags(["ClientFeatures"])
 apply GetClientReply @tags(["ClientFeatures"])
 apply SetClientVisibility @tags(["ClientFeatures"])
 
-// Automation (Webhooks, Search, Templates, Tools, Lineup)
-apply ListWebhooks @tags(["Automation"])
-apply GetWebhook @tags(["Automation"])
-apply CreateWebhook @tags(["Automation"])
-apply UpdateWebhook @tags(["Automation"])
-apply DeleteWebhook @tags(["Automation"])
-apply Search @tags(["Automation"])
-apply GetSearchMetadata @tags(["Automation"])
-apply ListTemplates @tags(["Automation"])
-apply GetTemplate @tags(["Automation"])
-apply CreateTemplate @tags(["Automation"])
-apply UpdateTemplate @tags(["Automation"])
-apply DeleteTemplate @tags(["Automation"])
-apply CreateProjectFromTemplate @tags(["Automation"])
-apply GetProjectConstruction @tags(["Automation"])
-apply GetTemplateLibrary @tags(["Automation"])
-apply CreateTemplateLibraryCopy @tags(["Automation"])
-apply GetTemplateLibraryCopy @tags(["Automation"])
-apply GetTool @tags(["Automation"])
-apply CreateTool @tags(["Automation"])
-apply UpdateTool @tags(["Automation"])
-apply DeleteTool @tags(["Automation"])
-apply EnableTool @tags(["Automation"])
-apply DisableTool @tags(["Automation"])
-apply RepositionTool @tags(["Automation"])
-apply ListLineupMarkers @tags(["Automation"])
-apply CreateLineupMarker @tags(["Automation"])
-apply UpdateLineupMarker @tags(["Automation"])
-apply DeleteLineupMarker @tags(["Automation"])
+// Webhooks
+//
+// A per-project subscription: register a callback URL, say which event types it
+// wants, read back what is registered. The one surface here that automation is
+// actually built on, which is why it is named for the thing rather than for the
+// category the thing belongs to.
+apply ListWebhooks @tags(["Webhooks"])
+apply GetWebhook @tags(["Webhooks"])
+apply CreateWebhook @tags(["Webhooks"])
+apply UpdateWebhook @tags(["Webhooks"])
+apply DeleteWebhook @tags(["Webhooks"])
+
+// Search
+//
+// Account-wide query over recordings, plus the metadata describing what can be
+// filtered on. A read surface, and the only one of the six that touches every
+// other domain rather than owning a resource of its own.
+apply Search @tags(["Search"])
+apply GetSearchMetadata @tags(["Search"])
+
+// Templates (project blueprints and the account template library)
+//
+// One domain, not two. A template is a stored project shape; a project
+// construction is the asynchronous job that builds a project from one. The
+// template library is the same act from a different source — the account's
+// shared catalogue instead of a template you own — and a library copy is its
+// construction. Splitting the library out would put the two halves of "make a
+// new project from something stored" under different tools.
+apply ListTemplates @tags(["Templates"])
+apply GetTemplate @tags(["Templates"])
+apply CreateTemplate @tags(["Templates"])
+apply UpdateTemplate @tags(["Templates"])
+apply DeleteTemplate @tags(["Templates"])
+apply CreateProjectFromTemplate @tags(["Templates"])
+apply GetProjectConstruction @tags(["Templates"])
+apply GetTemplateLibrary @tags(["Templates"])
+apply CreateTemplateLibraryCopy @tags(["Templates"])
+apply GetTemplateLibraryCopy @tags(["Templates"])
+
+// Dock (a project's tool strip)
+//
+// Which tools a project has, what they are called, what order they sit in, and
+// whether they are turned on. Named for the dock rather than for the Tools
+// service these route to: a consumer that builds one domain tool per tag would
+// otherwise get a tool called "tools", and the dock is what the operations are
+// about — the strip, not the message board or the to-do set behind each entry.
+//
+// EnableTool, DisableTool and RepositionTool sit under /recordings/{toolId}/,
+// and the path label is toolId, not recordingId. #929 left them out of the
+// Recordings retag for that reason; they are dock operations that share a
+// prefix.
+apply GetTool @tags(["Dock"])
+apply CreateTool @tags(["Dock"])
+apply UpdateTool @tags(["Dock"])
+apply DeleteTool @tags(["Dock"])
+apply EnableTool @tags(["Dock"])
+apply DisableTool @tags(["Dock"])
+apply RepositionTool @tags(["Dock"])
+
+// Lineup (account-wide schedule markers)
+//
+// ListLineupMarkers moves SERVICE as well as tag, and it is the only operation
+// in this split that does. It was the one operation the Automation tag reached
+// without a SERVICE_SPLITS entry, so it fell through to the tag-derived service
+// and generated into AutomationService alone while its three siblings were
+// split into Lineup. With no entry carrying it, retagging lands it on Lineup
+// with them and AutomationService stops being emitted: the method keeps its
+// name and changes the service it hangs off, so every SDK's
+// automation.list_lineup_markers becomes lineup.list_lineup_markers. That is a
+// breaking change, taken deliberately and recorded in MIGRATING.md.
+apply ListLineupMarkers @tags(["Lineup"])
+apply CreateLineupMarker @tags(["Lineup"])
+apply UpdateLineupMarker @tags(["Lineup"])
+apply DeleteLineupMarker @tags(["Lineup"])
 
 // Boosts
 apply ListRecordingBoosts @tags(["Boosts"])
@@ -203,22 +248,23 @@ apply CreateRecordingBoost @tags(["Boosts"])
 apply CreateEventBoost @tags(["Boosts"])
 apply DeleteBoost @tags(["Boosts"])
 
-// Checkins (under Automation)
-apply GetQuestionnaire @tags(["Automation"])
-apply ListQuestions @tags(["Automation"])
-apply GetQuestion @tags(["Automation"])
-apply CreateQuestion @tags(["Automation"])
-apply UpdateQuestion @tags(["Automation"])
-apply ListAnswers @tags(["Automation"])
-apply GetAnswer @tags(["Automation"])
-apply CreateAnswer @tags(["Automation"])
-apply UpdateAnswer @tags(["Automation"])
-
-// Checkins (question reminders, pausing, answerers, notification settings)
-// New domain tag: these question operations had no tag, and no existing
-// domain tag fit. The questionnaire/question/answer CRUD ops above stay under
-// Automation for now; consolidating the whole check-in family under Checkins
-// is a follow-up editorial call left to the maintainers.
+// Checkins (questionnaires, questions, answers)
+//
+// #922 created this tag for the six operations that had none and noted that
+// consolidating the rest of the check-in family under it was a follow-up
+// editorial call. This is that follow-up. The questionnaire/question/answer
+// CRUD below already generated into the Checkins SERVICE alongside these six;
+// only the tag disagreed, so the two halves of one domain were being offered
+// to tag-keyed consumers as two.
+apply GetQuestionnaire @tags(["Checkins"])
+apply ListQuestions @tags(["Checkins"])
+apply GetQuestion @tags(["Checkins"])
+apply CreateQuestion @tags(["Checkins"])
+apply UpdateQuestion @tags(["Checkins"])
+apply ListAnswers @tags(["Checkins"])
+apply GetAnswer @tags(["Checkins"])
+apply CreateAnswer @tags(["Checkins"])
+apply UpdateAnswer @tags(["Checkins"])
 apply GetQuestionReminders @tags(["Checkins"])
 apply ListQuestionAnswerers @tags(["Checkins"])
 apply GetAnswersByPerson @tags(["Checkins"])
@@ -353,9 +399,9 @@ apply CreateStreamTicket @tags(["EventFeed"])
 // Bookmarks, Boosts, BubbleUps, ClientFeatures, Messages, People and Schedule
 // operations, and ListEventBoosts (.../events/{eventId}/boosts.json) is Boosts
 // even though it hangs off this very sub-resource. EnableTool, DisableTool and
-// RepositionTool stay Automation: their /{accountId}/recordings/{toolId}/
+// RepositionTool are not Recordings: their /{accountId}/recordings/{toolId}/
 // position.json path takes a toolId, not a recordingId — they are dock-tool
-// operations that happen to share the prefix.
+// operations that happen to share the prefix, and they are tagged Dock.
 apply ListRecordings @tags(["Recordings"])
 apply SpotlightRecording @tags(["Recordings"])
 apply UnspotlightRecording @tags(["Recordings"])

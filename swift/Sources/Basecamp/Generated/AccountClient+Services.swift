@@ -4,7 +4,6 @@ import Foundation
 extension AccountClient {
     public var account: AccountService { service("account") { AccountService(accountClient: self) } }
     public var attachments: AttachmentsService { service("attachments") { AttachmentsService(accountClient: self) } }
-    public var automation: AutomationService { service("automation") { AutomationService(accountClient: self) } }
     public var bookmarks: BookmarksService { service("bookmarks") { BookmarksService(accountClient: self) } }
     public var boosts: BoostsService { service("boosts") { BoostsService(accountClient: self) } }
     public var bubbleUps: BubbleUpsService { service("bubbleUps") { BubbleUpsService(accountClient: self) } }

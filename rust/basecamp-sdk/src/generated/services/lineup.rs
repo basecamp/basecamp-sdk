@@ -49,6 +49,14 @@ impl<'a> LineupService<'a> {
         self.client.send_unit(operation).await
     }
 
+    /// List all lineup markers for the account
+    ///
+    /// `GET /lineup/markers.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn list_lineup_markers(&self) -> Result<ListLineupMarkersResponseContent, Error> {
+        let operation = self.client.operation(&routes::LIST_LINEUP_MARKERS, &[]);
+        self.client.send(operation).await
+    }
+
     /// Update an existing lineup marker
     ///
     /// `PUT /lineup/markers/{markerId}` — idempotent; retries up to 3 attempt(s) on 429, 503.

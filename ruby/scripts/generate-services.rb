@@ -69,7 +69,6 @@ class ServiceGenerator
     'Schedule' => 'Schedules',
     'People' => 'People',
     'Projects' => 'Projects',
-    'Automation' => 'Automation',
     'ClientFeatures' => 'ClientFeatures',
     'Boosts' => 'Boosts',
     'Untagged' => 'Miscellaneous'
@@ -108,20 +107,8 @@ class ServiceGenerator
       'CloudFiles' => %w[GetCloudFile CreateCloudFile UpdateCloudFile],
       'GoogleDocuments' => %w[GetGoogleDocument CreateGoogleDocument UpdateGoogleDocument]
     },
-    'Automation' => {
-      'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool],
-      'Webhooks' => %w[ListWebhooks CreateWebhook GetWebhook UpdateWebhook DeleteWebhook],
-      'Lineup' => %w[CreateLineupMarker UpdateLineupMarker DeleteLineupMarker],
-      'Search' => %w[Search GetSearchMetadata],
-      'Templates' => %w[
-        ListTemplates CreateTemplate GetTemplate UpdateTemplate
-        DeleteTemplate CreateProjectFromTemplate GetProjectConstruction
-        GetTemplateLibrary CreateTemplateLibraryCopy GetTemplateLibraryCopy
-      ],
-      'Checkins' => %w[
-        GetQuestionnaire ListQuestions CreateQuestion GetQuestion
-        UpdateQuestion ListAnswers CreateAnswer GetAnswer UpdateAnswer
-      ]
+    'Dock' => {
+      'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool]
     },
     'Recordings' => {
       'Events' => %w[ListEvents]

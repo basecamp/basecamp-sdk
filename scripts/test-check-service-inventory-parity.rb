@@ -14,7 +14,7 @@
 #
 # THE SYNTHETIC TREE IS ITSELF UNDER TEST. It is built by INVERTING each source's
 # normalization — snake_case back to kebab, camelCase, PascalCase, `_service`
-# suffixes, Rust's `<Pascal>Service<'_>` accessors, Go's three carve-outs — from
+# suffixes, Rust's `<Pascal>Service<'_>` accessors, Go's carve-outs — from
 # one canonical list read out of the real Kotlin accessors. A builder that
 # spelled anything differently from the real
 # generators would make every negative case below fail for a reason unrelated to
@@ -178,7 +178,7 @@ end
 
 # Go's carve-outs, inverted: the two folded services have no accessor at all, and
 # `timesheets` is spelled singular.
-GO_FOLDED = %w[automation client_visibility].freeze
+GO_FOLDED = %w[client_visibility].freeze
 
 def go_accessor_names(names)
   names.reject { |n| GO_FOLDED.include?(n) }.map { |n| n == "timesheets" ? "timesheet" : n }
@@ -397,13 +397,16 @@ expect_fail(failures, "6. missing input is a build problem, not a parity verdict
 
 # --- 7. A fold carve-out that closed -------------------------------------------
 #
-# Go grows an Automation() accessor. Without the staleness check this is INVISIBLE
-# — the carve-out adds `automation` to Go's set either way, so the parity diff is
-# empty and SPEC Appendix F keeps claiming a fold that no longer exists.
+# Go grows a ClientVisibility() accessor. Without the staleness check this is
+# INVISIBLE — the carve-out adds `client_visibility` to Go's set either way, so
+# the parity diff is empty and SPEC Appendix F keeps claiming a fold that no
+# longer exists. (This case named `automation` until #930 closed that fold for
+# real by moving ListLineupMarkers onto LineupService in the other six SDKs,
+# which is what Go had done all along.)
 
-out, status = with_root(names: { "go-accessors" => go_accessor_names(CANONICAL) + ["automation"] })
-expect_fail(failures, "7. Go closed the automation fold, carve-out now stale", out, status,
-            "now exposes `automation`, but it is recorded as a fold carve-out")
+out, status = with_root(names: { "go-accessors" => go_accessor_names(CANONICAL) + ["client_visibility"] })
+expect_fail(failures, "7. Go closed the clientVisibility fold, carve-out now stale", out, status,
+            "now exposes `client_visibility`, but it is recorded as a fold carve-out")
 
 # --- 8. A spelling carve-out that closed ---------------------------------------
 
@@ -413,7 +416,7 @@ expect_fail(failures, "8. Go renamed Timesheet to Timesheets, spelling carve-out
 
 # --- 9. Go short a service its carve-outs do not cover --------------------------
 #
-# The carve-outs are three named divergences, not a blanket exemption. A fourth
+# The carve-outs are two named divergences, not a blanket exemption. A third
 # service missing from Go has to fail like any other SDK's would.
 
 out, status = with_root(names: { "go-accessors" => go_accessor_names(CANONICAL) - ["gauges"] })
@@ -511,7 +514,7 @@ expect_fail(failures, "14. Go accessor returning a different service type", out,
 # Pinned as an ABSENCE, which is the only way to hold a diagnostic honest: the
 # run must fail, name the carve-out, and NOT say a tag mapping drifted.
 
-out, status = with_root(names: { "go-accessors" => go_accessor_names(CANONICAL) + ["automation"] })
+out, status = with_root(names: { "go-accessors" => go_accessor_names(CANONICAL) + ["client_visibility"] })
 expect_fail_without(failures, "15. stale carve-out failure does not misdiagnose a tag mapping",
                     out, status,
                     "recorded as a fold carve-out",

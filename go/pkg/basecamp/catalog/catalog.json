@@ -126,7 +126,7 @@
     },
     {
       "operationId": "CreateAnswer",
-      "tag": "Automation",
+      "tag": "Checkins",
       "method": "POST",
       "path": "/{accountId}/questions/{questionId}/answers.json",
       "doc": "Create a new answer for a question",
@@ -1143,7 +1143,7 @@
     },
     {
       "operationId": "CreateLineupMarker",
-      "tag": "Automation",
+      "tag": "Lineup",
       "method": "POST",
       "path": "/{accountId}/lineup/markers.json",
       "doc": "Create a new lineup marker",
@@ -1365,7 +1365,7 @@
     },
     {
       "operationId": "CreateProjectFromTemplate",
-      "tag": "Automation",
+      "tag": "Templates",
       "method": "POST",
       "path": "/{accountId}/templates/{templateId}/project_constructions.json",
       "doc": "Create a project from a template (asynchronous)",
@@ -1432,7 +1432,7 @@
     },
     {
       "operationId": "CreateQuestion",
-      "tag": "Automation",
+      "tag": "Checkins",
       "method": "POST",
       "path": "/{accountId}/questionnaires/{questionnaireId}/questions.json",
       "doc": "Create a new question in a questionnaire",
@@ -1713,7 +1713,7 @@
     },
     {
       "operationId": "CreateTemplate",
-      "tag": "Automation",
+      "tag": "Templates",
       "method": "POST",
       "path": "/{accountId}/templates.json",
       "doc": "Create a new template",
@@ -1759,7 +1759,7 @@
     },
     {
       "operationId": "CreateTemplateLibraryCopy",
-      "tag": "Automation",
+      "tag": "Templates",
       "method": "POST",
       "path": "/{accountId}/template_library/copies.json",
       "doc": "Start copying a to-do list template into a project",
@@ -2150,7 +2150,7 @@
     },
     {
       "operationId": "CreateTool",
-      "tag": "Automation",
+      "tag": "Dock",
       "method": "POST",
       "path": "/{accountId}/buckets/{bucketId}/dock/tools.json",
       "doc": "Create a tool in a project dock",
@@ -2403,7 +2403,7 @@
     },
     {
       "operationId": "CreateWebhook",
-      "tag": "Automation",
+      "tag": "Webhooks",
       "method": "POST",
       "path": "/{accountId}/buckets/{bucketId}/webhooks.json",
       "doc": "Create a new webhook for a project",
@@ -2795,7 +2795,7 @@
     },
     {
       "operationId": "DeleteLineupMarker",
-      "tag": "Automation",
+      "tag": "Lineup",
       "method": "DELETE",
       "path": "/{accountId}/lineup/markers/{markerId}",
       "doc": "Delete a lineup marker",
@@ -2884,7 +2884,7 @@
     },
     {
       "operationId": "DeleteTemplate",
-      "tag": "Automation",
+      "tag": "Templates",
       "method": "DELETE",
       "path": "/{accountId}/templates/{templateId}",
       "doc": "Delete a template (trash it)",
@@ -2924,7 +2924,7 @@
     },
     {
       "operationId": "DeleteTool",
-      "tag": "Automation",
+      "tag": "Dock",
       "method": "DELETE",
       "path": "/{accountId}/dock/tools/{toolId}",
       "doc": "Delete a tool (trash it)",
@@ -2964,7 +2964,7 @@
     },
     {
       "operationId": "DeleteWebhook",
-      "tag": "Automation",
+      "tag": "Webhooks",
       "method": "DELETE",
       "path": "/{accountId}/webhooks/{webhookId}",
       "doc": "Delete a webhook",
@@ -3302,7 +3302,7 @@
     },
     {
       "operationId": "DisableTool",
-      "tag": "Automation",
+      "tag": "Dock",
       "method": "DELETE",
       "path": "/{accountId}/recordings/{toolId}/position.json",
       "doc": "Disable a tool (hide it from the project dock)",
@@ -3497,7 +3497,7 @@
     },
     {
       "operationId": "EnableTool",
-      "tag": "Automation",
+      "tag": "Dock",
       "method": "POST",
       "path": "/{accountId}/recordings/{toolId}/position.json",
       "doc": "Enable a tool (show it on the project dock)",
@@ -3568,7 +3568,7 @@
     },
     {
       "operationId": "GetAnswer",
-      "tag": "Automation",
+      "tag": "Checkins",
       "method": "GET",
       "path": "/{accountId}/question_answers/{answerId}",
       "doc": "Get a single answer by id",
@@ -6319,7 +6319,7 @@
     },
     {
       "operationId": "GetProjectConstruction",
-      "tag": "Automation",
+      "tag": "Templates",
       "method": "GET",
       "path": "/{accountId}/templates/{templateId}/project_constructions/{constructionId}",
       "doc": "Get the status of a project construction",
@@ -6498,7 +6498,7 @@
     },
     {
       "operationId": "GetQuestion",
-      "tag": "Automation",
+      "tag": "Checkins",
       "method": "GET",
       "path": "/{accountId}/questions/{questionId}",
       "doc": "Get a single question by id",
@@ -6583,7 +6583,7 @@
     },
     {
       "operationId": "GetQuestionnaire",
-      "tag": "Automation",
+      "tag": "Checkins",
       "method": "GET",
       "path": "/{accountId}/questionnaires/{questionnaireId}",
       "doc": "Get a questionnaire (automatic check-ins container) by id",
@@ -6827,7 +6827,7 @@
     },
     {
       "operationId": "GetSearchMetadata",
-      "tag": "Automation",
+      "tag": "Search",
       "method": "GET",
       "path": "/{accountId}/searches/metadata.json",
       "doc": "Get search metadata (available filter options)",
@@ -6898,7 +6898,7 @@
     },
     {
       "operationId": "GetTemplate",
-      "tag": "Automation",
+      "tag": "Templates",
       "method": "GET",
       "path": "/{accountId}/templates/{templateId}",
       "doc": "Get a single template by id",
@@ -6938,7 +6938,7 @@
     },
     {
       "operationId": "GetTemplateLibrary",
-      "tag": "Automation",
+      "tag": "Templates",
       "method": "GET",
       "path": "/{accountId}/template_library.json",
       "doc": "Get the account's to-do list template library",
@@ -6969,7 +6969,7 @@
     },
     {
       "operationId": "GetTemplateLibraryCopy",
-      "tag": "Automation",
+      "tag": "Templates",
       "method": "GET",
       "path": "/{accountId}/template_library/copies/{copyId}",
       "doc": "Get the current status of a to-do list template copy",
@@ -7222,7 +7222,7 @@
     },
     {
       "operationId": "GetTool",
-      "tag": "Automation",
+      "tag": "Dock",
       "method": "GET",
       "path": "/{accountId}/dock/tools/{toolId}",
       "doc": "Get a dock tool by id",
@@ -7393,7 +7393,7 @@
     },
     {
       "operationId": "GetWebhook",
-      "tag": "Automation",
+      "tag": "Webhooks",
       "method": "GET",
       "path": "/{accountId}/webhooks/{webhookId}",
       "doc": "Get a single webhook by id",
@@ -7433,7 +7433,7 @@
     },
     {
       "operationId": "ListAnswers",
-      "tag": "Automation",
+      "tag": "Checkins",
       "method": "GET",
       "path": "/{accountId}/questions/{questionId}/answers.json",
       "doc": "List all answers for a question\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
@@ -8511,7 +8511,7 @@
     },
     {
       "operationId": "ListLineupMarkers",
-      "tag": "Automation",
+      "tag": "Lineup",
       "method": "GET",
       "path": "/{accountId}/lineup/markers.json",
       "doc": "List all lineup markers for the account",
@@ -8980,7 +8980,7 @@
     },
     {
       "operationId": "ListQuestions",
-      "tag": "Automation",
+      "tag": "Checkins",
       "method": "GET",
       "path": "/{accountId}/questionnaires/{questionnaireId}/questions.json",
       "doc": "List all questions in a questionnaire\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
@@ -9271,7 +9271,7 @@
     },
     {
       "operationId": "ListTemplates",
-      "tag": "Automation",
+      "tag": "Templates",
       "method": "GET",
       "path": "/{accountId}/templates.json",
       "doc": "List all templates visible to the current user\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
@@ -9664,7 +9664,7 @@
     },
     {
       "operationId": "ListWebhooks",
-      "tag": "Automation",
+      "tag": "Webhooks",
       "method": "GET",
       "path": "/{accountId}/buckets/{bucketId}/webhooks.json",
       "doc": "List all webhooks for a project\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
@@ -10765,7 +10765,7 @@
     },
     {
       "operationId": "RepositionTool",
-      "tag": "Automation",
+      "tag": "Dock",
       "method": "PUT",
       "path": "/{accountId}/recordings/{toolId}/position.json",
       "doc": "Reposition a tool on the project dock",
@@ -10858,7 +10858,7 @@
     },
     {
       "operationId": "Search",
-      "tag": "Automation",
+      "tag": "Search",
       "method": "GET",
       "path": "/{accountId}/search.json",
       "doc": "Search for content across the account",
@@ -11800,7 +11800,7 @@
     },
     {
       "operationId": "UpdateAnswer",
-      "tag": "Automation",
+      "tag": "Checkins",
       "method": "PUT",
       "path": "/{accountId}/question_answers/{answerId}",
       "doc": "Update an existing answer",
@@ -12599,7 +12599,7 @@
     },
     {
       "operationId": "UpdateLineupMarker",
-      "tag": "Automation",
+      "tag": "Lineup",
       "method": "PUT",
       "path": "/{accountId}/lineup/markers/{markerId}",
       "doc": "Update an existing lineup marker",
@@ -13199,7 +13199,7 @@
     },
     {
       "operationId": "UpdateQuestion",
-      "tag": "Automation",
+      "tag": "Checkins",
       "method": "PUT",
       "path": "/{accountId}/questions/{questionId}",
       "doc": "Update an existing question",
@@ -13455,7 +13455,7 @@
     },
     {
       "operationId": "UpdateTemplate",
-      "tag": "Automation",
+      "tag": "Templates",
       "method": "PUT",
       "path": "/{accountId}/templates/{templateId}",
       "doc": "Update an existing template",
@@ -13625,7 +13625,7 @@
     },
     {
       "operationId": "UpdateTool",
-      "tag": "Automation",
+      "tag": "Dock",
       "method": "PUT",
       "path": "/{accountId}/dock/tools/{toolId}",
       "doc": "Update (rename) an existing tool",
@@ -13776,7 +13776,7 @@
     },
     {
       "operationId": "UpdateWebhook",
-      "tag": "Automation",
+      "tag": "Webhooks",
       "method": "PUT",
       "path": "/{accountId}/webhooks/{webhookId}",
       "doc": "Update an existing webhook",

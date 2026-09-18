@@ -42,7 +42,6 @@ TAG_TO_SERVICE = {
     "Schedule": "Schedules",
     "People": "People",
     "Projects": "Projects",
-    "Automation": "Automation",
     "ClientFeatures": "ClientFeatures",
     "Boosts": "Boosts",
     "Untagged": "Miscellaneous",
@@ -81,20 +80,8 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
         "CloudFiles": ["GetCloudFile", "CreateCloudFile", "UpdateCloudFile"],
         "GoogleDocuments": ["GetGoogleDocument", "CreateGoogleDocument", "UpdateGoogleDocument"],
     },
-    "Automation": {
+    "Dock": {
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
-        "Webhooks": ["ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"],
-        "Lineup": ["CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"],
-        "Search": ["Search", "GetSearchMetadata"],
-        "Templates": [
-            "ListTemplates", "CreateTemplate", "GetTemplate", "UpdateTemplate",
-            "DeleteTemplate", "CreateProjectFromTemplate", "GetProjectConstruction",
-            "GetTemplateLibrary", "CreateTemplateLibraryCopy", "GetTemplateLibraryCopy",
-        ],
-        "Checkins": [
-            "GetQuestionnaire", "ListQuestions", "CreateQuestion", "GetQuestion",
-            "UpdateQuestion", "ListAnswers", "CreateAnswer", "GetAnswer", "UpdateAnswer",
-        ],
     },
     "Recordings": {
         "Events": ["ListEvents"],

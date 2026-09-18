@@ -36,7 +36,7 @@
 # go/pkg/basecamp/client.go — a hand-written surface compared against nine
 # generated ones. That is not a flaw in the comparison (Go's accessors are still
 # an independent statement of which services exist) but it is why Go, alone,
-# needs three recorded carve-outs, and why it gets the accessor-vs-returned-type
+# needs its recorded carve-outs, and why it gets the accessor-vs-returned-type
 # check that a generated file would not need.
 #
 # WHAT IT CLOSES. `make doc-constants-check` derives SPEC §5's account-scoped
@@ -56,7 +56,7 @@
 # NORMALIZATION IS DATA, NOT BRANCHES. Each SDK spells the same service its own
 # way, and the entire rule set for a source is the fields on its SOURCES entry:
 # which files to drop, one suffix to strip, one identifier casing. Go additionally
-# carries three named carve-outs. Nothing here is a per-SDK code path, because the
+# carries two named carve-outs. Nothing here is a per-SDK code path, because the
 # failure mode this gate exists to catch is exactly what accumulating per-SDK
 # special cases produces. If a new SDK needs a rule that is not one of these
 # fields, that is a finding about the generator's naming, not a place to add an
@@ -240,7 +240,7 @@ SOURCES = [
   },
 ].freeze
 
-# Go's three divergences from the canonical set, recorded in SPEC Appendix F.
+# Go's two divergences from the canonical set, recorded in SPEC Appendix F.
 # They are stated here as data for the same reason the spelling rules are: a
 # carve-out expressed as a branch is indistinguishable from a bug, and a
 # carve-out nobody re-reads is how a surface silently stays behind.
@@ -251,11 +251,6 @@ SOURCES = [
 # leaving a rule that quietly stops meaning anything. Same device as
 # spec/doc-constants.json's committed marker counts.
 GO_CARVE_OUTS = [
-  {
-    kind: :folded,
-    name: "automation",
-    reason: "its sole operation, ListMarkers, is exposed on LineupService",
-  },
   {
     kind: :folded,
     name: "client_visibility",

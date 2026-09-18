@@ -13,6 +13,25 @@ import kotlinx.serialization.json.JsonElement
 class LineupService(client: AccountClient) : BaseService(client) {
 
     /**
+     * List all lineup markers for the account
+     */
+    suspend fun listLineupMarkers(): List<LineupMarker> {
+        val info = OperationInfo(
+            service = "Lineup",
+            operation = "ListLineupMarkers",
+            resourceType = "lineup_marker",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpGet("/lineup/markers.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<LineupMarker>>(body)
+        }
+    }
+
+    /**
      * Create a new lineup marker
      * @param body Request body
      */

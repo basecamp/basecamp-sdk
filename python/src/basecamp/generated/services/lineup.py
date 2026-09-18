@@ -11,6 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class LineupService(BaseService):
+    def list_lineup_markers(self) -> ListResult:
+        """List all lineup markers for the account."""
+        return self._request_list(
+            OperationInfo(service="lineup", operation="list_lineup_markers", is_mutation=False),
+            "/lineup/markers.json",
+            operation="ListLineupMarkers",
+        )
+
     def create(self, *, name: str, date: str) -> None:
         """Create a new lineup marker.
 
@@ -57,6 +65,14 @@ class LineupService(BaseService):
 
 
 class AsyncLineupService(AsyncBaseService):
+    async def list_lineup_markers(self) -> ListResult:
+        """List all lineup markers for the account."""
+        return await self._request_list(
+            OperationInfo(service="lineup", operation="list_lineup_markers", is_mutation=False),
+            "/lineup/markers.json",
+            operation="ListLineupMarkers",
+        )
+
     async def create(self, *, name: str, date: str) -> None:
         """Create a new lineup marker.
 

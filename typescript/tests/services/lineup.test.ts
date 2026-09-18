@@ -111,4 +111,46 @@ describe("LineupService", () => {
       await expect(client.lineup.delete(999)).rejects.toThrow(BasecampError);
     });
   });
+
+  describe("listLineupMarkers", () => {
+    it("should return lineup markers", async () => {
+      server.use(
+        http.get(`${BASE_URL}/lineup/markers.json`, () => {
+          return HttpResponse.json([
+            {
+              id: 1069479400,
+              name: "Product Launch",
+              date: "2024-03-01",
+              created_at: "2024-02-15T10:30:00.000Z",
+              updated_at: "2024-02-15T10:30:00.000Z",
+            },
+            {
+              id: 1069479401,
+              name: "Quarterly Review",
+              date: "2024-06-15",
+              created_at: "2024-03-01T09:00:00.000Z",
+              updated_at: "2024-03-01T09:00:00.000Z",
+            },
+          ]);
+        })
+      );
+
+      const markers = await client.lineup.listLineupMarkers();
+      expect(markers).toHaveLength(2);
+      expect(markers[0]!.id).toBe(1069479400);
+      expect(markers[0]!.name).toBe("Product Launch");
+      expect(markers[0]!.date).toBe("2024-03-01");
+    });
+
+    it("should return empty array when no markers", async () => {
+      server.use(
+        http.get(`${BASE_URL}/lineup/markers.json`, () => {
+          return HttpResponse.json([]);
+        })
+      );
+
+      const markers = await client.lineup.listLineupMarkers();
+      expect(markers).toHaveLength(0);
+    });
+  });
 });
