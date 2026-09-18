@@ -3469,7 +3469,20 @@ The contract gives each status exactly one body shape, so "not that shape" is a 
 verdict: a 400 is `{error, reason?}` with `reason` absent or one of the two values named here,
 a 409 is `{error, position_digest, filters_digest}` with both digests the bare
 16-lowercase-hex srv2 form, and each 410 is its own lane's shape with `resume` present and the
-feed's `epoch_after_id` a number.
+feed's `epoch_after_id` a number. `error` is `@required` on all three and enforced on all
+three. The 200 envelope is held the same way — an object carrying `position` and the lane's
+rows — and a 200 that does not decode into the envelope at all is rendered as the same
+malformed response rather than as the decoder's own error, so the lane has one verdict for
+"this is not the envelope" instead of two. A required member is a nonempty string: §6's
+error-body parse falls back to a `message` member when `error` is empty, so an empty one would
+carry a message the declared member never supplied into a consumer's classifier, whose answer
+is a position reset.
+
+The same totality covers member NAMES, which are subject to the substitution below exactly as
+values are — and worse, because a substituted key does not arrive wrong, it arrives missing: an
+optional member reads as absent and a required one as omitted. A body with any substituted key
+is refused, over every key rather than the ones a given arm happens to read, since which key
+was mangled is what cannot be known in advance.
 
 The totality is the mechanism, not the individual checks. A permissive arm — *if the body
 looks like the documented shape, judge it; otherwise fall through to the canonical error* —
@@ -3523,8 +3536,8 @@ SDK inherits it with its typed layer rather than rediscovering it. The cross-SDK
 suite does not pin it for the same reason: those cases assert one behavior for all seven
 runners, and an SDK that hands back the canonical error cannot answer differently for a body it
 never types. Go's own tests carry it (`go/pkg/basecamp/event_feed_test.go`), including the
-totality as a table of off-contract bodies, a body that grew a member, and that the refusal is
-statusless.
+totality as two tables of off-contract bodies — the error shapes and the page envelope — a body
+that grew a member, and that the refusal is statusless and carries the response's request id.
 
 ### Provenance `[manual]`
 

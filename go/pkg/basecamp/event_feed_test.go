@@ -727,6 +727,20 @@ func TestEventFeedService_RefusesEveryOffContractErrorBody(t *testing.T) {
 		{400, "no error member", `{"reason":"invalid_position"}`},
 		{400, "a null error member", `{"error":null,"reason":"invalid_position"}`},
 		{400, "a wrong-typed error member", `{"error":{"message":"nope"},"reason":"invalid_position"}`},
+		// An empty error is not a present one: §6's body parse falls back to
+		// a `message` member when `error` is empty, so this would carry a
+		// message the declared member never supplied into a consumer's
+		// classifier — whose answer is a position reset.
+		{400, "an empty error member", `{"error":"","message":"Unrecognized position","reason":null}`},
+		// A member NAME the decoder substituted into does not arrive wrong,
+		// it arrives missing: `reason` would read as absent and the body as
+		// the undifferentiated 400 it is not.
+		{400, "a substituted member name", `{"error":"Unrecognized position. Resume with since=<id>.","rea\ud800son":"invalid_something"}`},
+		{409, "no error member", `{"position_digest":"38b223c13c89dc89","filters_digest":"44136fa355b3678a"}`},
+		{409, "an empty error member", `{"error":"","position_digest":"38b223c13c89dc89","filters_digest":"44136fa355b3678a"}`},
+		{409, "a substituted member name", `{"error":"conflict","position_digest":"38b223c13c89dc89","filters\ud800_digest":"44136fa355b3678a"}`},
+		{410, "no error member", `{"epoch_after_id":7,"resume":"https://3.basecampapi.com/99999/events.json?since=7"}`},
+		{410, "an empty resume", `{"error":"gone","epoch_after_id":7,"resume":""}`},
 		{409, "not an object", `<html><body>Conflict</body></html>`},
 		{409, "a top-level null", `null`},
 		{409, "an empty body", ``},
@@ -904,5 +918,66 @@ func TestFeedEventStringsHoldsEveryDecodedString(t *testing.T) {
 				t.Errorf("%s.%s is a decoded string no substitution check holds", shape.name, f.Name)
 			}
 		}
+	}
+}
+
+// The 200 envelope is held to its declared members the same way the error
+// bodies are: an object whose keys survived the decode, carrying the position
+// and the lane's rows. A substituted `position` key would otherwise read as
+// an empty position — which the connector already calls an unexpected shape,
+// so this is the same verdict one layer earlier.
+func TestEventFeedService_RefusesEveryOffContractPageEnvelope(t *testing.T) {
+	cases := []struct {
+		lane string
+		name string
+		body string
+	}{
+		{"events", "not an object", `[{"events":[],"position":"p"}]`},
+		{"events", "a top-level null", `null`},
+		{"events", "no position", `{"events":[]}`},
+		{"events", "a null position", `{"events":[],"position":null}`},
+		{"events", "an empty position", `{"events":[],"position":""}`},
+		{"events", "a wrong-typed position", `{"events":[],"position":42}`},
+		{"events", "a substituted position key", `{"events":[],"posi\ud800tion":"posAAA"}`},
+		{"events", "no events member", `{"position":"posAAA"}`},
+		{"events", "a null events member", `{"events":null,"position":"posAAA"}`},
+		{"items", "no position", `{"items":[]}`},
+		{"items", "no items member", `{"position":"posAAA"}`},
+		{"items", "a substituted items key", `{"it\ud800ems":[],"position":"posAAA"}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.lane+" "+tc.name, func(t *testing.T) {
+			svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tc.body))
+			})
+			var err error
+			if tc.lane == "items" {
+				_, err = svc.PollInbox(context.Background(), nil)
+			} else {
+				_, err = svc.PollEvents(context.Background(), nil)
+			}
+			assertMalformedFeedResponse(t, err)
+		})
+	}
+}
+
+// A refused body is precisely the response someone has to look up
+// server-side, and errors.As stops at the malformed error rather than at its
+// cause — so the request id has to be on it.
+func TestEventFeedService_MalformedResponseCarriesTheRequestID(t *testing.T) {
+	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Request-Id", "req-abc123")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(409)
+		_, _ = w.Write([]byte(`{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":"x"}`))
+	})
+	_, err := svc.PollEvents(context.Background(), &PollEventsOptions{Position: "posAAA"})
+	var base *Error
+	if !errors.As(err, &base) {
+		t.Fatalf("expected the canonical *Error, got %T", err)
+	}
+	if base.RequestID != "req-abc123" {
+		t.Errorf("requestID = %q, want the response's — errors.As stops here, not at the cause", base.RequestID)
 	}
 }
