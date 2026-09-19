@@ -16,7 +16,7 @@
 # WHY IT IS A TEST RATHER THAN A PARAGRAPH. The live run only ever sees
 # openapi.json, which declares four verbs and no non-operation path-item fields,
 # so it exercises the passing case alone. The mutation is what states the case:
-# restore the walks below to the ORIGINAL five-verb list and 15 of these 47 cases
+# restore the walks below to the ORIGINAL five-verb list and 15 of these 48 cases
 # fail; restore them to the EIGHT verbs OpenAPI 3.1 names and 8 still fail —
 # OpenAPI 3.2's `query` and `additionalOperations`, and the cases where a field
 # that is neither a known non-operation field nor a readable operation is stepped
