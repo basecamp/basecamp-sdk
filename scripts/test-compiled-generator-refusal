@@ -20,11 +20,20 @@
 # which the Kotlin generator did until this test was written. An EMPTY output
 # directory cannot show that, so the directory is seeded first.
 #
-# FIVE SCENARIOS, one per guard the walk carries. They are a table rather than a
-# list that grows by one each review round: a new guard in the shared walk gets a
-# row here, because the live spec exercises none of them.
+# THE SCENARIOS. Every row exists because the committed spec exercises none of
+# these shapes: openapi.json declares four verbs, no malformed path items and no
+# unreadable fields, so the drift checks cannot see any of these guards regress.
 #
-#   1. UNEMITTED VERB. A spec carrying a HEAD operation must be refused by name.
+# An earlier version of this header said the rows were "a table rather than a
+# list that grows by one each review round". They grew from five to eleven by
+# review rounds, so that sentence was refuted by the file it sat in. What is
+# actually true is the paragraph above — a guard in the shared walk earns a row
+# because nothing else can watch it — and the enumeration below is kept complete
+# so the count cannot go stale again without the list visibly disagreeing.
+#
+# Nine run for every language:
+#
+#   1. UNEMITTED VERB. A spec carrying HEAD must be refused by name.
 #   2. DECLARATION-SOURCED BOUND. Pointed at a declaration that omits a verb the
 #      SDKs normally emit, the generator must refuse THAT verb too. A generator
 #      still holding a private five-verb list would pass scenario 1 by rejecting
@@ -35,6 +44,28 @@
 #      compiled four have to agree with the scripted two about that. Six
 #      hand-written loaders that merely look equivalent are how a non-breaking
 #      space came to be accepted in one language and refused in three.
+#   4. An `additionalOperations` map, which is a map of method to Operation and
+#      not an operation, so reading it as one drops everything inside it.
+#   5. A non-string `operationId`, which a coercing accessor renders as text and
+#      names a generated method after.
+#   6. An unsupported verb whose `operationId` is an OBJECT — the refusal reads
+#      the id to name the operation, so an unsafe read throws while building its
+#      own message and names nothing.
+#   7. A `$ref` path item, which hides every operation behind it.
+#   8. A path item that is not an object, refused BY NAME rather than through a
+#      library's generic type error.
+#   9. A path-item field that is not an operation object.
+#
+# Two are language-specific, and each says so where it skips:
+#
+#  10. TypeScript only: the pipeline's FIRST WRITE refuses first. `npm run
+#      generate` is five processes and step one overwrites a committed artifact,
+#      so the refusal has to happen inside that step.
+#  11. Kotlin only: a malformed retry entry, which fails LATE — at the far end of
+#      generation rather than during the spec parse. It is the only scenario that
+#      can tell a generator that renders before destroying from one that merely
+#      hoisted its first failure. Swift and Rust default a missing retry field,
+#      so the fixture is not fatal for them.
 #
 # Usage: ./test-compiled-generator-refusal <typescript|kotlin|swift|rust>
 #

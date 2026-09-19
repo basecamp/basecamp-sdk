@@ -566,8 +566,9 @@ kt-test-verb-refusal:
 	cd kotlin && ./gradlew --quiet :generator:installDist
 	@./scripts/test-compiled-generator-refusal kotlin
 
-swift-test-verb-refusal:
-	@./scripts/test-compiled-generator-refusal swift
+# swift-test-verb-refusal is defined in the Swift section below, not here: it is
+# HAS_SWIFT-gated and that variable is assigned further down the file, so an
+# `ifdef` at this point would read as undefined and skip unconditionally.
 
 rs-test-verb-refusal:
 	@./scripts/test-compiled-generator-refusal rust
@@ -1383,6 +1384,20 @@ endif
 # Check committed generated Swift is current (needs swift on any platform, NOT
 # just macOS — generation only needs the toolchain, unlike swift-check's
 # build/test which require Apple platforms). Non-mutating regenerate + diff.
+# The compiled-refusal gate for Swift. Gated directly rather than through
+# swift-check's recipe, which the guard there does not reach: a direct `make
+# swift-test-verb-refusal` on a host without the toolchain would fail instead of
+# skipping, unlike every other Swift target here. Defined in this section because
+# HAS_SWIFT is assigned above it — placed with the other *-test-verb-refusal
+# targets it read as undefined and skipped even where Swift was installed, which
+# is the silent-skip this repository has been bitten by before.
+swift-test-verb-refusal:
+ifdef HAS_SWIFT
+	@./scripts/test-compiled-generator-refusal swift
+else
+	@echo "SKIP: swift-test-verb-refusal (swift toolchain not found)"
+endif
+
 swift-check-drift:
 ifdef HAS_SWIFT
 	@echo "==> Checking Swift service drift..."
