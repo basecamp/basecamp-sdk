@@ -157,7 +157,12 @@ check("a HEAD beside a GET stops the run rather than silently emitting one of tw
   status, output, _emitted, bodies = ruby_services(spec({ "/{accountId}/widgets.json" => {
     "get" => operation("ListWidgets"), "head" => operation("HeadWidgets")
   } }))
-  [status != 0 && !bodies.include?("list_widgets"), "exit #{status}, body had list_widgets: #{output}"]
+  # Names the offending operation, like its neighbours: "exited non-zero and
+  # emitted nothing" would also be satisfied by an unrelated early failure, which
+  # is this file's own rule about asserting on content rather than exit status.
+  [status != 0 && output.include?("HEAD /{accountId}/widgets.json") &&
+    output.include?("HeadWidgets") && !bodies.include?("list_widgets"),
+   "exit #{status}, body had list_widgets: #{output}"]
 end
 
 check("OpenAPI 3.2's `query` verb stops the run") do
@@ -340,7 +345,9 @@ check("a HEAD beside a GET stops the run rather than silently emitting one of tw
   status, output, _emitted, bodies = python_services(spec({ "/{accountId}/widgets.json" => {
     "get" => operation("ListWidgets"), "head" => operation("HeadWidgets")
   } }))
-  [status != 0 && !bodies.include?("def list_widgets"), "exit #{status}: #{output}"]
+  [status != 0 && output.include?("HEAD /{accountId}/widgets.json") &&
+    output.include?("HeadWidgets") && !bodies.include?("def list_widgets"),
+   "exit #{status}: #{output}"]
 end
 
 check("non-operation path-item fields are skipped, not treated as operations") do
