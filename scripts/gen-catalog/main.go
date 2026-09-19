@@ -43,14 +43,18 @@
 // required contexts, so it is loud, not enforced — the invariant is checked at
 // generation time and refuses to emit from a violating document.
 //
-// The catalog is also bounded to the GENERATED surface. Every per-language SDK
-// generator iterates exactly get/put/post/delete/patch, but Smithy's
-// @http.method is free-form, so openapi.json can carry HEAD/OPTIONS/TRACE
-// operations no client exposes. Rather than list phantom operations a consumer
-// cannot dispatch, the generator walks each path item by exclusion (skipping
-// its structural members and x-* extensions) and refuses any remaining slot
-// whose verb is outside the generated set (basecamp-sdk#925) — the same
-// fail-closed shape as #922's require-tags gate.
+// The catalog is also bounded to the GENERATED surface. The per-language SDK
+// generators emit only a fixed set of HTTP methods, declared once in
+// spec/generated-verbs.json, but Smithy's @http.method is free-form, so
+// openapi.json can carry HEAD/OPTIONS/TRACE operations no client exposes.
+// Rather than list phantom operations a consumer cannot dispatch, the generator
+// walks each path item by exclusion (skipping its structural members and x-*
+// extensions) and refuses any remaining slot whose verb is outside that
+// declared set (basecamp-sdk#925) — the same fail-closed shape as #922's
+// require-tags gate. The bound is DERIVED from spec/generated-verbs.json rather
+// than copied here, so this generator and the six SDK generators can never
+// disagree about the surface (basecamp-sdk#935; the failure that motivates it
+// is #925).
 //
 // The strict two-way join mirrors the toolkit loader's contract
 // (github.com/basecamp/mcp/catalog) so a consumer's expectations and the SDK's
@@ -93,6 +97,18 @@ const (
 	defaultBehavior = "behavior-model.json"
 	defaultOutput   = "go/pkg/basecamp/catalog/catalog.json"
 
+	// defaultGeneratedVerbs is the single shared declaration of the HTTP
+	// methods the SDK generators emit; the emission bound is derived from it
+	// rather than hardcoded here. Repo-relative, read from the repository root
+	// like the other inputs.
+	//
+	// Deliberately a constant, not a flag or a run() parameter (unlike the
+	// other three input paths): an overridable bound is what produced two of
+	// #933's findings, where the gate validated one file while the generators
+	// read another. Un-overridable means the bound cannot be pointed somewhere
+	// the generators aren't looking — don't "helpfully" add a flag later.
+	defaultGeneratedVerbs = "spec/generated-verbs.json"
+
 	catalogSchema  = "https://basecamp.com/schemas/catalog.json"
 	catalogVersion = "1.0.0"
 
@@ -130,7 +146,12 @@ func run(openapiPath, behaviorPath, outputPath string) error {
 		return err
 	}
 
-	cat, err := Build(&oa, &bm)
+	verbs, err := loadGeneratedVerbs(defaultGeneratedVerbs)
+	if err != nil {
+		return err
+	}
+
+	cat, err := Build(&oa, &bm, verbs)
 	if err != nil {
 		return err
 	}
@@ -214,32 +235,58 @@ type openapiDoc struct {
 	} `json:"components"`
 }
 
-// generatedVerbs is the exact set of HTTP methods every per-language SDK
-// generator iterates. Smithy's @http.method is free-form, so openapi.json can
-// carry HEAD/OPTIONS/TRACE operations that NO generated client exposes; a
-// catalog built from those would list phantom operations the SDK cannot call,
-// breaking a downstream cutover. The catalog describes the GENERATED surface,
-// so it is bounded to exactly these verbs.
+// loadGeneratedVerbs derives the emission bound — the set of HTTP methods the
+// SDK generators emit — from the single shared declaration in
+// spec/generated-verbs.json, rather than repeating it as a literal here. That
+// literal was a known copy of the same fact six other generators read; deriving
+// it means this generator and those six can never disagree about the surface
+// (basecamp-sdk#935), which is exactly the failure #925 was.
 //
-// This literal is a COPY, and a known one. There is now a shared source for it:
-// spec/generated-verbs.json is the single declaration the six per-language
-// service generators read, added when #925 closed. Deriving this set from that
-// file, or dropping it, belongs to whoever owns this generator — it is not
-// changed here, so this stays a bare list until they take it.
+// The read is deliberately narrow — it asserts one fact about this process's own
+// state ("I obtained a usable set to bound on, or I stop"), not the file's
+// well-formedness. It adds no BOM/stream/shape opinions of its own — NOT because
+// something upstream validates the file (nothing does: #933, which would have
+// added such a gate, was closed unmerged, and it proved a "prerequisite of every
+// generate target" unreachable — make -j schedules that gate concurrently with
+// the checks it was meant to precede). A seventh JSON opinion is exactly what
+// #933 showed cannot define validity for the other six. Nothing guarantees the
+// file is well-formed before this function sees it — that is WHY fail-loud is the
+// contract, not a reason the read can be relaxed. It only:
 //
-// The BOUND itself is still live after #925 and is not obsolete. #925 made the
-// generators refuse an operation on a verb they cannot emit instead of dropping
-// it in silence; it deliberately did not teach them to emit new verbs. So a
-// non-generated verb still reaches no client, and a catalog built from one would
-// still list an operation nothing can call. This generator reads openapi.json
-// directly rather than the SDK trees, so it holds that line on its own input
-// even when nothing has been regenerated.
-var generatedVerbs = map[string]bool{
-	"get":    true,
-	"put":    true,
-	"post":   true,
-	"delete": true,
-	"patch":  true,
+//   - reads and JSON-unmarshals the file, PERMISSIVELY (unknown keys ignored),
+//   - keeps the verb strings that are non-empty and non-whitespace, and
+//   - FAILS LOUD if the file is unreadable/unparseable OR if it yields no usable
+//     verb at all (verbs absent, [], or nothing but blanks).
+//
+// There is intentionally NO fallback to a hardcoded default: a silent fallback
+// is precisely how a stale superset (e.g. one still naming `patch`) would
+// survive the file dropping it, so an empty bound must STOP the build, never be
+// read as "no restriction." There is likewise no len==0 short-circuit anywhere
+// downstream that could turn an empty bound into "allow everything."
+//
+// Kept in ONE small function on purpose: basecamp-sdk#935 may replace the JSON
+// read with a generated Go constant, and that should be a one-function swap.
+func loadGeneratedVerbs(path string) (map[string]bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read generated-verbs %s: %w", path, err)
+	}
+	var decl struct {
+		Verbs []string `json:"verbs"`
+	}
+	if err := json.Unmarshal(data, &decl); err != nil {
+		return nil, fmt.Errorf("parse generated-verbs %s: %w", path, err)
+	}
+	verbs := map[string]bool{}
+	for _, v := range decl.Verbs {
+		if strings.TrimSpace(v) != "" {
+			verbs[v] = true
+		}
+	}
+	if len(verbs) == 0 {
+		return nil, fmt.Errorf("generated-verbs %s declares no usable verb (the emission bound would be empty): an absent, empty, or all-blank `verbs` array must stop the build, not be read as 'no restriction' (fix the `verbs` array in %s)", path, path)
+	}
+	return verbs, nil
 }
 
 // structuralPathKeys are the non-operation members of an OpenAPI Path Item
@@ -359,8 +406,10 @@ type Param struct {
 
 // Build joins the two model files into a Catalog. The join is strict both
 // ways: an operation in one file but not the other, an operation without
-// exactly one tag, or an unresolvable body $ref is a hard error.
-func Build(oa *openapiDoc, bm *behaviorModel) (*Catalog, error) {
+// exactly one tag, or an unresolvable body $ref is a hard error. verbs is the
+// emission bound (see loadGeneratedVerbs); an operation slot on any verb outside
+// it is refused by name (basecamp-sdk#925), never silently skipped.
+func Build(oa *openapiDoc, bm *behaviorModel, verbs map[string]bool) (*Catalog, error) {
 	ops := make([]*Operation, 0, len(bm.Operations))
 	seen := map[string]bool{}
 
@@ -376,8 +425,9 @@ func Build(oa *openapiDoc, bm *behaviorModel) (*Catalog, error) {
 			// (HEAD/OPTIONS/TRACE, or any unrecognized method key) is an
 			// operation no SDK client exposes; emitting or silently skipping it
 			// both misrepresent the surface, so refuse to build (basecamp-sdk#925).
-			if !generatedVerbs[method] {
-				return nil, fmt.Errorf("path %s: operation slot %q uses a non-generated HTTP verb — the SDK generators emit only GET/PUT/POST/DELETE/PATCH, so a catalog built from it would list an operation no client can call. This build is bounded to the generated surface on purpose (basecamp-sdk#925): if the Smithy model now legitimately serves this verb, teach every SDK generator and this generator's generatedVerbs set together, don't emit it here alone", path, key)
+			// The bound is the set declared in spec/generated-verbs.json.
+			if !verbs[method] {
+				return nil, fmt.Errorf("path %s: operation slot %q uses a verb the SDK generators don't emit — it is outside the set declared in spec/generated-verbs.json, so a catalog built from it would list an operation no client can call. This build is bounded to the generated surface on purpose (basecamp-sdk#925): if the Smithy model now legitimately serves this verb, add it to spec/generated-verbs.json only once every SDK runtime can actually serve it, don't emit it here alone", path, key)
 			}
 			if len(raw) == 0 || string(raw) == "null" {
 				return nil, fmt.Errorf("%s %s: null operation", strings.ToUpper(method), path)
