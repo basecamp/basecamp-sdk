@@ -308,8 +308,19 @@ run_scenario "a path-item field that is not an operation object is named" \
 # six generators is filed separately.
 if [[ "$LANGUAGE" == "typescript" ]]; then
   scenario_number=$((scenario_number + 1))
-  stripped="$ROOT_DIR/typescript/src/generated/openapi-stripped.json"
+  # Pointed at a SEEDED TEMPORARY output, not at the repository's committed
+  # openapi-stripped.json. The script writes only to the path it is given, so
+  # this tests the same property — the output is not written before the refusal —
+  # without putting the real artifact at risk on any outcome, including a
+  # regression that exits 0 after writing, or an interrupt. A test that has to
+  # restore what it damaged is one failed restore away from damaging it.
+  #
+  # It is not the vacuous version of this assertion either: the script IS pointed
+  # at this file, which is what the earlier iteration got wrong by checking a
+  # directory nothing was aimed at.
+  stripped="$TMP/openapi-stripped.json"
   before="$TMP/openapi-stripped.before.json"
+  cp "$ROOT_DIR/typescript/src/generated/openapi-stripped.json" "$stripped"
   cp "$stripped" "$before"
 
   log="$TMP/strip.log"
@@ -322,11 +333,10 @@ if [[ "$LANGUAGE" == "typescript" ]]; then
     sed 's/^/    /' "$log" >&2
     failures=1
   elif ! cmp -s "$before" "$stripped"; then
-    echo "FAIL [$LANGUAGE] the refusal OVERWROTE the committed openapi-stripped.json" >&2
-    cp "$before" "$stripped"
+    echo "FAIL [$LANGUAGE] the refusal OVERWROTE the output it was pointed at" >&2
     failures=1
   else
-    echo "OK [$LANGUAGE] the pipeline's first write refuses by name, committed artifact untouched"
+    echo "OK [$LANGUAGE] the pipeline's first write refuses by name, its output untouched"
   fi
 fi
 
