@@ -244,7 +244,29 @@ run_scenario "an operationId that is not a string is refused" \
   "$TMP/openapi-numeric-id.json" "$ROOT_DIR/spec/generated-verbs.json" \
   "operationId" "$PATH_KEY"
 
-# Scenario 6: a malformed behavior model, and the ONLY scenario whose failure
+# Scenarios 6-8: the path-item refusal branches. Each of the four compiled
+# generators implements these separately, and no drift check ever sees a
+# malformed path item — the committed spec has none — so all four could regress
+# to skipping one while every gate stayed green. That is the same gap that
+# justified this harness in the first place, in the branches it did not yet
+# cover.
+jq --arg p "$PATH_KEY" '.paths[$p] = {"$ref": "#/components/pathItems/Project"}' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-ref.json"
+run_scenario "a \$ref path item is refused rather than read as empty" \
+  "$TMP/openapi-ref.json" "$ROOT_DIR/spec/generated-verbs.json" "ref" "$PATH_KEY"
+
+jq --arg p "$PATH_KEY" '.paths[$p] = "not a path item"' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-scalar-item.json"
+run_scenario "a path item that is not an object is refused" \
+  "$TMP/openapi-scalar-item.json" "$ROOT_DIR/spec/generated-verbs.json" "" ""
+
+jq --arg p "$PATH_KEY" '.paths[$p].frobnicate = "not an operation"' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-scalar-field.json"
+run_scenario "a path-item field that is not an operation object is named" \
+  "$TMP/openapi-scalar-field.json" "$ROOT_DIR/spec/generated-verbs.json" \
+  "frobnicate" "$PATH_KEY"
+
+# Scenario 9: a malformed behavior model, and the ONLY scenario whose failure
 # happens late in generation. Every other one fails during the spec parse, which
 # any "parse before delete" ordering already survives — so they cannot tell a
 # generator that renders before destroying from one that merely hoisted its first

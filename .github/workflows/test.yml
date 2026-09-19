@@ -1199,12 +1199,19 @@ jobs:
       # silently skipping an unknown verb and stay green (#925). This runs it
       # against a spec carrying a HEAD operation and asserts a named refusal that
       # writes nothing and destroys nothing in the output tree.
-      - name: Generator refuses an operation on an unemitted verb
-        working-directory: .
-        # Via the make target, which builds the generator distribution the test
-        # runs. Its order-only edge is inert here: this is a single invocation.
-        run: make kt-test-verb-refusal
-
+      # NO STANDALONE STEP FOR KOTLIN, unlike the other three languages, and the
+      # asymmetry is deliberate. `kt-test-verb-refusal` sits at the head of the
+      # kotlin/ Gradle chain (it builds the generator distribution, so it collides
+      # with every other Gradle build in that project directory), which means the
+      # "Run Kotlin conformance runner unit tests" step below already reaches it
+      # through that order-only edge. Separate `make` invocations cannot
+      # deduplicate a phony target, so a standalone step here ran Gradle
+      # installDist and all six refusal scenarios a second time.
+      #
+      # What stops the coverage vanishing if someone re-points that edge:
+      # scripts/test-check-gradle-serialization.rb registers its deletion as a
+      # case, so removing it fails `make check` loudly rather than quietly
+      # dropping this gate from the Kotlin job.
       - name: Check optional array/scalar invariant
         run: ruby ../scripts/check-kotlin-optional-arrays-and-scalars.rb
 

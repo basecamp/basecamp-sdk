@@ -16,8 +16,8 @@
 # WHY IT IS A TEST RATHER THAN A PARAGRAPH. The live run only ever sees
 # openapi.json, which declares four verbs and no non-operation path-item fields,
 # so it exercises the passing case alone. The mutation is what states the case:
-# restore the walks below to the ORIGINAL five-verb list and 13 of these 38 cases
-# fail; restore them to the EIGHT verbs OpenAPI 3.1 names and 6 still fail —
+# restore the walks below to the ORIGINAL five-verb list and 15 of these 47 cases
+# fail; restore them to the EIGHT verbs OpenAPI 3.1 names and 8 still fail —
 # OpenAPI 3.2's `query` and `additionalOperations`, and the cases where a field
 # that is neither a known non-operation field nor a readable operation is stepped
 # over in silence. A longer list repairs the verbs it was extended with and
@@ -178,11 +178,24 @@ check("a $ref path item is refused rather than read as empty") do
   [status != 0 && output.include?("$ref"), "exit #{status}: #{output}"]
 end
 
-check("an operation with no operationId is refused rather than skipped") do
-  status, output, = ruby_services(spec({ "/{accountId}/widgets.json" => {
-    "get" => operation("ListWidgets").tap { |op| op.delete("operationId") }
-  } }))
-  [status != 0 && output.include?("operationId"), "exit #{status}: #{output}"]
+# The guard rejects an absent, an empty AND a non-string operationId. Only the
+# absent shape used to be exercised here, and the numeric one only in the
+# compiled harness — which covers TypeScript, Kotlin, Swift and Rust and none of
+# the three below, so Ruby, Python and the route filter could regress on "" or
+# 123 without failing anything.
+OPERATION_ID_SHAPES = [
+  ["no operationId", ->(op) { op.delete("operationId") }],
+  ["an empty operationId", ->(op) { op["operationId"] = "" }],
+  ["a non-string operationId", ->(op) { op["operationId"] = 123 }]
+].freeze
+
+OPERATION_ID_SHAPES.each do |what, mutate|
+  check("an operation with #{what} is refused rather than skipped") do
+    status, output, = ruby_services(spec({ "/{accountId}/widgets.json" => {
+      "get" => operation("ListWidgets").tap(&mutate)
+    } }))
+    [status != 0 && output.include?("operationId"), "exit #{status}: #{output}"]
+  end
 end
 
 check("emission order follows the declaration, not the document") do
@@ -270,6 +283,17 @@ check("`additionalOperations` is refused by the UNBOUNDED walker too") do
   end
 end
 
+OPERATION_ID_SHAPES.each do |what, mutate|
+  check("an operation with #{what} is refused by the UNBOUNDED walker too") do
+    with_files(spec({ "/{accountId}/widgets.json" => {
+      "get" => operation("ListWidgets").tap(&mutate)
+    } })) do |_dir, spec_path, _b, _v|
+      status, output = run(["ruby", File.join(ROOT, "ruby/scripts/generate-metadata.rb"), spec_path])
+      [status != 0 && output.include?("operationId"), "exit #{status}: #{output[0, 400]}"]
+    end
+  end
+end
+
 check("an unreadable path-item field is named rather than skipped") do
   with_files(spec({ "/{accountId}/widgets.json" => { "get" => operation("ListWidgets"), "frobnicate" => 7 } })) do |_dir, spec_path, _b, _v|
     status, output = run(["ruby", File.join(ROOT, "ruby/scripts/generate-metadata.rb"), spec_path])
@@ -324,11 +348,13 @@ check("a $ref path item is refused rather than read as empty") do
   [status != 0 && output.include?("$ref"), "exit #{status}: #{output}"]
 end
 
-check("an operation with no operationId is refused rather than skipped") do
-  status, output, = python_services(spec({ "/{accountId}/widgets.json" => {
-    "get" => operation("ListWidgets").tap { |op| op.delete("operationId") }
-  } }))
-  [status != 0 && output.include?("operationId"), "exit #{status}: #{output}"]
+OPERATION_ID_SHAPES.each do |what, mutate|
+  check("an operation with #{what} is refused rather than skipped") do
+    status, output, = python_services(spec({ "/{accountId}/widgets.json" => {
+      "get" => operation("ListWidgets").tap(&mutate)
+    } }))
+    [status != 0 && output.include?("operationId"), "exit #{status}: #{output}"]
+  end
 end
 
 check("the bound is read from spec/generated-verbs.json, not a private literal") do
@@ -414,6 +440,18 @@ check("OpenAPI 3.2's `additionalOperations` map is refused by name") do
     out = File.join(dir, "url-routes.json")
     status, output = run([File.join(ROOT, "scripts/generate-url-routes"), spec_path, out])
     [status != 0 && output.include?("additionalOperations"), "exit #{status}: #{output}"]
+  end
+end
+
+[["an empty operationId", ""], ["a non-string operationId", 123]].each do |what, id|
+  check("an operation with #{what} is named rather than reaching the route table") do
+    with_files(spec({ "/{accountId}/widgets.json" => {
+      "get" => operation("ListWidgets").merge("operationId" => id)
+    } })) do |dir, spec_path, _b, _v|
+      out = File.join(dir, "url-routes.json")
+      status, output = run([File.join(ROOT, "scripts/generate-url-routes"), spec_path, out])
+      [status != 0 && output.include?("get"), "exit #{status}: #{output}"]
+    end
   end
 end
 
