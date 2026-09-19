@@ -1276,16 +1276,17 @@ else
 endif
 
 # Run all Swift checks (macOS only)
-swift-check:
+#
+# The compiled-refusal gate comes in as a PREREQUISITE rather than a repeated
+# recipe. Inlining it meant two wiring paths for one command that could drift
+# apart, and `make swift-check swift-test-verb-refusal` ran the harness twice —
+# make deduplicates a prerequisite within one invocation, a second copy of the
+# recipe it cannot.
+swift-check: swift-test-verb-refusal
 ifdef IS_MACOS
 	@$(MAKE) -C swift check
 else
 	@echo "SKIP: swift-check (macOS only)"
-endif
-ifdef HAS_SWIFT
-	@./scripts/test-compiled-generator-refusal swift
-else
-	@echo "SKIP: swift-test-verb-refusal (swift toolchain not found)"
 endif
 
 # Run Swift conformance tests (macOS only — the SDK requires Apple platforms).
@@ -1384,13 +1385,16 @@ endif
 # Check committed generated Swift is current (needs swift on any platform, NOT
 # just macOS — generation only needs the toolchain, unlike swift-check's
 # build/test which require Apple platforms). Non-mutating regenerate + diff.
-# The compiled-refusal gate for Swift. Gated directly rather than through
-# swift-check's recipe, which the guard there does not reach: a direct `make
-# swift-test-verb-refusal` on a host without the toolchain would fail instead of
-# skipping, unlike every other Swift target here. Defined in this section because
-# HAS_SWIFT is assigned above it — placed with the other *-test-verb-refusal
-# targets it read as undefined and skipped even where Swift was installed, which
-# is the silent-skip this repository has been bitten by before.
+# The compiled-refusal gate for Swift, and the single wiring for it: swift-check
+# takes it as a prerequisite rather than repeating the recipe, so there is one
+# conditional to keep correct instead of two that can drift.
+#
+# HAS_SWIFT-gated, because a direct `make swift-test-verb-refusal` on a host
+# without the toolchain should skip like every other Swift target here rather
+# than fail. Defined in THIS section because HAS_SWIFT is assigned above it —
+# placed with the other *-test-verb-refusal targets the ifdef read as undefined
+# and skipped even where Swift was installed, which is the silent-skip this
+# repository has been bitten by before, and worse than failing.
 swift-test-verb-refusal:
 ifdef HAS_SWIFT
 	@./scripts/test-compiled-generator-refusal swift
