@@ -53,7 +53,8 @@
 // declared set (basecamp-sdk#925) — the same fail-closed shape as #922's
 // require-tags gate. The bound is DERIVED from spec/generated-verbs.json rather
 // than copied here, so this generator and the six SDK generators can never
-// disagree about the surface (basecamp-sdk#926).
+// disagree about the surface (basecamp-sdk#935; the failure that motivates it
+// is #925).
 //
 // The strict two-way join mirrors the toolkit loader's contract
 // (github.com/basecamp/mcp/catalog) so a consumer's expectations and the SDK's
@@ -100,6 +101,12 @@ const (
 	// methods the SDK generators emit; the emission bound is derived from it
 	// rather than hardcoded here. Repo-relative, read from the repository root
 	// like the other inputs.
+	//
+	// Deliberately a constant, not a flag or a run() parameter (unlike the
+	// other three input paths): an overridable bound is what produced two of
+	// #933's findings, where the gate validated one file while the generators
+	// read another. Un-overridable means the bound cannot be pointed somewhere
+	// the generators aren't looking — don't "helpfully" add a flag later.
 	defaultGeneratedVerbs = "spec/generated-verbs.json"
 
 	catalogSchema  = "https://basecamp.com/schemas/catalog.json"
@@ -233,13 +240,18 @@ type openapiDoc struct {
 // spec/generated-verbs.json, rather than repeating it as a literal here. That
 // literal was a known copy of the same fact six other generators read; deriving
 // it means this generator and those six can never disagree about the surface
-// (basecamp-sdk#926), which is exactly the failure #925 was.
+// (basecamp-sdk#935), which is exactly the failure #925 was.
 //
 // The read is deliberately narrow — it asserts one fact about this process's own
-// state ("I obtained a usable set to bound on"), not the file's well-formedness.
-// spec/check-generated-verbs is the ONE validator of the declaration and a
-// prerequisite of every generate target, so a malformed file never reaches here;
-// this function adds no BOM/stream/shape opinions of its own. It only:
+// state ("I obtained a usable set to bound on, or I stop"), not the file's
+// well-formedness. It adds no BOM/stream/shape opinions of its own — NOT because
+// something upstream validates the file (nothing does: #933, which would have
+// added such a gate, was closed unmerged, and it proved a "prerequisite of every
+// generate target" unreachable — make -j schedules that gate concurrently with
+// the checks it was meant to precede). A seventh JSON opinion is exactly what
+// #933 showed cannot define validity for the other six. Nothing guarantees the
+// file is well-formed before this function sees it — that is WHY fail-loud is the
+// contract, not a reason the read can be relaxed. It only:
 //
 //   - reads and JSON-unmarshals the file, PERMISSIVELY (unknown keys ignored),
 //   - keeps the verb strings that are non-empty and non-whitespace, and
@@ -272,7 +284,7 @@ func loadGeneratedVerbs(path string) (map[string]bool, error) {
 		}
 	}
 	if len(verbs) == 0 {
-		return nil, fmt.Errorf("generated-verbs %s declares no usable verb (the emission bound would be empty): an absent, empty, or all-blank `verbs` array must stop the build, not be read as 'no restriction'. Run 'make check-generated-verbs'", path)
+		return nil, fmt.Errorf("generated-verbs %s declares no usable verb (the emission bound would be empty): an absent, empty, or all-blank `verbs` array must stop the build, not be read as 'no restriction' (fix the `verbs` array in %s)", path, path)
 	}
 	return verbs, nil
 }
