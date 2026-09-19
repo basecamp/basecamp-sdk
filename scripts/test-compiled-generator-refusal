@@ -283,50 +283,50 @@ run_scenario "a path-item field that is not an operation object is named" \
   "$TMP/openapi-scalar-field.json" "$ROOT_DIR/spec/generated-verbs.json" \
   "frobnicate" "$PATH_KEY"
 
-# Scenario 9 (TypeScript only): the PIPELINE preflight.
+# Scenario 9 (TypeScript only): the pipeline's FIRST WRITE refuses first.
 #
 # The other scenarios drive `generate-services.ts`, which validates before it
 # writes. `npm run generate` is a different animal: five steps in five processes,
-# the first of which overwrites committed artifacts, with the refusing walk not
-# reached until step four. That is the Kotlin data-loss bug in TypeScript —
-# Kotlin deleted before it could refuse, this overwrites before it can — and the
-# fix is a preflight hoisted in front of the chain, because rendering in memory
-# is not available across five processes one of which is a third-party binary.
+# and step one — `strip-account-id.ts` — overwrites a committed artifact, while
+# the path-item refusals were not reached until steps four and five. That is the
+# Kotlin data-loss bug in TypeScript, since overwriting is as destructive as
+# deleting, and the fix is the same one Kotlin got: validate before the first
+# write, in the step that does the first write.
 #
-# WHAT THIS SCENARIO COVERS AND WHAT IT DOES NOT, stated rather than left silent,
-# because a silent gap is how Kotlin's version survived: it drives the preflight
-# directly with a seeded tree, proving the preflight refuses and touches nothing.
-# It does NOT drive `npm run generate` end to end — that pipeline writes to fixed
-# paths under typescript/src/generated and cannot be pointed at a temp directory,
-# which is why check-typescript-service-drift.sh builds a whole throwaway project
-# to test it. The remaining link, that the chain honours the preflight's exit
-# status, is the `&&` in package.json's `generate` script.
+# So this scenario points at THAT script and THAT file: it seeds the real output
+# path, runs the real step one against a spec with a bad operationId, and asserts
+# the refusal is named and the committed artifact is byte-for-byte unchanged. An
+# assertion against a directory the script was never pointed at would stay green
+# however the validation moved, which is the mistake the earlier version of this
+# scenario made.
+#
+# WHAT IS NOT CLAIMED, said here rather than left silent: this covers the
+# path-item refusals, which are the ones this change set introduces. A later step
+# can still fail for reasons of its own — `patch-flexible-ids.ts` refuses when the
+# Person schema layout moves — and leave the tree partially rewritten. That is
+# pre-existing, it is not a #925 refusal, and making generation atomic across all
+# six generators is filed separately.
 if [[ "$LANGUAGE" == "typescript" ]]; then
   scenario_number=$((scenario_number + 1))
-  out="$TMP/out-preflight"
-  mkdir -p "$out"
-  echo "committed generated output" > "$out/metadata.ts"
-  echo "committed generated output" > "$out/openapi-stripped.json"
-  seeded="$TMP/preflight-seeded"
-  find "$out" -type f | LC_ALL=C sort > "$seeded"
-  digests="$TMP/preflight-digests"
-  xargs shasum < "$seeded" > "$digests"
+  stripped="$ROOT_DIR/typescript/src/generated/openapi-stripped.json"
+  before="$TMP/openapi-stripped.before.json"
+  cp "$stripped" "$before"
 
-  log="$TMP/preflight.log"
+  log="$TMP/strip.log"
   status=0
-  (cd "$ROOT_DIR/typescript" && npx tsx scripts/check-path-items.ts "$TMP/openapi-numeric-id.json") \
-    > "$log" 2>&1 || status=$?
+  (cd "$ROOT_DIR/typescript" && npx tsx scripts/strip-account-id.ts \
+    "$TMP/openapi-numeric-id.json" "$stripped") > "$log" 2>&1 || status=$?
 
-  if [[ "$status" -eq 0 ]] \
-     || ! grep -qF "operationId" "$log" || ! grep -qF "$PATH_KEY" "$log"; then
-    echo "FAIL [$LANGUAGE] the pipeline preflight refuses before any step writes: exit $status" >&2
+  if [[ "$status" -eq 0 ]] || ! grep -qF "operationId" "$log" || ! grep -qF "$PATH_KEY" "$log"; then
+    echo "FAIL [$LANGUAGE] the pipeline's first write refuses by name: exit $status" >&2
     sed 's/^/    /' "$log" >&2
     failures=1
-  elif ! shasum --check --status "$digests"; then
-    echo "FAIL [$LANGUAGE] the pipeline preflight touched the tree it was run beside" >&2
+  elif ! cmp -s "$before" "$stripped"; then
+    echo "FAIL [$LANGUAGE] the refusal OVERWROTE the committed openapi-stripped.json" >&2
+    cp "$before" "$stripped"
     failures=1
   else
-    echo "OK [$LANGUAGE] the pipeline preflight refuses by name before any step writes"
+    echo "OK [$LANGUAGE] the pipeline's first write refuses by name, committed artifact untouched"
   fi
 fi
 
