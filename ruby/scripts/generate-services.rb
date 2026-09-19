@@ -45,7 +45,7 @@ class ServiceGenerator
     'BASECAMP_GENERATED_VERBS', File.expand_path('../../spec/generated-verbs.json', __dir__)
   )
 
-  # Read VERBATIM. scripts/check-generated-verbs.rb is the only thing that
+  # Read VERBATIM. scripts/check-generated-verbs is the only thing that
   # rejects a malformed declaration, and it is a prerequisite of every
   # *-generate target and a member of `make check`, so nothing gets here without
   # passing it. This loader deliberately performs NO validation: six loaders that

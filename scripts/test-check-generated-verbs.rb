@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Self-test for scripts/check-generated-verbs.rb, the ONE validator of
+# Self-test for scripts/check-generated-verbs, the ONE validator of
 # spec/generated-verbs.json.
 #
 # WHY IT MATTERS MORE THAN MOST SELF-TESTS. The six generators read that file

@@ -59,7 +59,7 @@ GENERATED_VERBS_FILE = Path(
 def generated_verbs() -> tuple[str, ...]:
     """The ordered HTTP methods the SDK generators emit.
 
-    Read VERBATIM. scripts/check-generated-verbs.rb is the only thing that rejects a malformed declaration, and it is a prerequisite of every *-generate target and a member of ``make check``, so nothing gets here without passing it. This loader deliberately performs NO validation: six loaders that each validated disagreed five times in four review rounds, every one of them on invalid input, and each surviving predicate is another chance to disagree.
+    Read VERBATIM. scripts/check-generated-verbs is the only thing that rejects a malformed declaration, and it is a prerequisite of every *-generate target and a member of ``make check``, so nothing gets here without passing it. This loader deliberately performs NO validation: six loaders that each validated disagreed five times in four review rounds, every one of them on invalid input, and each surviving predicate is another chance to disagree.
     """
     try:
         declaration = json.loads(GENERATED_VERBS_FILE.read_text(encoding="utf-8"))

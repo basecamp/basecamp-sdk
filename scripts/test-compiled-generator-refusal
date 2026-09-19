@@ -203,7 +203,7 @@ run_scenario "the declaration withholds $WITHHELD_UPPER, so $WITHHELD_UPPER $WIT
   "$ROOT_DIR/openapi.json" "$TMP/verbs-withheld.json" "$WITHHELD_UPPER" "$WITHHELD_OPERATION"
 
 # There is no malformed-declaration scenario here any more, deliberately. The six
-# loaders stopped validating the declaration: scripts/check-generated-verbs.rb is
+# loaders stopped validating the declaration: scripts/check-generated-verbs is
 # the only thing that rejects one, it is a prerequisite of every *-generate
 # target, and its own self-test drives every shape that used to tell the loaders
 # apart. Feeding a malformed declaration to a binary now would assert the absence

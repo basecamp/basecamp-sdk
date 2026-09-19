@@ -22,7 +22,7 @@ object PathItems {
     /**
      * The ordered HTTP methods the SDK generators emit.
      *
-     * Read VERBATIM. scripts/check-generated-verbs.rb is the only thing that
+     * Read VERBATIM. scripts/check-generated-verbs is the only thing that
      * rejects a malformed declaration, and it is a prerequisite of every
      * *-generate target and a member of `make check`, so nothing gets here
      * without passing it. This loader deliberately performs NO validation: six

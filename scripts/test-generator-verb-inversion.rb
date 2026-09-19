@@ -211,7 +211,7 @@ check("OpenAPI 3.2's `additionalOperations` map is refused by name, not read as 
 end
 
 # The malformed-declaration shapes are NOT asserted here any more. The six
-# loaders stopped validating: scripts/check-generated-verbs.rb is the only thing
+# loaders stopped validating: scripts/check-generated-verbs is the only thing
 # that rejects a malformed declaration, and its own self-test
 # (scripts/test-check-generated-verbs.rb) drives every shape that used to tell
 # the loaders apart. Asserting them against a loader now would be asserting the
