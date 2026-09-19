@@ -1,0 +1,427 @@
+#!/usr/bin/env bash
+#
+# Self-test: the COMPILED generators refuse what they cannot emit, loudly.
+#
+# WHY THIS EXISTS SEPARATELY. scripts/test-generator-verb-inversion.rb drives the
+# Ruby, Python and jq generators, because those run on the stdlib toolchains the
+# Spec Gates job already has. TypeScript, Kotlin, Swift and Rust carry four more
+# independent copies of the same walk, and nothing else in the repository can see
+# a regression in them: their drift checks regenerate from the committed
+# openapi.json, which declares four verbs and no unreadable path-item fields, so
+# all four could revert to silently skipping an unknown verb with every drift
+# check still green. This is the only gate that gives them one.
+#
+# It runs the REAL generator binary the language job already builds, and asserts
+# four things per scenario: a non-zero exit, a message naming the offending
+# operation, that no generated file was written, and that the output tree it was
+# pointed at is UNTOUCHED — compared by content, so an overwrite is caught
+# alongside a delete. That last assertion is the one with teeth: a generator that
+# clears its output directory before validating turns a refusal into data loss,
+# which the Kotlin generator did until this test was written. An EMPTY output
+# directory cannot show that, so the directory is seeded first.
+#
+# THE SCENARIOS. Every row exists because the committed spec exercises none of
+# these shapes: openapi.json declares four verbs, no malformed path items and no
+# unreadable fields, so the drift checks cannot see any of these guards regress.
+#
+# An earlier version of this header said the rows were "a table rather than a
+# list that grows by one each review round". They grew from five to eleven by
+# review rounds, so that sentence was refuted by the file it sat in. What is
+# actually true is the paragraph above — a guard in the shared walk earns a row
+# because nothing else can watch it — and the enumeration below is kept complete
+# so the count cannot go stale again without the list visibly disagreeing.
+#
+# Nine run for every language:
+#
+#   1. UNEMITTED VERB. A spec carrying HEAD must be refused by name.
+#   2. DECLARATION-SOURCED BOUND. Pointed at a declaration that omits a verb the
+#      SDKs normally emit, the generator must refuse THAT verb too. A generator
+#      still holding a private five-verb list would pass scenario 1 by rejecting
+#      HEAD while ignoring spec/generated-verbs.json entirely — which is how
+#      PATCH's removal from the declaration could go unenforced in four
+#      languages.
+#   3. MALFORMED DECLARATION. A verb is `[a-z]+` in all six loaders, and the
+#      compiled four have to agree with the scripted two about that. Six
+#      hand-written loaders that merely look equivalent are how a non-breaking
+#      space came to be accepted in one language and refused in three.
+#   4. An `additionalOperations` map, which is a map of method to Operation and
+#      not an operation, so reading it as one drops everything inside it.
+#   5. A non-string `operationId`, which a coercing accessor renders as text and
+#      names a generated method after.
+#   6. An unsupported verb whose `operationId` is an OBJECT — the refusal reads
+#      the id to name the operation, so an unsafe read throws while building its
+#      own message and names nothing.
+#   7. A `$ref` path item, which hides every operation behind it.
+#   8. A path item that is not an object, refused BY NAME rather than through a
+#      library's generic type error.
+#   9. A path-item field that is not an operation object.
+#
+# Two are language-specific, and each says so where it skips:
+#
+#  10. TypeScript only: the pipeline's FIRST WRITE refuses first. `npm run
+#      generate` is five processes and step one overwrites a committed artifact,
+#      so the refusal has to happen inside that step.
+#  11. Kotlin only: a malformed retry entry, which fails LATE — at the far end of
+#      generation rather than during the spec parse. It is the only scenario that
+#      can tell a generator that renders before destroying from one that merely
+#      hoisted its first failure. Swift and Rust default a missing retry field,
+#      so the fixture is not fatal for them.
+#
+# Usage: ./test-compiled-generator-refusal <typescript|kotlin|swift|rust>
+#
+# Each language's own CI job runs its own language, so nothing here can skip:
+# the toolchain is present by construction wherever this is invoked.
+
+set -euo pipefail
+
+LANGUAGE="${1:-}"
+if [[ -z "$LANGUAGE" ]]; then
+  echo "usage: $0 <typescript|kotlin|swift|rust>" >&2
+  exit 2
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/verb-refusal.XXXXXX")"
+trap 'rm -rf "$TMP"' EXIT
+
+# The crafted specs are derived from the committed openapi.json rather than from
+# a fixture, so they cannot drift away from what the generators actually read.
+# Moving an operation's verb from `get` to `head` is a change a Smithy author can
+# make today: @http's method is a free-form string Smithy performs no validation
+# on.
+OPERATION="GetProject"
+PATH_KEY="$(jq -r --arg op "$OPERATION" \
+  'first(.paths | to_entries[] | select(.value.get.operationId == $op) | .key)' \
+  "$ROOT_DIR/openapi.json")"
+if [[ -z "$PATH_KEY" || "$PATH_KEY" == "null" ]]; then
+  echo "FAIL: openapi.json no longer has a GET whose operationId is $OPERATION; pick another" >&2
+  exit 1
+fi
+jq --arg p "$PATH_KEY" '.paths[$p].head = .paths[$p].get | del(.paths[$p].get)' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-head.json"
+
+# Scenario 2 needs a verb the real spec DOES use and the crafted declaration does
+# not name. DELETE is chosen from the live declaration rather than hardcoded, so
+# this keeps working if the declaration changes.
+WITHHELD="$(jq -r '.verbs | map(select(. != "get")) | last' "$ROOT_DIR/spec/generated-verbs.json")"
+# Uppercased with tr, not ${VAR^^}: the Swift job runs on macos-15, whose runner
+# image ships Bash 3.2, where that expansion is a `bad substitution` and the
+# script dies before any scenario runs.
+WITHHELD_UPPER="$(printf '%s' "$WITHHELD" | tr '[:lower:]' '[:upper:]')"
+jq --arg withheld "$WITHHELD" 'del(.verbs[] | select(. == $withheld))' \
+  "$ROOT_DIR/spec/generated-verbs.json" > "$TMP/verbs-withheld.json"
+WITHHELD_PATH="$(jq -r --arg v "$WITHHELD" \
+  'first(.paths | to_entries[] | select(.value[$v].operationId) | .key)' "$ROOT_DIR/openapi.json")"
+WITHHELD_OPERATION="$(jq -r --arg v "$WITHHELD" --arg p "$WITHHELD_PATH" \
+  '.paths[$p][$v].operationId' "$ROOT_DIR/openapi.json")"
+if [[ -z "$WITHHELD_PATH" || "$WITHHELD_PATH" == "null" ]]; then
+  echo "FAIL: openapi.json has no $WITHHELD operation to withhold; adjust this test" >&2
+  exit 1
+fi
+
+failures=0
+scenario_number=0
+
+# run_scenario <description> <spec> <verbs> <expect-a> <expect-b> [behavior-model]
+run_scenario() {
+  local description="$1" spec="$2" verbs="$3" expect_verb="$4" expect_name="$5"
+  local behavior="${6:-$ROOT_DIR/behavior-model.json}"
+  scenario_number=$((scenario_number + 1))
+  local out="$TMP/out-$scenario_number" log="$TMP/generate-$scenario_number.log"
+  local status=0
+
+  # Seed the output directory the way a real run finds it: already holding the
+  # committed generated tree. The seeds are then snapshotted by READING THE TREE
+  # BACK rather than from the list below — macOS is case-insensitive, so Models/
+  # and models/ are one directory there and two on the Linux runners, and a
+  # literal list would disagree with the filesystem on one of them.
+  mkdir -p "$out/models" "$out/services" "$out/Models" "$out/Services"
+  local seed
+  for seed in "$out/models/Sentinel.kt" "$out/services/Sentinel.kt" \
+              "$out/Models/Sentinel.swift" "$out/Services/Sentinel.swift" \
+              "$out/Metadata.kt" "$out/ServiceAccessors.kt" \
+              "$out/sentinel.ts" "$out/sentinel.rs" "$out/mod.rs"; do
+    echo "committed generated output; a refusal must not destroy this" > "$seed"
+  done
+  local seeded_paths="$TMP/seeded-$scenario_number" seeded_digests="$TMP/digests-$scenario_number"
+  find "$out" -type f | LC_ALL=C sort > "$seeded_paths"
+  xargs shasum < "$seeded_paths" > "$seeded_digests"
+
+  case "$LANGUAGE" in
+    typescript)
+      (cd "$ROOT_DIR/typescript" && BASECAMP_GENERATED_VERBS="$verbs" \
+        npx tsx scripts/generate-services.ts --openapi "$spec" --output "$out") \
+        > "$log" 2>&1 || status=$?
+      ;;
+    kotlin)
+      # The INSTALLED distribution, not the Gradle run task. Running the packaged
+      # binary is what the other three languages do, and it keeps every Gradle
+      # invocation in the Makefile recipe where scripts/check-gradle-serialization
+      # can classify it: that gate resolves one level of script delegation and
+      # attributes a delegated Gradle call to EVERY target that calls the script,
+      # so invoking the wrapper from here would have marked the TypeScript, Swift
+      # and Rust targets as Kotlin-project builds and demanded order-only edges
+      # between them that describe no real collision. (The same reason this
+      # comment names the wrapper in prose instead of spelling its command: the
+      # gate reads text, and errs toward reporting.)
+      local generator="$ROOT_DIR/kotlin/generator/build/install/generator/bin/generator"
+      if [[ ! -x "$generator" ]]; then
+        echo "FAIL [kotlin]: $generator is missing." >&2
+        echo "  Build the generator distribution first; make kt-test-verb-refusal does it for you." >&2
+        exit 1
+      fi
+      "$generator" --openapi "$spec" --behavior "$behavior" \
+        --verbs "$verbs" --output "$out" > "$log" 2>&1 || status=$?
+      ;;
+    swift)
+      (cd "$ROOT_DIR/swift" && swift run BasecampGenerator \
+        --openapi "$spec" --behavior "$behavior" \
+        --verbs "$verbs" --output "$out") > "$log" 2>&1 || status=$?
+      ;;
+    rust)
+      (cd "$ROOT_DIR/rust" && cargo run -q --locked -p basecamp-sdk-generator -- \
+        --openapi "$spec" --verbs "$verbs" --output "$out") > "$log" 2>&1 || status=$?
+      ;;
+    *)
+      echo "unknown language: $LANGUAGE" >&2
+      exit 2
+      ;;
+  esac
+
+  local scenario_failed=0
+
+  if [[ "$status" -eq 0 ]]; then
+    echo "FAIL [$LANGUAGE] $description: the generator exited 0." >&2
+    echo "  An operation this generator cannot emit must stop the run, not vanish from the client." >&2
+    scenario_failed=1
+  fi
+
+  # THE RULE FOR THIS FILE: a refusal test asserts on the refusal's CONTENT,
+  # never only that something exited non-zero. An assertion too weak to tell the
+  # fixed code from the broken code is the only thing a test is for, and this
+  # harness has been caught at it twice — an unseeded output directory made
+  # "nothing was destroyed" vacuous (clearing nothing leaves nothing), and empty
+  # expectations here made "it refused" vacuous, letting Kotlin pass on a generic
+  # type exception that named neither the path nor the problem.
+  #
+  # ONE scenario passes empty expectations, and it is the malformed behavior
+  # model: its failure is a kotlinx exception this repo does not word, so there
+  # is no message of ours to match. It is not assertion-free — the seeded-tree
+  # check IS its assertion, and it is the strongest one here, since reverting the
+  # render-then-clean ordering is exactly what makes it report destroyed
+  # sentinels. Every other scenario names the offending path or operation.
+  # FIXED-STRING matching. An expectation is a literal from a message, not a
+  # pattern, and `$ref` read as a regex would have meant something else entirely
+  # — the kind of near-miss that makes an assertion quietly weaker than it reads.
+  if [[ -n "$expect_verb" ]] \
+     && { ! grep -qiF "$expect_verb" "$log" || ! grep -qF "$expect_name" "$log"; }; then
+    echo "FAIL [$LANGUAGE] $description: the failure message does not name the offending operation." >&2
+    echo "  Expected $expect_verb and $expect_name in the output; got:" >&2
+    sed 's/^/    /' "$log" >&2
+    scenario_failed=1
+  fi
+
+  if ! shasum --check --status "$seeded_digests"; then
+    echo "FAIL [$LANGUAGE] $description: the refusal DESTROYED or REWROTE committed output:" >&2
+    shasum --check "$seeded_digests" 2>&1 | grep -v ': OK$' | sed 's/^/    /' >&2
+    echo "  Validate the whole spec before clearing or writing the output tree, so a refusal" >&2
+    echo "  leaves the committed generated code exactly as it found it." >&2
+    scenario_failed=1
+  fi
+
+  # Every file under the output directory must be one of the seeds, BY PATH.
+  # Excluding the seeds by NAME would excuse a real generated Metadata.kt or
+  # mod.rs, which are exactly the names a refusing generator might still write.
+  local actual_paths="$TMP/actual-$scenario_number" extra
+  find "$out" -type f | LC_ALL=C sort > "$actual_paths"
+  extra="$(LC_ALL=C comm -13 "$seeded_paths" "$actual_paths")"
+  if [[ -n "$extra" ]]; then
+    echo "FAIL [$LANGUAGE] $description: the refusal still wrote generated files:" >&2
+    echo "$extra" | sed 's/^/    /' >&2
+    scenario_failed=1
+  fi
+
+  if [[ "$scenario_failed" -ne 0 ]]; then
+    failures=1
+  else
+    echo "OK [$LANGUAGE] $description: refused by name, exit $status, nothing written, nothing destroyed"
+  fi
+}
+
+run_scenario "HEAD $PATH_KEY ($OPERATION) is not an emitted verb" \
+  "$TMP/openapi-head.json" "$ROOT_DIR/spec/generated-verbs.json" "HEAD" "$OPERATION"
+
+run_scenario "the declaration withholds $WITHHELD_UPPER, so $WITHHELD_UPPER $WITHHELD_PATH ($WITHHELD_OPERATION) is refused" \
+  "$ROOT_DIR/openapi.json" "$TMP/verbs-withheld.json" "$WITHHELD_UPPER" "$WITHHELD_OPERATION"
+
+# Scenario 3: a MALFORMED declaration. A verb is `[a-z]+` in all six loaders, a
+# positive rule chosen because two review rounds of "what counts as blank"
+# diverged by language (Java's Character.isWhitespace excludes U+00A0, Rust's
+# char::is_whitespace includes it, Ruby's String#strip is ASCII-only). The entry
+# below is a non-breaking space: it is the shape that told those loaders apart,
+# so it is the one worth asserting against the compiled ones.
+jq '.verbs += ["\u00a0"]' "$ROOT_DIR/spec/generated-verbs.json" > "$TMP/verbs-malformed.json"
+run_scenario "a declaration entry that is not [a-z]+ is refused" \
+  "$ROOT_DIR/openapi.json" "$TMP/verbs-malformed.json" "verbs" "a-z"
+
+# Scenario 4: OpenAPI 3.2's additionalOperations, a MAP of method to Operation.
+# The bounded walkers would reject an unknown VERB, but this field is not a verb
+# — read as one operation it carries no operationId, and before the guard the
+# verb-agnostic walkers dropped every operation inside it in silence. Neither
+# scenario above contains the map and neither does the live spec, so without this
+# the guard could regress in all four binaries with every check green.
+jq --arg p "$PATH_KEY" \
+  '.paths[$p].additionalOperations = {"PURGE": .paths[$p].get}' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-additional.json"
+run_scenario "an additionalOperations map is refused rather than read as one operation" \
+  "$TMP/openapi-additional.json" "$ROOT_DIR/spec/generated-verbs.json" \
+  "additionalOperations" "$PATH_KEY"
+
+# Scenario 5: an operationId that is not a string. OpenAPI lets the field be
+# omitted and every walker used to step over one that was; the guard that
+# replaced those skips has to reject a NON-STRING too, because a JSON library
+# that renders 123 as "123" would name a generated method after it. Kotlin's
+# JsonPrimitive does exactly that, which is why this is a scenario rather than a
+# comment.
+jq --arg p "$PATH_KEY" '.paths[$p].get.operationId = 123' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-numeric-id.json"
+run_scenario "an operationId that is not a string is refused" \
+  "$TMP/openapi-numeric-id.json" "$ROOT_DIR/spec/generated-verbs.json" \
+  "operationId" "$PATH_KEY"
+
+# Scenario 5b: an unsupported verb whose operationId is an OBJECT. The refusal
+# message reads the id to name the operation, so a diagnostic that parses it
+# unsafely throws while building its own message and names nothing — which is
+# what Kotlin did, because `jsonPrimitive` throws on an object where the
+# string-only read two lines below does not.
+jq --arg p "$PATH_KEY" \
+  '.paths[$p].head = (.paths[$p].get | .operationId = {"nested": true}) | del(.paths[$p].get)' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-object-id.json"
+run_scenario "an unsupported verb with a structured operationId is still named" \
+  "$TMP/openapi-object-id.json" "$ROOT_DIR/spec/generated-verbs.json" "HEAD" "$PATH_KEY"
+
+# Scenarios 6-8: the path-item refusal branches. Each of the four compiled
+# generators implements these separately, and no drift check ever sees a
+# malformed path item — the committed spec has none — so all four could regress
+# to skipping one while every gate stayed green. That is the same gap that
+# justified this harness in the first place, in the branches it did not yet
+# cover.
+jq --arg p "$PATH_KEY" '.paths[$p] = {"$ref": "#/components/pathItems/Project"}' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-ref.json"
+run_scenario "a \$ref path item is refused rather than read as empty" \
+  "$TMP/openapi-ref.json" "$ROOT_DIR/spec/generated-verbs.json" '$ref' "$PATH_KEY"
+
+jq --arg p "$PATH_KEY" '.paths[$p] = "not a path item"' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-scalar-item.json"
+run_scenario "a path item that is not an object is refused BY NAME" \
+  "$TMP/openapi-scalar-item.json" "$ROOT_DIR/spec/generated-verbs.json" \
+  "path item" "$PATH_KEY"
+
+jq --arg p "$PATH_KEY" '.paths[$p].frobnicate = "not an operation"' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-scalar-field.json"
+run_scenario "a path-item field that is not an operation object is named" \
+  "$TMP/openapi-scalar-field.json" "$ROOT_DIR/spec/generated-verbs.json" \
+  "frobnicate" "$PATH_KEY"
+
+# Scenario 9 (TypeScript only): the pipeline's FIRST WRITE refuses first.
+#
+# The other scenarios drive `generate-services.ts`, which validates before it
+# writes. `npm run generate` is a different animal: five steps in five processes,
+# and step one — `strip-account-id.ts` — overwrites a committed artifact, while
+# the path-item refusals were not reached until steps four and five. That is the
+# Kotlin data-loss bug in TypeScript, since overwriting is as destructive as
+# deleting, and the fix is the same one Kotlin got: validate before the first
+# write, in the step that does the first write.
+#
+# So this scenario points at THAT script and THAT file: it seeds the real output
+# path, runs the real step one against a spec with a bad operationId, and asserts
+# the refusal is named and the committed artifact is byte-for-byte unchanged. An
+# assertion against a directory the script was never pointed at would stay green
+# however the validation moved, which is the mistake the earlier version of this
+# scenario made.
+#
+# WHAT IS NOT CLAIMED, said here rather than left silent: this covers the
+# path-item refusals, which are the ones this change set introduces. A later step
+# can still fail for reasons of its own — `patch-flexible-ids.ts` refuses when the
+# Person schema layout moves — and leave the tree partially rewritten. That is
+# pre-existing, it is not a #925 refusal, and making generation atomic across all
+# six generators is filed separately.
+if [[ "$LANGUAGE" == "typescript" ]]; then
+  scenario_number=$((scenario_number + 1))
+  # Pointed at a SEEDED TEMPORARY output, not at the repository's committed
+  # openapi-stripped.json. The script writes only to the path it is given, so
+  # this tests the same property — the output is not written before the refusal —
+  # without putting the real artifact at risk on any outcome, including a
+  # regression that exits 0 after writing, or an interrupt. A test that has to
+  # restore what it damaged is one failed restore away from damaging it.
+  #
+  # It is not the vacuous version of this assertion either: the script IS pointed
+  # at this file, which is what the earlier iteration got wrong by checking a
+  # directory nothing was aimed at.
+  stripped="$TMP/openapi-stripped.json"
+  before="$TMP/openapi-stripped.before.json"
+  cp "$ROOT_DIR/typescript/src/generated/openapi-stripped.json" "$stripped"
+  cp "$stripped" "$before"
+
+  log="$TMP/strip.log"
+  status=0
+  (cd "$ROOT_DIR/typescript" && npx tsx scripts/strip-account-id.ts \
+    "$TMP/openapi-numeric-id.json" "$stripped") > "$log" 2>&1 || status=$?
+
+  if [[ "$status" -eq 0 ]] || ! grep -qF "operationId" "$log" || ! grep -qF "$PATH_KEY" "$log"; then
+    echo "FAIL [$LANGUAGE] the pipeline's first write refuses by name: exit $status" >&2
+    sed 's/^/    /' "$log" >&2
+    failures=1
+  elif ! cmp -s "$before" "$stripped"; then
+    echo "FAIL [$LANGUAGE] the refusal OVERWROTE the output it was pointed at" >&2
+    failures=1
+  else
+    echo "OK [$LANGUAGE] the pipeline's first write refuses by name, its output untouched"
+  fi
+fi
+
+# Scenario 10: a malformed behavior model, and the ONLY scenario whose failure
+# happens late in generation. Every other one fails during the spec parse, which
+# any "parse before delete" ordering already survives — so they cannot tell a
+# generator that renders before destroying from one that merely hoisted its first
+# failure. This one can: a missing `retry.max` reaches MetadataEmitter at the far
+# end of generation, which is where the Kotlin generator used to have already
+# deleted the committed tree. Reverting the render-then-clean ordering makes this
+# scenario, and only this scenario, report four destroyed sentinels.
+#
+# IT ONLY APPLIES WHERE THE INPUT IS ACTUALLY FATAL. Kotlin dereferences the
+# retry fields with `!!`; Swift and Rust default a missing one and generate
+# successfully, so for them this fixture exercises nothing and a "must fail"
+# assertion would fail for the wrong reason. They are skipped BY NAME rather than
+# quietly, because the gap is real: their render-before-delete ordering is
+# verified by reading the code, not by this test. Neither has a crafted input
+# that currently reaches its emission stage as a failure; when one exists, it
+# belongs here.
+case "$LANGUAGE" in
+  kotlin)
+    retry_op="$(jq -r 'first(.operations | to_entries[] | select(.value.retry) | .key)' \
+      "$ROOT_DIR/behavior-model.json")"
+    jq --arg op "$retry_op" 'del(.operations[$op].retry.max)' \
+      "$ROOT_DIR/behavior-model.json" > "$TMP/behavior-malformed.json"
+    # ONE document out, and one edit: an iterating `as $op` binding would have
+    # emitted 265 concatenated documents and failed at the JSON parse instead —
+    # an early failure, which is precisely what this scenario must not be.
+    if [[ "$(jq -s 'length' "$TMP/behavior-malformed.json")" != "1" ]] \
+       || jq -e --arg op "$retry_op" '.operations[$op].retry | has("max")' \
+            "$TMP/behavior-malformed.json" > /dev/null; then
+      echo "FAIL [$LANGUAGE]: the malformed behavior fixture is not what this scenario needs" >&2
+      exit 1
+    fi
+    run_scenario "a malformed retry entry fails late without destroying the tree" \
+      "$ROOT_DIR/openapi.json" "$ROOT_DIR/spec/generated-verbs.json" \
+      "" "" "$TMP/behavior-malformed.json"
+    ;;
+  *)
+    echo "SKIP [$LANGUAGE] malformed behavior model: this generator either takes no --behavior" \
+         "input or defaults a missing retry field, so the fixture is not fatal for it"
+    ;;
+esac
+
+exit "$failures"

@@ -39,9 +39,7 @@ def main() -> None:
     # walk takes no emission bound and extracts an operation on any verb.
     for path, path_item in spec.get("paths", {}).items():
         for _method, op in iter_operations(path, path_item):
-            op_id = op.get("operationId")
-            if not op_id:
-                continue
+            op_id = op["operationId"]
 
             entry: dict = {}
             behavior_op = operations.get(op_id, {})

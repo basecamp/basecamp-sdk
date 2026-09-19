@@ -47,12 +47,20 @@ export function generatedVerbs(): string[] {
     );
   }
   const verbs = declaration.verbs;
+  // An HTTP method is a TOKEN, so the rule is a positive character class rather
+  // than a blankness predicate: `[a-z]+`, identical in all six loaders. Two
+  // review rounds chased "blank" across languages and the next disagreement was
+  // guaranteed, because every language defines whitespace differently. A closed
+  // positive rule has no such seam.
   if (
     !Array.isArray(verbs) ||
     verbs.length === 0 ||
-    !verbs.every((v) => typeof v === "string" && v.length > 0)
+    !verbs.every((v) => typeof v === "string" && /^[a-z]+$/.test(v))
   ) {
-    die(`Error: ${GENERATED_VERBS_FILE} must declare a non-empty \`verbs\` array of strings.`);
+    die(
+      `Error: ${GENERATED_VERBS_FILE} must declare a non-empty \`verbs\` array of lowercase ` +
+        `ASCII method names (/[a-z]+/).`
+    );
   }
   return verbs as string[];
 }
@@ -92,6 +100,19 @@ export function operationsOf<T = Record<string, any>>(
     );
   }
 
+  // OpenAPI 3.2's `additionalOperations` is a MAP of method to Operation, not an
+  // operation. Read as one it carries no operationId, so a verb-agnostic caller
+  // would drop every operation inside it without saying so. Refuse by name until
+  // the walk learns the map shape.
+  if ("additionalOperations" in item) {
+    die(
+      `Error: openapi.json path ${path} declares \`additionalOperations\`, which OpenAPI 3.2 ` +
+        `defines as a map of method to Operation. This walk reads a path-item field as a single ` +
+        `operation, so it would drop every operation inside it. Teach the walk the map shape, or ` +
+        `take the field out of the spec.`
+    );
+  }
+
   const rank = (field: string) => {
     const at = order.indexOf(field);
     return at === -1 ? order.length : at;
@@ -118,6 +139,17 @@ export function operationsOf<T = Record<string, any>>(
           `which is the failure basecamp-sdk#925 closed. Give the runtime a ${field} helper and ` +
           `add ${JSON.stringify(field)} to spec/generated-verbs.json (read that file first — the ` +
           `other five SDKs need the same helper), or take the operation out of the Smithy model.`
+      );
+    }
+    // An operation has to be IDENTIFIABLE. OpenAPI lets operationId be omitted,
+    // and every walker here used to step over one that was — a silent drop of a
+    // real operation, which is basecamp-sdk#925 wearing a different field.
+    const operationId = (operation as Record<string, unknown>).operationId;
+    if (typeof operationId !== "string" || operationId.length === 0) {
+      die(
+        `Error: openapi.json declares ${field.toUpperCase()} ${path} with no operationId. ` +
+          `Everything downstream is keyed by it, and skipping the operation would drop it from ` +
+          `the SDK in silence.`
       );
     }
     return [field, operation as T];

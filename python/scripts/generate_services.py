@@ -1197,8 +1197,6 @@ def person_id_sites(spec: dict) -> dict[str, list[tuple[str, ...]]]:
     table: dict[str, list[tuple[str, ...]]] = {}
     for path, path_item in spec.get("paths", {}).items():
         for _method, op in iter_operations(path, path_item, EMITTABLE_METHODS):
-            if "operationId" not in op:
-                continue
             found: set[tuple[str, ...]] = set()
             for code, response in op.get("responses", {}).items():
                 if not str(code).startswith("2"):

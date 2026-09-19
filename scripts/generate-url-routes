@@ -25,15 +25,61 @@ if [[ ! -f "$OPENAPI_FILE" ]]; then
     exit 1
 fi
 
-# Generate url-routes using jq
+# Generate url-routes using jq.
+#
+# Into a TEMPORARY file, then moved into place: the shell truncates a redirect
+# target before the command runs, so writing straight at url-routes.json would
+# empty it and only then let the filter refuse, turning a fail-closed refusal
+# into data loss. The trap removes the temporary file on a refusal, so a failed
+# run leaves neither a truncated artifact nor a stale fragment beside it.
+trap 'rm -f "${OUTPUT_FILE}.tmp"' EXIT
 jq '
 # A $ref path item points at operations this filter cannot see without
 # resolving the reference. Skipping it would hand back exactly the silent
 # under-count the exclusion walk below exists to prevent, so refuse instead.
+# A path item has to BE an object before anything asks what it contains. Both
+# `has` and `to_entries` throw a jq type error on a scalar, so a malformed path
+# item died with "Cannot check whether string has a string key" and named
+# nothing -- where the six generators name the path. This runs before every other
+# guard for that reason: a refusal that cannot say which path it is about is not
+# the refusal this filter claims to make.
+#
+# (No apostrophes in this filter: the jq program is a single-quoted shell string,
+# and one would end it.)
+def refuse_non_object_path_items:
+  [.paths | to_entries[] | select((.value | type) != "object") | "\(.key) (\(.value | type))"] as $bad |
+  if ($bad | length) > 0 then
+    error("openapi.json path items are not objects: \($bad | join(", ")). A path item must be an object; this filter cannot read operations out of anything else.")
+  else . end;
+
 def refuse_path_item_refs:
   [.paths | to_entries[] | select(.value | has("$ref")) | .key] as $refs |
   if ($refs | length) > 0 then
     error("openapi.json path items are behind a $ref this generator cannot resolve: \($refs | join(", ")). Inline them, or teach this filter to resolve local references -- skipping them would hide every operation behind them from the route table.")
+  else . end;
+
+# OpenAPI 3.2 additionalOperations is a MAP of method to Operation, not an
+# operation. The exclusion walk below would read it as one field with no
+# operationId and emit a route entry naming nothing, so refuse by name until this
+# filter learns the map shape.
+def refuse_additional_operations:
+  [.paths | to_entries[] | select(.value | has("additionalOperations")) | .key] as $maps |
+  if ($maps | length) > 0 then
+    error("openapi.json path items declare additionalOperations, which OpenAPI 3.2 defines as a map of method to Operation: \($maps | join(", ")). This filter reads a path-item field as a single operation, so it would drop every operation inside it.")
+  else . end;
+
+# Every field the exclusion walk takes for an operation has to BE one. A scalar
+# reaches .value.operationId and errors obliquely; an object with no operationId
+# would reach the route table as a method naming null. Both are the silent
+# under-report the walk exists to prevent, so both are named here instead.
+def refuse_unreadable_operations:
+  [ .paths | to_entries[] | .key as $p | .value | to_entries[]
+    | select((.key | IN("summary","description","servers","parameters") | not)
+             and (.key | startswith("x-") | not))
+    | select((.value | type) != "object" or (.value.operationId | type) != "string" or (.value.operationId == ""))
+    | "\($p) -> \(.key)" ] as $bad |
+  if ($bad | length) > 0 then
+    error("openapi.json path-item fields are neither a known non-operation field nor an operation with an operationId: \($bad | join(", ")). A later OpenAPI version may have added a non-operation field -- add it to the exclusion list with a reason rather than letting it reach the route table unnamed.")
   else . end;
 
 # Infer parameter role from its name.
@@ -60,7 +106,10 @@ def param_type:
   else "string"
   end;
 
+refuse_non_object_path_items |
 refuse_path_item_refs |
+refuse_additional_operations |
+refuse_unreadable_operations |
 {
   "$schema": "https://basecamp.com/schemas/url-routes.json",
   version: "1.0.0",

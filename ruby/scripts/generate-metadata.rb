@@ -34,8 +34,23 @@ class MetadataExtractor
   )
 
   METHOD_ORDER = begin
-    JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8')).fetch('verbs').freeze
-  rescue Errno::ENOENT, JSON::ParserError, KeyError => e
+    verbs = JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8'))['verbs']
+    # An HTTP method is a TOKEN, so the rule is a positive character class rather
+    # than a blankness predicate: `[a-z]+`, identical in all six loaders. Two
+    # review rounds chased "blank" across languages — Kotlin and Rust rejected a
+    # space while the others accepted it, then Ruby's ASCII `strip` accepted a
+    # non-breaking space the Unicode-aware ones rejected — and the next
+    # disagreement was guaranteed, because every language defines whitespace
+    # differently (Java's Character.isWhitespace excludes U+00A0; Rust's
+    # char::is_whitespace includes it; Ruby's String#strip is ASCII-only). A
+    # closed positive rule has no such seam: "", " ", "\u00a0", "GET" and 1 are
+    # all rejected the same way everywhere.
+    unless verbs.is_a?(Array) && !verbs.empty? && verbs.all? { |v| v.is_a?(String) && v.match?(/\A[a-z]+\z/) }
+      abort "Error: #{GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of lowercase " \
+            'ASCII method names (/\A[a-z]+\z/).'
+    end
+    verbs.freeze
+  rescue Errno::ENOENT, JSON::ParserError => e
     abort "Error: cannot read the generated-verb declaration #{GENERATED_VERBS_FILE}: #{e.message}"
   end
 
@@ -51,7 +66,6 @@ class MetadataExtractor
     (@openapi['paths'] || {}).each do |path, path_item|
       each_operation(path, path_item) do |_method, operation|
         operation_id = operation['operationId']
-        next unless operation_id
 
         metadata = extract_operation_metadata(operation)
         operations[operation_id] = metadata if metadata.any?
@@ -84,8 +98,6 @@ class MetadataExtractor
     sites = {}
     (@openapi['paths'] || {}).each do |path, path_item|
       each_operation(path, path_item) do |_method, operation|
-        next unless operation['operationId']
-
         paths = (operation['responses'] || {}).flat_map do |code, response|
           next [] unless code.to_s.start_with?('2')
 
@@ -151,6 +163,17 @@ class MetadataExtractor
             'every operation behind it without runtime metadata.'
     end
 
+    # OpenAPI 3.2's `additionalOperations` is a MAP of method to Operation, not an
+    # operation. Read as one it carries no operationId, so it would drop every
+    # operation inside it without saying so. Refuse by name until the walk learns
+    # the map shape.
+    if path_item.key?('additionalOperations')
+      abort "Error: openapi.json path #{path} declares `additionalOperations`, which OpenAPI 3.2 " \
+            'defines as a map of method to Operation. This walk reads a path-item field as a ' \
+            'single operation, so it would drop every operation inside it. Teach the walk the map ' \
+            'shape, or take the field out of the spec.'
+    end
+
     fields = path_item.keys.reject { |f| NON_OPERATION_FIELDS.include?(f) || f.start_with?('x-') }
     fields.sort_by! { |f| [ METHOD_ORDER.index(f) || METHOD_ORDER.length, f ] }
 
@@ -161,6 +184,16 @@ class MetadataExtractor
         abort "Error: openapi.json path #{path} field #{field.inspect} is a #{operation.class}, " \
               'which is neither a known non-operation field nor an operation object. If a later ' \
               'OpenAPI version added it, add it to NON_OPERATION_FIELDS with a reason.'
+      end
+
+      # An operation has to be IDENTIFIABLE. OpenAPI lets operationId be omitted,
+      # and every walker here used to step over one that was — a silent drop of a
+      # real operation, which is #925 wearing a different field.
+      op_id = operation['operationId']
+      unless op_id.is_a?(String) && !op_id.empty?
+        abort "Error: openapi.json declares #{field.upcase} #{path} with no operationId. " \
+              'Everything downstream is keyed by it, and skipping the operation would drop it ' \
+              'from the SDK in silence.'
       end
 
       yield field, operation

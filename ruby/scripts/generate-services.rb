@@ -47,8 +47,19 @@ class ServiceGenerator
 
   EMITTABLE_METHODS = begin
     verbs = JSON.parse(File.read(GENERATED_VERBS_FILE, encoding: 'UTF-8'))['verbs']
-    unless verbs.is_a?(Array) && !verbs.empty? && verbs.all? { |v| v.is_a?(String) && !v.empty? }
-      abort "Error: #{GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of strings."
+    # An HTTP method is a TOKEN, so the rule is a positive character class rather
+    # than a blankness predicate: `[a-z]+`, identical in all six loaders. Two
+    # review rounds chased "blank" across languages — Kotlin and Rust rejected a
+    # space while the others accepted it, then Ruby's ASCII `strip` accepted a
+    # non-breaking space the Unicode-aware ones rejected — and the next
+    # disagreement was guaranteed, because every language defines whitespace
+    # differently (Java's Character.isWhitespace excludes U+00A0; Rust's
+    # char::is_whitespace includes it; Ruby's String#strip is ASCII-only). A
+    # closed positive rule has no such seam: "", " ", "\u00a0", "GET" and 1 are
+    # all rejected the same way everywhere.
+    unless verbs.is_a?(Array) && !verbs.empty? && verbs.all? { |v| v.is_a?(String) && v.match?(/\A[a-z]+\z/) }
+      abort "Error: #{GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of lowercase " \
+            'ASCII method names (/\A[a-z]+\z/).'
     end
     verbs.freeze
   rescue Errno::ENOENT, JSON::ParserError => e
@@ -409,6 +420,17 @@ class ServiceGenerator
             'generator to resolve local references.'
     end
 
+    # OpenAPI 3.2's `additionalOperations` is a MAP of method to Operation, not an
+    # operation. Read as one it carries no operationId, so it would drop every
+    # operation inside it without saying so. Refuse by name until the walk learns
+    # the map shape.
+    if path_item.key?('additionalOperations')
+      abort "Error: openapi.json path #{path} declares `additionalOperations`, which OpenAPI 3.2 " \
+            'defines as a map of method to Operation. This walk reads a path-item field as a ' \
+            'single operation, so it would drop every operation inside it. Teach the walk the map ' \
+            'shape, or take the field out of the spec.'
+    end
+
     fields = path_item.keys.reject { |f| NON_OPERATION_FIELDS.include?(f) || f.start_with?('x-') }
     fields.sort_by! { |f| [ EMITTABLE_METHODS.index(f) || EMITTABLE_METHODS.length, f ] }
 
@@ -430,6 +452,16 @@ class ServiceGenerator
               "http_#{field} helper, add #{field.inspect} to spec/generated-verbs.json (read that " \
               'file first — the other five SDKs need the same helper), or take the operation out ' \
               'of the Smithy model.'
+      end
+
+      # An operation has to be IDENTIFIABLE. OpenAPI lets operationId be omitted,
+      # and every walker here used to step over one that was — a silent drop of a
+      # real operation, which is #925 wearing a different field.
+      op_id = operation['operationId']
+      unless op_id.is_a?(String) && !op_id.empty?
+        abort "Error: openapi.json declares #{field.upcase} #{path} with no operationId. " \
+              'Everything downstream is keyed by it, and skipping the operation would drop it ' \
+              'from the SDK in silence.'
       end
 
       yield field, operation

@@ -97,42 +97,38 @@ func run() throws {
     print("Found \(entitySchemaNames.count) entity schemas, \(requestSchemaNames.count) request schemas")
     print("Loaded \(retryConfigs.count) retry configurations")
 
-    // MARK: - Clean + create output directories
+    // MARK: - Render everything, then clean, then write
+
+    // NOTHING IS DELETED UNTIL EVERY FILE'S CONTENT EXISTS.
+    //
+    // The invariant is not "parse before delete": parsing is only one thing that
+    // can refuse, and any code path able to fail after a delete is a data-loss
+    // path regardless of what it is called. This generator used to remove
+    // Models/ and Services/ and then emit, so a failure anywhere in emission
+    // destroyed the committed tree. Rendering into memory first retires the
+    // class rather than hoisting one named failure — the same shape
+    // rust/generator/src/main.rs uses and the Kotlin generator now uses.
 
     let modelsDir = resolvedOutput + "/Models"
     let servicesDir = resolvedOutput + "/Services"
 
-    // Remove stale generated files before writing
-    for dir in [modelsDir, servicesDir] {
-        if fm.fileExists(atPath: dir) {
-            try fm.removeItem(atPath: dir)
-        }
-    }
-
-    try fm.createDirectory(atPath: modelsDir, withIntermediateDirectories: true)
-    try fm.createDirectory(atPath: servicesDir, withIntermediateDirectories: true)
-
-    // MARK: - Emit entity models
+    // path -> content, in emission order.
+    var rendered: [(path: String, code: String)] = []
 
     var entityCount = 0
     for schemaName in entitySchemaNames {
         let code = emitEntityModel(schemaName: schemaName, schemas: schemas)
         if code.isEmpty { continue }
-
         let typeName = typeAliases[schemaName]?.name ?? schemaName
-        let filePath = modelsDir + "/\(typeName).swift"
-        try code.write(toFile: filePath, atomically: true, encoding: .utf8)
+        rendered.append((modelsDir + "/\(typeName).swift", code))
         entityCount += 1
     }
     print("Generated \(entityCount) entity models")
-
-    // MARK: - Emit request models
 
     var requestCount = 0
     for schemaName in requestSchemaNames {
         let code = emitRequestModel(schemaName: schemaName, schemas: schemas)
         if code.isEmpty { continue }
-
         var typeName = schemaName
         if typeName.hasSuffix("Content") {
             typeName = String(typeName.dropLast("Content".count))
@@ -140,37 +136,22 @@ func run() throws {
         if !typeName.hasSuffix("Request") && !typeName.hasSuffix("Payload") {
             typeName += "Request"
         }
-
-        let filePath = modelsDir + "/\(typeName).swift"
-        try code.write(toFile: filePath, atomically: true, encoding: .utf8)
+        rendered.append((modelsDir + "/\(typeName).swift", code))
         requestCount += 1
     }
     print("Generated \(requestCount) request models")
 
-    // MARK: - Emit service files
-
     for (_, service) in services.sorted(by: { $0.key < $1.key }) {
-        let code = emitService(service, schemas: schemas)
-        let filePath = servicesDir + "/\(service.className).swift"
-        try code.write(toFile: filePath, atomically: true, encoding: .utf8)
+        rendered.append((servicesDir + "/\(service.className).swift", emitService(service, schemas: schemas)))
         print("Generated \(service.className) (\(service.operations.count) operations)")
     }
 
-    // MARK: - Emit AccountClient+Services.swift
-
-    let extensionCode = emitAccountClientExtension(services: services)
-    let extensionPath = resolvedOutput + "/AccountClient+Services.swift"
-    try extensionCode.write(toFile: extensionPath, atomically: true, encoding: .utf8)
+    rendered.append((resolvedOutput + "/AccountClient+Services.swift",
+                     emitAccountClientExtension(services: services)))
     print("Generated AccountClient+Services.swift")
 
-    // MARK: - Emit Metadata.swift
-
-    let metadataCode = emitMetadata(configs: retryConfigs)
-    let metadataPath = resolvedOutput + "/Metadata.swift"
-    try metadataCode.write(toFile: metadataPath, atomically: true, encoding: .utf8)
+    rendered.append((resolvedOutput + "/Metadata.swift", emitMetadata(configs: retryConfigs)))
     print("Generated Metadata.swift")
-
-    // MARK: - Emit queryString helper
 
     let queryStringHelper = """
     // @generated from OpenAPI spec \u{2014} do not edit directly
@@ -184,8 +165,18 @@ func run() throws {
         return "?" + (components.query ?? "")
     }
     """
-    let queryStringPath = resolvedOutput + "/QueryString.swift"
-    try queryStringHelper.write(toFile: queryStringPath, atomically: true, encoding: .utf8)
+    rendered.append((resolvedOutput + "/QueryString.swift", queryStringHelper))
+
+    // Everything is rendered. ONLY NOW is anything destroyed.
+    for dir in [modelsDir, servicesDir] where fm.fileExists(atPath: dir) {
+        try fm.removeItem(atPath: dir)
+    }
+    try fm.createDirectory(atPath: modelsDir, withIntermediateDirectories: true)
+    try fm.createDirectory(atPath: servicesDir, withIntermediateDirectories: true)
+
+    for (path, code) in rendered {
+        try code.write(toFile: path, atomically: true, encoding: .utf8)
+    }
 
     // MARK: - Summary
 

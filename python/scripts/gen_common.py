@@ -48,6 +48,8 @@ NON_OPERATION_FIELDS = frozenset({"summary", "description", "servers", "paramete
 
 # The self-test points this at a crafted declaration to prove the bound is sourced
 # from the shared file rather than a private literal; production runs never set it.
+VERB_PATTERN = re.compile(r"[a-z]+")
+
 GENERATED_VERBS_FILE = Path(
     os.environ.get(
         "BASECAMP_GENERATED_VERBS",
@@ -69,9 +71,19 @@ def generated_verbs() -> tuple[str, ...]:
             f"Error: cannot read the generated-verb declaration {GENERATED_VERBS_FILE}: {error}"
         ) from error
     verbs = declaration.get("verbs")
-    if not isinstance(verbs, list) or not verbs or not all(isinstance(v, str) and v for v in verbs):
+    # An HTTP method is a TOKEN, so the rule is a positive character class rather
+    # than a blankness predicate: ``[a-z]+``, identical in all six loaders. Two
+    # review rounds chased "blank" across languages and the next disagreement was
+    # guaranteed, because every language defines whitespace differently. A closed
+    # positive rule has no such seam.
+    if (
+        not isinstance(verbs, list)
+        or not verbs
+        or not all(isinstance(v, str) and VERB_PATTERN.fullmatch(v) for v in verbs)
+    ):
         raise SystemExit(
-            f"Error: {GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of strings."
+            f"Error: {GENERATED_VERBS_FILE} must declare a non-empty `verbs` array of lowercase "
+            "ASCII method names (/[a-z]+/)."
         )
     return tuple(verbs)
 
@@ -107,6 +119,18 @@ def iter_operations(
             "behind it from the SDK."
         )
 
+    # OpenAPI 3.2's ``additionalOperations`` is a MAP of method to Operation, not
+    # an operation. Read as one it carries no operationId, so a verb-agnostic
+    # caller would drop every operation inside it without saying so. Refuse by
+    # name until the walk learns the map shape.
+    if "additionalOperations" in path_item:
+        raise SystemExit(
+            f"Error: openapi.json path {path} declares `additionalOperations`, which OpenAPI 3.2 "
+            "defines as a map of method to Operation. This walk reads a path-item field as a "
+            "single operation, so it would drop every operation inside it. Teach the walk the map "
+            "shape, or take the field out of the spec."
+        )
+
     fields = [
         field
         for field in path_item
@@ -133,5 +157,16 @@ def iter_operations(
                 f"{field} helper and add {field!r} to spec/generated-verbs.json (read that file "
                 "first — the other five SDKs need the same helper), or take the operation out of "
                 "the Smithy model."
+            )
+        # An operation has to be IDENTIFIABLE. OpenAPI lets operationId be
+        # omitted, and every walker here used to step over one that was — a
+        # silent drop of a real operation, which is basecamp-sdk#925 wearing a
+        # different field.
+        op_id = operation.get("operationId")
+        if not isinstance(op_id, str) or not op_id:
+            raise SystemExit(
+                f"Error: openapi.json declares {field.upper()} {path} with no operationId. "
+                "Everything downstream is keyed by it, and skipping the operation would drop it "
+                "from the SDK in silence."
             )
         yield field, operation

@@ -29,9 +29,16 @@ func loadGeneratedVerbs(path: String) -> [String] {
         let declaration = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
         let verbs = declaration["verbs"] as? [String],
         !verbs.isEmpty,
-        verbs.allSatisfy({ !$0.isEmpty })
+        // A positive character class rather than a blankness predicate. An HTTP
+        // method is a token, so `[a-z]+` says what a verb IS and is written the
+        // same way in all six loaders; a "not blank" rule would keep diverging,
+        // because every language defines whitespace differently.
+        verbs.allSatisfy({ $0.allSatisfy { $0.isASCII && $0.isLowercase && $0.isLetter } })
     else {
-        failGeneration("Error: \(path) must declare a non-empty `verbs` array of strings.")
+        failGeneration(
+            "Error: \(path) must declare a non-empty `verbs` array of lowercase ASCII method "
+                + "names (/[a-z]+/)."
+        )
     }
     return verbs
 }
@@ -62,6 +69,19 @@ func operationsOf(
         )
     }
 
+    // OpenAPI 3.2's `additionalOperations` is a MAP of method to Operation, not
+    // an operation. Read as one it carries no operationId, so a verb-agnostic
+    // caller would drop every operation inside it without saying so. Refuse by
+    // name until the walk learns the map shape.
+    if item["additionalOperations"] != nil {
+        failGeneration(
+            "Error: openapi.json path \(path) declares `additionalOperations`, which OpenAPI 3.2 "
+                + "defines as a map of method to Operation. This walk reads a path-item field as a "
+                + "single operation, so it would drop every operation inside it. Teach the walk the "
+                + "map shape, or take the field out of the spec."
+        )
+    }
+
     let rank = { (field: String) -> Int in order.firstIndex(of: field) ?? order.count }
     let fields = item.keys
         .filter { !nonOperationPathItemFields.contains($0) && !$0.hasPrefix("x-") }
@@ -85,6 +105,19 @@ func operationsOf(
                     + "the runtime a \(field) helper and add \"\(field)\" to "
                     + "spec/generated-verbs.json (read that file first — the other five SDKs need "
                     + "the same helper), or take the operation out of the Smithy model."
+            )
+        }
+        // An operation has to be IDENTIFIABLE. OpenAPI lets operationId be
+        // omitted, and every walker here used to step over one that was — a
+        // silent drop of a real operation, which is the whole of #925 wearing a
+        // different field. Every operation in this spec carries one, and
+        // check-operation-assignment-parity already refuses a spec without.
+        let operationId = operation["operationId"] as? String
+        if operationId == nil || operationId!.isEmpty {
+            failGeneration(
+                "Error: openapi.json declares \(field.uppercased()) \(path) with no operationId. "
+                    + "The generator names every emitted method from it, and skipping the operation "
+                    + "would drop it from the client in silence."
             )
         }
         return (field, operation)

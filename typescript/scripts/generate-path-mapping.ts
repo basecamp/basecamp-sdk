@@ -13,6 +13,8 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { operationsOf } from "./path-items.js";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Use openapi-stripped.json - same source as extract-metadata.ts
@@ -51,11 +53,14 @@ function parseOpenAPI(specPath: string): PathEntry[] {
   const spec: OpenAPISpec = JSON.parse(readFileSync(specPath, "utf-8"));
   const entries: PathEntry[] = [];
 
+  // Through the shared walker, like every other path-item walk. Its own loop
+  // skipped `parameters` by name and silently `continue`d past an operation with
+  // no operationId, so a field it did not recognise — OpenAPI 3.2's
+  // `additionalOperations`, a later non-operation member — was dropped from
+  // PATH_TO_OPERATION without a word. Verb-agnostic on purpose: this table maps
+  // method and path to operationId and can represent any method.
   for (const [path, methods] of Object.entries(spec.paths)) {
-    for (const [method, details] of Object.entries(methods)) {
-      if (method === "parameters") continue; // Skip shared parameters
-      if (!details.operationId) continue;
-
+    for (const [method, details] of operationsOf<{ operationId: string }>(path, methods)) {
       // Add {accountId} prefix back - it was stripped by strip-account-id.ts
       const fullPath = `/{accountId}${path}`;
 

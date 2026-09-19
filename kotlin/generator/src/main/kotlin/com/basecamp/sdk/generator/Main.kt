@@ -59,86 +59,95 @@ fun main(args: Array<String>) {
     val modelsDir = File(outputBase, "models")
     val servicesDir = File(outputBase, "services")
 
-    modelsDir.mkdirs()
-    servicesDir.mkdirs()
-
-    // Clean generated directories before writing to remove stale files
-    modelsDir.listFiles { f -> f.extension == "kt" }?.forEach { it.delete() }
-    servicesDir.listFiles { f -> f.extension == "kt" }?.forEach { it.delete() }
-    File(outputBase, "Metadata.kt").delete()
-    File(outputBase, "ServiceAccessors.kt").delete()
-
-    // Parse
+    // NOTHING IS DELETED UNTIL EVERY FILE'S CONTENT EXISTS.
+    //
+    // The invariant is not "parse before delete" — that was the first repair and
+    // it left the bug behind itself. It is that ANY code path able to refuse must
+    // run before anything is destroyed, and parsing is only one such path:
+    // semantic validation is another, and every `!!` on a field that might be
+    // absent is a third. MetadataEmitter.parse dereferences required retry fields
+    // with `!!` and used to run after the clean, so a malformed retry entry threw
+    // with the committed tree already erased.
+    //
+    // Enumerating those paths and hoisting each one is a list that grows by one
+    // per review round. Rendering into memory first is the shape that retires the
+    // class: every emitter already returns a String, so the whole output can exist
+    // before the first delete, and then no failure ANYWHERE in generation — named
+    // or not, present or added next year — can destroy the committed tree. This is
+    // the shape rust/generator/src/main.rs already uses (render to a
+    // BTreeMap<PathBuf, String>, then write).
     val api = OpenApiParser(spec)
     val parser = OperationParser(api, PathItems.generatedVerbs(verbsPath))
     val services = parser.groupOperations()
+    val optionsParamOrder = readOptionsParamOrder(File(optionsOrderPath))
 
-    // 1. Generate entity models
+    // file -> content, in emission order.
+    val rendered = LinkedHashMap<File, String>()
+
+    // 1. Entity models
     val modelEmitter = ModelEmitter(api)
-    var modelCount = 0
     for ((schemaName, typeName) in TYPE_ALIASES) {
-        val code = modelEmitter.generateModel(schemaName, typeName)
-        if (code != null) {
-            File(modelsDir, "$typeName.kt").writeText(code)
-            modelCount++
-            println("  model: $typeName.kt")
-        }
+        val code = modelEmitter.generateModel(schemaName, typeName) ?: continue
+        rendered[File(modelsDir, "$typeName.kt")] = code
+        println("  model: $typeName.kt")
     }
 
     // Also generate supporting model types (nested references not in TYPE_ALIASES)
     val supportingModels = findSupportingModels(api)
     for ((schemaName, typeName) in supportingModels) {
         if (typeName in TYPE_ALIASES.values) continue
-        val code = modelEmitter.generateModel(schemaName, typeName)
-        if (code != null) {
-            File(modelsDir, "$typeName.kt").writeText(code)
-            modelCount++
-            println("  model: $typeName.kt (supporting)")
-        }
+        val code = modelEmitter.generateModel(schemaName, typeName) ?: continue
+        rendered[File(modelsDir, "$typeName.kt")] = code
+        println("  model: $typeName.kt (supporting)")
     }
-
+    val modelCount = rendered.size
     println("Generated $modelCount models")
 
-    // 2. Generate service classes
+    // 2. Service classes
     val serviceEmitter = ServiceEmitter(api)
-    var serviceCount = 0
     var opCount = 0
     for ((_, service) in services) {
-        val code = serviceEmitter.generateService(service)
         val fileName = "${service.name.toKebabCase()}.kt"
-        File(servicesDir, fileName).writeText(code)
-        serviceCount++
+        rendered[File(servicesDir, fileName)] = serviceEmitter.generateService(service)
         opCount += service.operations.size
         println("  service: $fileName (${service.operations.size} operations)")
     }
-    println("Generated $serviceCount services with $opCount operations")
+    println("Generated ${services.size} services with $opCount operations")
 
-    // 3. Generate body/options types
-    val typeEmitter = TypeEmitter(readOptionsParamOrder(File(optionsOrderPath)))
-    val typesCode = typeEmitter.generateTypes(services)
-    File(servicesDir, "Types.kt").writeText(typesCode)
+    // 3. Body/options types
+    val typeEmitter = TypeEmitter(optionsParamOrder)
+    rendered[File(servicesDir, "Types.kt")] = typeEmitter.generateTypes(services)
     println("  types: Types.kt")
 
     // 3b. Re-pin the options-class constructor order. Written into the output
     // tree so a regenerate-and-diff drift gate compares it like any other
     // generated artifact; read (above) from the committed copy, which is the
     // shipped API's compatibility baseline.
-    val orderFile = File(outputBase, OPTIONS_PARAM_ORDER_FILENAME)
-    orderFile.writeText(renderOptionsParamOrder(typeEmitter.emittedParamOrder()))
+    rendered[File(outputBase, OPTIONS_PARAM_ORDER_FILENAME)] =
+        renderOptionsParamOrder(typeEmitter.emittedParamOrder())
     println("  order: $OPTIONS_PARAM_ORDER_FILENAME (${typeEmitter.emittedParamOrder().size} options classes)")
 
-    // 4. Generate Metadata.kt
+    // 4. Metadata.kt — the one that used to throw after the clean.
     val metadataEmitter = MetadataEmitter()
     val configs = metadataEmitter.parse(behaviorModel)
-    val metadataCode = metadataEmitter.generate(configs)
-    File(outputBase, "Metadata.kt").writeText(metadataCode)
+    rendered[File(outputBase, "Metadata.kt")] = metadataEmitter.generate(configs)
     println("  metadata: Metadata.kt (${configs.size} operations)")
 
-    // 5. Generate ServiceAccessors.kt
-    val accessorEmitter = ClientAccessorEmitter()
-    val accessorCode = accessorEmitter.generate(services)
-    File(outputBase, "ServiceAccessors.kt").writeText(accessorCode)
+    // 5. ServiceAccessors.kt
+    rendered[File(outputBase, "ServiceAccessors.kt")] = ClientAccessorEmitter().generate(services)
     println("  accessors: ServiceAccessors.kt (${services.size} services)")
+
+    // Everything is rendered. ONLY NOW is anything destroyed.
+    modelsDir.mkdirs()
+    servicesDir.mkdirs()
+    modelsDir.listFiles { f -> f.extension == "kt" }?.forEach { it.delete() }
+    servicesDir.listFiles { f -> f.extension == "kt" }?.forEach { it.delete() }
+    File(outputBase, "Metadata.kt").delete()
+    File(outputBase, "ServiceAccessors.kt").delete()
+
+    for ((file, code) in rendered) {
+        file.writeText(code)
+    }
 
     println("\nDone! Generated to: ${outputBase.absolutePath}")
 }

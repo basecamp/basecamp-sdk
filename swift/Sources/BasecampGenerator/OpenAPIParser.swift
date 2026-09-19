@@ -75,14 +75,13 @@ func parseAllOperations(
     var operations: [ParsedOperation] = []
 
     for path in paths.keys.sorted() {
-        let pathItem = paths[path]!
-        guard let pathDict = pathItem as? [String: Any] else { continue }
-
+        // `operationsOf` validates the path item itself — a malformed one is a
+        // generation error, not an entry to step over. Guarding here with a
+        // `continue` would silently drop it in the one walker that is supposed
+        // to be total.
         for (method, operation) in operationsOf(
-            path: path, pathItem: pathDict, order: emittableVerbs, emittable: emittableVerbs
+            path: path, pathItem: paths[path]!, order: emittableVerbs, emittable: emittableVerbs
         ) {
-            guard operation["operationId"] is String else { continue }
-
             guard let parsed = parseOperation(
                 path: path, method: method, operation: operation, schemas: schemas
             ) else {

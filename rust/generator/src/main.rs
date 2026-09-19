@@ -68,21 +68,35 @@ fn run() -> Result<(), String> {
     // six per-language capabilities.
     let verbs_path = verbs_path.unwrap_or_else(|| root.join("spec/generated-verbs.json"));
     let verbs = read_json(&verbs_path)?;
-    let emittable_verbs: Vec<String> = verbs["verbs"]
+    // Every entry must be a STRING matching `[a-z]+`. Filtering invalid entries
+    // out would let `["get", 1]` read as `["get"]` here while the other loaders
+    // reject it. The shape rule is a positive character class rather than a
+    // blankness predicate: an HTTP method is a token, so `[a-z]+` says what a
+    // verb IS and is written the same way in all six loaders, where "not blank"
+    // kept diverging on each language's whitespace definition.
+    let declared = verbs["verbs"]
         .as_array()
-        .map(|verbs| {
-            verbs
-                .iter()
-                .filter_map(|verb| verb.as_str().map(str::to_string))
-                .collect()
-        })
-        .filter(|verbs: &Vec<String>| !verbs.is_empty())
-        .ok_or_else(|| {
-            format!(
-                "{} must declare a non-empty `verbs` array of strings",
-                verbs_path.display()
-            )
-        })?;
+        .ok_or_else(|| format!("{} must declare a `verbs` array", verbs_path.display()))?;
+    let mut emittable_verbs: Vec<String> = Vec::with_capacity(declared.len());
+    for verb in declared {
+        let verb = verb
+            .as_str()
+            .filter(|verb| !verb.is_empty() && verb.chars().all(|c| c.is_ascii_lowercase()))
+            .ok_or_else(|| {
+                format!(
+                    "{} must declare a non-empty `verbs` array of lowercase ASCII method names \
+                     (/[a-z]+/); got {verb}",
+                    verbs_path.display()
+                )
+            })?;
+        emittable_verbs.push(verb.to_string());
+    }
+    if emittable_verbs.is_empty() {
+        return Err(format!(
+            "{} must declare a non-empty `verbs` array",
+            verbs_path.display()
+        ));
+    }
     let model = Model::build(&openapi, &behavior, &naming, &emittable_verbs)?;
     let files = render(&model)?;
 

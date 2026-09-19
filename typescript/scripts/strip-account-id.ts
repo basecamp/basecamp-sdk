@@ -12,6 +12,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { operationsOf } from "./path-items.js";
 
 interface OpenAPISpec {
   openapi: string;
@@ -88,6 +89,24 @@ function main() {
   }
 
   const spec: OpenAPISpec = JSON.parse(fs.readFileSync(inputPath, "utf-8"));
+
+  // VALIDATE BEFORE THE FIRST WRITE. This is step one of `npm run generate`, and
+  // its output is a committed artifact — so a path-item refusal raised by the
+  // extractors in steps four and five arrived with `src/generated` already
+  // rewritten. Walking every path item here, through the same shared helper
+  // those extractors use, moves the refusal in front of the first overwrite.
+  // Overwriting is as destructive as deleting, which is why this is the same fix
+  // the Kotlin generator got, in a second place.
+  //
+  // `paths` only, which is the surface this pipeline consumes: every downstream
+  // step walks `spec.paths`, so validating `webhooks` here would refuse over
+  // something no generated artifact is built from. No emission bound either —
+  // that belongs to `generate-services.ts`, which applies it before its own
+  // first write.
+  for (const [pathKey, pathItem] of Object.entries(spec.paths)) {
+    operationsOf(pathKey, pathItem);
+  }
+
   const stripped = stripAccountId(spec);
 
   fs.writeFileSync(outputPath, JSON.stringify(stripped, null, 2));
