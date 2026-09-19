@@ -25,7 +25,14 @@ if [[ ! -f "$OPENAPI_FILE" ]]; then
     exit 1
 fi
 
-# Generate url-routes using jq
+# Generate url-routes using jq.
+#
+# Into a TEMPORARY file, then moved into place: the shell truncates a redirect
+# target before the command runs, so writing straight at url-routes.json would
+# empty it and only then let the filter refuse, turning a fail-closed refusal
+# into data loss. The trap removes the temporary file on a refusal, so a failed
+# run leaves neither a truncated artifact nor a stale fragment beside it.
+trap 'rm -f "${OUTPUT_FILE}.tmp"' EXIT
 jq '
 # A $ref path item points at operations this filter cannot see without
 # resolving the reference. Skipping it would hand back exactly the silent

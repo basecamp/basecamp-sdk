@@ -181,7 +181,11 @@ run_scenario() {
   # check IS its assertion, and it is the strongest one here, since reverting the
   # render-then-clean ordering is exactly what makes it report destroyed
   # sentinels. Every other scenario names the offending path or operation.
-  if [[ -n "$expect_verb" ]] && { ! grep -qi "$expect_verb" "$log" || ! grep -q "$expect_name" "$log"; }; then
+  # FIXED-STRING matching. An expectation is a literal from a message, not a
+  # pattern, and `$ref` read as a regex would have meant something else entirely
+  # — the kind of near-miss that makes an assertion quietly weaker than it reads.
+  if [[ -n "$expect_verb" ]] \
+     && { ! grep -qiF "$expect_verb" "$log" || ! grep -qF "$expect_name" "$log"; }; then
     echo "FAIL [$LANGUAGE] $description: the failure message does not name the offending operation." >&2
     echo "  Expected $expect_verb and $expect_name in the output; got:" >&2
     sed 's/^/    /' "$log" >&2

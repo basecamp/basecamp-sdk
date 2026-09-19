@@ -589,8 +589,17 @@ ts-clean:
 # Generate Ruby types and metadata from OpenAPI
 rb-generate:
 	@echo "==> Generating Ruby SDK types and metadata..."
-	cd ruby && ruby scripts/generate-metadata.rb > lib/basecamp/generated/metadata.json
-	cd ruby && ruby scripts/generate-types.rb > lib/basecamp/generated/types.rb
+# Redirected to a TEMPORARY file and moved into place, not straight at the
+# committed artifact. The shell truncates a redirect target before the command
+# runs, so `> metadata.json` emptied the committed file and only then let the
+# extractor refuse — turning every fail-closed refusal in that walker into data
+# loss, a layer below the generator's own ordering.
+	cd ruby && ruby scripts/generate-metadata.rb > lib/basecamp/generated/metadata.json.tmp \
+	  && mv lib/basecamp/generated/metadata.json.tmp lib/basecamp/generated/metadata.json \
+	  || { rm -f ruby/lib/basecamp/generated/metadata.json.tmp; exit 1; }
+	cd ruby && ruby scripts/generate-types.rb > lib/basecamp/generated/types.rb.tmp \
+	  && mv lib/basecamp/generated/types.rb.tmp lib/basecamp/generated/types.rb \
+	  || { rm -f ruby/lib/basecamp/generated/types.rb.tmp; exit 1; }
 	@echo "Generated lib/basecamp/generated/metadata.json and types.rb"
 
 # Generate Ruby services from OpenAPI
