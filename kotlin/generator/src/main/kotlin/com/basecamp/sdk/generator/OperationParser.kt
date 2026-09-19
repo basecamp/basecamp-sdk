@@ -311,7 +311,7 @@ class OperationParser(
 
         for ((path, pathItem) in api.paths) {
             for ((method, operation) in PathItems.operationsOf(
-                path, pathItem.jsonObject, emittableVerbs, emittableVerbs
+                path, pathItem, emittableVerbs, emittableVerbs
             )) {
                 val operationId = operation["operationId"]!!.jsonPrimitive.content
                 val tag = operation["tags"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content ?: "Untagged"

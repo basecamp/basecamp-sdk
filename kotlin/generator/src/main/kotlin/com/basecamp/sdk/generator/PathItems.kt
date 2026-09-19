@@ -71,10 +71,19 @@ object PathItems {
      */
     fun operationsOf(
         path: String,
-        pathItem: JsonObject,
+        element: JsonElement,
         order: List<String>,
         emittable: List<String>?,
     ): List<Pair<String, JsonObject>> {
+        // The cast happens HERE, not at the call site. Calling `.jsonObject` on
+        // the way in threw a bare kotlinx type exception that named neither the
+        // path nor the problem, so a malformed path item failed with a generic
+        // message where the other five generators name it — and a test asserting
+        // only on exit status could not tell the two apart.
+        val pathItem = element as? JsonObject
+            ?: error(
+                "openapi.json path $path is a ${element::class.simpleName}, not a path item object."
+            )
         // A `$ref` path item points at operations this walk cannot see without
         // resolving the reference. Skipping it is the same silent under-count
         // the exclusion walk exists to prevent, so refuse instead.

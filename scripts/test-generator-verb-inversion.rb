@@ -32,6 +32,14 @@
 # their own language jobs, since their drift checks read a spec that carries only
 # emitted verbs and so can never see them regress.
 #
+# EVERY CASE ASSERTS ON CONTENT, never merely on an exit status. A test too weak
+# to tell the fixed code from the broken code is the only thing a test is for,
+# and the sibling harness was caught at that twice — an unseeded output directory
+# made "nothing was destroyed" vacuous, and empty expectations made "it refused"
+# vacuous. Swept this file for the same shape: every failure case asserts the
+# message names the offending field, and the four passing cases assert on the
+# artifact produced (files emitted, the route map's contents), not on exit 0.
+#
 # Stdlib only. Wired into `make check` and the spec-gates CI job.
 
 require "json"

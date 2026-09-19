@@ -167,8 +167,20 @@ run_scenario() {
     scenario_failed=1
   fi
 
-  # An empty expectation means "fail somehow" — used by the malformed-behavior
-  # scenario, whose message is a library exception this repo does not word.
+  # THE RULE FOR THIS FILE: a refusal test asserts on the refusal's CONTENT,
+  # never only that something exited non-zero. An assertion too weak to tell the
+  # fixed code from the broken code is the only thing a test is for, and this
+  # harness has been caught at it twice — an unseeded output directory made
+  # "nothing was destroyed" vacuous (clearing nothing leaves nothing), and empty
+  # expectations here made "it refused" vacuous, letting Kotlin pass on a generic
+  # type exception that named neither the path nor the problem.
+  #
+  # ONE scenario passes empty expectations, and it is the malformed behavior
+  # model: its failure is a kotlinx exception this repo does not word, so there
+  # is no message of ours to match. It is not assertion-free — the seeded-tree
+  # check IS its assertion, and it is the strongest one here, since reverting the
+  # render-then-clean ordering is exactly what makes it report destroyed
+  # sentinels. Every other scenario names the offending path or operation.
   if [[ -n "$expect_verb" ]] && { ! grep -qi "$expect_verb" "$log" || ! grep -q "$expect_name" "$log"; }; then
     echo "FAIL [$LANGUAGE] $description: the failure message does not name the offending operation." >&2
     echo "  Expected $expect_verb and $expect_name in the output; got:" >&2
@@ -253,12 +265,13 @@ run_scenario "an operationId that is not a string is refused" \
 jq --arg p "$PATH_KEY" '.paths[$p] = {"$ref": "#/components/pathItems/Project"}' \
   "$ROOT_DIR/openapi.json" > "$TMP/openapi-ref.json"
 run_scenario "a \$ref path item is refused rather than read as empty" \
-  "$TMP/openapi-ref.json" "$ROOT_DIR/spec/generated-verbs.json" "ref" "$PATH_KEY"
+  "$TMP/openapi-ref.json" "$ROOT_DIR/spec/generated-verbs.json" '$ref' "$PATH_KEY"
 
 jq --arg p "$PATH_KEY" '.paths[$p] = "not a path item"' \
   "$ROOT_DIR/openapi.json" > "$TMP/openapi-scalar-item.json"
-run_scenario "a path item that is not an object is refused" \
-  "$TMP/openapi-scalar-item.json" "$ROOT_DIR/spec/generated-verbs.json" "" ""
+run_scenario "a path item that is not an object is refused BY NAME" \
+  "$TMP/openapi-scalar-item.json" "$ROOT_DIR/spec/generated-verbs.json" \
+  "path item" "$PATH_KEY"
 
 jq --arg p "$PATH_KEY" '.paths[$p].frobnicate = "not an operation"' \
   "$ROOT_DIR/openapi.json" > "$TMP/openapi-scalar-field.json"

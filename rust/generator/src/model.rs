@@ -224,7 +224,9 @@ fn request_shapes(
         .as_object()
         .ok_or("openapi.json has no paths")?
     {
-        for (_, operation) in item.as_object().ok_or(format!("{path} is not an object"))? {
+        for (_, operation) in item.as_object().ok_or(format!(
+            "openapi.json path {path} is not a path item object"
+        ))? {
             if let Some(content) = operation["requestBody"]["content"].as_object() {
                 for media in content.values() {
                     if let Some(reference) = media["schema"]["$ref"].as_str() {
@@ -478,7 +480,13 @@ fn operations_of<'a>(
     item: &'a Value,
     emittable_verbs: &[String],
 ) -> Result<Vec<(&'a String, &'a Value)>, String> {
-    let item = item.as_object().ok_or(format!("{path} is not an object"))?;
+    // Named as a PATH ITEM, not merely "not an object": the message is what a
+    // reader acts on, and the other five walkers say which kind of object was
+    // expected. A refusal test that could only assert a non-zero exit would not
+    // have seen the difference, which is why that test asserts the wording.
+    let item = item.as_object().ok_or(format!(
+        "openapi.json path {path} is not a path item object"
+    ))?;
     let mut found = Vec::new();
     for (http_method, operation) in item {
         if NON_OPERATION_FIELDS.contains(&http_method.as_str()) || http_method.starts_with("x-") {
