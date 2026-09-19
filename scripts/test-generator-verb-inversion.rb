@@ -473,6 +473,15 @@ check("a field with no operationId is named rather than reaching the route table
   end
 end
 
+check("a scalar PATH ITEM is named rather than erroring obliquely") do
+  with_files(spec({ "/{accountId}/widgets.json" => "not a path item" })) do |dir, spec_path, _b, _v|
+    out = File.join(dir, "url-routes.json")
+    status, output = run([File.join(ROOT, "scripts/generate-url-routes"), spec_path, out])
+    [status != 0 && output.include?("/{accountId}/widgets.json") && output.include?("not objects"),
+     "exit #{status}: #{output}"]
+  end
+end
+
 check("a scalar path-item field is named rather than erroring obliquely") do
   with_files(spec({ "/{accountId}/widgets.json" => {
     "get" => operation("ListWidgets"), "frobnicate" => "not an object"

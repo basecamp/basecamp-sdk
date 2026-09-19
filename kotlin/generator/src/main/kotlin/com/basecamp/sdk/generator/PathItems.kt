@@ -114,7 +114,17 @@ object PathItems {
                             "add it to NON_OPERATION_FIELDS with a reason."
                     )
                 if (emittable != null && field !in emittable) {
-                    val opId = operation["operationId"]?.jsonPrimitive?.content ?: "(no operationId)"
+                    // The SAME string-only read as the identity check below, and
+                    // for the same reason one step earlier: `jsonPrimitive` throws
+                    // on an object or an array, so an unsupported verb carrying a
+                    // structured operationId died with a generic serialization
+                    // exception instead of a refusal naming the method and path.
+                    // A diagnostic that can throw while building its own message
+                    // is not a diagnostic.
+                    val opId = (operation["operationId"] as? JsonPrimitive)
+                        ?.takeIf { it.isString }
+                        ?.content
+                        ?: "(no operationId)"
                     error(
                         "openapi.json declares ${field.uppercase()} $path ($opId), and this " +
                             "generator emits only ${emittable.joinToString("/") { it.uppercase() }}. " +

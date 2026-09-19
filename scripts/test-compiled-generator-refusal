@@ -260,6 +260,17 @@ run_scenario "an operationId that is not a string is refused" \
   "$TMP/openapi-numeric-id.json" "$ROOT_DIR/spec/generated-verbs.json" \
   "operationId" "$PATH_KEY"
 
+# Scenario 5b: an unsupported verb whose operationId is an OBJECT. The refusal
+# message reads the id to name the operation, so a diagnostic that parses it
+# unsafely throws while building its own message and names nothing — which is
+# what Kotlin did, because `jsonPrimitive` throws on an object where the
+# string-only read two lines below does not.
+jq --arg p "$PATH_KEY" \
+  '.paths[$p].head = (.paths[$p].get | .operationId = {"nested": true}) | del(.paths[$p].get)' \
+  "$ROOT_DIR/openapi.json" > "$TMP/openapi-object-id.json"
+run_scenario "an unsupported verb with a structured operationId is still named" \
+  "$TMP/openapi-object-id.json" "$ROOT_DIR/spec/generated-verbs.json" "HEAD" "$PATH_KEY"
+
 # Scenarios 6-8: the path-item refusal branches. Each of the four compiled
 # generators implements these separately, and no drift check ever sees a
 # malformed path item — the committed spec has none — so all four could regress

@@ -37,6 +37,21 @@ jq '
 # A $ref path item points at operations this filter cannot see without
 # resolving the reference. Skipping it would hand back exactly the silent
 # under-count the exclusion walk below exists to prevent, so refuse instead.
+# A path item has to BE an object before anything asks what it contains. Both
+# `has` and `to_entries` throw a jq type error on a scalar, so a malformed path
+# item died with "Cannot check whether string has a string key" and named
+# nothing -- where the six generators name the path. This runs before every other
+# guard for that reason: a refusal that cannot say which path it is about is not
+# the refusal this filter claims to make.
+#
+# (No apostrophes in this filter: the jq program is a single-quoted shell string,
+# and one would end it.)
+def refuse_non_object_path_items:
+  [.paths | to_entries[] | select((.value | type) != "object") | "\(.key) (\(.value | type))"] as $bad |
+  if ($bad | length) > 0 then
+    error("openapi.json path items are not objects: \($bad | join(", ")). A path item must be an object; this filter cannot read operations out of anything else.")
+  else . end;
+
 def refuse_path_item_refs:
   [.paths | to_entries[] | select(.value | has("$ref")) | .key] as $refs |
   if ($refs | length) > 0 then
@@ -91,6 +106,7 @@ def param_type:
   else "string"
   end;
 
+refuse_non_object_path_items |
 refuse_path_item_refs |
 refuse_additional_operations |
 refuse_unreadable_operations |
