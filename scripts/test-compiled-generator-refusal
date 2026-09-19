@@ -283,7 +283,54 @@ run_scenario "a path-item field that is not an operation object is named" \
   "$TMP/openapi-scalar-field.json" "$ROOT_DIR/spec/generated-verbs.json" \
   "frobnicate" "$PATH_KEY"
 
-# Scenario 9: a malformed behavior model, and the ONLY scenario whose failure
+# Scenario 9 (TypeScript only): the PIPELINE preflight.
+#
+# The other scenarios drive `generate-services.ts`, which validates before it
+# writes. `npm run generate` is a different animal: five steps in five processes,
+# the first of which overwrites committed artifacts, with the refusing walk not
+# reached until step four. That is the Kotlin data-loss bug in TypeScript —
+# Kotlin deleted before it could refuse, this overwrites before it can — and the
+# fix is a preflight hoisted in front of the chain, because rendering in memory
+# is not available across five processes one of which is a third-party binary.
+#
+# WHAT THIS SCENARIO COVERS AND WHAT IT DOES NOT, stated rather than left silent,
+# because a silent gap is how Kotlin's version survived: it drives the preflight
+# directly with a seeded tree, proving the preflight refuses and touches nothing.
+# It does NOT drive `npm run generate` end to end — that pipeline writes to fixed
+# paths under typescript/src/generated and cannot be pointed at a temp directory,
+# which is why check-typescript-service-drift.sh builds a whole throwaway project
+# to test it. The remaining link, that the chain honours the preflight's exit
+# status, is the `&&` in package.json's `generate` script.
+if [[ "$LANGUAGE" == "typescript" ]]; then
+  scenario_number=$((scenario_number + 1))
+  out="$TMP/out-preflight"
+  mkdir -p "$out"
+  echo "committed generated output" > "$out/metadata.ts"
+  echo "committed generated output" > "$out/openapi-stripped.json"
+  seeded="$TMP/preflight-seeded"
+  find "$out" -type f | LC_ALL=C sort > "$seeded"
+  digests="$TMP/preflight-digests"
+  xargs shasum < "$seeded" > "$digests"
+
+  log="$TMP/preflight.log"
+  status=0
+  (cd "$ROOT_DIR/typescript" && npx tsx scripts/check-path-items.ts "$TMP/openapi-numeric-id.json") \
+    > "$log" 2>&1 || status=$?
+
+  if [[ "$status" -eq 0 ]] \
+     || ! grep -qF "operationId" "$log" || ! grep -qF "$PATH_KEY" "$log"; then
+    echo "FAIL [$LANGUAGE] the pipeline preflight refuses before any step writes: exit $status" >&2
+    sed 's/^/    /' "$log" >&2
+    failures=1
+  elif ! shasum --check --status "$digests"; then
+    echo "FAIL [$LANGUAGE] the pipeline preflight touched the tree it was run beside" >&2
+    failures=1
+  else
+    echo "OK [$LANGUAGE] the pipeline preflight refuses by name before any step writes"
+  fi
+fi
+
+# Scenario 10: a malformed behavior model, and the ONLY scenario whose failure
 # happens late in generation. Every other one fails during the spec parse, which
 # any "parse before delete" ordering already survives — so they cannot tell a
 # generator that renders before destroying from one that merely hoisted its first

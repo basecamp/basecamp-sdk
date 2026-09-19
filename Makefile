@@ -594,12 +594,15 @@ rb-generate:
 # runs, so `> metadata.json` emptied the committed file and only then let the
 # extractor refuse — turning every fail-closed refusal in that walker into data
 # loss, a layer below the generator's own ordering.
-	cd ruby && ruby scripts/generate-metadata.rb > lib/basecamp/generated/metadata.json.tmp \
+	# Every path here is relative to ruby/, because the `cd` is still in effect in
+	# the `||` branch — a cleanup written as `ruby/lib/...` resolved to
+	# `ruby/ruby/lib/...` and left the fragment it was meant to remove.
+	cd ruby && { ruby scripts/generate-metadata.rb > lib/basecamp/generated/metadata.json.tmp \
 	  && mv lib/basecamp/generated/metadata.json.tmp lib/basecamp/generated/metadata.json \
-	  || { rm -f ruby/lib/basecamp/generated/metadata.json.tmp; exit 1; }
-	cd ruby && ruby scripts/generate-types.rb > lib/basecamp/generated/types.rb.tmp \
+	  || { rm -f lib/basecamp/generated/metadata.json.tmp; exit 1; }; }
+	cd ruby && { ruby scripts/generate-types.rb > lib/basecamp/generated/types.rb.tmp \
 	  && mv lib/basecamp/generated/types.rb.tmp lib/basecamp/generated/types.rb \
-	  || { rm -f ruby/lib/basecamp/generated/types.rb.tmp; exit 1; }
+	  || { rm -f lib/basecamp/generated/types.rb.tmp; exit 1; }; }
 	@echo "Generated lib/basecamp/generated/metadata.json and types.rb"
 
 # Generate Ruby services from OpenAPI
