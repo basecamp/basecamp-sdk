@@ -1592,25 +1592,45 @@ jobs:
           # release. v0.20.0 (#940) is the instance: 12/12 required contexts
           # green, one failure, both lines version constants.
           #
-          # Narrow on purpose. Only `value changed`, only these two symbols.
-          # Removing `Version`, changing its type, or renaming it still fails,
-          # as does any other symbol's value change.
-          RELEASE_CONST_RE='^- \./pkg/basecamp\.(Version|DefaultUserAgent): value changed from "'
-
-          # grep exits 1 for "no lines matched", which is an ordinary outcome
-          # for both of these and must not abort under `set -e`, and 2+ for a
-          # real failure, which must not be read as an empty partition — the
-          # same distinction run_apidiff draws above.
-          set +e
-          grep -Ev "$RELEASE_CONST_RE" "${WORK}/breaking.txt" > "${WORK}/breaking-api.txt"; filtered_status=$?
-          grep -E  "$RELEASE_CONST_RE" "${WORK}/breaking.txt" > "${WORK}/breaking-version.txt"; version_status=$?
-          set -e
-          for status in "$filtered_status" "$version_status"; do
-            if [ "$status" -gt 1 ]; then
-              echo "::error::grep exited ${status} partitioning the incompatible-changes report. The partition could not be computed, so this is a tool failure rather than a verdict, and it is not waved through."
-              exit 1
-            fi
-          done
+          # Narrow on VALUE, not on symbol name. Exempting every
+          # `DefaultUserAgent` value change would waive a real break: rewriting
+          # the header to "unexpected-client", or dropping the `(api:...)`
+          # component, emits the same generic `value changed` line. So the
+          # user-agent line is exempt only when it is exactly what this bump's
+          # `Version` change implies — same prefix, same API-version component,
+          # version component moving from the old value to the new. A
+          # user-agent change with no `Version` change beside it is never
+          # exempt, and `Version` itself is exempt only as a `value changed`:
+          # removing it, retyping it or renaming it still fails.
+          #
+          # That `basecamp-sdk-go/` and the `(api:...)` shape are named here as
+          # well as in client.go is deliberate. If the format changes, this
+          # stops matching and the gate fails — the direction a duplicated fact
+          # should fail in.
+          : > "${WORK}/breaking-api.txt"
+          : > "${WORK}/breaking-version.txt"
+          awk -v apifile="${WORK}/breaking-api.txt" -v versionfile="${WORK}/breaking-version.txt" '
+            NR == FNR {
+              if ($0 ~ /^- \.\/pkg\/basecamp\.Version: value changed from "[^"]*" to "[^"]*"$/ && vline == "") vline = $0
+              else if ($0 ~ /^- \.\/pkg\/basecamp\.DefaultUserAgent: value changed from "[^"]*" to "[^"]*"$/ && uline == "") uline = $0
+              next
+            }
+            FNR == 1 && vline != "" {
+              split(vline, v, "\"")
+              oldv = v[2]; newv = v[4]
+              exempt[vline] = 1
+              if (uline != "") {
+                split(uline, u, "\"")
+                oldua = u[2]; newua = u[4]
+                prefix = "basecamp-sdk-go/" oldv " (api:"
+                if (index(oldua, prefix) == 1 && substr(oldua, length(oldua)) == ")") {
+                  api = substr(oldua, length(prefix) + 1, length(oldua) - length(prefix) - 1)
+                  if (newua == "basecamp-sdk-go/" newv " (api:" api ")") exempt[uline] = 1
+                }
+              }
+            }
+            { if ($0 in exempt) print > versionfile; else print > apifile }
+          ' "${WORK}/breaking.txt" "${WORK}/breaking.txt"
 
           if [ -s "${WORK}/breaking-api.txt" ]; then
             echo "### Breaking Changes Detected"
