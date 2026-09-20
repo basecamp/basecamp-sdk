@@ -1,6 +1,6 @@
 [package]
 name = "basecamp-sdk"
-version = "0.19.0"
+version = "0.20.0"
 description = "Official client for Basecamp - https://basecamp.com"
 readme = "README.md"
 homepage = "https://github.com/basecamp/basecamp-sdk"

@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.20.0
 
 ### `listLineupMarkers` moves from the Automation service to the Lineup service
 
