@@ -1567,16 +1567,92 @@ jobs:
           fi
 
           run_apidiff "${WORK}/breaking.txt" -m -incompatible "${WORK}/base.api" "${WORK}/pr.api"
-          if [ -s "${WORK}/breaking.txt" ]; then
+
+          # The release version constants are partitioned out of the verdict,
+          # and only out of the verdict — they are still printed below, and the
+          # full "All API Changes" report is untouched.
+          #
+          # `scripts/bump-version.sh` writes `const Version`, and
+          # `DefaultUserAgent` is `"basecamp-sdk-go/" + Version + " (api:" +
+          # APIVersion + ")"`, so it follows by construction. apidiff classifies
+          # any exported constant's value change as incompatible, because a
+          # consumer can use one in a constant expression. For these two that
+          # is true and beside the point: a consumer pinning the literal is
+          # asserting "compiled against exactly 0.19.0", which no release can
+          # preserve. Changing is what the constant is for.
+          #
+          # The reason to exempt them is the gate's own integrity rather than
+          # convenience. Every release PR changes both, so without this the
+          # required check fails on every release, and the printed remedy is to
+          # apply `breaking` and re-run. That trains "bump PR, slap the label
+          # on" as reflex — on the one PR where a real break is least likely to
+          # be read, since the diff is machine-generated and skimmed. The label
+          # has to mean "a real break was looked at and accepted", and it can
+          # only mean that if it is not also the routine cost of cutting a
+          # release. v0.20.0 (#940) is the instance: 12/12 required contexts
+          # green, one failure, both lines version constants.
+          #
+          # Narrow on VALUE, not on symbol name. Exempting every
+          # `DefaultUserAgent` value change would waive a real break: rewriting
+          # the header to "unexpected-client", or dropping the `(api:...)`
+          # component, emits the same generic `value changed` line. So the
+          # user-agent line is exempt only when it is exactly what this bump's
+          # `Version` change implies — same prefix, same API-version component,
+          # version component moving from the old value to the new. A
+          # user-agent change with no `Version` change beside it is never
+          # exempt, and `Version` itself is exempt only as a `value changed`:
+          # removing it, retyping it or renaming it still fails.
+          #
+          # That `basecamp-sdk-go/` and the `(api:...)` shape are named here as
+          # well as in client.go is deliberate. If the format changes, this
+          # stops matching and the gate fails — the direction a duplicated fact
+          # should fail in.
+          : > "${WORK}/breaking-api.txt"
+          : > "${WORK}/breaking-version.txt"
+          awk -v apifile="${WORK}/breaking-api.txt" -v versionfile="${WORK}/breaking-version.txt" '
+            NR == FNR {
+              if ($0 ~ /^- \.\/pkg\/basecamp\.Version: value changed from "[^"]*" to "[^"]*"$/ && vline == "") vline = $0
+              else if ($0 ~ /^- \.\/pkg\/basecamp\.DefaultUserAgent: value changed from "[^"]*" to "[^"]*"$/ && uline == "") uline = $0
+              next
+            }
+            FNR == 1 && vline != "" {
+              split(vline, v, "\"")
+              oldv = v[2]; newv = v[4]
+              exempt[vline] = 1
+              if (uline != "") {
+                split(uline, u, "\"")
+                oldua = u[2]; newua = u[4]
+                prefix = "basecamp-sdk-go/" oldv " (api:"
+                if (index(oldua, prefix) == 1 && substr(oldua, length(oldua)) == ")") {
+                  api = substr(oldua, length(prefix) + 1, length(oldua) - length(prefix) - 1)
+                  if (newua == "basecamp-sdk-go/" newv " (api:" api ")") exempt[uline] = 1
+                }
+              }
+            }
+            { if ($0 in exempt) print > versionfile; else print > apifile }
+          ' "${WORK}/breaking.txt" "${WORK}/breaking.txt"
+
+          if [ -s "${WORK}/breaking-api.txt" ]; then
             echo "### Breaking Changes Detected"
             echo ""
             echo "The following incompatible API changes were found:"
             echo ""
             echo '```'
-            cat "${WORK}/breaking.txt"
+            cat "${WORK}/breaking-api.txt"
             echo '```'
             echo ""
             breaking=1
+          fi
+
+          if [ -s "${WORK}/breaking-version.txt" ]; then
+            echo "### Release version constants changed"
+            echo ""
+            echo "Expected on a release bump, and not counted as breaking:"
+            echo ""
+            echo '```'
+            cat "${WORK}/breaking-version.txt"
+            echo '```'
+            echo ""
           fi
 
           if [ "$breaking" -eq 0 ]; then
