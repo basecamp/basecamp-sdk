@@ -1567,16 +1567,72 @@ jobs:
           fi
 
           run_apidiff "${WORK}/breaking.txt" -m -incompatible "${WORK}/base.api" "${WORK}/pr.api"
-          if [ -s "${WORK}/breaking.txt" ]; then
+
+          # The release version constants are partitioned out of the verdict,
+          # and only out of the verdict — they are still printed below, and the
+          # full "All API Changes" report is untouched.
+          #
+          # `scripts/bump-version.sh` writes `const Version`, and
+          # `DefaultUserAgent` is `"basecamp-sdk-go/" + Version + " (api:" +
+          # APIVersion + ")"`, so it follows by construction. apidiff classifies
+          # any exported constant's value change as incompatible, because a
+          # consumer can use one in a constant expression. For these two that
+          # is true and beside the point: a consumer pinning the literal is
+          # asserting "compiled against exactly 0.19.0", which no release can
+          # preserve. Changing is what the constant is for.
+          #
+          # The reason to exempt them is the gate's own integrity rather than
+          # convenience. Every release PR changes both, so without this the
+          # required check fails on every release, and the printed remedy is to
+          # apply `breaking` and re-run. That trains "bump PR, slap the label
+          # on" as reflex — on the one PR where a real break is least likely to
+          # be read, since the diff is machine-generated and skimmed. The label
+          # has to mean "a real break was looked at and accepted", and it can
+          # only mean that if it is not also the routine cost of cutting a
+          # release. v0.20.0 (#940) is the instance: 12/12 required contexts
+          # green, one failure, both lines version constants.
+          #
+          # Narrow on purpose. Only `value changed`, only these two symbols.
+          # Removing `Version`, changing its type, or renaming it still fails,
+          # as does any other symbol's value change.
+          RELEASE_CONST_RE='^- \./pkg/basecamp\.(Version|DefaultUserAgent): value changed from "'
+
+          # grep exits 1 for "no lines matched", which is an ordinary outcome
+          # for both of these and must not abort under `set -e`, and 2+ for a
+          # real failure, which must not be read as an empty partition — the
+          # same distinction run_apidiff draws above.
+          set +e
+          grep -Ev "$RELEASE_CONST_RE" "${WORK}/breaking.txt" > "${WORK}/breaking-api.txt"; filtered_status=$?
+          grep -E  "$RELEASE_CONST_RE" "${WORK}/breaking.txt" > "${WORK}/breaking-version.txt"; version_status=$?
+          set -e
+          for status in "$filtered_status" "$version_status"; do
+            if [ "$status" -gt 1 ]; then
+              echo "::error::grep exited ${status} partitioning the incompatible-changes report. The partition could not be computed, so this is a tool failure rather than a verdict, and it is not waved through."
+              exit 1
+            fi
+          done
+
+          if [ -s "${WORK}/breaking-api.txt" ]; then
             echo "### Breaking Changes Detected"
             echo ""
             echo "The following incompatible API changes were found:"
             echo ""
             echo '```'
-            cat "${WORK}/breaking.txt"
+            cat "${WORK}/breaking-api.txt"
             echo '```'
             echo ""
             breaking=1
+          fi
+
+          if [ -s "${WORK}/breaking-version.txt" ]; then
+            echo "### Release version constants changed"
+            echo ""
+            echo "Expected on a release bump, and not counted as breaking:"
+            echo ""
+            echo '```'
+            cat "${WORK}/breaking-version.txt"
+            echo '```'
+            echo ""
           fi
 
           if [ "$breaking" -eq 0 ]; then
