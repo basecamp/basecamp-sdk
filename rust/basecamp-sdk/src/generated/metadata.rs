@@ -11,6 +11,9 @@ pub static ARCHIVE_PROJECT: OperationMetadata = OperationMetadata { operation: "
 /// `ArchiveRecording`.
 #[rustfmt::skip]
 pub static ARCHIVE_RECORDING: OperationMetadata = OperationMetadata { operation: "ArchiveRecording", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `CompleteSubtask`.
+#[rustfmt::skip]
+pub static COMPLETE_SUBTASK: OperationMetadata = OperationMetadata { operation: "CompleteSubtask", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `CompleteTodo`.
 #[rustfmt::skip]
 pub static COMPLETE_TODO: OperationMetadata = OperationMetadata { operation: "CompleteTodo", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -92,6 +95,9 @@ pub static CREATE_SCHEDULE_ENTRY: OperationMetadata = OperationMetadata { operat
 /// `CreateStreamTicket`.
 #[rustfmt::skip]
 pub static CREATE_STREAM_TICKET: OperationMetadata = OperationMetadata { operation: "CreateStreamTicket", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `CreateSubtask`.
+#[rustfmt::skip]
+pub static CREATE_SUBTASK: OperationMetadata = OperationMetadata { operation: "CreateSubtask", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `CreateTemplate`.
 #[rustfmt::skip]
 pub static CREATE_TEMPLATE: OperationMetadata = OperationMetadata { operation: "CreateTemplate", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -155,6 +161,9 @@ pub static DELETE_LINEUP_MARKER: OperationMetadata = OperationMetadata { operati
 /// `DeleteMessageType`.
 #[rustfmt::skip]
 pub static DELETE_MESSAGE_TYPE: OperationMetadata = OperationMetadata { operation: "DeleteMessageType", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `DeleteSubtask`.
+#[rustfmt::skip]
+pub static DELETE_SUBTASK: OperationMetadata = OperationMetadata { operation: "DeleteSubtask", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `DeleteTemplate`.
 #[rustfmt::skip]
 pub static DELETE_TEMPLATE: OperationMetadata = OperationMetadata { operation: "DeleteTemplate", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -416,6 +425,9 @@ pub static GET_SEARCH_METADATA: OperationMetadata = OperationMetadata { operatio
 /// `GetSubscription`.
 #[rustfmt::skip]
 pub static GET_SUBSCRIPTION: OperationMetadata = OperationMetadata { operation: "GetSubscription", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `GetSubtask`.
+#[rustfmt::skip]
+pub static GET_SUBTASK: OperationMetadata = OperationMetadata { operation: "GetSubtask", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `GetTemplate`.
 #[rustfmt::skip]
 pub static GET_TEMPLATE: OperationMetadata = OperationMetadata { operation: "GetTemplate", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -557,6 +569,9 @@ pub static LIST_RECORDINGS: OperationMetadata = OperationMetadata { operation: "
 /// `ListScheduleEntries`.
 #[rustfmt::skip]
 pub static LIST_SCHEDULE_ENTRIES: OperationMetadata = OperationMetadata { operation: "ListScheduleEntries", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `ListSubtasks`.
+#[rustfmt::skip]
+pub static LIST_SUBTASKS: OperationMetadata = OperationMetadata { operation: "ListSubtasks", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `ListTemplates`.
 #[rustfmt::skip]
 pub static LIST_TEMPLATES: OperationMetadata = OperationMetadata { operation: "ListTemplates", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -626,6 +641,9 @@ pub static REPLACE_TODO: OperationMetadata = OperationMetadata { operation: "Rep
 /// `RepositionCardStep`.
 #[rustfmt::skip]
 pub static REPOSITION_CARD_STEP: OperationMetadata = OperationMetadata { operation: "RepositionCardStep", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `RepositionSubtask`.
+#[rustfmt::skip]
+pub static REPOSITION_SUBTASK: OperationMetadata = OperationMetadata { operation: "RepositionSubtask", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `RepositionTodo`.
 #[rustfmt::skip]
 pub static REPOSITION_TODO: OperationMetadata = OperationMetadata { operation: "RepositionTodo", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -677,6 +695,9 @@ pub static UNARCHIVE_PROJECT: OperationMetadata = OperationMetadata { operation:
 /// `UnarchiveRecording`.
 #[rustfmt::skip]
 pub static UNARCHIVE_RECORDING: OperationMetadata = OperationMetadata { operation: "UnarchiveRecording", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `UncompleteSubtask`.
+#[rustfmt::skip]
+pub static UNCOMPLETE_SUBTASK: OperationMetadata = OperationMetadata { operation: "UncompleteSubtask", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `UncompleteTodo`.
 #[rustfmt::skip]
 pub static UNCOMPLETE_TODO: OperationMetadata = OperationMetadata { operation: "UncompleteTodo", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -776,6 +797,9 @@ pub static UPDATE_SCHEDULE_SETTINGS: OperationMetadata = OperationMetadata { ope
 /// `UpdateSubscription`.
 #[rustfmt::skip]
 pub static UPDATE_SUBSCRIPTION: OperationMetadata = OperationMetadata { operation: "UpdateSubscription", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `UpdateSubtask`.
+#[rustfmt::skip]
+pub static UPDATE_SUBTASK: OperationMetadata = OperationMetadata { operation: "UpdateSubtask", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `UpdateTemplate`.
 #[rustfmt::skip]
 pub static UPDATE_TEMPLATE: OperationMetadata = OperationMetadata { operation: "UpdateTemplate", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -805,6 +829,7 @@ pub static UPDATE_WORMHOLE: OperationMetadata = OperationMetadata { operation: "
 pub static OPERATIONS: &[&OperationMetadata] = &[
     &ARCHIVE_PROJECT,
     &ARCHIVE_RECORDING,
+    &COMPLETE_SUBTASK,
     &COMPLETE_TODO,
     &CREATE_ANSWER,
     &CREATE_ATTACHMENT,
@@ -832,6 +857,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &CREATE_RECORDING_BOOST,
     &CREATE_SCHEDULE_ENTRY,
     &CREATE_STREAM_TICKET,
+    &CREATE_SUBTASK,
     &CREATE_TEMPLATE,
     &CREATE_TEMPLATE_LIBRARY_COPY,
     &CREATE_TIMESHEET_ENTRY,
@@ -853,6 +879,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &DELETE_FOLDER,
     &DELETE_LINEUP_MARKER,
     &DELETE_MESSAGE_TYPE,
+    &DELETE_SUBTASK,
     &DELETE_TEMPLATE,
     &DELETE_TOOL,
     &DELETE_WEBHOOK,
@@ -940,6 +967,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &GET_SCHEDULE_ENTRY_OCCURRENCE,
     &GET_SEARCH_METADATA,
     &GET_SUBSCRIPTION,
+    &GET_SUBTASK,
     &GET_TEMPLATE,
     &GET_TEMPLATE_LIBRARY,
     &GET_TEMPLATE_LIBRARY_COPY,
@@ -987,6 +1015,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &LIST_RECORDING_BOOSTS,
     &LIST_RECORDINGS,
     &LIST_SCHEDULE_ENTRIES,
+    &LIST_SUBTASKS,
     &LIST_TEMPLATES,
     &LIST_TODOLIST_GROUPS,
     &LIST_TODOLISTS,
@@ -1010,6 +1039,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &REPLACE_SCHEDULE_ENTRY,
     &REPLACE_TODO,
     &REPOSITION_CARD_STEP,
+    &REPOSITION_SUBTASK,
     &REPOSITION_TODO,
     &REPOSITION_TODOLIST,
     &REPOSITION_TODOLIST_GROUP,
@@ -1027,6 +1057,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &TRASH_RECORDING,
     &UNARCHIVE_PROJECT,
     &UNARCHIVE_RECORDING,
+    &UNCOMPLETE_SUBTASK,
     &UNCOMPLETE_TODO,
     &UNPIN_MESSAGE,
     &UNSPOTLIGHT_RECORDING,
@@ -1060,6 +1091,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &UPDATE_QUESTION_NOTIFICATION_SETTINGS,
     &UPDATE_SCHEDULE_SETTINGS,
     &UPDATE_SUBSCRIPTION,
+    &UPDATE_SUBTASK,
     &UPDATE_TEMPLATE,
     &UPDATE_TIMESHEET_ENTRY,
     &UPDATE_TODOLIST_OR_GROUP,

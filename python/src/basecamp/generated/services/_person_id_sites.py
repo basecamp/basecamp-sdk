@@ -43,6 +43,11 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
         ("creator",),
         ("participants", "[]"),
     ),
+    "CreateSubtask": (
+        ("assignees", "[]"),
+        ("completer",),
+        ("creator",),
+    ),
     "CreateTemplateLibraryCopy": (("destination_todolist", "creator"),),
     "CreateTimesheetEntry": (
         ("creator",),
@@ -317,6 +322,11 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
         ("participants", "[]"),
     ),
     "GetSubscription": (("subscribers", "[]"),),
+    "GetSubtask": (
+        ("assignees", "[]"),
+        ("completer",),
+        ("creator",),
+    ),
     "GetTemplateLibrary": (("todolists", "[]", "creator"),),
     "GetTemplateLibraryCopy": (("destination_todolist", "creator"),),
     "GetTimesheetEntry": (
@@ -389,6 +399,11 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     "ListScheduleEntries": (
         ("[]", "creator"),
         ("[]", "participants", "[]"),
+    ),
+    "ListSubtasks": (
+        ("[]", "assignees", "[]"),
+        ("[]", "completer"),
+        ("[]", "creator"),
     ),
     "ListTodolistGroups": (("[]", "creator"),),
     "ListTodolists": (("[]", "creator"),),
@@ -471,6 +486,11 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     "UpdateQuestion": (("creator",),),
     "UpdateScheduleSettings": (("creator",),),
     "UpdateSubscription": (("subscribers", "[]"),),
+    "UpdateSubtask": (
+        ("assignees", "[]"),
+        ("completer",),
+        ("creator",),
+    ),
     "UpdateTimesheetEntry": (
         ("creator",),
         ("person",),

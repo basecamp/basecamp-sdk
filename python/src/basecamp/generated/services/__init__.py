@@ -45,6 +45,7 @@ from basecamp.generated.services.reports import ReportsService, AsyncReportsServ
 from basecamp.generated.services.schedules import SchedulesService, AsyncSchedulesService
 from basecamp.generated.services.search import SearchService, AsyncSearchService
 from basecamp.generated.services.subscriptions import SubscriptionsService, AsyncSubscriptionsService
+from basecamp.generated.services.subtasks import SubtasksService, AsyncSubtasksService
 from basecamp.generated.services.templates import TemplatesService, AsyncTemplatesService
 from basecamp.generated.services.timeline import TimelineService, AsyncTimelineService
 from basecamp.generated.services.timesheets import TimesheetsService, AsyncTimesheetsService
@@ -143,6 +144,8 @@ __all__ = [
     "AsyncSearchService",
     "SubscriptionsService",
     "AsyncSubscriptionsService",
+    "SubtasksService",
+    "AsyncSubtasksService",
     "TemplatesService",
     "AsyncTemplatesService",
     "TimelineService",

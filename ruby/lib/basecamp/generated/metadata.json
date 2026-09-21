@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-16T14:38:22Z",
+  "generated": "2026-09-21T13:57:01Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -2489,6 +2489,33 @@
         "natural": true
       }
     },
+    "ListSubtasks": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "CreateSubtask": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
     "GetRecordingTimesheet": {
       "retry": {
         "maxAttempts": 3,
@@ -2821,6 +2848,87 @@
       }
     },
     "DeleteFolder": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "GetSubtask": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateSubtask": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "DeleteSubtask": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "CompleteSubtask": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "UncompleteSubtask": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "RepositionSubtask": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,
@@ -3566,6 +3674,11 @@
       "creator",
       "participants.[]"
     ],
+    "CreateSubtask": [
+      "assignees.[]",
+      "completer",
+      "creator"
+    ],
     "CreateTemplateLibraryCopy": [
       "destination_todolist.creator"
     ],
@@ -3914,6 +4027,11 @@
     "GetSubscription": [
       "subscribers.[]"
     ],
+    "GetSubtask": [
+      "assignees.[]",
+      "completer",
+      "creator"
+    ],
     "GetTemplateLibrary": [
       "todolists.[].creator"
     ],
@@ -4047,6 +4165,11 @@
       "[].creator",
       "[].participants.[]"
     ],
+    "ListSubtasks": [
+      "[].assignees.[]",
+      "[].completer",
+      "[].creator"
+    ],
     "ListTodolistGroups": [
       "[].creator"
     ],
@@ -4161,6 +4284,11 @@
     ],
     "UpdateSubscription": [
       "subscribers.[]"
+    ],
+    "UpdateSubtask": [
+      "assignees.[]",
+      "completer",
+      "creator"
     ],
     "UpdateTimesheetEntry": [
       "creator",

@@ -34,6 +34,9 @@ public struct Recording: Codable, Sendable {
     public var service: DoorService?
     public var subject: String?
     public var subscriptionUrl: String?
+    public var subtasksCompletedCount: Int32?
+    public var subtasksCount: Int32?
+    public var subtasksUrl: String?
 
     public init(
         appUrl: String,
@@ -67,7 +70,10 @@ public struct Recording: Codable, Sendable {
         repliesUrl: String? = nil,
         service: DoorService? = nil,
         subject: String? = nil,
-        subscriptionUrl: String? = nil
+        subscriptionUrl: String? = nil,
+        subtasksCompletedCount: Int32? = nil,
+        subtasksCount: Int32? = nil,
+        subtasksUrl: String? = nil
     ) {
         self.appUrl = appUrl
         self.bucket = bucket
@@ -101,5 +107,8 @@ public struct Recording: Codable, Sendable {
         self.service = service
         self.subject = subject
         self.subscriptionUrl = subscriptionUrl
+        self.subtasksCompletedCount = subtasksCompletedCount
+        self.subtasksCount = subtasksCount
+        self.subtasksUrl = subtasksUrl
     }
 }

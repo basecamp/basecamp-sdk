@@ -217,6 +217,11 @@ impl AccountClient {
         services::subscriptions::SubscriptionsService::new(self)
     }
 
+    /// `Subtasks` operations.
+    pub fn subtasks(&self) -> services::subtasks::SubtasksService<'_> {
+        services::subtasks::SubtasksService::new(self)
+    }
+
     /// `Templates` operations.
     pub fn templates(&self) -> services::templates::TemplatesService<'_> {
         services::templates::TemplatesService::new(self)
