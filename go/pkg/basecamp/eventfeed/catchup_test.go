@@ -2916,8 +2916,8 @@ func TestGracePhaseEndsAtItsDeadlineNotAWindowAfterItsLastWake(t *testing.T) {
 // captures the context the pump reads with (a live handle on the attempt
 // context, which is also the poll seam call's cancellation), and it parks
 // the FIRST socket close until released — the deterministic stand-in for a
-// peer that never acknowledges a graceful close and holds wsConn.Close for
-// its full grace budget.
+// transport whose Close blocks on a peer that never acknowledges a graceful
+// close.
 type pollAbandonProbeTransport struct {
 	inner   *feedtest.Transport
 	parked  chan struct{}
