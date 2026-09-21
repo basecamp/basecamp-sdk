@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -906,6 +907,20 @@ func TestCardStepsService_UpdateClearsDueOn(t *testing.T) {
 	}
 	if v != "" {
 		t.Errorf("due_on = %#v, want the empty string", v)
+	}
+}
+
+func TestCardStepsService_Reposition_RejectsOutOfRange(t *testing.T) {
+	svc := testCardStepsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Error("an invalid position must not reach the wire")
+	})
+
+	for _, position := range []int{0, -1, math.MaxInt32 + 1} {
+		err := svc.Reposition(context.Background(), 500, 10, position)
+		apiErr, ok := errors.AsType[*Error](err)
+		if !ok || apiErr.Code != CodeUsage {
+			t.Errorf("position %d: expected usage error, got: %v", position, err)
+		}
 	}
 }
 

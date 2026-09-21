@@ -347,6 +347,7 @@ The SDK provides the full account-scoped service set documented in SPEC §5. The
 | `card_tables` | Card tables (kanban) |
 | `card_columns` | Card table columns |
 | `card_steps` | Card workflow steps |
+| `subtasks` | Subtasks (checklist items) on to-dos and cards |
 | `wormholes` | Card table wormholes (cross-project moves) |
 | `lineup` | Card lineup view |
 | `tools` | Project dock tools |

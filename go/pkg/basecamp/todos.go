@@ -48,10 +48,15 @@ type Todo struct {
 	BoostsURL              string               `json:"boosts_url,omitempty"`
 	CommentsCount          int                  `json:"comments_count,omitempty"`
 	CommentsURL            string               `json:"comments_url,omitempty"`
-	CompletionURL          string               `json:"completion_url,omitempty"`
-	CompletedAt            *time.Time           `json:"completed_at,omitempty"`
-	Completer              *Person              `json:"completer,omitempty"`
-	Assignees              []Person             `json:"assignees,omitempty"`
+	// SubtasksCount is the real number of subtasks; Steps embeds at most 100.
+	// SubtasksURL lists all of them, paginated (SubtasksService.List).
+	SubtasksCount          int        `json:"subtasks_count"`
+	SubtasksCompletedCount int        `json:"subtasks_completed_count"`
+	SubtasksURL            string     `json:"subtasks_url"`
+	CompletionURL          string     `json:"completion_url,omitempty"`
+	CompletedAt            *time.Time `json:"completed_at,omitempty"`
+	Completer              *Person    `json:"completer,omitempty"`
+	Assignees              []Person   `json:"assignees,omitempty"`
 	// CompletionSubscribers distinguishes present-but-empty from absent:
 	// a non-nil zero-length slice means the server sent an empty list,
 	// nil means the property was absent from the response. Deliberately
@@ -915,6 +920,10 @@ func todoFromGenerated(gt generated.Todo) Todo {
 		CommentsCount:    int(deref(gt.CommentsCount)),
 		CommentsURL:      deref(gt.CommentsUrl),
 		CompletionURL:    deref(gt.CompletionUrl),
+
+		SubtasksCount:          int(deref(gt.SubtasksCount)),
+		SubtasksCompletedCount: int(deref(gt.SubtasksCompletedCount)),
+		SubtasksURL:            deref(gt.SubtasksUrl),
 	}
 
 	if gt.Id != 0 {

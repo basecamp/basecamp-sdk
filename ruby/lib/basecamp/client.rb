@@ -607,6 +607,11 @@ module Basecamp
       service(:boosts) { Services::BoostsService.new(self) }
     end
 
+    # @return [Services::SubtasksService]
+    def subtasks
+      service(:subtasks) { Services::SubtasksService.new(self) }
+    end
+
     # @return [Services::AccountService]
     def account
       service(:account) { Services::AccountService.new(self) }

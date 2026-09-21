@@ -567,6 +567,7 @@ for both.
 | `Cards()` | List, Get, Create, Update, Move |
 | `CardColumns()` | List, Get, Create, Update, Watch, Unwatch |
 | `CardSteps()` | List, Get |
+| `Subtasks()` | List, Get, Create, Update, Complete, Uncomplete, Reposition, Delete |
 | `Wormholes()` | Create, Update, Delete |
 
 ### Reporting & Search

@@ -144,8 +144,11 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # stateless signed capability with no server-side consumption, so a replayed
 # request is harmless (SPEC §23 "safe-to-retry", deliberately not a claim of an
 # identical response) — so it lands in both counts (+1 each).
-expected_idempotent=92
-expected_union=222
+# Subtasks (+8 ops): ListSubtasks and GetSubtask are readonly (+2 union only);
+# UpdateSubtask, RepositionSubtask, UncompleteSubtask and DeleteSubtask are PUT/DELETE
+# and CompleteSubtask is a naturally idempotent POST (+5 each).
+expected_idempotent=97
+expected_union=229
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"
