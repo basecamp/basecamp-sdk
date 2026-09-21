@@ -32,7 +32,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation
 
       - name: Set up Python
@@ -92,7 +92,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         # zizmor: ignore[cache-poisoning] -- cache is branch-isolated; fork PRs cannot write to this cache
 
       - name: Set up Python
