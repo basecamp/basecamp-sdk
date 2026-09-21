@@ -3,7 +3,7 @@ module github.com/basecamp/basecamp-sdk/go
 go 1.26
 
 require (
-	github.com/basecamp/actioncable-go v1.1.1-0.20260921134729-bc7c21cf439e
+	github.com/basecamp/actioncable-go v1.2.0
 	github.com/basecamp/surfguard/go v0.1.0
 	github.com/coder/websocket v1.8.15
 	github.com/oapi-codegen/runtime v1.7.0
