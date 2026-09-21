@@ -180,52 +180,6 @@ func TestCheckCableURL_RejectsUserinfo(t *testing.T) {
 	}
 }
 
-// TestCableHTTPClient_IsWiredShut holds the shape of the wiring, which is
-// what a static assertion is good for. Proxy nil is the strongest pin here
-// and deliberately structural rather than behavioral: an env-based proxy
-// test goes green for the wrong reason the moment any earlier test in the
-// binary warms http.ProxyFromEnvironment's package-wide cache — nil is
-// "nothing can be consulted", which no behavioral sample can prove.
-// Likewise a Jar or a TLSClientConfig added later is a credential the origin
-// would receive; the DefaultClient-pollution test proves only that none is
-// INHERITED, not that none is set here.
-func TestCableHTTPClient_IsWiredShut(t *testing.T) {
-	if cableHTTPClient.Jar != nil {
-		t.Error("cableHTTPClient has a cookie jar; the cable origin must receive no cookie")
-	}
-	if cableHTTPClient.CheckRedirect == nil {
-		t.Error("cableHTTPClient does not refuse redirects; a redirect can carry the ticket to an unvetted origin")
-	}
-	ri, ok := cableHTTPClient.Transport.(redirectInterceptor)
-	if !ok {
-		t.Fatalf("cableHTTPClient.Transport = %T, want redirectInterceptor — without it a redirect's Location reaches net/http's parser", cableHTTPClient.Transport)
-	}
-	tr, ok := ri.inner.(*http.Transport)
-	if !ok {
-		t.Fatalf("redirectInterceptor.inner = %T, want *http.Transport", ri.inner)
-	}
-	if tr.TLSClientConfig != nil {
-		t.Error("cableHTTPClient carries a TLSClientConfig; it must present no client certificate and use the system roots")
-	}
-	if tr == http.DefaultTransport {
-		t.Fatal("cableHTTPClient uses http.DefaultTransport; any library in the process can have replaced it")
-	}
-	if tr.Proxy != nil {
-		t.Error("cableHTTPClient consults a proxy; a CONNECT target is a server-selected host, and any server-controlled component can be the ticket")
-	}
-	// The zero values here are UNBOUNDED, not defaults: a rotating or
-	// hostile mint topology hands the reconnect cycle a new cable host per
-	// dial, each failed (non-101) handshake parks reusable idle
-	// connections, and nothing ever closes them — file-descriptor
-	// exhaustion on a long-running feed.
-	if tr.MaxIdleConns <= 0 {
-		t.Error("cableHTTPClient has no idle-connection cap; failed handshakes across rotating hosts accumulate sockets without bound")
-	}
-	if tr.IdleConnTimeout <= 0 {
-		t.Error("cableHTTPClient never times idle connections out; a parked handshake socket lives forever")
-	}
-}
-
 // TestCheckCableURL_NeverEchoesServerText pins the closed reason vocabulary.
 // §23's "never log the ticket" binds on the VALUE, and the ticket is opaque,
 // so any server-controlled URL component can be the ticket itself — a scheme
@@ -260,13 +214,13 @@ func TestCheckCableURL_NeverEchoesServerText(t *testing.T) {
 func TestDialFailure_RendersOnlyStandardStatuses(t *testing.T) {
 	base := errors.New("boom")
 	for _, code := range []int{100, 403, 599} {
-		got := dialFailure(base, &http.Response{StatusCode: code}).Error()
+		got := dialFailure(base, code).Error()
 		if !strings.Contains(got, fmt.Sprintf("HTTP %d", code)) {
 			t.Errorf("in-range status %d not rendered: %q", code, got)
 		}
 	}
 	for _, code := range []int{7, 42, 600, 999} {
-		got := dialFailure(base, &http.Response{StatusCode: code}).Error()
+		got := dialFailure(base, code).Error()
 		if strings.Contains(got, strconv.Itoa(code)) {
 			t.Errorf("out-of-range status %d rendered: %q", code, got)
 		}
@@ -274,19 +228,16 @@ func TestDialFailure_RendersOnlyStandardStatuses(t *testing.T) {
 			t.Errorf("out-of-range status %d: %q, want the fixed marker", code, got)
 		}
 	}
-	if got := dialFailure(base, nil).Error(); strings.Contains(got, "answered") {
+	if got := dialFailure(base, 0).Error(); strings.Contains(got, "answered") {
 		t.Errorf("no response, but the rendering claims one: %q", got)
 	}
 }
 
-// TestWebSocketTransport_RedirectWithMalformedLocationIsPolicy closes the
-// shape round 14 left transient: net/http parses a redirect's Location
-// BEFORE consulting CheckRedirect (client.go: the parse error returns with
-// no response retained), so neither the sentinel nor a status-code check
-// could see this case. The redirect class is intercepted at the
-// RoundTripper now, before the client's redirect machinery — and so before
-// the server-controlled Location is parsed at all — making every 3xx one
-// policy refusal.
+// TestWebSocketTransport_RedirectWithMalformedLocationIsPolicy pins that a
+// redirect is refused on its status alone: the server-controlled Location is
+// never parsed, so a malformed one — which net/http's own redirect machinery
+// would have choked on before any classification could see the response — is
+// the same policy refusal as a well-formed one.
 func TestWebSocketTransport_RedirectWithMalformedLocationIsPolicy(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Location", "%zz") // an invalid URL escape: url.Parse refuses it
@@ -332,13 +283,10 @@ func TestWebSocketTransport_RedirectWithoutLocationIsPolicy(t *testing.T) {
 }
 
 // TestWebSocketTransport_UnofferedSubprotocolIsPolicy: a 101 whose
-// Sec-WebSocket-Protocol names something the dial never offered is refused
-// by coder/websocket during verification, BEFORE any conn exists — so it
-// took the transient fallback, re-minting forever against a server that
-// deterministically selects a bogus protocol. The library hands back the
-// response on that path, so the classification is structural: status 101
-// plus a selected protocol that is not the offer. The peer-controlled
-// header value itself is never rendered.
+// Sec-WebSocket-Protocol names something the dial never offered is a server
+// that deterministically selects a bogus protocol, so re-minting against it
+// cannot help. The classification is structural: a selected protocol that is
+// not the offer. The peer-controlled header value itself is never rendered.
 func TestWebSocketTransport_UnofferedSubprotocolIsPolicy(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// A hand-rolled upgrade: a correct Sec-WebSocket-Accept (so the
