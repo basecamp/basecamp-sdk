@@ -154,6 +154,16 @@ describe("SubtasksService", () => {
 
       await client.subtasks.update(42, { assigneeIds: [] });
     });
+
+    it("should throw validation error on a 422", async () => {
+      server.use(
+        http.put(`${BASE_URL}/subtasks/42`, () => {
+          return HttpResponse.json({ errors: { due_on: ["is not a valid date"] } }, { status: 422 });
+        })
+      );
+
+      await expect(client.subtasks.update(42, { dueOn: "not-a-date" })).rejects.toThrow(BasecampError);
+    });
   });
 
   describe("complete / uncomplete", () => {
@@ -174,6 +184,26 @@ describe("SubtasksService", () => {
       await expect(client.subtasks.uncomplete(42)).resolves.toBeUndefined();
       expect(methods).toEqual(["POST", "DELETE"]);
     });
+
+    it("should throw not_found when completing a missing subtask", async () => {
+      server.use(
+        http.post(`${BASE_URL}/subtasks/999/completion.json`, () => {
+          return HttpResponse.json({ error: "Not found" }, { status: 404 });
+        })
+      );
+
+      await expect(client.subtasks.complete(999)).rejects.toThrow(BasecampError);
+    });
+
+    it("should throw not_found when uncompleting a missing subtask", async () => {
+      server.use(
+        http.delete(`${BASE_URL}/subtasks/999/completion.json`, () => {
+          return HttpResponse.json({ error: "Not found" }, { status: 404 });
+        })
+      );
+
+      await expect(client.subtasks.uncomplete(999)).rejects.toThrow(BasecampError);
+    });
   });
 
   describe("reposition", () => {
@@ -187,6 +217,16 @@ describe("SubtasksService", () => {
       );
 
       await expect(client.subtasks.reposition(42, { position: 4 })).resolves.toBeUndefined();
+    });
+
+    it("should throw validation error on a 422", async () => {
+      server.use(
+        http.put(`${BASE_URL}/subtasks/42/position.json`, () => {
+          return HttpResponse.json({ errors: { position: ["must be greater than 0"] } }, { status: 422 });
+        })
+      );
+
+      await expect(client.subtasks.reposition(42, { position: 0 })).rejects.toThrow(BasecampError);
     });
   });
 

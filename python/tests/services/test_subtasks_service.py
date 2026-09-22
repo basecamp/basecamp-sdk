@@ -13,7 +13,7 @@ import pytest
 import respx
 
 from basecamp import Client
-from basecamp.errors import ForbiddenError, NotFoundError
+from basecamp.errors import ForbiddenError, NotFoundError, ValidationError
 
 BASE = "https://3.basecampapi.com/12345"
 
@@ -130,6 +130,15 @@ class TestUpdate:
 
         assert json.loads(route.calls.last.request.content) == {"assignee_ids": []}
 
+    @respx.mock
+    def test_422_surfaces_as_validation_error(self):
+        respx.put(f"{BASE}/subtasks/42").mock(
+            return_value=httpx.Response(422, json={"errors": {"due_on": ["is not a valid date"]}})
+        )
+
+        with pytest.raises(ValidationError):
+            _subtasks().update(subtask_id=42, due_on="not-a-date")
+
 
 class TestCompletion:
     @respx.mock
@@ -151,6 +160,15 @@ class TestCompletion:
         with pytest.raises(NotFoundError):
             _subtasks().complete(subtask_id=999)
 
+    @respx.mock
+    def test_uncomplete_404_surfaces_as_not_found(self):
+        respx.delete(f"{BASE}/subtasks/999/completion.json").mock(
+            return_value=httpx.Response(404, json={"error": "Not found"})
+        )
+
+        with pytest.raises(NotFoundError):
+            _subtasks().uncomplete(subtask_id=999)
+
 
 class TestReposition:
     @respx.mock
@@ -159,6 +177,15 @@ class TestReposition:
 
         assert _subtasks().reposition(subtask_id=42, position=4) is None
         assert json.loads(route.calls.last.request.content) == {"position": 4}
+
+    @respx.mock
+    def test_422_surfaces_as_validation_error(self):
+        respx.put(f"{BASE}/subtasks/42/position.json").mock(
+            return_value=httpx.Response(422, json={"errors": {"position": ["must be greater than 0"]}})
+        )
+
+        with pytest.raises(ValidationError):
+            _subtasks().reposition(subtask_id=42, position=0)
 
 
 class TestDelete:

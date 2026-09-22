@@ -56,6 +56,14 @@ class SubtasksServiceTest < Minitest::Test
     assert_equal "Hero shot on the desk", subtask["title"]
   end
 
+  def test_get_not_found
+    stub_get("/12345/subtasks/999", status: 404, response_body: { "error" => "Not found" })
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.subtasks.get(subtask_id: 999)
+    end
+  end
+
   def test_create
     stub = stub_post("/12345/recordings/200/subtasks.json", response_body: sample_subtask(id: 99))
       .with(body: { title: "Book the room", due_on: "2026-09-20", assignee_ids: [ 30068628 ] }.to_json)
@@ -92,6 +100,15 @@ class SubtasksServiceTest < Minitest::Test
     assert_requested(stub)
   end
 
+  def test_update_validation_error
+    stub_put("/12345/subtasks/42", status: 422,
+             response_body: { "errors" => { "due_on" => [ "is not a valid date" ] } })
+
+    assert_raises(Basecamp::ValidationError) do
+      @account.subtasks.update(subtask_id: 42, due_on: "not-a-date")
+    end
+  end
+
   def test_complete_and_uncomplete
     complete = stub_post("/12345/subtasks/42/completion.json", response_body: "", status: 204)
     uncomplete = stub_delete("/12345/subtasks/42/completion.json")
@@ -103,6 +120,22 @@ class SubtasksServiceTest < Minitest::Test
     assert_requested(uncomplete)
   end
 
+  def test_complete_not_found
+    stub_post("/12345/subtasks/999/completion.json", status: 404, response_body: { "error" => "Not found" })
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.subtasks.complete(subtask_id: 999)
+    end
+  end
+
+  def test_uncomplete_not_found
+    stub_delete("/12345/subtasks/999/completion.json", status: 404)
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.subtasks.uncomplete(subtask_id: 999)
+    end
+  end
+
   def test_reposition
     stub = stub_put("/12345/subtasks/42/position.json", response_body: "", status: 204)
       .with(body: { position: 4 }.to_json)
@@ -110,6 +143,15 @@ class SubtasksServiceTest < Minitest::Test
     assert_nil @account.subtasks.reposition(subtask_id: 42, position: 4)
 
     assert_requested(stub)
+  end
+
+  def test_reposition_validation_error
+    stub_put("/12345/subtasks/42/position.json", status: 422,
+             response_body: { "errors" => { "position" => [ "must be greater than 0" ] } })
+
+    assert_raises(Basecamp::ValidationError) do
+      @account.subtasks.reposition(subtask_id: 42, position: 0)
+    end
   end
 
   def test_delete

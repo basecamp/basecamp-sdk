@@ -915,7 +915,12 @@ func TestCardStepsService_Reposition_RejectsOutOfRange(t *testing.T) {
 		t.Error("an invalid position must not reach the wire")
 	})
 
-	for _, position := range []int{0, -1, math.MaxInt32 + 1} {
+	// Build MaxInt32+1 at runtime: the constant expression math.MaxInt32+1
+	// overflows int on 32-bit and would not compile there. Same shape as
+	// TestTodolistsService_Reposition_PositionOutOfRange.
+	overflowing := math.MaxInt32
+	overflowing++
+	for _, position := range []int{0, -1, overflowing} {
 		err := svc.Reposition(context.Background(), 500, 10, position)
 		apiErr, ok := errors.AsType[*Error](err)
 		if !ok || apiErr.Code != CodeUsage {

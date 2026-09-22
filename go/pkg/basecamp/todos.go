@@ -50,9 +50,9 @@ type Todo struct {
 	CommentsURL            string               `json:"comments_url,omitempty"`
 	// SubtasksCount is the real number of subtasks; Steps embeds at most 100.
 	// SubtasksURL lists all of them, paginated (SubtasksService.List).
-	SubtasksCount          int        `json:"subtasks_count"`
-	SubtasksCompletedCount int        `json:"subtasks_completed_count"`
-	SubtasksURL            string     `json:"subtasks_url"`
+	SubtasksCount          int        `json:"subtasks_count,omitempty"`
+	SubtasksCompletedCount int        `json:"subtasks_completed_count,omitempty"`
+	SubtasksURL            string     `json:"subtasks_url,omitempty"`
 	CompletionURL          string     `json:"completion_url,omitempty"`
 	CompletedAt            *time.Time `json:"completed_at,omitempty"`
 	Completer              *Person    `json:"completer,omitempty"`
