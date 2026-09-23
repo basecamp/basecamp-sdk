@@ -13789,7 +13789,7 @@
       "tag": "Subtasks",
       "method": "PUT",
       "path": "/{accountId}/subtasks/{subtaskId}",
-      "doc": "Update a subtask\n\nA partial update: every omitted parameter is left unchanged. Clearing a\nvalue takes an explicit send — `\"due_on\": \"\"` clears the due date,\n`\"assignee_ids\": []` removes every assignee.",
+      "doc": "Update a subtask\n\nA partial update: every omitted parameter is left unchanged. Clearing a\nvalue takes an explicit send — `\"due_on\": null` clears the due date (an\nempty string is accepted too, and is what the Ruby, Python and TypeScript\nSDKs send, since they drop nil, None and undefined from the body);\n`\"assignee_ids\": []` removes every assignee.",
       "readonly": false,
       "idempotent": true,
       "retry": {
