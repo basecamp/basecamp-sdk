@@ -13238,7 +13238,9 @@ structure CreateSubtaskOutput {
 /// Update a subtask
 ///
 /// A partial update: every omitted parameter is left unchanged. Clearing a
-/// value takes an explicit send — `"due_on": ""` clears the due date,
+/// value takes an explicit send — `"due_on": null` clears the due date (an
+/// empty string is accepted too, and is what the Ruby, Python and TypeScript
+/// SDKs send, since they drop nil, None and undefined from the body);
 /// `"assignee_ids": []` removes every assignee.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])

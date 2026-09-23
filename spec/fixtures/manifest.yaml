@@ -251,6 +251,15 @@ targets:
     fixture: recordings/list.json
     pointer: "/2"
     schema: Recording
+  # subtasks_count, subtasks_completed_count and subtasks_url are optional on
+  # Recording for the same reason: the partial emits them only when the caller
+  # passes subtaskable, which todos/_todo and kanban/cards/_card do (BC3 #12659).
+  # A recordings listing dispatches each element to its own partial, so this
+  # Todo-shaped element is the field-bearing representative for all three.
+  - id: recording-list-todo
+    fixture: recordings/list.json
+    pointer: "/3"
+    schema: Recording
   - id: todo-get
     fixture: todos/get.json
     pointer: ""
@@ -432,7 +441,7 @@ covered_schemas:
   ClientCorrespondence: [client-correspondence-get]
   ClientReply: [client-reply-get]
   QuestionAnswer: [question-answer-get]
-  Recording: [recording-get, recording-list-todolist]
+  Recording: [recording-get, recording-list-todolist, recording-list-todo]
   Todo: [todo-get]
   SearchResult: [search-result-0, search-result-todolist, search-result-attachment,
                  search-result-chat-upload, search-result-kanban-list, search-result-needle]

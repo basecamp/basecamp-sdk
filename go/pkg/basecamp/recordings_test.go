@@ -32,8 +32,8 @@ func TestRecording_UnmarshalList(t *testing.T) {
 		t.Fatalf("failed to unmarshal list.json: %v", err)
 	}
 
-	if len(recordings) != 3 {
-		t.Errorf("expected 3 recordings, got %d", len(recordings))
+	if len(recordings) != 4 {
+		t.Errorf("expected 4 recordings, got %d", len(recordings))
 	}
 
 	// bubble_up_url is optional on the generic Recording projection: only the
@@ -46,6 +46,19 @@ func TestRecording_UnmarshalList(t *testing.T) {
 			}
 		} else if r.BubbleUpURL != "" {
 			t.Errorf("%s recording %d: expected no BubbleUpURL, got %q", r.Type, r.ID, r.BubbleUpURL)
+		}
+	}
+
+	// The subtask accounting is optional the same way: only the todo and card
+	// partials pass subtaskable, so the Todo recording carries all three and
+	// the rest carry none.
+	for _, r := range recordings {
+		if r.Type == "Todo" {
+			if r.SubtasksCount == nil || r.SubtasksCompletedCount == nil || r.SubtasksURL == nil {
+				t.Errorf("Todo recording %d: expected the three subtasks fields to be set", r.ID)
+			}
+		} else if r.SubtasksCount != nil || r.SubtasksCompletedCount != nil || r.SubtasksURL != nil {
+			t.Errorf("%s recording %d: expected no subtasks fields", r.Type, r.ID)
 		}
 	}
 
