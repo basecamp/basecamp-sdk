@@ -39,7 +39,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # pinned 2026-08-05; upstream moves its only tag, v1
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # upstream moves its only tag, v1
         with:
           toolchain: '1.98.1'
           components: clippy, rustfmt
@@ -122,7 +122,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # pinned 2026-08-05; upstream moves its only tag, v1
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # upstream moves its only tag, v1
         with:
           toolchain: '1.98.1'
 
@@ -292,7 +292,7 @@ jobs:
 
       - name: Set up Rust
         if: steps.state.outputs.state == 'publish'
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # pinned 2026-08-05; upstream moves its only tag, v1
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # upstream moves its only tag, v1
         with:
           toolchain: '1.98.1'
 
