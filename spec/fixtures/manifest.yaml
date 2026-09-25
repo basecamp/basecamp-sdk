@@ -102,6 +102,18 @@ targets:
     fixture: cards/get.json
     pointer: ""
     schema: Card
+  # A subtask is a CardStep on the wire (type "Kanban::Step" permanently; bc3
+  # #12659). Both fixtures are the documented examples from
+  # doc/api/sections/subtasks.md, so their canonical `url`/`completion_url`
+  # say /subtasks where the embedded `steps` of cards/get.json still say
+  # /card_tables/steps — bc3 serves both spellings for the same records.
+  - id: subtask-get
+    fixture: subtasks/get.json
+    pointer: ""
+    schema: CardStep
+  - id: subtask-list
+    operation: ListSubtasks
+    fixture: subtasks/list.json
   - id: todolist-get
     fixture: todolists/get.json
     pointer: ""
@@ -238,6 +250,15 @@ targets:
   - id: recording-list-todolist
     fixture: recordings/list.json
     pointer: "/2"
+    schema: Recording
+  # subtasks_count, subtasks_completed_count and subtasks_url are optional on
+  # Recording for the same reason: the partial emits them only when the caller
+  # passes subtaskable, which todos/_todo and kanban/cards/_card do (BC3 #12659).
+  # A recordings listing dispatches each element to its own partial, so this
+  # Todo-shaped element is the field-bearing representative for all three.
+  - id: recording-list-todo
+    fixture: recordings/list.json
+    pointer: "/3"
     schema: Recording
   - id: todo-get
     fixture: todos/get.json
@@ -400,6 +421,7 @@ covered_schemas:
   Message: [message-get]
   Document: [document-get]
   Card: [card-get]
+  CardStep: [subtask-get]
   Todolist: [todolist-get, todolist-group-get]
   Upload: [upload-get]
   UploadVersion: [upload-version-0, upload-version-recordable-gone]
@@ -419,7 +441,7 @@ covered_schemas:
   ClientCorrespondence: [client-correspondence-get]
   ClientReply: [client-reply-get]
   QuestionAnswer: [question-answer-get]
-  Recording: [recording-get, recording-list-todolist]
+  Recording: [recording-get, recording-list-todolist, recording-list-todo]
   Todo: [todo-get]
   SearchResult: [search-result-0, search-result-todolist, search-result-attachment,
                  search-result-chat-upload, search-result-kanban-list, search-result-needle]

@@ -85,6 +85,46 @@
       ]
     },
     {
+      "operationId": "CompleteSubtask",
+      "tag": "Subtasks",
+      "method": "POST",
+      "path": "/{accountId}/subtasks/{subtaskId}/completion.json",
+      "doc": "Mark a subtask as completed",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "subtaskId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "CompleteTodo",
       "tag": "Todos",
       "method": "POST",
@@ -1712,6 +1752,68 @@
       ]
     },
     {
+      "operationId": "CreateSubtask",
+      "tag": "Subtasks",
+      "method": "POST",
+      "path": "/{accountId}/recordings/{recordingId}/subtasks.json",
+      "doc": "Create a subtask under a to-do or a card\n\nAny other recording answers `403 Forbidden`.",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "recordingId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "assignee_ids": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "due_on": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "type": "object"
+      },
+      "bodyRequired": true
+    },
+    {
       "operationId": "CreateTemplate",
       "tag": "Templates",
       "method": "POST",
@@ -2873,6 +2975,46 @@
         },
         {
           "name": "typeId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "operationId": "DeleteSubtask",
+      "tag": "Subtasks",
+      "method": "DELETE",
+      "path": "/{accountId}/subtasks/{subtaskId}",
+      "doc": "Delete a subtask\n\nOn accounts where deleting is limited to admins and the creator, everyone\nelse gets `403 Forbidden`.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "subtaskId",
           "in": "path",
           "required": true,
           "schema": {
@@ -6897,6 +7039,46 @@
       ]
     },
     {
+      "operationId": "GetSubtask",
+      "tag": "Subtasks",
+      "method": "GET",
+      "path": "/{accountId}/subtasks/{subtaskId}",
+      "doc": "Get a subtask by ID",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "subtaskId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "GetTemplate",
       "tag": "Templates",
       "method": "GET",
@@ -9270,6 +9452,60 @@
       ]
     },
     {
+      "operationId": "ListSubtasks",
+      "tag": "Subtasks",
+      "method": "GET",
+      "path": "/{accountId}/recordings/{recordingId}/subtasks.json",
+      "doc": "List a recording's subtasks, in position order\n\nOnly to-dos and cards hold subtasks; check for `subtasks_count` and\n`subtasks_url` on the parent's JSON.\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "recordingId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "ListTemplates",
       "tag": "Templates",
       "method": "GET",
@@ -9711,7 +9947,7 @@
       "tag": "MyNotifications",
       "method": "PUT",
       "path": "/{accountId}/my/unreads.json",
-      "doc": "Mark specified items as read",
+      "doc": "Mark specified items as read\n\nA batch is capped at 500 readables; a larger one is refused with 422\nbefore any per-item work (bc3 `f3437f5c732`).",
       "readonly": false,
       "idempotent": true,
       "retry": {
@@ -9739,10 +9975,11 @@
       "body": {
         "properties": {
           "readables": {
-            "description": "Array of readable_sgid values identifying the items to mark as read",
+            "description": "Array of readable_sgid values identifying the items to mark as read.\nAt most 500 per request.",
             "items": {
               "type": "string"
             },
+            "maxItems": 500,
             "type": "array"
           }
         },
@@ -10582,7 +10819,7 @@
       "body": {
         "properties": {
           "position": {
-            "description": "0-indexed position",
+            "description": "The 1-based position to move it to (1 = top), the same `reposition_to`\na to-do uses. bc3's doc said \"Zero indexed\" until BC3 #12659 corrected\nit; the server never was.",
             "format": "int32",
             "type": "integer"
           },
@@ -10594,6 +10831,60 @@
         "required": [
           "position",
           "source_id"
+        ],
+        "type": "object"
+      },
+      "bodyRequired": true
+    },
+    {
+      "operationId": "RepositionSubtask",
+      "tag": "Subtasks",
+      "method": "PUT",
+      "path": "/{accountId}/subtasks/{subtaskId}/position.json",
+      "doc": "Move a subtask to a new position among its siblings",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "subtaskId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "position": {
+            "description": "The 1-based position to move it to",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "position"
         ],
         "type": "object"
       },
@@ -11513,6 +11804,46 @@
         },
         {
           "name": "recordingId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "operationId": "UncompleteSubtask",
+      "tag": "Subtasks",
+      "method": "DELETE",
+      "path": "/{accountId}/subtasks/{subtaskId}/completion.json",
+      "doc": "Mark a subtask as not completed",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "subtaskId",
           "in": "path",
           "required": true,
           "schema": {
@@ -13448,6 +13779,64 @@
               "type": "integer"
             },
             "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "operationId": "UpdateSubtask",
+      "tag": "Subtasks",
+      "method": "PUT",
+      "path": "/{accountId}/subtasks/{subtaskId}",
+      "doc": "Update a subtask\n\nA partial update: every omitted parameter is left unchanged. Clearing a\nvalue takes an explicit send — `\"due_on\": null` clears the due date (an\nempty string is accepted too, and is what the Ruby, Python and TypeScript\nSDKs send, since they drop nil, None and undefined from the body);\n`\"assignee_ids\": []` removes every assignee. Send at least one parameter:\nan empty body is refused with `400 Bad Request`.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "subtaskId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "assignee_ids": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "due_on": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
           }
         },
         "type": "object"

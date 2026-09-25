@@ -23,6 +23,18 @@
       ]
     }
   },
+  "CompleteSubtask": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "CompleteTodo": {
     "idempotent": true,
     "retry": {
@@ -324,6 +336,17 @@
       ]
     }
   },
+  "CreateSubtask": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "CreateTemplate": {
     "retry": {
       "backoff": "exponential",
@@ -552,6 +575,18 @@
     }
   },
   "DeleteMessageType": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "DeleteSubtask": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",
@@ -1533,6 +1568,17 @@
       ]
     }
   },
+  "GetSubtask": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "GetTemplate": {
     "retry": {
       "backoff": "exponential",
@@ -2050,6 +2096,17 @@
       ]
     }
   },
+  "ListSubtasks": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "ListTemplates": {
     "retry": {
       "backoff": "exponential",
@@ -2311,6 +2368,18 @@
       ]
     }
   },
+  "RepositionSubtask": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "RepositionTodo": {
     "idempotent": true,
     "retry": {
@@ -2503,6 +2572,18 @@
     }
   },
   "UnarchiveRecording": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "UncompleteSubtask": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",
@@ -2898,6 +2979,18 @@
     }
   },
   "UpdateSubscription": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "UpdateSubtask": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",

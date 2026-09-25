@@ -1882,7 +1882,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description Mark specified items as read */
+        /**
+         * @description Mark specified items as read
+         *
+         *     A batch is capped at 500 readables; a larger one is refused with 422
+         *     before any per-item work (bc3 `f3437f5c732`).
+         */
         put: operations["MarkAsRead"];
         post?: never;
         delete?: never;
@@ -2716,6 +2721,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recordings/{recordingId}/subtasks.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List a recording's subtasks, in position order
+         *
+         *     Only to-dos and cards hold subtasks; check for `subtasks_count` and
+         *     `subtasks_url` on the parent's JSON.
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages. X-Total-Count header provides total count.
+         */
+        get: operations["ListSubtasks"];
+        put?: never;
+        /**
+         * @description Create a subtask under a to-do or a card
+         *
+         *     Any other recording answers `403 Forbidden`.
+         */
+        post: operations["CreateSubtask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/recordings/{recordingId}/timesheet.json": {
         parameters: {
             query?: never;
@@ -3125,6 +3160,74 @@ export interface paths {
          *     home screen; they simply stop appearing there until pinned again.
          */
         delete: operations["DeleteFolder"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subtasks/{subtaskId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a subtask by ID */
+        get: operations["GetSubtask"];
+        /**
+         * @description Update a subtask
+         *
+         *     A partial update: every omitted parameter is left unchanged. Clearing a
+         *     value takes an explicit send — `"due_on": null` clears the due date (an
+         *     empty string is accepted too, and is what the Ruby, Python and TypeScript
+         *     SDKs send, since they drop nil, None and undefined from the body);
+         *     `"assignee_ids": []` removes every assignee. Send at least one parameter:
+         *     an empty body is refused with `400 Bad Request`.
+         */
+        put: operations["UpdateSubtask"];
+        post?: never;
+        /**
+         * @description Delete a subtask
+         *
+         *     On accounts where deleting is limited to admins and the creator, everyone
+         *     else gets `403 Forbidden`.
+         */
+        delete: operations["DeleteSubtask"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subtasks/{subtaskId}/completion.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Mark a subtask as completed */
+        post: operations["CompleteSubtask"];
+        /** @description Mark a subtask as not completed */
+        delete: operations["UncompleteSubtask"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subtasks/{subtaskId}/position.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Move a subtask to a new position among its siblings */
+        put: operations["RepositionSubtask"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3984,10 +4087,24 @@ export interface components {
             completer?: components["schemas"]["Person"];
             assignees?: components["schemas"]["Person"][];
             completion_subscribers?: components["schemas"]["Person"][];
+            /**
+             * @description The first 100 subtasks, embedded read-only. A card with more than 100
+             *     reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
+             */
             steps?: components["schemas"]["CardStep"][];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
+            /**
+             * Format: int32
+             * @description Subtask accounting (BC3 #12659). `subtasks_count` is the real total,
+             *     `subtasks_completed_count` how many are done, and `subtasks_url` the
+             *     paginated listing of all of them (`ListSubtasks`).
+             */
+            subtasks_count?: number;
+            /** Format: int32 */
+            subtasks_completed_count?: number;
+            subtasks_url?: string;
         };
         CardColumn: {
             /** Format: int64 */
@@ -4584,6 +4701,12 @@ export interface components {
              */
             url: string;
         };
+        CreateSubtaskRequestContent: {
+            title: string;
+            due_on?: string;
+            assignee_ids?: number[];
+        };
+        CreateSubtaskResponseContent: components["schemas"]["CardStep"];
         CreateTemplateLibraryCopyRequestContent: {
             /** Format: int64 */
             template_recording_id: number;
@@ -5356,6 +5479,7 @@ export interface components {
         GetScheduleResponseContent: components["schemas"]["Schedule"];
         GetSearchMetadataResponseContent: components["schemas"]["SearchMetadata"];
         GetSubscriptionResponseContent: components["schemas"]["Subscription"];
+        GetSubtaskResponseContent: components["schemas"]["CardStep"];
         GetTemplateLibraryCopyResponseContent: components["schemas"]["TemplateLibraryCopy"];
         GetTemplateLibraryResponseContent: components["schemas"]["TemplateLibrary"];
         GetTemplateResponseContent: components["schemas"]["Template"];
@@ -5541,6 +5665,7 @@ export interface components {
         ListRecordingBoostsResponseContent: components["schemas"]["Boost"][];
         ListRecordingsResponseContent: components["schemas"]["Recording"][];
         ListScheduleEntriesResponseContent: components["schemas"]["ScheduleEntry"][];
+        ListSubtasksResponseContent: components["schemas"]["CardStep"][];
         ListTemplatesResponseContent: components["schemas"]["Template"][];
         ListTodolistGroupsResponseContent: components["schemas"]["Todolist"][];
         ListTodolistsResponseContent: components["schemas"]["Todolist"][];
@@ -5550,7 +5675,10 @@ export interface components {
         ListVaultsResponseContent: components["schemas"]["Vault"][];
         ListWebhooksResponseContent: components["schemas"]["Webhook"][];
         MarkAsReadRequestContent: {
-            /** @description Array of readable_sgid values identifying the items to mark as read */
+            /**
+             * @description Array of readable_sgid values identifying the items to mark as read.
+             *     At most 500 per request.
+             */
             readables: string[];
         };
         Message: {
@@ -6151,6 +6279,17 @@ export interface components {
             boosts_count?: number;
             boosts_url?: string;
             /**
+             * Format: int32
+             * @description Subtask count/URL. Carried on subtaskable recordings — to-dos and cards,
+             *     whose type-specific partials render with `subtaskable: true` (BC3
+             *     #12659). Optional (absent on every other recording type and on the
+             *     base/webhook partial).
+             */
+            subtasks_count?: number;
+            /** Format: int32 */
+            subtasks_completed_count?: number;
+            subtasks_url?: string;
+            /**
              * @description Message subject. Present on `Message` recordings — notably the account-wide
              *     `/messages.json` aggregate feed, whose message partial renders `subject`.
              */
@@ -6311,7 +6450,16 @@ export interface components {
             source_id: number;
             /**
              * Format: int32
-             * @description 0-indexed position
+             * @description The 1-based position to move it to (1 = top), the same `reposition_to`
+             *     a to-do uses. bc3's doc said "Zero indexed" until BC3 #12659 corrected
+             *     it; the server never was.
+             */
+            position: number;
+        };
+        RepositionSubtaskRequestContent: {
+            /**
+             * Format: int32
+             * @description The 1-based position to move it to
              */
             position: number;
         };
@@ -7072,9 +7220,20 @@ export interface components {
             boosts_count?: number;
             boosts_url?: string;
             /**
-             * @description Steps embedded in the Todo response (BC5 addition). The shared
-             *     `steps/step` jbuilder partial emits the same shape as `CardStep`,
-             *     so the existing `CardStepList` is reused.
+             * Format: int32
+             * @description Subtask accounting (BC3 #12659). `subtasks_count` is the real total,
+             *     `subtasks_completed_count` how many are done, and `subtasks_url` the
+             *     paginated listing of all of them (`ListSubtasks`).
+             */
+            subtasks_count?: number;
+            /** Format: int32 */
+            subtasks_completed_count?: number;
+            subtasks_url?: string;
+            /**
+             * @description The first 100 subtasks, embedded read-only (BC5 addition). The shared
+             *     `subtasks/subtask` jbuilder partial emits the same shape as `CardStep`,
+             *     so the existing `CardStepList` is reused. A to-do with more than 100
+             *     reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
              */
             steps?: components["schemas"]["CardStep"][];
         };
@@ -7682,6 +7841,12 @@ export interface components {
             unsubscriptions?: number[];
         };
         UpdateSubscriptionResponseContent: components["schemas"]["Subscription"];
+        UpdateSubtaskRequestContent: {
+            title?: string;
+            due_on?: string;
+            assignee_ids?: number[];
+        };
+        UpdateSubtaskResponseContent: components["schemas"]["CardStep"];
         UpdateTemplateRequestContent: {
             name?: string;
             description?: string;
@@ -16042,6 +16207,15 @@ export interface operations {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
             /** @description RateLimitError 429 response */
             429: {
                 headers: {
@@ -20125,6 +20299,156 @@ export interface operations {
             };
         };
     };
+    ListSubtasks: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
+            };
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListSubtasks 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListSubtasksResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateSubtask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSubtaskRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateSubtask 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateSubtaskResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetRecordingTimesheet: {
         parameters: {
             query?: {
@@ -21872,6 +22196,381 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetSubtask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subtaskId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetSubtask 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetSubtaskResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateSubtask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subtaskId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateSubtaskRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateSubtask 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateSubtaskResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DeleteSubtask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subtaskId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DeleteSubtask 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CompleteSubtask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subtaskId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CompleteSubtask 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UncompleteSubtask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subtaskId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description UncompleteSubtask 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    RepositionSubtask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subtaskId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepositionSubtaskRequestContent"];
+            };
+        };
+        responses: {
+            /** @description RepositionSubtask 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

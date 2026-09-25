@@ -243,12 +243,12 @@ All SDKs provide:
 | Category | Services |
 |----------|----------|
 | **Projects** | Projects, Templates, Tools, People |
-| **To-dos** | Todos, Todolists, Todosets, TodolistGroups |
+| **To-dos** | Todos, Todolists, Todosets, TodolistGroups, Subtasks |
 | **Messages** | Messages, MessageBoards, MessageTypes, Comments |
 | **Chat** | Campfires (lines, chatbots) |
 | **Scheduling** | Schedules, Timeline, Lineup, Checkins |
 | **Files** | Vaults, Documents, Uploads, Attachments |
-| **Card Tables** | CardTables, Cards, CardColumns, CardSteps, Wormholes |
+| **Card Tables** | CardTables, Cards, CardColumns, CardSteps, Subtasks, Wormholes |
 | **Client Portal** | ClientApprovals, ClientCorrespondences, ClientReplies |
 | **Automation** | Webhooks, Subscriptions, Events |
 | **Reporting** | Search, Reports, Timesheets, Recordings |

@@ -23,6 +23,7 @@
 "Projects" = "Projects"
 "ClientFeatures" = "ClientFeatures"
 "Boosts" = "Boosts"
+"Subtasks" = "Subtasks"
 "Untagged" = "Miscellaneous"
 
 # SERVICE_SPLITS flattened: operations that belong to a different service than their tag

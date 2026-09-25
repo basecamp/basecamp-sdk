@@ -32,6 +32,9 @@ public struct Todo: Codable, Sendable {
     public var startsOn: String?
     public var steps: [CardStep]?
     public var subscriptionUrl: String?
+    public var subtasksCompletedCount: Int32?
+    public var subtasksCount: Int32?
+    public var subtasksUrl: String?
 
     public init(
         appUrl: String,
@@ -63,7 +66,10 @@ public struct Todo: Codable, Sendable {
         position: Int32? = nil,
         startsOn: String? = nil,
         steps: [CardStep]? = nil,
-        subscriptionUrl: String? = nil
+        subscriptionUrl: String? = nil,
+        subtasksCompletedCount: Int32? = nil,
+        subtasksCount: Int32? = nil,
+        subtasksUrl: String? = nil
     ) {
         self.appUrl = appUrl
         self.bucket = bucket
@@ -95,6 +101,9 @@ public struct Todo: Codable, Sendable {
         self.startsOn = startsOn
         self.steps = steps
         self.subscriptionUrl = subscriptionUrl
+        self.subtasksCompletedCount = subtasksCompletedCount
+        self.subtasksCount = subtasksCount
+        self.subtasksUrl = subtasksUrl
     }
 
     enum CodingKeys: String, CodingKey {
@@ -128,6 +137,9 @@ public struct Todo: Codable, Sendable {
         case startsOn
         case steps
         case subscriptionUrl
+        case subtasksCompletedCount
+        case subtasksCount
+        case subtasksUrl
     }
 
     public init(from decoder: any Decoder) throws {
@@ -162,6 +174,9 @@ public struct Todo: Codable, Sendable {
         self.startsOn = try container.decodeIfPresent(String.self, forKey: .startsOn)
         self.steps = try container.decodeIfPresent([CardStep].self, forKey: .steps)
         self.subscriptionUrl = try container.decodeIfPresent(String.self, forKey: .subscriptionUrl)
+        self.subtasksCompletedCount = try container.decodeIfPresent(Int32.self, forKey: .subtasksCompletedCount)
+        self.subtasksCount = try container.decodeIfPresent(Int32.self, forKey: .subtasksCount)
+        self.subtasksUrl = try container.decodeIfPresent(String.self, forKey: .subtasksUrl)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -196,5 +211,8 @@ public struct Todo: Codable, Sendable {
         try container.encodeIfPresent(self.startsOn, forKey: .startsOn)
         try container.encodeIfPresent(self.steps, forKey: .steps)
         try container.encodeIfPresent(self.subscriptionUrl, forKey: .subscriptionUrl)
+        try container.encodeIfPresent(self.subtasksCompletedCount, forKey: .subtasksCompletedCount)
+        try container.encodeIfPresent(self.subtasksCount, forKey: .subtasksCount)
+        try container.encodeIfPresent(self.subtasksUrl, forKey: .subtasksUrl)
     }
 }

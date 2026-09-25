@@ -66,6 +66,11 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
     "creator",
     "participants.[]"
   ],
+  "CreateSubtask": [
+    "assignees.[]",
+    "completer",
+    "creator"
+  ],
   "CreateTemplateLibraryCopy": [
     "destination_todolist.creator"
   ],
@@ -414,6 +419,11 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "GetSubscription": [
     "subscribers.[]"
   ],
+  "GetSubtask": [
+    "assignees.[]",
+    "completer",
+    "creator"
+  ],
   "GetTemplateLibrary": [
     "todolists.[].creator"
   ],
@@ -547,6 +557,11 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
     "[].creator",
     "[].participants.[]"
   ],
+  "ListSubtasks": [
+    "[].assignees.[]",
+    "[].completer",
+    "[].creator"
+  ],
   "ListTodolistGroups": [
     "[].creator"
   ],
@@ -661,6 +676,11 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   ],
   "UpdateSubscription": [
     "subscribers.[]"
+  ],
+  "UpdateSubtask": [
+    "assignees.[]",
+    "completer",
+    "creator"
   ],
   "UpdateTimesheetEntry": [
     "creator",

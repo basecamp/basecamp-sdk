@@ -443,7 +443,8 @@ pub struct Card {
         skip_serializing_if = "Option::is_none"
     )]
     pub completion_subscribers: Option<Vec<Person>>,
-    /// `steps`.
+    /// The first 100 subtasks, embedded read-only. A card with more than 100
+    /// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub steps: Option<Vec<CardStep>>,
     /// `boosts_count`.
@@ -452,6 +453,17 @@ pub struct Card {
     /// `boosts_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boosts_url: Option<String>,
+    /// Subtask accounting (BC3 #12659). `subtasks_count` is the real total,
+    /// `subtasks_completed_count` how many are done, and `subtasks_url` the
+    /// paginated listing of all of them (`ListSubtasks`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtasks_count: Option<i32>,
+    /// `subtasks_completed_count`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtasks_completed_count: Option<i32>,
+    /// `subtasks_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtasks_url: Option<String>,
 }
 
 /// The `CardColumn` shape of the Basecamp API.
@@ -1540,6 +1552,22 @@ pub struct CreateStreamTicketResponseContent {
     /// it embeds the ticket.
     pub url: SensitiveString,
 }
+
+/// The `CreateSubtaskRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreateSubtaskRequestContent {
+    /// `title`.
+    pub title: String,
+    /// `due_on`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub due_on: Option<Date>,
+    /// `assignee_ids`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assignee_ids: Option<Vec<i64>>,
+}
+
+/// `CreateSubtaskResponseContent`.
+pub type CreateSubtaskResponseContent = CardStep;
 
 /// The `CreateTemplateLibraryCopyRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -2971,6 +2999,9 @@ pub type GetSearchMetadataResponseContent = SearchMetadata;
 /// `GetSubscriptionResponseContent`.
 pub type GetSubscriptionResponseContent = Subscription;
 
+/// `GetSubtaskResponseContent`.
+pub type GetSubtaskResponseContent = CardStep;
+
 /// `GetTemplateLibraryCopyResponseContent`.
 pub type GetTemplateLibraryCopyResponseContent = TemplateLibraryCopy;
 
@@ -3336,6 +3367,9 @@ pub type ListRecordingsResponseContent = Vec<Recording>;
 /// `ListScheduleEntriesResponseContent`.
 pub type ListScheduleEntriesResponseContent = Vec<ScheduleEntry>;
 
+/// `ListSubtasksResponseContent`.
+pub type ListSubtasksResponseContent = Vec<CardStep>;
+
 /// `ListTemplatesResponseContent`.
 pub type ListTemplatesResponseContent = Vec<Template>;
 
@@ -3363,7 +3397,8 @@ pub type ListWebhooksResponseContent = Vec<Webhook>;
 /// The `MarkAsReadRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MarkAsReadRequestContent {
-    /// Array of readable_sgid values identifying the items to mark as read
+    /// Array of readable_sgid values identifying the items to mark as read.
+    /// At most 500 per request.
     pub readables: Vec<String>,
 }
 
@@ -4432,6 +4467,18 @@ pub struct Recording {
     /// `boosts_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boosts_url: Option<String>,
+    /// Subtask count/URL. Carried on subtaskable recordings — to-dos and cards,
+    /// whose type-specific partials render with `subtaskable: true` (BC3
+    /// #12659). Optional (absent on every other recording type and on the
+    /// base/webhook partial).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtasks_count: Option<i32>,
+    /// `subtasks_completed_count`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtasks_completed_count: Option<i32>,
+    /// `subtasks_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtasks_url: Option<String>,
     /// Message subject. Present on `Message` recordings — notably the account-wide
     /// `/messages.json` aggregate feed, whose message partial renders `subject`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4645,7 +4692,16 @@ pub type ReplaceTodoResponseContent = Todo;
 pub struct RepositionCardStepRequestContent {
     /// `source_id`.
     pub source_id: i64,
-    /// 0-indexed position
+    /// The 1-based position to move it to (1 = top), the same `reposition_to`
+    /// a to-do uses. bc3's doc said "Zero indexed" until BC3 #12659 corrected
+    /// it; the server never was.
+    pub position: i32,
+}
+
+/// The `RepositionSubtaskRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct RepositionSubtaskRequestContent {
+    /// The 1-based position to move it to
     pub position: i32,
 }
 
@@ -5726,9 +5782,21 @@ pub struct Todo {
     /// `boosts_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boosts_url: Option<String>,
-    /// Steps embedded in the Todo response (BC5 addition). The shared
-    /// `steps/step` jbuilder partial emits the same shape as `CardStep`,
-    /// so the existing `CardStepList` is reused.
+    /// Subtask accounting (BC3 #12659). `subtasks_count` is the real total,
+    /// `subtasks_completed_count` how many are done, and `subtasks_url` the
+    /// paginated listing of all of them (`ListSubtasks`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtasks_count: Option<i32>,
+    /// `subtasks_completed_count`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtasks_completed_count: Option<i32>,
+    /// `subtasks_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtasks_url: Option<String>,
+    /// The first 100 subtasks, embedded read-only (BC5 addition). The shared
+    /// `subtasks/subtask` jbuilder partial emits the same shape as `CardStep`,
+    /// so the existing `CardStepList` is reused. A to-do with more than 100
+    /// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub steps: Option<Vec<CardStep>>,
 }
@@ -6654,6 +6722,23 @@ pub struct UpdateSubscriptionRequestContent {
 
 /// `UpdateSubscriptionResponseContent`.
 pub type UpdateSubscriptionResponseContent = Subscription;
+
+/// The `UpdateSubtaskRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct UpdateSubtaskRequestContent {
+    /// `title`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// `due_on`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub due_on: Option<Date>,
+    /// `assignee_ids`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assignee_ids: Option<Vec<i64>>,
+}
+
+/// `UpdateSubtaskResponseContent`.
+pub type UpdateSubtaskResponseContent = CardStep;
 
 /// The `UpdateTemplateRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

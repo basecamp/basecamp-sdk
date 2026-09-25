@@ -44,6 +44,7 @@ extension AccountClient {
     public var schedules: SchedulesService { service("schedules") { SchedulesService(accountClient: self) } }
     public var search: SearchService { service("search") { SearchService(accountClient: self) } }
     public var subscriptions: SubscriptionsService { service("subscriptions") { SubscriptionsService(accountClient: self) } }
+    public var subtasks: SubtasksService { service("subtasks") { SubtasksService(accountClient: self) } }
     public var templates: TemplatesService { service("templates") { TemplatesService(accountClient: self) } }
     public var timeline: TimelineService { service("timeline") { TimelineService(accountClient: self) } }
     public var timesheets: TimesheetsService { service("timesheets") { TimesheetsService(accountClient: self) } }

@@ -69,6 +69,9 @@ impl<'a> MyNotificationsService<'a> {
 
     /// Mark specified items as read
     ///
+    /// A batch is capped at 500 readables; a larger one is refused with 422
+    /// before any per-item work (bc3 `f3437f5c732`).
+    ///
     /// `PUT /my/unreads.json` — idempotent; retries up to 2 attempt(s) on 429, 503.
     pub async fn mark_as_read(&self, body: &MarkAsReadRequestContent) -> Result<(), Error> {
         let mut operation = self.client.operation(&routes::MARK_AS_READ, &[]);

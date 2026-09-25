@@ -1,25 +1,43 @@
 ---
 gap: subtasks-canonical-rename
-status: partial-coverage
+status: absorbed-in-sdk
 detected: 2026-08-11
-sdk_demand: low
-bc3_pr: 12544
+sdk_demand: medium
+bc3_pr: 12659
+smithy_refs:
+  - ListSubtasks
+  - GetSubtask
+  - CreateSubtask
+  - UpdateSubtask
+  - CompleteSubtask
+  - UncompleteSubtask
+  - RepositionSubtask
+  - DeleteSubtask
+  - "Todo.subtasks_count / subtasks_completed_count / subtasks_url"
+  - "Card.subtasks_count / subtasks_completed_count / subtasks_url"
+  - "Recording.subtasks_count / subtasks_completed_count / subtasks_url"
 bc3_refs:
-  introduced_in: "step-to-subtask (BC3 #12544, merged 49eca3df973)"
+  introduced_in: "step-to-subtask (BC3 #12544, merged 49eca3df973); documented and given its canonical flat routes by Add Subtask API (BC3 #12659, e8f0d765ba6)"
   routes:
-    - "GET /:account_id/card_tables/subtasks/:id.json (canonical; undocumented)"
-    - "POST /:account_id/card_tables/cards/:card_id/subtasks.json (canonical; undocumented)"
-    - "PUT /:account_id/card_tables/subtasks/:id.json (canonical; undocumented)"
-    - "PUT /:account_id/card_tables/subtasks/:subtask_id/completions.json (canonical; undocumented)"
-    - "POST /:account_id/card_tables/cards/:card_id/positions.json (canonical; path unchanged by the rename)"
+    - "GET /:account_id/recordings/:recording_id/subtasks.json (paginated)"
+    - "GET /:account_id/subtasks/:id.json"
+    - "POST /:account_id/recordings/:recording_id/subtasks.json"
+    - "PUT /:account_id/subtasks/:id.json"
+    - "POST /:account_id/subtasks/:id/completion.json"
+    - "DELETE /:account_id/subtasks/:id/completion.json"
+    - "PUT /:account_id/subtasks/:id/position.json"
+    - "DELETE /:account_id/subtasks/:id.json"
   controllers:
-    - app/controllers/subtasks_controller.rb (renamed from steps_controller.rb)
+    - app/controllers/subtasks_controller.rb
+    - app/controllers/subtasks/completions_controller.rb
+    - app/controllers/subtasks/positions_controller.rb
   related_existing_api:
     - GetCardStep
     - CreateCardStep
     - UpdateCardStep
     - SetCardStepCompletion
     - RepositionCardStep
+    - CardStep
 ---
 
 # Subtasks — the canonical routes moved out from under the documented /steps spellings
@@ -108,3 +126,33 @@ Nothing to absorb today. If bc3 documents the canonical `/subtasks` routes:
 - [[step-top-level]] records how the `/steps` spellings were absorbed and
   stays the historical record for them; this brief owns the canonical-rename
   follow-through.
+
+## As of BC3 #12659 (`e8f0d765ba6`): documented, and absorbed as `SubtasksService`
+
+bc3 documented the canonical surface in a new `doc/api/sections/subtasks.md`
+and reshaped it after comments: the parent advertises `subtasks_count`,
+`subtasks_completed_count` and `subtasks_url`, the index paginates the same
+way, and every route is flat and speaks of subtasks — `GET`/`POST
+/recordings/:id/subtasks.json`, `GET`/`PUT`/`DELETE /subtasks/:id.json`,
+`POST`/`DELETE /subtasks/:id/completion.json` and `PUT
+/subtasks/:id/position.json`. Reposition and completion take a to-do's shape
+(a 1-based `position`; no `source_id`, no `completion: on/off`), and a
+subtask's emitted `url` and `completion_url` now render the `/subtasks`
+spellings. The embedded `steps` array on a to-do or card is capped at 100;
+`subtasks_count` is the real total. `type` stays `"Kanban::Step"` permanently.
+
+The SDK absorbed it as the `Subtasks` service (the eight operations in
+`smithy_refs`), reusing the `CardStep` structure — the wire shape did not
+change, only the routes and the parent's accounting did — and added the three
+accounting members to `Todo`, `Card` and the generic `Recording` projection.
+The `CardSteps` operations stay modelled exactly as before: bc3 keeps the
+card-scoped `/steps` spellings served indefinitely through legacy controllers
+of their own, and `card_table_steps.md` now points at the subtasks section as
+the one to use for new integrations. That doc also corrected its
+`position` parameter from "Zero indexed" to 1-based; the server always
+counted from 1, so `RepositionCardStep`'s member documentation and the Go
+wrapper's lower bound moved with it.
+
+Two fixtures under `spec/fixtures/subtasks/` are the documented examples and
+are validated as `CardStep` by `make check-fixture-coverage`; `todos/get.json`
+and `cards/get.json` gained the three accounting keys.

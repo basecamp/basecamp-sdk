@@ -77,14 +77,20 @@ type Recording struct {
 	// from/replies_* on Inbox::Forward), so they are pointer-backed: nil (absent)
 	// omits, and an explicit value — including an empty string or a zero count —
 	// round-trips, per SPEC.md §10.
-	BoostsCount  *int               `json:"boosts_count,omitempty"`
-	BoostsURL    *string            `json:"boosts_url,omitempty"`
-	Subject      *string            `json:"subject,omitempty"`
-	Category     *RecordingCategory `json:"category,omitempty"`
-	GroupOn      *string            `json:"group_on,omitempty"`
-	From         *string            `json:"from,omitempty"`
-	RepliesCount *int               `json:"replies_count,omitempty"`
-	RepliesURL   *string            `json:"replies_url,omitempty"`
+	BoostsCount *int    `json:"boosts_count,omitempty"`
+	BoostsURL   *string `json:"boosts_url,omitempty"`
+	// SubtasksCount/SubtasksCompletedCount/SubtasksURL are carried only by
+	// subtaskable recordings (to-dos and cards), so they are pointer-backed
+	// like BoostsCount: nil (absent) omits, an explicit zero round-trips.
+	SubtasksCount          *int               `json:"subtasks_count,omitempty"`
+	SubtasksCompletedCount *int               `json:"subtasks_completed_count,omitempty"`
+	SubtasksURL            *string            `json:"subtasks_url,omitempty"`
+	Subject                *string            `json:"subject,omitempty"`
+	Category               *RecordingCategory `json:"category,omitempty"`
+	GroupOn                *string            `json:"group_on,omitempty"`
+	From                   *string            `json:"from,omitempty"`
+	RepliesCount           *int               `json:"replies_count,omitempty"`
+	RepliesURL             *string            `json:"replies_url,omitempty"`
 	// Position, Description, and Service are door-specific (external-link)
 	// fields, populated only on Door recordings returned by the type=Door
 	// recordings query (the only endpoint that returns the full door shape).
@@ -482,6 +488,7 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		CommentsURL:      deref(gr.CommentsUrl),
 		SubscriptionURL:  deref(gr.SubscriptionUrl),
 		BoostsURL:        gr.BoostsUrl,
+		SubtasksURL:      gr.SubtasksUrl,
 		Subject:          gr.Subject,
 		From:             gr.From,
 		RepliesURL:       gr.RepliesUrl,
@@ -489,6 +496,14 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 	if gr.BoostsCount != nil {
 		v := int(*gr.BoostsCount)
 		r.BoostsCount = &v
+	}
+	if gr.SubtasksCount != nil {
+		v := int(*gr.SubtasksCount)
+		r.SubtasksCount = &v
+	}
+	if gr.SubtasksCompletedCount != nil {
+		v := int(*gr.SubtasksCompletedCount)
+		r.SubtasksCompletedCount = &v
 	}
 	if gr.RepliesCount != nil {
 		v := int(*gr.RepliesCount)

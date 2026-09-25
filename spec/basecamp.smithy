@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-09-02"
+  version: "2026-09-15"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -366,7 +366,16 @@ service Basecamp {
     // Batch 20 - Event feed (account-wide feed, agent inbox, stream tickets)
     PollEvents,
     PollInbox,
-    CreateStreamTicket
+    CreateStreamTicket,
+    // Batch 21 - Subtasks (wire type "Kanban::Step")
+    ListSubtasks,
+    GetSubtask,
+    CreateSubtask,
+    UpdateSubtask,
+    CompleteSubtask,
+    UncompleteSubtask,
+    RepositionSubtask,
+    DeleteSubtask
   ]
 }
 
@@ -1697,9 +1706,17 @@ structure Todo {
   boosts_count: Integer
   boosts_url: String
 
-  /// Steps embedded in the Todo response (BC5 addition). The shared
-  /// `steps/step` jbuilder partial emits the same shape as `CardStep`,
-  /// so the existing `CardStepList` is reused.
+  /// Subtask accounting (BC3 #12659). `subtasks_count` is the real total,
+  /// `subtasks_completed_count` how many are done, and `subtasks_url` the
+  /// paginated listing of all of them (`ListSubtasks`).
+  subtasks_count: Integer
+  subtasks_completed_count: Integer
+  subtasks_url: String
+
+  /// The first 100 subtasks, embedded read-only (BC5 addition). The shared
+  /// `subtasks/subtask` jbuilder partial emits the same shape as `CardStep`,
+  /// so the existing `CardStepList` is reused. A to-do with more than 100
+  /// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
   steps: CardStepList
 }
 
@@ -5930,8 +5947,10 @@ structure RepositionCardStepInput {
   @required
   source_id: CardStepId
 
+  /// The 1-based position to move it to (1 = top), the same `reposition_to`
+  /// a to-do uses. bc3's doc said "Zero indexed" until BC3 #12659 corrected
+  /// it; the server never was.
   @required
-  @documentation("0-indexed position")
   position: Integer
 }
 
@@ -6244,9 +6263,18 @@ structure Card {
   completer: Person
   assignees: PersonList
   completion_subscribers: PersonList
+  /// The first 100 subtasks, embedded read-only. A card with more than 100
+  /// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
   steps: CardStepList
   boosts_count: Integer
   boosts_url: String
+
+  /// Subtask accounting (BC3 #12659). `subtasks_count` is the real total,
+  /// `subtasks_completed_count` how many are done, and `subtasks_url` the
+  /// paginated listing of all of them (`ListSubtasks`).
+  subtasks_count: Integer
+  subtasks_completed_count: Integer
+  subtasks_url: String
 }
 
 list CardStepList {
@@ -8168,6 +8196,14 @@ structure Recording {
   /// recordings and on the base/webhook partial).
   boosts_count: Integer
   boosts_url: String
+
+  /// Subtask count/URL. Carried on subtaskable recordings — to-dos and cards,
+  /// whose type-specific partials render with `subtaskable: true` (BC3
+  /// #12659). Optional (absent on every other recording type and on the
+  /// base/webhook partial).
+  subtasks_count: Integer
+  subtasks_completed_count: Integer
+  subtasks_url: String
 
   /// Message subject. Present on `Message` recordings — notably the account-wide
   /// `/messages.json` aggregate feed, whose message partial renders `subject`.
@@ -12034,6 +12070,9 @@ structure GetMyNotificationsOutput {
 }
 
 /// Mark specified items as read
+///
+/// A batch is capped at 500 readables; a larger one is refused with 422
+/// before any per-item work (bc3 `f3437f5c732`).
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -12041,7 +12080,7 @@ structure GetMyNotificationsOutput {
 operation MarkAsRead {
   input: MarkAsReadInput
   output: MarkAsReadOutput
-  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure MarkAsReadInput {
@@ -12049,8 +12088,10 @@ structure MarkAsReadInput {
   @httpLabel
   accountId: AccountId
 
-  /// Array of readable_sgid values identifying the items to mark as read
+  /// Array of readable_sgid values identifying the items to mark as read.
+  /// At most 500 per request.
   @required
+  @length(max: 500)
   readables: StringList
 }
 
@@ -13087,3 +13128,243 @@ structure FolderWithProjects {
   @required
   projects: ProjectList
 }
+
+// =============================================================================
+// BATCH 21: Subtasks
+// =============================================================================
+//
+// A subtask is a checklist item under a to-do or a card. It was born as a
+// Kanban card step, and the wire keeps that history: the payload's `type` is
+// `"Kanban::Step"` permanently and the shape is the `CardStep` structure,
+// which to-dos and cards also embed under `steps`. These are the canonical
+// flat routes bc3 documents in `doc/api/sections/subtasks.md` (BC3 #12659);
+// the card-scoped `/card_tables/steps` spellings the CardSteps operations
+// model stay served indefinitely as legacy aliases of the same records.
+
+// ===== Subtask Operations =====
+
+long SubtaskId
+
+/// List a recording's subtasks, in position order
+///
+/// Only to-dos and cards hold subtasks; check for `subtasks_count` and
+/// `subtasks_url` on the parent's JSON.
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/subtasks.json")
+operation ListSubtasks {
+  input: ListSubtasksInput
+  output: ListSubtasksOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListSubtasksInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure ListSubtasksOutput {
+  subtasks: CardStepList
+}
+
+/// Get a subtask by ID
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/subtasks/{subtaskId}")
+operation GetSubtask {
+  input: GetSubtaskInput
+  output: GetSubtaskOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure GetSubtaskInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  subtaskId: SubtaskId
+}
+
+structure GetSubtaskOutput {
+  subtask: CardStep
+}
+
+/// Create a subtask under a to-do or a card
+///
+/// Any other recording answers `403 Forbidden`.
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/subtasks.json", code: 201)
+operation CreateSubtask {
+  input: CreateSubtaskInput
+  output: CreateSubtaskOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateSubtaskInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  @required
+  title: String
+
+  due_on: ISO8601Date
+  assignee_ids: PersonIdList
+}
+
+structure CreateSubtaskOutput {
+  subtask: CardStep
+}
+
+/// Update a subtask
+///
+/// A partial update: every omitted parameter is left unchanged. Clearing a
+/// value takes an explicit send — `"due_on": null` clears the due date (an
+/// empty string is accepted too, and is what the Ruby, Python and TypeScript
+/// SDKs send, since they drop nil, None and undefined from the body);
+/// `"assignee_ids": []` removes every assignee. Send at least one parameter:
+/// an empty body is refused with `400 Bad Request`.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/subtasks/{subtaskId}")
+operation UpdateSubtask {
+  input: UpdateSubtaskInput
+  output: UpdateSubtaskOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UpdateSubtaskInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  subtaskId: SubtaskId
+
+  title: String
+  due_on: ISO8601Date
+  assignee_ids: PersonIdList
+}
+
+structure UpdateSubtaskOutput {
+  subtask: CardStep
+}
+
+/// Mark a subtask as completed
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/subtasks/{subtaskId}/completion.json", code: 204)
+operation CompleteSubtask {
+  input: CompleteSubtaskInput
+  output: CompleteSubtaskOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CompleteSubtaskInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  subtaskId: SubtaskId
+}
+
+structure CompleteSubtaskOutput {}
+
+/// Mark a subtask as not completed
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/subtasks/{subtaskId}/completion.json", code: 204)
+operation UncompleteSubtask {
+  input: UncompleteSubtaskInput
+  output: UncompleteSubtaskOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UncompleteSubtaskInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  subtaskId: SubtaskId
+}
+
+structure UncompleteSubtaskOutput {}
+
+/// Move a subtask to a new position among its siblings
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/subtasks/{subtaskId}/position.json", code: 204)
+operation RepositionSubtask {
+  input: RepositionSubtaskInput
+  output: RepositionSubtaskOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure RepositionSubtaskInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  subtaskId: SubtaskId
+
+  /// The 1-based position to move it to
+  @required
+  position: Integer
+}
+
+structure RepositionSubtaskOutput {}
+
+/// Delete a subtask
+///
+/// On accounts where deleting is limited to admins and the creator, everyone
+/// else gets `403 Forbidden`.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/subtasks/{subtaskId}", code: 204)
+operation DeleteSubtask {
+  input: DeleteSubtaskInput
+  output: DeleteSubtaskOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure DeleteSubtaskInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  subtaskId: SubtaskId
+}
+
+structure DeleteSubtaskOutput {}

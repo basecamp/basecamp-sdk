@@ -17,7 +17,9 @@ class CardStepsService(BaseService):
         Args:
             card_id: The card id.
             source_id: The source id.
-            position: 0-indexed position
+            position: The 1-based position to move it to (1 = top), the same `reposition_to` a to-do
+                uses. bc3's doc said "Zero indexed" until BC3 #12659 corrected it; the server never
+                was.
         """
         self._request_void(
             OperationInfo(service="cardsteps", operation="reposition", is_mutation=True, resource_id=card_id),
@@ -106,7 +108,9 @@ class AsyncCardStepsService(AsyncBaseService):
         Args:
             card_id: The card id.
             source_id: The source id.
-            position: 0-indexed position
+            position: The 1-based position to move it to (1 = top), the same `reposition_to` a to-do
+                uses. bc3's doc said "Zero indexed" until BC3 #12659 corrected it; the server never
+                was.
         """
         await self._request_void(
             OperationInfo(service="cardsteps", operation="reposition", is_mutation=True, resource_id=card_id),

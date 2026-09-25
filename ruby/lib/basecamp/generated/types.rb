@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-16T11:13:05Z
+# Generated: 2026-09-25T13:32:46Z
 
 require "json"
 require "time"
@@ -594,7 +594,7 @@ module Basecamp
     # Card
     class Card
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_at, :completer, :completion_subscribers, :completion_url, :content, :description, :due_on, :position, :steps, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_at, :completer, :completion_subscribers, :completion_url, :content, :description, :due_on, :position, :steps, :subscription_url, :subtasks_completed_count, :subtasks_count, :subtasks_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -633,6 +633,9 @@ module Basecamp
         @position = parse_integer(data["position"])
         @steps = parse_array(data["steps"], "CardStep")
         @subscription_url = data["subscription_url"]
+        @subtasks_completed_count = parse_integer(data["subtasks_completed_count"])
+        @subtasks_count = parse_integer(data["subtasks_count"])
+        @subtasks_url = data["subtasks_url"]
       end
 
       def to_h
@@ -668,6 +671,9 @@ module Basecamp
           "position" => @position,
           "steps" => @steps,
           "subscription_url" => @subscription_url,
+          "subtasks_completed_count" => @subtasks_completed_count,
+          "subtasks_count" => @subtasks_count,
+          "subtasks_url" => @subtasks_url,
         }.compact
       end
 
@@ -3819,7 +3825,7 @@ module Basecamp
     # Recording
     class Recording
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :bubble_up_url, :category, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :from, :group_on, :parent, :position, :replies_count, :replies_url, :service, :subject, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :bubble_up_url, :category, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :from, :group_on, :parent, :position, :replies_count, :replies_url, :service, :subject, :subscription_url, :subtasks_completed_count, :subtasks_count, :subtasks_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3859,6 +3865,9 @@ module Basecamp
         @service = parse_type(data["service"], "DoorService")
         @subject = data["subject"]
         @subscription_url = data["subscription_url"]
+        @subtasks_completed_count = parse_integer(data["subtasks_completed_count"])
+        @subtasks_count = parse_integer(data["subtasks_count"])
+        @subtasks_url = data["subtasks_url"]
       end
 
       def to_h
@@ -3895,6 +3904,9 @@ module Basecamp
           "service" => @service,
           "subject" => @subject,
           "subscription_url" => @subscription_url,
+          "subtasks_completed_count" => @subtasks_completed_count,
+          "subtasks_count" => @subtasks_count,
+          "subtasks_url" => @subtasks_url,
         }.compact
       end
 
@@ -4827,7 +4839,7 @@ module Basecamp
     # Todo
     class Todo
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url, :subtasks_completed_count, :subtasks_count, :subtasks_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -4865,6 +4877,9 @@ module Basecamp
         @starts_on = data["starts_on"]
         @steps = parse_array(data["steps"], "CardStep")
         @subscription_url = data["subscription_url"]
+        @subtasks_completed_count = parse_integer(data["subtasks_completed_count"])
+        @subtasks_count = parse_integer(data["subtasks_count"])
+        @subtasks_url = data["subtasks_url"]
       end
 
       def to_h
@@ -4899,6 +4914,9 @@ module Basecamp
           "starts_on" => @starts_on,
           "steps" => @steps,
           "subscription_url" => @subscription_url,
+          "subtasks_completed_count" => @subtasks_completed_count,
+          "subtasks_count" => @subtasks_count,
+          "subtasks_url" => @subtasks_url,
         }.compact
       end
 

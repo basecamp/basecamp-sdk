@@ -122,6 +122,7 @@ type AccountClient struct {
 	cards                 *CardsService
 	cardColumns           *CardColumnsService
 	cardSteps             *CardStepsService
+	subtasks              *SubtasksService
 	wormholes             *WormholesService
 	attachments           *AttachmentsService
 	clientApprovals       *ClientApprovalsService
@@ -1708,6 +1709,16 @@ func (ac *AccountClient) CardSteps() *CardStepsService {
 		ac.cardSteps = NewCardStepsService(ac)
 	}
 	return ac.cardSteps
+}
+
+// Subtasks returns the SubtasksService for subtask operations on to-dos and cards.
+func (ac *AccountClient) Subtasks() *SubtasksService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.subtasks == nil {
+		ac.subtasks = NewSubtasksService(ac)
+	}
+	return ac.subtasks
 }
 
 // Wormholes returns the WormholesService for card-table wormhole operations.

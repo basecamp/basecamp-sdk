@@ -78,6 +78,7 @@ import { TimelineService } from "./generated/services/timeline.js";
 import { EverythingService } from "./generated/services/everything.js";
 import { ClientVisibilityService } from "./generated/services/client-visibility.js";
 import { BoostsService } from "./generated/services/boosts.js";
+import { SubtasksService } from "./generated/services/subtasks.js";
 import { AccountService } from "./generated/services/account.js";
 import { GaugesService } from "./generated/services/gauges.js";
 import { MyAssignmentsService } from "./generated/services/my-assignments.js";
@@ -225,6 +226,8 @@ export interface BasecampClient extends RawClient {
   readonly clientVisibility: ClientVisibilityService;
   /** Boosts service - manage recording boosts */
   readonly boosts: BoostsService;
+  /** Subtasks service - checklist items under to-dos and cards */
+  readonly subtasks: SubtasksService;
   /** Account service - get and update account settings */
   readonly account: AccountService;
   /** Gauges service - manage project progress gauges */
@@ -270,7 +273,7 @@ export interface BasecampClientOptions {
 }
 
 export const VERSION = "0.20.0";
-export const API_VERSION = "2026-09-02";
+export const API_VERSION = "2026-09-15";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
 /**
@@ -529,6 +532,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("everything", () => new EverythingService(client, hooks, fetchPage, maxPages));
   defineService("clientVisibility", () => new ClientVisibilityService(client, hooks, fetchPage, maxPages));
   defineService("boosts", () => new BoostsService(client, hooks, fetchPage, maxPages));
+  defineService("subtasks", () => new SubtasksService(client, hooks, fetchPage, maxPages));
   defineService("account", () => new AccountService(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl));
   defineService("gauges", () => new GaugesService(client, hooks, fetchPage, maxPages));
   defineService("myAssignments", () => new MyAssignmentsService(client, hooks, fetchPage, maxPages));
@@ -902,6 +906,7 @@ export function normalizeUrlPath(url: string): string {
     columns: "{columnId}",
     lists: "{columnId}",
     steps: "{stepId}",
+    subtasks: "{subtaskId}",
     categories: "{typeId}",
     chats: "{campfireId}",
     integrations: "{chatbotId}",
