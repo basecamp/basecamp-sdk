@@ -410,13 +410,12 @@ func TestWebSocketTransport_DialErrorsRedactTicket(t *testing.T) {
 	})
 }
 
-// TestWebSocketTransport_RejectsUnnegotiatedSubprotocol closes the gap
-// coder/websocket leaves open: its verifySubprotocol (dial.go) returns nil
-// when the 101 response carries NO Sec-WebSocket-Protocol at all, so a server
-// that selects nothing yields a live connection that never agreed to speak
-// actioncable-v1-json. The transport must refuse it — as policy, not
-// transient: a fresh mint returns a URL pointing at the same server, which
-// will keep selecting nothing, so reconnecting cannot help.
+// TestWebSocketTransport_RejectsUnnegotiatedSubprotocol: actioncable-go's
+// transport records what the server selected without judging it, so a 101
+// carrying NO Sec-WebSocket-Protocol yields a live connection that never
+// agreed to speak actioncable-v1-json. The transport must refuse it — as
+// policy, not transient: a fresh mint returns a URL pointing at the same
+// server, which will keep selecting nothing, so reconnecting cannot help.
 func TestWebSocketTransport_RejectsUnnegotiatedSubprotocol(t *testing.T) {
 	accepted := make(chan *websocket.Conn, 1)
 	// AcceptOptions with no Subprotocols: the handshake succeeds and selects
@@ -490,12 +489,10 @@ func TestWebSocketTransport_RejectsWrongCaseSubprotocol(t *testing.T) {
 
 // TestWebSocketTransport_UppercaseSchemeDials pins the pairing between the
 // cable-URL policy — which compares the scheme case-insensitively — and what
-// the library actually dials. net/url.Parse lowercases the scheme before
-// coder/websocket's handshake switch sees it (dial.go handshakeRequest, over
-// url.Parse's `url.Scheme = strings.ToLower(url.Scheme)`), so a "WS://"
-// spelling connects; this test is the regression pin that the two halves stay
-// in agreement, and that the ticket-bearing remainder still rides through
-// byte-identical.
+// the library actually dials. actioncable-go's transport lowercases the scheme
+// before choosing plain TCP or TLS, so a "WS://" spelling connects; this test
+// is the regression pin that the two halves stay in agreement, and that the
+// ticket-bearing remainder still rides through byte-identical.
 func TestWebSocketTransport_UppercaseSchemeDials(t *testing.T) {
 	h := newWSHarness(t)
 	target := "/cable?ticket=t-1%2Fabc&b=2&a=1"
@@ -510,20 +507,18 @@ func TestWebSocketTransport_UppercaseSchemeDials(t *testing.T) {
 	}
 }
 
-// closeBoundWatchdog bounds the teardown assertion below. It sits between the
-// transport's own close budget and coder/websocket's unbounded-to-us handshake
-// (5s to write the close frame, then 5s waiting for the peer's answer), so it
-// fails the stall without racing a slow machine.
+// closeBoundWatchdog bounds the teardown assertion below. It sits well above
+// the one second actioncable-go allows the close frame's write, so it fails a
+// stall without racing a slow machine.
 const closeBoundWatchdog = 3 * time.Second
 
 // TestWebSocketTransport_CloseIsBoundedAgainstAnUnresponsivePeer drives the
-// teardown that stalls: a peer that stays alive and never answers the close
-// handshake. coder/websocket's Conn.Close waits 5s for that answer, and
-// liveConn.dispose closes BEFORE cancelling the attempt (deliberately — the
-// peer must see a close frame), so an unbounded close delays cancellation,
-// Connector.Close, every terminal outcome and every reconnect behind it.
-// Both halves are asserted: Close returns under the watchdog, AND the close
-// frame still reached the peer.
+// teardown that could stall: a peer that stays alive and never answers the
+// close handshake. liveConn.dispose closes BEFORE cancelling the attempt
+// (deliberately — the peer must see a close frame), so a close that waited on
+// the peer would delay cancellation, Connector.Close, every terminal outcome
+// and every reconnect behind it. Both halves are asserted: Close returns
+// under the watchdog, AND the close frame still reached the peer.
 func TestWebSocketTransport_CloseIsBoundedAgainstAnUnresponsivePeer(t *testing.T) {
 	accepted := make(chan *websocket.Conn, 1)
 	// The handler parks without reading, so the close frame sits unanswered in
@@ -556,31 +551,16 @@ func TestWebSocketTransport_CloseIsBoundedAgainstAnUnresponsivePeer(t *testing.T
 // TestWebSocketTransport_CloseUnblocksAPendingReadAgainstASilentPeer is the
 // other half of the bound above, and the half a cooperative peer cannot see.
 // The contract suite's "close unblocks a pending read" runs against a harness
-// peer that answers the close handshake, so coder/websocket's Conn.Close
-// returns at once and the socket dies with it. Against a peer that stays alive
-// and silent, Close returns on the transport's own budget while the library is
-// still inside waitCloseHandshake — and the socket, which is what actually
-// unblocks a read, is not torn down until that finishes ~5s later. A pending
-// ReadFrame(context.Background()) is doubly stranded there: coder/websocket
-// installs its read-cancellation hook only when the read ctx HAS a Done
-// channel (conn.go setupReadTimeout returns early otherwise), so a background
-// read is not cancellable at all.
-//
-// That is the CableConn.Close contract — "unblocks ReadFrame and WriteFrame" —
-// and the reason closeGraceBudget exists: a teardown the caller waits a second
-// for, whose read pump then stalls four more, has moved the stall rather than
-// bounded it. The elapsed time is measured from Close's RETURN, so the budget
-// itself is not what is being asserted here.
+// peer that answers the close handshake. Against a peer that stays alive and
+// silent, the only thing that can unblock a ReadFrame(context.Background())
+// parked inside the library is the socket itself going away, and that is the
+// CableConn.Close contract — "unblocks ReadFrame and WriteFrame". The elapsed
+// time is measured from Close's RETURN.
 //
 // Both halves again: the read unblocks, AND the close frame still reached the
-// peer — the discriminator against "cancel everything the moment Close is
-// called", which would unblock the read by killing the socket out from under
-// the close frame §23 requires the peer to see. That second half catches such a
-// regression on most runs rather than every one (moving the cancel ahead of the
-// handshake races the close-frame write against the socket teardown, and the
-// write sometimes wins); it is a backstop on top of the bound above, not a
-// deterministic gate, and there is no synchronization point in the seam that
-// would make it one.
+// peer — the discriminator against "kill the socket the moment Close is
+// called", which would unblock the read out from under the close frame §23
+// requires the peer to see.
 func TestWebSocketTransport_CloseUnblocksAPendingReadAgainstASilentPeer(t *testing.T) {
 	accepted := make(chan *websocket.Conn, 1)
 	srv := newParkedWSServer(t, accepted, []string{"actioncable-v1-json"})
@@ -599,7 +579,7 @@ func TestWebSocketTransport_CloseUnblocksAPendingReadAgainstASilentPeer(t *testi
 	}()
 	time.Sleep(50 * time.Millisecond) // let the read block inside the library
 
-	if err := conn.Close(1000, "teardown"); err != nil && !strings.Contains(err.Error(), "not acknowledged") {
+	if err := conn.Close(1000, "teardown"); err != nil {
 		t.Fatalf("close: %v", err)
 	}
 	closeReturned := time.Now()
@@ -696,8 +676,7 @@ func assertNoTicket(t *testing.T, err error) {
 
 // rawHandshakeServer answers the WebSocket upgrade itself, so the test can put
 // arbitrary bytes in the 101 response — which is what a hostile or merely
-// sloppy peer controls, and what coder/websocket then quotes back in its
-// verification errors. header is echoed as Sec-WebSocket-Protocol.
+// sloppy peer controls. header is echoed as Sec-WebSocket-Protocol.
 func rawHandshakeServer(t *testing.T, header string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -730,9 +709,8 @@ func rawHandshakeServer(t *testing.T, header string) *httptest.Server {
 // about how it is spelled inside the mint URL's query string.
 //
 // Each case puts the credential somewhere a value-shaped redactor misses, and
-// has the peer reflect it into a response header that coder/websocket quotes
-// verbatim in its verification error (dial.go's verifySubprotocol renders the
-// server's Sec-WebSocket-Protocol with %q). It asserts through the PUBLIC
+// has the peer reflect it into the one response header the transport reads
+// after the handshake, the selected subprotocol. It asserts through the PUBLIC
 // Dial, so it is a statement about what reaches an observer's logs rather than
 // about any one helper.
 func TestWebSocketTransport_DialErrorNeverCarriesTheMintQuery(t *testing.T) {
@@ -937,15 +915,14 @@ func TestWebSocketTransport_RejectsUserinfoBeforeAnyNetworkIO(t *testing.T) {
 
 // TestWebSocketTransport_WriteAfterPeerCloseCarriesNoPeerReason is the write
 // path's half of the peer-close rule, pinned as a TRIPWIRE. The claimed leak
-// does not exist in coder/websocket v1.8.15 — the write path returns
-// net.ErrClosed sentinels for every closed-connection shape and consults
-// closeReceivedErr only on reads, so the peer's reason structurally cannot
-// surface from Write — but that is the library's internals, not its
-// contract. This test drives the exact interleaving (a read observes the
-// peer's close, then a write fails) and walks the write error's chain for
-// the planted reason, so a dependency bump that starts surfacing the
-// recorded close from Write goes red here and forces the read path's
-// sanitizing treatment onto the write path then.
+// does not exist in actioncable-go today — on a peer's close frame it closes
+// the socket, so a later write fails on the closed socket and never sees the
+// reason — but that is the library's internals, not its contract. This test
+// drives the exact interleaving (a read observes the peer's close, then a
+// write fails) and walks the write error's chain for the planted reason, so a
+// dependency bump that starts surfacing the recorded close from Write goes
+// red here and forces the read path's sanitizing treatment onto the write
+// path then.
 func TestWebSocketTransport_WriteAfterPeerCloseCarriesNoPeerReason(t *testing.T) {
 	const canary = "sekrit-ticket-value"
 	h := newWSHarness(t)
