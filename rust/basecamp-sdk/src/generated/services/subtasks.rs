@@ -138,7 +138,8 @@ impl<'a> SubtasksService<'a> {
     /// value takes an explicit send — `"due_on": null` clears the due date (an
     /// empty string is accepted too, and is what the Ruby, Python and TypeScript
     /// SDKs send, since they drop nil, None and undefined from the body);
-    /// `"assignee_ids": \[\]` removes every assignee.
+    /// `"assignee_ids": \[\]` removes every assignee. Send at least one parameter:
+    /// an empty body is refused with `400 Bad Request`.
     ///
     /// `PUT /subtasks/{subtaskId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn update(

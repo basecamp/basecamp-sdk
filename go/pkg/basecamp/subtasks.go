@@ -274,6 +274,11 @@ func (s *SubtasksService) Update(ctx context.Context, subtaskID int64, req *Upda
 		err = ErrUsage("update request is required")
 		return nil, err
 	}
+	if req.Title == "" && req.DueOn == nil && req.AssigneeIDs == nil {
+		// bc3 answers an empty body with 400 (ParameterMissing), so refuse it here.
+		err = ErrUsage("update request must set at least one field")
+		return nil, err
+	}
 
 	// Hand-marshaled map, not generated.UpdateSubtaskRequestContent — the
 	// SPEC §18 rule 1 carve-out CardStepsService.Update also takes: the

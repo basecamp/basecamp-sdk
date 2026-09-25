@@ -324,6 +324,7 @@ func TestSubtasksService_Update_Validation(t *testing.T) {
 
 	for name, req := range map[string]*UpdateSubtaskRequest{
 		"nil request":   nil,
+		"empty request": {},
 		"malformed due": {DueOn: Ptr("20/09/2026")},
 	} {
 		_, err := svc.Update(context.Background(), 500, req)

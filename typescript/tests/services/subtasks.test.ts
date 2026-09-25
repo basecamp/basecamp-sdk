@@ -156,13 +156,16 @@ describe("SubtasksService", () => {
     });
 
     it("should throw validation error on a 422", async () => {
+      let reached = false;
       server.use(
         http.put(`${BASE_URL}/subtasks/42`, () => {
-          return HttpResponse.json({ errors: { due_on: ["is not a valid date"] } }, { status: 422 });
+          reached = true;
+          return HttpResponse.json({ error: "Validation failed" }, { status: 422 });
         })
       );
 
-      await expect(client.subtasks.update(42, { dueOn: "not-a-date" })).rejects.toThrow(BasecampError);
+      await expect(client.subtasks.update(42, { title: "Book the big room" })).rejects.toThrow(BasecampError);
+      expect(reached).toBe(true);
     });
   });
 
