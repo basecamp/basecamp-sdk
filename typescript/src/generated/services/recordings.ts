@@ -46,7 +46,7 @@ export class RecordingsService extends BaseService {
    * List recordings of a given type across projects
    * @param type - Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
    * @param options - Optional query parameters
-   * @returns All Recording across all pages, with .meta.totalCount
+   * @returns Every Recording across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

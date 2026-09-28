@@ -130,7 +130,7 @@ export class DocumentsService extends BaseService {
    * List documents in a vault
    * @param vaultId - The vault ID
    * @param options - Optional query parameters
-   * @returns All Document across all pages, with .meta.totalCount
+   * @returns Every Document across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

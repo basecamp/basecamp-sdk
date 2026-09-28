@@ -114,7 +114,7 @@ export class PeopleService extends BaseService {
   /**
    * List all account users who can be pinged
    * @param options - Optional query parameters
-   * @returns All Person across all pages, with .meta.totalCount
+   * @returns Every Person across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -254,7 +254,7 @@ export class PeopleService extends BaseService {
   /**
    * List all people visible to the current user
    * @param options - Optional query parameters
-   * @returns All Person across all pages, with .meta.totalCount
+   * @returns Every Person across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -471,7 +471,7 @@ export class PeopleService extends BaseService {
    * List all active people on a project
    * @param projectId - The project ID
    * @param options - Optional query parameters
-   * @returns All Person across all pages, with .meta.totalCount
+   * @returns Every Person across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

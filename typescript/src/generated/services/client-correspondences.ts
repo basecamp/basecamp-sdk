@@ -42,7 +42,7 @@ export class ClientCorrespondencesService extends BaseService {
    * List all client correspondences in a project
    * @param bucketId - The bucket ID
    * @param options - Optional query parameters
-   * @returns All ClientCorrespondence across all pages, with .meta.totalCount
+   * @returns Every ClientCorrespondence across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

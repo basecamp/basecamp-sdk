@@ -180,7 +180,7 @@ class Card(TypedDict):
     parent: RecordingParent
     position: NotRequired[int]
     status: str
-    steps: NotRequired[list[CardStep]]
+    steps: NotRequired[list[Subtask]]
     subscription_url: NotRequired[str]
     subtasks_completed_count: NotRequired[int]
     subtasks_count: NotRequired[int]
@@ -226,30 +226,6 @@ class CardColumnOnHold(TypedDict):
     status: str
     title: str
     updated_at: str
-
-
-class CardStep(TypedDict):
-    app_url: str
-    assignees: NotRequired[list[Person]]
-    bookmark_url: NotRequired[str]
-    bucket: TodoBucket
-    completed: NotRequired[bool]
-    completed_at: NotRequired[str]
-    completer: NotRequired[Person]
-    completion_url: NotRequired[str]
-    created_at: str
-    creator: Person
-    due_on: NotRequired[str]
-    id: int
-    inherits_status: bool
-    parent: RecordingParent
-    position: NotRequired[int]
-    status: str
-    title: str
-    type: str
-    updated_at: str
-    url: str
-    visible_to_clients: bool
 
 
 class CardTable(TypedDict):
@@ -1852,6 +1828,30 @@ class Subscription(TypedDict):
     url: str
 
 
+class Subtask(TypedDict):
+    app_url: str
+    assignees: NotRequired[list[Person]]
+    bookmark_url: NotRequired[str]
+    bucket: TodoBucket
+    completed: NotRequired[bool]
+    completed_at: NotRequired[str]
+    completer: NotRequired[Person]
+    completion_url: NotRequired[str]
+    created_at: str
+    creator: Person
+    due_on: NotRequired[str]
+    id: int
+    inherits_status: bool
+    parent: RecordingParent
+    position: NotRequired[int]
+    status: str
+    title: str
+    type: str
+    updated_at: str
+    url: str
+    visible_to_clients: bool
+
+
 class Template(TypedDict):
     app_url: NotRequired[str]
     created_at: str
@@ -2010,7 +2010,7 @@ class Todo(TypedDict):
     position: NotRequired[int]
     starts_on: NotRequired[Optional[str]]
     status: str
-    steps: NotRequired[list[CardStep]]
+    steps: NotRequired[list[Subtask]]
     subscription_url: NotRequired[str]
     subtasks_completed_count: NotRequired[int]
     subtasks_count: NotRequired[int]
@@ -2538,3 +2538,7 @@ class Wormhole(TypedDict):
     updated_at: str
     url: str
     visible_to_clients: bool
+
+
+# Deprecated: renamed to Subtask, the same Kanban::Step record.
+CardStep = Subtask

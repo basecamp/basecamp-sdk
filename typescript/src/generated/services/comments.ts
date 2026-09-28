@@ -122,7 +122,7 @@ export class CommentsService extends BaseService {
    * List comments on a recording
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
-   * @returns All Comment across all pages, with .meta.totalCount
+   * @returns Every Comment across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

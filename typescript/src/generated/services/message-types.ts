@@ -57,7 +57,7 @@ export class MessageTypesService extends BaseService {
    * List message types in a project
    * @param bucketId - The bucket ID
    * @param options - Optional query parameters
-   * @returns All MessageType across all pages, with .meta.totalCount
+   * @returns Every MessageType across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

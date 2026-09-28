@@ -14,8 +14,10 @@ import { Errors } from "../../errors.js";
 // Types
 // =============================================================================
 
-/** CardStep entity from the Basecamp API. */
-export type CardStep = components["schemas"]["CardStep"];
+/** Subtask entity from the Basecamp API. */
+export type Subtask = components["schemas"]["Subtask"];
+/** @deprecated renamed to Subtask, the same Kanban::Step record. */
+export type CardStep = Subtask;
 
 /**
  * Options for list.
@@ -71,7 +73,7 @@ export class SubtasksService extends BaseService {
    * List a recording's subtasks, in position order
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
-   * @returns All CardStep across all pages, with .meta.totalCount
+   * @returns Every Subtask across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -81,7 +83,7 @@ export class SubtasksService extends BaseService {
    * const filtered = await client.subtasks.list(123, { page: 1 });
    * ```
    */
-  async list(recordingId: number, options?: ListSubtaskOptions): Promise<ListResult<CardStep>> {
+  async list(recordingId: number, options?: ListSubtaskOptions): Promise<ListResult<Subtask>> {
     return this.requestPaginated(
       {
         service: "Subtasks",
@@ -105,7 +107,7 @@ export class SubtasksService extends BaseService {
    * Create a subtask under a to-do or a card
    * @param recordingId - The recording ID
    * @param req - Subtask creation parameters
-   * @returns The CardStep
+   * @returns The Subtask
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
@@ -113,7 +115,7 @@ export class SubtasksService extends BaseService {
    * const result = await client.subtasks.create(123, { title: "example" });
    * ```
    */
-  async create(recordingId: number, req: CreateSubtaskRequest): Promise<CardStep> {
+  async create(recordingId: number, req: CreateSubtaskRequest): Promise<Subtask> {
     if (!req.title) {
       throw Errors.validation("Title is required");
     }
@@ -146,7 +148,7 @@ export class SubtasksService extends BaseService {
   /**
    * Get a subtask by ID
    * @param subtaskId - The subtask ID
-   * @returns The CardStep
+   * @returns The Subtask
    * @throws {BasecampError} If the resource is not found
    *
    * @example
@@ -154,7 +156,7 @@ export class SubtasksService extends BaseService {
    * const result = await client.subtasks.get(123);
    * ```
    */
-  async get(subtaskId: number): Promise<CardStep> {
+  async get(subtaskId: number): Promise<Subtask> {
     const response = await this.request(
       {
         service: "Subtasks",
@@ -177,7 +179,7 @@ export class SubtasksService extends BaseService {
    * Update a subtask
    * @param subtaskId - The subtask ID
    * @param req - Subtask update parameters
-   * @returns The CardStep
+   * @returns The Subtask
    * @throws {BasecampError} If the resource is not found or fields are invalid
    *
    * @example
@@ -185,7 +187,7 @@ export class SubtasksService extends BaseService {
    * const result = await client.subtasks.update(123, { });
    * ```
    */
-  async update(subtaskId: number, req: UpdateSubtaskRequest): Promise<CardStep> {
+  async update(subtaskId: number, req: UpdateSubtaskRequest): Promise<Subtask> {
     if (req.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.dueOn)) {
       throw Errors.validation("Due on must be in YYYY-MM-DD format");
     }

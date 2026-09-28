@@ -38,7 +38,7 @@ export class EventsService extends BaseService {
    * List all events for a recording
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
-   * @returns All Event across all pages, with .meta.totalCount
+   * @returns Every Event across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

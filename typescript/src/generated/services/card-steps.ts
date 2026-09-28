@@ -12,8 +12,10 @@ import { Errors } from "../../errors.js";
 // Types
 // =============================================================================
 
-/** CardStep entity from the Basecamp API. */
-export type CardStep = components["schemas"]["CardStep"];
+/** Subtask entity from the Basecamp API. */
+export type Subtask = components["schemas"]["Subtask"];
+/** @deprecated renamed to Subtask, the same Kanban::Step record. */
+export type CardStep = Subtask;
 
 /**
  * Request parameters for reposition.
@@ -107,7 +109,7 @@ export class CardStepsService extends BaseService {
    * Create a step on a card
    * @param cardId - The card ID
    * @param req - Card_step creation parameters
-   * @returns The CardStep
+   * @returns The Subtask
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
@@ -115,7 +117,7 @@ export class CardStepsService extends BaseService {
    * const result = await client.cardSteps.create(123, { title: "example" });
    * ```
    */
-  async create(cardId: number, req: CreateCardStepRequest): Promise<CardStep> {
+  async create(cardId: number, req: CreateCardStepRequest): Promise<Subtask> {
     if (!req.title) {
       throw Errors.validation("Title is required");
     }
@@ -148,7 +150,7 @@ export class CardStepsService extends BaseService {
   /**
    * Get a step by ID
    * @param stepId - The step ID
-   * @returns The CardStep
+   * @returns The Subtask
    * @throws {BasecampError} If the resource is not found
    *
    * @example
@@ -156,7 +158,7 @@ export class CardStepsService extends BaseService {
    * const result = await client.cardSteps.get(123);
    * ```
    */
-  async get(stepId: number): Promise<CardStep> {
+  async get(stepId: number): Promise<Subtask> {
     const response = await this.request(
       {
         service: "CardSteps",
@@ -179,7 +181,7 @@ export class CardStepsService extends BaseService {
    * Update an existing step
    * @param stepId - The step ID
    * @param req - Card_step update parameters
-   * @returns The CardStep
+   * @returns The Subtask
    * @throws {BasecampError} If the resource is not found or fields are invalid
    *
    * @example
@@ -187,7 +189,7 @@ export class CardStepsService extends BaseService {
    * const result = await client.cardSteps.update(123, { });
    * ```
    */
-  async update(stepId: number, req: UpdateCardStepRequest): Promise<CardStep> {
+  async update(stepId: number, req: UpdateCardStepRequest): Promise<Subtask> {
     if (req.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.dueOn)) {
       throw Errors.validation("Due on must be in YYYY-MM-DD format");
     }
@@ -218,7 +220,7 @@ export class CardStepsService extends BaseService {
    * Set card step completion status (PUT with completion: "on" to complete, "" to uncomplete)
    * @param stepId - The step ID
    * @param req - Card_step_completion request parameters
-   * @returns The CardStep
+   * @returns The Subtask
    * @throws {BasecampError} If the request fails
    *
    * @example
@@ -226,7 +228,7 @@ export class CardStepsService extends BaseService {
    * const result = await client.cardSteps.setCompletion(123, { completion: "example" });
    * ```
    */
-  async setCompletion(stepId: number, req: SetCompletionCardStepRequest): Promise<CardStep> {
+  async setCompletion(stepId: number, req: SetCompletionCardStepRequest): Promise<Subtask> {
     if (!req.completion) {
       throw Errors.validation("Completion is required");
     }

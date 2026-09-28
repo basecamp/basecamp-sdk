@@ -31,7 +31,7 @@ public struct Card: Codable, Sendable {
     public var description: String?
     public var dueOn: String?
     public var position: Int32?
-    public var steps: [CardStep]?
+    public var steps: [Subtask]?
     public var subscriptionUrl: String?
     public var subtasksCompletedCount: Int32?
     public var subtasksCount: Int32?
@@ -67,7 +67,7 @@ public struct Card: Codable, Sendable {
         description: String? = nil,
         dueOn: String? = nil,
         position: Int32? = nil,
-        steps: [CardStep]? = nil,
+        steps: [Subtask]? = nil,
         subscriptionUrl: String? = nil,
         subtasksCompletedCount: Int32? = nil,
         subtasksCount: Int32? = nil,
@@ -177,7 +177,7 @@ public struct Card: Codable, Sendable {
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.dueOn = try container.decodeIfPresent(String.self, forKey: .dueOn)
         self.position = try container.decodeIfPresent(Int32.self, forKey: .position)
-        self.steps = try container.decodeIfPresent([CardStep].self, forKey: .steps)
+        self.steps = try container.decodeIfPresent([Subtask].self, forKey: .steps)
         self.subscriptionUrl = try container.decodeIfPresent(String.self, forKey: .subscriptionUrl)
         self.subtasksCompletedCount = try container.decodeIfPresent(Int32.self, forKey: .subtasksCompletedCount)
         self.subtasksCount = try container.decodeIfPresent(Int32.self, forKey: .subtasksCount)

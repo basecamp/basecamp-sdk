@@ -39,7 +39,7 @@ export class ClientRepliesService extends BaseService {
    * @param bucketId - The bucket ID
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
-   * @returns All ClientReply across all pages, with .meta.totalCount
+   * @returns Every ClientReply across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

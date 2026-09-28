@@ -38,7 +38,7 @@ export class TimelineService extends BaseService {
    * Get project timeline
    * @param projectId - The project ID
    * @param options - Optional query parameters
-   * @returns All TimelineEvent across all pages, with .meta.totalCount
+   * @returns Every TimelineEvent across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

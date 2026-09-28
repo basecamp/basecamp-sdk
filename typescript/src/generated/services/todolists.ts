@@ -172,7 +172,7 @@ export class TodolistsService extends BaseService {
    * List todolists in a todoset
    * @param todosetId - The todoset ID
    * @param options - Optional query parameters
-   * @returns All Todolist across all pages, with .meta.totalCount
+   * @returns Every Todolist across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

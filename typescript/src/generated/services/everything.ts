@@ -222,7 +222,7 @@ export class EverythingService extends BaseService {
   /**
    * Completed cards across all accessible projects, grouped by project (paginated).
    * @param options - Optional query parameters
-   * @returns All BucketCardsGroup across all pages, with .meta.totalCount
+   * @returns Every BucketCardsGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -250,7 +250,7 @@ export class EverythingService extends BaseService {
   /**
    * Open cards with no due date across all accessible projects, grouped by project (paginated).
    * @param options - Optional query parameters
-   * @returns All BucketCardsGroup across all pages, with .meta.totalCount
+   * @returns Every BucketCardsGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -278,7 +278,7 @@ export class EverythingService extends BaseService {
   /**
    * Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated).
    * @param options - Optional query parameters
-   * @returns All BucketCardsGroup across all pages, with .meta.totalCount
+   * @returns Every BucketCardsGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -306,7 +306,7 @@ export class EverythingService extends BaseService {
   /**
    * Incomplete cards in active columns across all accessible projects, grouped by project (paginated).
    * @param options - Optional query parameters
-   * @returns All BucketCardsGroup across all pages, with .meta.totalCount
+   * @returns Every BucketCardsGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -362,7 +362,7 @@ export class EverythingService extends BaseService {
   /**
    * Open, unassigned cards across all accessible projects, grouped by project (paginated).
    * @param options - Optional query parameters
-   * @returns All BucketCardsGroup across all pages, with .meta.totalCount
+   * @returns Every BucketCardsGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -390,7 +390,7 @@ export class EverythingService extends BaseService {
   /**
    * Get every automatic check-in answer across all accessible projects, newest-first.
    * @param options - Optional query parameters
-   * @returns All Recording across all pages, with .meta.totalCount
+   * @returns Every Recording across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -418,7 +418,7 @@ export class EverythingService extends BaseService {
   /**
    * Get every comment across all accessible projects, newest-first (paginated).
    * @param options - Optional query parameters
-   * @returns All Recording across all pages, with .meta.totalCount
+   * @returns Every Recording across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -446,7 +446,7 @@ export class EverythingService extends BaseService {
   /**
    * Get every file recording across all accessible projects, newest-first (paginated).
    * @param options - Optional query parameters
-   * @returns All EverythingFile across all pages, with .meta.totalCount
+   * @returns Every EverythingFile across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -474,7 +474,7 @@ export class EverythingService extends BaseService {
   /**
    * Get every inbox forward across all accessible projects, newest-first (paginated).
    * @param options - Optional query parameters
-   * @returns All Recording across all pages, with .meta.totalCount
+   * @returns Every Recording across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -502,7 +502,7 @@ export class EverythingService extends BaseService {
   /**
    * Get every message across all accessible projects, newest-first (paginated).
    * @param options - Optional query parameters
-   * @returns All Recording across all pages, with .meta.totalCount
+   * @returns Every Recording across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -530,7 +530,7 @@ export class EverythingService extends BaseService {
   /**
    * Completed to-dos across all accessible projects, grouped by project (paginated).
    * @param options - Optional query parameters
-   * @returns All BucketTodosGroup across all pages, with .meta.totalCount
+   * @returns Every BucketTodosGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -558,7 +558,7 @@ export class EverythingService extends BaseService {
   /**
    * Open to-dos with no due date across all accessible projects, grouped by project (paginated).
    * @param options - Optional query parameters
-   * @returns All BucketTodosGroup across all pages, with .meta.totalCount
+   * @returns Every BucketTodosGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -586,7 +586,7 @@ export class EverythingService extends BaseService {
   /**
    * Active, incomplete to-dos across all accessible projects, grouped by project (paginated).
    * @param options - Optional query parameters
-   * @returns All BucketTodosGroup across all pages, with .meta.totalCount
+   * @returns Every BucketTodosGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -642,7 +642,7 @@ export class EverythingService extends BaseService {
   /**
    * Open, unassigned to-dos across all accessible projects, grouped by project (paginated).
    * @param options - Optional query parameters
-   * @returns All BucketTodosGroup across all pages, with .meta.totalCount
+   * @returns Every BucketTodosGroup across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

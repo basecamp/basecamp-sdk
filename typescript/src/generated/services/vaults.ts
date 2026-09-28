@@ -119,7 +119,7 @@ export class VaultsService extends BaseService {
    * List vaults (subfolders) in a vault
    * @param vaultId - The vault ID
    * @param options - Optional query parameters
-   * @returns All Vault across all pages, with .meta.totalCount
+   * @returns Every Vault across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

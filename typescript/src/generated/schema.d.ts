@@ -4144,7 +4144,7 @@ export interface components {
              * @description The first 100 subtasks, embedded read-only. A card with more than 100
              *     reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
              */
-            steps?: components["schemas"]["CardStep"][];
+            steps?: components["schemas"]["Subtask"][];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
@@ -4198,31 +4198,6 @@ export interface components {
             /** Format: int32 */
             cards_count: number;
             cards_url: string;
-        };
-        CardStep: {
-            /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
-            bookmark_url?: string;
-            /** Format: int32 */
-            position?: number;
-            due_on?: string;
-            completed?: boolean;
-            completed_at?: string;
-            parent: components["schemas"]["RecordingParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
-            completer?: components["schemas"]["Person"];
-            assignees?: components["schemas"]["Person"][];
-            completion_url?: string;
         };
         CardTable: {
             /** Format: int64 */
@@ -4517,7 +4492,7 @@ export interface components {
             due_on?: string;
             assignee_ids?: number[];
         };
-        CreateCardStepResponseContent: components["schemas"]["CardStep"];
+        CreateCardStepResponseContent: components["schemas"]["Subtask"];
         CreateChatbotRequestContent: {
             service_name: string;
             command_url?: string;
@@ -4771,7 +4746,7 @@ export interface components {
             due_on?: string;
             assignee_ids?: number[];
         };
-        CreateSubtaskResponseContent: components["schemas"]["CardStep"];
+        CreateSubtaskResponseContent: components["schemas"]["Subtask"];
         CreateTemplateLibraryCardTableRequestContent: {
             /** @description The template's name. Write-only: the response carries it as `title`. */
             name: string;
@@ -5481,7 +5456,7 @@ export interface components {
         GetCampfireResponseContent: components["schemas"]["Campfire"];
         GetCardColumnResponseContent: components["schemas"]["CardColumn"];
         GetCardResponseContent: components["schemas"]["Card"];
-        GetCardStepResponseContent: components["schemas"]["CardStep"];
+        GetCardStepResponseContent: components["schemas"]["Subtask"];
         GetCardTableResponseContent: components["schemas"]["CardTable"];
         GetChatbotResponseContent: components["schemas"]["Chatbot"];
         GetClientApprovalResponseContent: components["schemas"]["ClientApproval"];
@@ -5586,7 +5561,7 @@ export interface components {
         GetScheduleResponseContent: components["schemas"]["Schedule"];
         GetSearchMetadataResponseContent: components["schemas"]["SearchMetadata"];
         GetSubscriptionResponseContent: components["schemas"]["Subscription"];
-        GetSubtaskResponseContent: components["schemas"]["CardStep"];
+        GetSubtaskResponseContent: components["schemas"]["Subtask"];
         GetTemplateLibraryCardTablesResponseContent: components["schemas"]["TemplateLibraryCardTables"];
         GetTemplateLibraryCopyResponseContent: components["schemas"]["TemplateLibraryCopy"];
         GetTemplateLibraryTodolistsResponseContent: components["schemas"]["TemplateLibraryTodolists"];
@@ -5774,7 +5749,7 @@ export interface components {
         ListRecordingBoostsResponseContent: components["schemas"]["Boost"][];
         ListRecordingsResponseContent: components["schemas"]["Recording"][];
         ListScheduleEntriesResponseContent: components["schemas"]["ScheduleEntry"][];
-        ListSubtasksResponseContent: components["schemas"]["CardStep"][];
+        ListSubtasksResponseContent: components["schemas"]["Subtask"][];
         ListTemplatesResponseContent: components["schemas"]["Template"][];
         ListTodolistGroupsResponseContent: components["schemas"]["Todolist"][];
         ListTodolistsResponseContent: components["schemas"]["Todolist"][];
@@ -7047,7 +7022,7 @@ export interface components {
             /** @description Set to "on" to complete the step, "" (empty) to uncomplete */
             completion: string;
         };
-        SetCardStepCompletionResponseContent: components["schemas"]["CardStep"];
+        SetCardStepCompletionResponseContent: components["schemas"]["Subtask"];
         SetClientVisibilityRequestContent: {
             visible_to_clients: boolean;
         };
@@ -7071,6 +7046,31 @@ export interface components {
             count: number;
             url: string;
             subscribers?: components["schemas"]["Person"][];
+        };
+        Subtask: {
+            /** Format: int64 */
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
+            bookmark_url?: string;
+            /** Format: int32 */
+            position?: number;
+            due_on?: string;
+            completed?: boolean;
+            completed_at?: string;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            completer?: components["schemas"]["Person"];
+            assignees?: components["schemas"]["Person"][];
+            completion_url?: string;
         };
         Template: {
             /** Format: int64 */
@@ -7365,11 +7365,11 @@ export interface components {
             subtasks_url?: string;
             /**
              * @description The first 100 subtasks, embedded read-only (BC5 addition). The shared
-             *     `subtasks/subtask` jbuilder partial emits the same shape as `CardStep`,
-             *     so the existing `CardStepList` is reused. A to-do with more than 100
-             *     reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
+             *     `subtasks/subtask` jbuilder partial emits the same `Subtask` shape a card
+             *     embeds. A to-do with more than 100 reports the total in
+             *     `subtasks_count`; fetch the rest from `subtasks_url`.
              */
-            steps?: components["schemas"]["CardStep"][];
+            steps?: components["schemas"]["Subtask"][];
         };
         TodoBucket: {
             /** Format: int64 */
@@ -7830,7 +7830,7 @@ export interface components {
             due_on?: string;
             assignee_ids?: number[];
         };
-        UpdateCardStepResponseContent: components["schemas"]["CardStep"];
+        UpdateCardStepResponseContent: components["schemas"]["Subtask"];
         UpdateChatbotRequestContent: {
             service_name: string;
             command_url?: string;
@@ -7980,7 +7980,7 @@ export interface components {
             due_on?: string;
             assignee_ids?: number[];
         };
-        UpdateSubtaskResponseContent: components["schemas"]["CardStep"];
+        UpdateSubtaskResponseContent: components["schemas"]["Subtask"];
         UpdateTemplateRequestContent: {
             name?: string;
             description?: string;
@@ -8264,6 +8264,11 @@ export interface components {
              */
             destination_url: string | null;
         };
+        /**
+         * @deprecated
+         * @description Deprecated: renamed to Subtask, the same Kanban::Step record.
+         */
+        CardStep: components["schemas"]["Subtask"];
     };
     responses: never;
     parameters: never;

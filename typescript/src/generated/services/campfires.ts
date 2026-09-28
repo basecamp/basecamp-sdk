@@ -112,7 +112,7 @@ export class CampfiresService extends BaseService {
    * @param bucketId - The bucket ID
    * @param campfireId - The campfire ID
    * @param options - Optional query parameters
-   * @returns All Chatbot across all pages, with .meta.totalCount
+   * @returns Every Chatbot across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -288,7 +288,7 @@ export class CampfiresService extends BaseService {
   /**
    * List all campfires across the account
    * @param options - Optional query parameters
-   * @returns All Campfire across all pages, with .meta.totalCount
+   * @returns Every Campfire across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -350,7 +350,7 @@ export class CampfiresService extends BaseService {
    * List all lines (messages) in a campfire
    * @param campfireId - The campfire ID
    * @param options - Optional query parameters
-   * @returns All CampfireLine across all pages, with .meta.totalCount
+   * @returns Every CampfireLine across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -520,7 +520,7 @@ export class CampfiresService extends BaseService {
    * List uploaded files in a campfire
    * @param campfireId - The campfire ID
    * @param options - Optional query parameters
-   * @returns All CampfireLine across all pages, with .meta.totalCount
+   * @returns Every CampfireLine across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

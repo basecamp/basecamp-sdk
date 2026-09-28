@@ -122,7 +122,7 @@ export class BoostsService extends BaseService {
    * List boosts on a recording
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
-   * @returns All Boost across all pages, with .meta.totalCount
+   * @returns Every Boost across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -194,7 +194,7 @@ export class BoostsService extends BaseService {
    * @param recordingId - The recording ID
    * @param eventId - The event ID
    * @param options - Optional query parameters
-   * @returns All Boost across all pages, with .meta.totalCount
+   * @returns Every Boost across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

@@ -446,7 +446,7 @@ pub struct Card {
     /// The first 100 subtasks, embedded read-only. A card with more than 100
     /// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub steps: Option<Vec<CardStep>>,
+    pub steps: Option<Vec<Subtask>>,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boosts_count: Option<i32>,
@@ -549,66 +549,6 @@ pub struct CardColumnOnHold {
     pub cards_count: i32,
     /// `cards_url`.
     pub cards_url: String,
-}
-
-/// The `CardStep` shape of the Basecamp API.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
-pub struct CardStep {
-    /// `id`.
-    pub id: i64,
-    /// `status`.
-    pub status: String,
-    /// `visible_to_clients`.
-    pub visible_to_clients: bool,
-    /// `created_at`.
-    pub created_at: DateTime,
-    /// `updated_at`.
-    pub updated_at: DateTime,
-    /// `title`.
-    pub title: String,
-    /// `inherits_status`.
-    pub inherits_status: bool,
-    /// `type`.
-    pub r#type: String,
-    /// `url`.
-    pub url: String,
-    /// `app_url`.
-    pub app_url: String,
-    /// `bookmark_url`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bookmark_url: Option<String>,
-    /// `position`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub position: Option<i32>,
-    /// `due_on`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub due_on: Option<Date>,
-    /// `completed`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub completed: Option<bool>,
-    /// `completed_at`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub completed_at: Option<DateTime>,
-    /// `parent`.
-    pub parent: RecordingParent,
-    /// `bucket`.
-    pub bucket: TodoBucket,
-    /// `creator`.
-    pub creator: Person,
-    /// `completer`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub completer: Option<Person>,
-    /// `assignees`.
-    #[serde(
-        default,
-        deserialize_with = "crate::types::person_list::deserialize_optional",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub assignees: Option<Vec<Person>>,
-    /// `completion_url`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub completion_url: Option<String>,
 }
 
 /// The `CardTable` shape of the Basecamp API.
@@ -1183,7 +1123,7 @@ pub struct CreateCardStepRequestContent {
 }
 
 /// `CreateCardStepResponseContent`.
-pub type CreateCardStepResponseContent = CardStep;
+pub type CreateCardStepResponseContent = Subtask;
 
 /// The `CreateChatbotRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -1578,7 +1518,7 @@ pub struct CreateSubtaskRequestContent {
 }
 
 /// `CreateSubtaskResponseContent`.
-pub type CreateSubtaskResponseContent = CardStep;
+pub type CreateSubtaskResponseContent = Subtask;
 
 /// The `CreateTemplateLibraryCardTableRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -2812,7 +2752,7 @@ pub type GetCardColumnResponseContent = CardColumn;
 pub type GetCardResponseContent = Card;
 
 /// `GetCardStepResponseContent`.
-pub type GetCardStepResponseContent = CardStep;
+pub type GetCardStepResponseContent = Subtask;
 
 /// `GetCardTableResponseContent`.
 pub type GetCardTableResponseContent = CardTable;
@@ -3064,7 +3004,7 @@ pub type GetSearchMetadataResponseContent = SearchMetadata;
 pub type GetSubscriptionResponseContent = Subscription;
 
 /// `GetSubtaskResponseContent`.
-pub type GetSubtaskResponseContent = CardStep;
+pub type GetSubtaskResponseContent = Subtask;
 
 /// `GetTemplateLibraryCardTablesResponseContent`.
 pub type GetTemplateLibraryCardTablesResponseContent = TemplateLibraryCardTables;
@@ -3438,7 +3378,7 @@ pub type ListRecordingsResponseContent = Vec<Recording>;
 pub type ListScheduleEntriesResponseContent = Vec<ScheduleEntry>;
 
 /// `ListSubtasksResponseContent`.
-pub type ListSubtasksResponseContent = Vec<CardStep>;
+pub type ListSubtasksResponseContent = Vec<Subtask>;
 
 /// `ListTemplatesResponseContent`.
 pub type ListTemplatesResponseContent = Vec<Template>;
@@ -5380,7 +5320,7 @@ pub struct SetCardStepCompletionRequestContent {
 }
 
 /// `SetCardStepCompletionResponseContent`.
-pub type SetCardStepCompletionResponseContent = CardStep;
+pub type SetCardStepCompletionResponseContent = Subtask;
 
 /// The `SetClientVisibilityRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -5430,6 +5370,66 @@ pub struct Subscription {
         skip_serializing_if = "Option::is_none"
     )]
     pub subscribers: Option<Vec<Person>>,
+}
+
+/// The `Subtask` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Subtask {
+    /// `id`.
+    pub id: i64,
+    /// `status`.
+    pub status: String,
+    /// `visible_to_clients`.
+    pub visible_to_clients: bool,
+    /// `created_at`.
+    pub created_at: DateTime,
+    /// `updated_at`.
+    pub updated_at: DateTime,
+    /// `title`.
+    pub title: String,
+    /// `inherits_status`.
+    pub inherits_status: bool,
+    /// `type`.
+    pub r#type: String,
+    /// `url`.
+    pub url: String,
+    /// `app_url`.
+    pub app_url: String,
+    /// `bookmark_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bookmark_url: Option<String>,
+    /// `position`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<i32>,
+    /// `due_on`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub due_on: Option<Date>,
+    /// `completed`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completed: Option<bool>,
+    /// `completed_at`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<DateTime>,
+    /// `parent`.
+    pub parent: RecordingParent,
+    /// `bucket`.
+    pub bucket: TodoBucket,
+    /// `creator`.
+    pub creator: Person,
+    /// `completer`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completer: Option<Person>,
+    /// `assignees`.
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub assignees: Option<Vec<Person>>,
+    /// `completion_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion_url: Option<String>,
 }
 
 /// The `Template` shape of the Basecamp API.
@@ -5902,11 +5902,11 @@ pub struct Todo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subtasks_url: Option<String>,
     /// The first 100 subtasks, embedded read-only (BC5 addition). The shared
-    /// `subtasks/subtask` jbuilder partial emits the same shape as `CardStep`,
-    /// so the existing `CardStepList` is reused. A to-do with more than 100
-    /// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
+    /// `subtasks/subtask` jbuilder partial emits the same `Subtask` shape a card
+    /// embeds. A to-do with more than 100 reports the total in
+    /// `subtasks_count`; fetch the rest from `subtasks_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub steps: Option<Vec<CardStep>>,
+    pub steps: Option<Vec<Subtask>>,
 }
 
 /// The `TodoBucket` shape of the Basecamp API.
@@ -6510,7 +6510,7 @@ pub struct UpdateCardStepRequestContent {
 }
 
 /// `UpdateCardStepResponseContent`.
-pub type UpdateCardStepResponseContent = CardStep;
+pub type UpdateCardStepResponseContent = Subtask;
 
 /// The `UpdateChatbotRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -6846,7 +6846,7 @@ pub struct UpdateSubtaskRequestContent {
 }
 
 /// `UpdateSubtaskResponseContent`.
-pub type UpdateSubtaskResponseContent = CardStep;
+pub type UpdateSubtaskResponseContent = Subtask;
 
 /// The `UpdateTemplateRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -7379,3 +7379,7 @@ pub struct Wormhole {
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
     pub destination_url: Option<String>,
 }
+
+/// Deprecated: renamed to Subtask, the same Kanban::Step record.
+#[deprecated(note = "renamed to Subtask, the same Kanban::Step record.")]
+pub type CardStep = Subtask;

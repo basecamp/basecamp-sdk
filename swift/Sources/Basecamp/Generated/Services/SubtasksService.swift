@@ -23,7 +23,7 @@ public final class SubtasksService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func create(recordingId: Int, req: CreateSubtaskRequest) async throws -> CardStep {
+    public func create(recordingId: Int, req: CreateSubtaskRequest) async throws -> Subtask {
         return try await request(
             OperationInfo(service: "Subtasks", operation: "CreateSubtask", resourceType: "subtask", isMutation: true, resourceId: recordingId),
             method: "POST",
@@ -42,7 +42,7 @@ public final class SubtasksService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func get(subtaskId: Int) async throws -> CardStep {
+    public func get(subtaskId: Int) async throws -> Subtask {
         return try await request(
             OperationInfo(service: "Subtasks", operation: "GetSubtask", resourceType: "subtask", isMutation: false, resourceId: subtaskId),
             method: "GET",
@@ -51,7 +51,7 @@ public final class SubtasksService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func list(recordingId: Int, options: ListSubtaskOptions? = nil) async throws -> ListResult<CardStep> {
+    public func list(recordingId: Int, options: ListSubtaskOptions? = nil) async throws -> ListResult<Subtask> {
         var queryItems: [URLQueryItem] = []
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
@@ -84,7 +84,7 @@ public final class SubtasksService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func update(subtaskId: Int, req: UpdateSubtaskRequest) async throws -> CardStep {
+    public func update(subtaskId: Int, req: UpdateSubtaskRequest) async throws -> Subtask {
         return try await request(
             OperationInfo(service: "Subtasks", operation: "UpdateSubtask", resourceType: "subtask", isMutation: true, resourceId: subtaskId),
             method: "PUT",
