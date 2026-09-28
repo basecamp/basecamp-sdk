@@ -2,8 +2,9 @@
 
 # Tests for the SubtasksService (generated from OpenAPI spec)
 #
-# A subtask is a CardStep on the wire — `type` stays "Kanban::Step" — reached
-# through the canonical flat /subtasks routes bc3 documents (bc3#12659).
+# A subtask is the SDK's `Subtask` type (formerly `CardStep`), whose wire
+# `type` stays "Kanban::Step", reached through the canonical flat /subtasks
+# routes bc3 documents (bc3#12659).
 
 require "test_helper"
 

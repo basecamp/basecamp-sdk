@@ -3,6 +3,21 @@
 require "test_helper"
 
 class GeneratedTypesTest < Minitest::Test
+  # CardStep is the deprecated former name of Subtask: a constant alias, so the
+  # old spelling constructs the same class and the embedded steps of a card
+  # parse into it.
+  def test_card_step_is_a_deprecated_alias_of_subtask
+    assert_same Basecamp::Types::Subtask, Basecamp::Types::CardStep
+    assert_same Basecamp::Types::Subtask, Basecamp::Types.const_get("CardStep")
+
+    step = Basecamp::Types::CardStep.new("id" => 7, "title" => "Hero shot", "type" => "Kanban::Step")
+    assert_instance_of Basecamp::Types::Subtask, step
+    assert_equal 7, step.id
+
+    card = Basecamp::Types::Card.new("id" => 1, "steps" => [ { "id" => 7, "type" => "Kanban::Step" } ])
+    assert_instance_of Basecamp::Types::CardStep, card.steps.first
+  end
+
   def test_project_type_parses_data
     data = {
       "id" => 12_345,

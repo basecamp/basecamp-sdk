@@ -390,10 +390,10 @@ func TestCardColumn_Unmarshal_NoOnHold(t *testing.T) {
 	}
 }
 
-func TestCardStep_Unmarshal(t *testing.T) {
+func TestSubtask_UnmarshalCardStepFixture(t *testing.T) {
 	data := loadCardsFixture(t, "step.json")
 
-	var step CardStep
+	var step Subtask
 	if err := json.Unmarshal(data, &step); err != nil {
 		t.Fatalf("failed to unmarshal step.json: %v", err)
 	}

@@ -56,6 +56,25 @@
 #      library's generic type error.
 #   9. A path-item field that is not an operation object.
 #
+# Four more run for every language, and a fifth for three of them: the
+# DEPRECATED-ALIAS refusals (#955). A rename kept for compatibility leaves the
+# old component in openapi.json as nothing but a deprecated `$ref`, and every
+# generator emits it as an alias of the new name. The committed spec carries
+# exactly one, which every generator can place, so these shapes are otherwise
+# unseen — and each generator used to drop or mis-emit them differently:
+#
+#   A1. An alias of an enum.
+#   A2. An alias of a schema that does not exist.
+#   A3. An alias of an alias, rejected rather than resolved.
+#   A4. An alias whose name collides with a type the generator already emits
+#       (the name differs per language, since each collides somewhere else).
+#   A5. An alias of an object this generator does not emit as a model (a
+#       request body). TypeScript, Kotlin and Swift only: Rust emits every
+#       component, so the alias is valid there.
+#
+# scripts/test-deprecated-alias-refusal.rb covers the same shapes for Go, Ruby
+# and Python.
+#
 # Two are language-specific, and each says so where it skips:
 #
 #  10. TypeScript only: the pipeline's FIRST WRITE refuses first. `npm run
@@ -324,6 +343,42 @@ jq --arg p "$PATH_KEY" '.paths[$p].frobnicate = "not an operation"' \
 run_scenario "a path-item field that is not an operation object is named" \
   "$TMP/openapi-scalar-field.json" "$ROOT_DIR/spec/generated-verbs.json" \
   "frobnicate" "$PATH_KEY"
+
+# Scenarios A1-A5: deprecated aliases this generator cannot place (#955). Each
+# adds ONE alias to the committed spec, beside the real CardStep -> Subtask one.
+alias_spec() { # <alias> <target> <out>
+  jq --arg alias "$1" --arg ref "#/components/schemas/$2" \
+    '.components.schemas[$alias] = {"$ref": $ref, "deprecated": true}' \
+    "$ROOT_DIR/openapi.json" > "$3"
+}
+alias_scenario() { # <description> <alias> <target> <problem>
+  alias_spec "$2" "$3" "$TMP/openapi-alias-$2.json"
+  run_scenario "$1" "$TMP/openapi-alias-$2.json" "$ROOT_DIR/spec/generated-verbs.json" \
+    "$4" "deprecated alias $2 -> $3"
+}
+alias_scenario "a deprecated alias of an enum is refused" \
+  AliasOfEnum FirstWeekDay "target is not an object model"
+alias_scenario "a deprecated alias of a missing schema is refused" \
+  AliasOfNothing NoSuchSchema "target schema does not exist"
+alias_scenario "a deprecated alias of a deprecated alias is refused, not resolved" \
+  AliasOfAlias CardStep "target is itself a deprecated alias"
+# The collision: a name this language already emits. Kotlin and Swift emit the
+# QuestionAnswer model as Answer; TypeScript's subtasks service exports a
+# CreateSubtaskRequest interface beside Subtask; Rust's types.rs imports DateTime.
+case "$LANGUAGE" in
+  typescript) collision=CreateSubtaskRequest ;;
+  kotlin|swift) collision=Answer ;;
+  rust) collision=DateTime ;;
+esac
+alias_scenario "a deprecated alias named like an emitted type ($collision) is refused" \
+  "$collision" Subtask "$collision collides with an existing"
+if [[ "$LANGUAGE" == "rust" ]]; then
+  echo "SKIP [$LANGUAGE] deprecated alias of a request body: Rust emits every component," \
+       "so that alias is valid here"
+else
+  alias_scenario "a deprecated alias of a model this generator does not emit is refused" \
+    AliasOfRequest CreateCardStepRequestContent "target model was not emitted"
+fi
 
 # Scenario 9 (TypeScript only): the pipeline's FIRST WRITE refuses first.
 #

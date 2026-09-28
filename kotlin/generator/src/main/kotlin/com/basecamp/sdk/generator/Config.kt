@@ -342,7 +342,9 @@ val TYPE_ALIASES = mapOf(
     "Card" to "Card",
     "CardTable" to "CardTable",
     "CardColumn" to "CardColumn",
-    "CardStep" to "CardStep",
+    // Formerly CardStep; openapi.json keeps CardStep as a deprecated $ref,
+    // emitted as a deprecated typealias (ModelEmitter.generateDeprecatedAlias).
+    "Subtask" to "Subtask",
     "Wormhole" to "Wormhole",
     "Campfire" to "Campfire",
     "CampfireLine" to "CampfireLine",

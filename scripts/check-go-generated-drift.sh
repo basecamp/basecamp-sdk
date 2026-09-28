@@ -4,6 +4,7 @@
 # Verifies that the committed generated Go client is current by regenerating
 # and diffing against the committed file:
 #   go/pkg/generated/client.gen.go  (oapi-codegen output, AFTER the
+#                                    emit-go-deprecated-aliases.sh,
 #                                    normalize-go-deprecation-godoc.sh and
 #                                    normalize-go-error-response-parsing.sh passes)
 #
@@ -72,8 +73,13 @@ if [ ! -f "$REGEN" ]; then
   exit 1
 fi
 
-# Apply the same normalizations the committed file receives (see generate.go).
-if ! "$SCRIPT_DIR/normalize-go-deprecation-godoc.sh" "$REGEN" > "$NORM_LOG" 2>&1; then
+# Apply the same passes the committed file receives, in generate.go's order.
+if ! "$SCRIPT_DIR/emit-go-deprecated-aliases.sh" "$ROOT_DIR/openapi.json" "$REGEN" > "$NORM_LOG" 2>&1; then
+  echo "ERROR: deprecated-alias pass failed:" >&2
+  cat "$NORM_LOG" >&2
+  exit 1
+fi
+if ! "$SCRIPT_DIR/normalize-go-deprecation-godoc.sh" "$REGEN" >> "$NORM_LOG" 2>&1; then
   echo "ERROR: normalization failed:" >&2
   cat "$NORM_LOG" >&2
   exit 1

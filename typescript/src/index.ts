@@ -225,7 +225,6 @@ export {
 
 export {
   CardStepsService,
-  type CardStep,
   type CreateCardStepRequest,
   type UpdateCardStepRequest,
 } from "./generated/services/card-steps.js";
@@ -553,10 +552,12 @@ export {
   type CreateForEventBoostRequest,
 } from "./generated/services/boosts.js";
 
-// Subtasks service - generated. The entity is CardStep, exported from
-// card-steps.js: a subtask is a Kanban::Step on the wire.
+// Subtasks service - generated. Subtask is the one entity both services return
+// (a Kanban::Step on the wire); CardStep is its deprecated former name.
 export {
   SubtasksService,
+  type Subtask,
+  type CardStep,
   type ListSubtaskOptions,
   type CreateSubtaskRequest,
   type UpdateSubtaskRequest,

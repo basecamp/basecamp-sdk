@@ -250,7 +250,7 @@ func TestTodoFromGenerated_PropagatesNewFields(t *testing.T) {
 		CompletionSubscribers: []generated.Person{
 			{Id: 7, Name: "Subscriber"},
 		},
-		Steps: []generated.CardStep{
+		Steps: []generated.Subtask{
 			{Id: 99, Title: "Step 1", Status: "active"},
 			{Id: 100, Title: "Step 2", Status: "active"},
 		},

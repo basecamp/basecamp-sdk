@@ -26,10 +26,34 @@ func loadSubtasksFixture(t *testing.T, name string) []byte {
 	return data
 }
 
+// CardStep is the deprecated former name of Subtask, in both packages. The
+// aliases are the compatibility promise of the rename: an existing caller that
+// spells CardStep keeps compiling, and gets the very same type, so values pass
+// between old and new spellings without conversion.
+func TestCardStep_IsDeprecatedAliasOfSubtask(t *testing.T) {
+	var old CardStep
+	if err := json.Unmarshal(loadSubtasksFixture(t, "get.json"), &old); err != nil {
+		t.Fatalf("failed to unmarshal get.json as CardStep: %v", err)
+	}
+	// No conversion: CardStep is Subtask, so it passes where a Subtask is taken.
+	renamed := func(s Subtask) Subtask { return s }(old)
+	if renamed.ID != 1069479879 || renamed.Type != "Kanban::Step" {
+		t.Errorf("CardStep decoded differently from Subtask: %+v", renamed)
+	}
+
+	var gen generated.CardStep
+	if err := json.Unmarshal(loadSubtasksFixture(t, "get.json"), &gen); err != nil {
+		t.Fatalf("failed to unmarshal get.json as generated.CardStep: %v", err)
+	}
+	if converted := subtaskFromGenerated(gen); converted.ID != renamed.ID {
+		t.Errorf("generated.CardStep and CardStep disagree: %d vs %d", converted.ID, renamed.ID)
+	}
+}
+
 // The fixtures are the documented examples from bc3's doc/api/sections/subtasks.md:
 // the wire type stays "Kanban::Step", and the canonical urls say /subtasks.
 func TestSubtask_UnmarshalGet(t *testing.T) {
-	var subtask CardStep
+	var subtask Subtask
 	if err := json.Unmarshal(loadSubtasksFixture(t, "get.json"), &subtask); err != nil {
 		t.Fatalf("failed to unmarshal get.json: %v", err)
 	}

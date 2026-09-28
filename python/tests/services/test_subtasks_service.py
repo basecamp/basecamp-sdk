@@ -1,7 +1,8 @@
 """Tests for the SubtasksService.
 
-A subtask is a CardStep on the wire — ``type`` stays ``"Kanban::Step"`` — reached
-through the canonical flat ``/subtasks`` routes bc3 documents (bc3#12659).
+A subtask is the SDK's ``Subtask`` type (formerly ``CardStep``), whose wire
+``type`` stays ``"Kanban::Step"``, reached through the canonical flat
+``/subtasks`` routes bc3 documents (bc3#12659).
 """
 
 from __future__ import annotations

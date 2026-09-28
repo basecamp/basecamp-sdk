@@ -8,6 +8,12 @@
 #   * TS / Go  — editor / static   (@deprecated JSDoc / // Deprecated: godoc)
 #   * Swift/Ruby/Python — documentation only (/// , YARD, docstring/comment)
 #
+# A sixth site is a deprecated former NAME rather than a deprecated member: the
+# CardStep component, kept in openapi.json as a deprecated $ref to Subtask when
+# the shape was renamed. Every SDK emits it as an alias of Subtask, marked in
+# the same signal class as the member sites (Swift's alias is doc-only too, so
+# a caller building with warnings-as-errors keeps compiling).
+#
 # It also pins the negative space: the clean controls (the `search` method, the
 # plural replacements typeNames/bucketIds/creatorIds, and an unrelated field)
 # must stay unmarked, and no emitter may produce a doubled "Deprecated:
@@ -85,9 +91,15 @@ assert_contains "$GO" "// Deprecated: prefer type_names[]." "Go: search 'type' p
 assert_contains "$GO" "// Deprecated: prefer bucket_ids[]." "Go: search 'bucket_id' param marker"
 assert_contains "$GO" "// Deprecated: prefer creator_ids[]." "Go: search 'creator_id' param marker"
 assert_contains "$GO" "// Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead" "Go: ClientSide type + clientside property marker"
-# Exactly 5: 3 params + ClientSide type + clientside property. A control field
-# gaining a marker would bump this count.
-assert_count "$GO" "^[[:space:]]*// Deprecated:" 5 "Go: exactly five deprecation markers (controls clean)"
+assert_contains "$GO" "type CardStep = Subtask" "Go: CardStep alias of Subtask (generated)"
+assert_contains "$GO" "// Deprecated: renamed to Subtask, the same Kanban::Step record." "Go: CardStep alias marker (generated)"
+# Exactly 6: 3 params + ClientSide type + clientside property + CardStep alias.
+# A control field gaining a marker would bump this count.
+assert_count "$GO" "^[[:space:]]*// Deprecated:" 6 "Go: exactly six deprecation markers (controls clean)"
+# The hand-written wrapper package carries its own Subtask, so its alias is
+# hand-written beside it.
+assert_contains go/pkg/basecamp/cards.go "type CardStep = Subtask" "Go wrapper: CardStep alias of Subtask"
+assert_contains go/pkg/basecamp/cards.go "// Deprecated: renamed to Subtask, the same Kanban::Step record." "Go wrapper: CardStep alias marker"
 
 # ---- TypeScript (editor/static: @deprecated JSDoc) ---------------------------
 TS_SVC=typescript/src/generated/services/search.ts
@@ -97,8 +109,14 @@ assert_contains "$TS_SVC" "@deprecated prefer creator_ids[]." "TS: search 'creat
 assert_count "$TS_SVC" "@deprecated" 3 "TS: exactly three option markers (controls clean)"
 # openapi-typescript output (schema.d.ts): ClientSide type + clientside property
 # (from the component/property `deprecated`), plus the 3 search params in the
-# paths section (from the param-level `deprecated: true` hoisted for Go). Five.
-assert_count typescript/src/generated/schema.d.ts "@deprecated" 5 "TS: ClientSide + property + 3 param markers (openapi-typescript)"
+# paths section (from the param-level `deprecated: true` hoisted for Go), plus
+# the CardStep component. Six.
+assert_count typescript/src/generated/schema.d.ts "@deprecated" 6 "TS: ClientSide + property + 3 param + CardStep markers (openapi-typescript)"
+assert_contains typescript/src/generated/schema.d.ts 'CardStep: components["schemas"]["Subtask"];' "TS: CardStep component aliases Subtask (openapi-typescript)"
+for ts_file in typescript/src/generated/services/subtasks.ts typescript/src/generated/services/card-steps.ts; do
+    assert_contains "$ts_file" "/** @deprecated renamed to Subtask, the same Kanban::Step record. */" "TS: CardStep alias marker in $ts_file"
+    assert_contains "$ts_file" "export type CardStep = Subtask;" "TS: CardStep alias of Subtask in $ts_file"
+done
 assert_contains typescript/src/generated/schema.d.ts "This shape is deprecated since 2024-01: Use Client Visibility feature instead" "TS: ClientSide type reason (openapi-typescript)"
 
 # ---- Swift (documentation only: /// doc comment, no @available) --------------
@@ -111,6 +129,10 @@ assert_contains swift/Sources/Basecamp/Generated/Models/ClientSide.swift "/// De
 assert_contains swift/Sources/Basecamp/Generated/Models/Project.swift "/// Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead" "Swift: clientside property marker"
 # Documentation only — no availability attribute anywhere in generated Swift.
 assert_absent "$SW_SVC" "@available(*, deprecated" "Swift: no @available (doc-only signal class)"
+SW_ALIAS=swift/Sources/Basecamp/Generated/Models/CardStep.swift
+assert_contains "$SW_ALIAS" "/// Deprecated: renamed to Subtask, the same Kanban::Step record." "Swift: CardStep alias doc marker"
+assert_contains "$SW_ALIAS" "public typealias CardStep = Subtask" "Swift: CardStep typealias of Subtask"
+assert_tree_count swift/Sources/Basecamp/Generated "@available(*, deprecated" 0 "Swift: no @available anywhere in generated Swift (doc-only signal class)"
 
 # ---- Kotlin (compiler warning: @Deprecated) ----------------------------------
 KT_TYPES=kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
@@ -120,6 +142,9 @@ assert_contains "$KT_TYPES" '@Deprecated("prefer creator_ids[].")' "Kotlin: sear
 assert_count "$KT_TYPES" "@Deprecated\(" 3 "Kotlin: exactly three option markers (controls clean)"
 assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ClientSide.kt '@Deprecated("This shape is deprecated since 2024-01: Use Client Visibility feature instead")' "Kotlin: ClientSide class marker"
 assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Project.kt '@Deprecated("This shape is deprecated since 2024-01: Use Client Visibility feature instead")' "Kotlin: clientside property marker"
+KT_ALIAS=kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/CardStep.kt
+assert_contains "$KT_ALIAS" '@Deprecated("renamed to Subtask, the same Kanban::Step record.", ReplaceWith("Subtask", "com.basecamp.sdk.generated.models.Subtask"))' "Kotlin: CardStep alias marker + ReplaceWith (with import)"
+assert_contains "$KT_ALIAS" "typealias CardStep = Subtask" "Kotlin: CardStep typealias of Subtask"
 # Zero-generator-warning suppressions (generic, conditional).
 assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Project.kt '@Suppress("DEPRECATION")' "Kotlin: model @Suppress for deprecated-type reference"
 assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/search.kt '@Suppress("DEPRECATION")' "Kotlin: search service @Suppress for deprecated-param reads"
@@ -139,9 +164,12 @@ assert_contains "$RS_SEARCH" '#[deprecated(note = "prefer bucket_ids[].")]' "Rus
 assert_contains "$RS_SEARCH" '#[deprecated(note = "prefer creator_ids[].")]' "Rust: search 'creator_id' param marker"
 assert_count "$RS_SEARCH" '#\[deprecated\(' 3 "Rust: exactly three param markers in search.rs (controls clean)"
 assert_count "$RS_TYPES" 'note = "This shape is deprecated since 2024-01: Use Client Visibility feature instead"' 2 "Rust: ClientSide type + clientside field markers"
-# Exactly 5 in the whole generated tree: 3 params + ClientSide type + clientside
-# field. A control item gaining a marker anywhere would bump this count.
-assert_tree_count "$RS_GEN" '#[deprecated(' 5 "Rust: exactly five deprecation markers (controls clean)"
+assert_contains "$RS_TYPES" '#[deprecated(note = "renamed to Subtask, the same Kanban::Step record.")]' "Rust: CardStep alias marker"
+assert_contains "$RS_TYPES" "pub type CardStep = Subtask;" "Rust: CardStep alias of Subtask"
+# Exactly 6 in the whole generated tree: 3 params + ClientSide type + clientside
+# field + CardStep alias. A control item gaining a marker anywhere would bump
+# this count.
+assert_tree_count "$RS_GEN" '#[deprecated(' 6 "Rust: exactly six deprecation markers (controls clean)"
 # Zero-warning suppressions where the deprecated items are read or constructed:
 # `#[allow(deprecated)]` on the search method, and types.rs's crate-style inner
 # `#![allow(deprecated, …)]` — hence the bare `allow(deprecated` token.
@@ -154,12 +182,20 @@ assert_contains "$RB_SVC" "@param type [String, nil] Deprecated: prefer type_nam
 assert_contains "$RB_SVC" "@param bucket_id [Integer, nil] Deprecated: prefer bucket_ids[]." "Ruby: search 'bucket_id' param doc"
 assert_contains "$RB_SVC" "@param creator_id [Integer, nil] Deprecated: prefer creator_ids[]." "Ruby: search 'creator_id' param doc"
 
+RB_TYPES=ruby/lib/basecamp/generated/types.rb
+assert_contains "$RB_TYPES" "# @deprecated renamed to Subtask, the same Kanban::Step record." "Ruby: CardStep alias YARD marker"
+assert_contains "$RB_TYPES" "CardStep = Subtask" "Ruby: CardStep constant alias of Subtask"
+# Text matches only; the YARD registry sub-check below proves the tag attaches
+# to the CardStep constant and not to whatever follows it.
+
 # ---- Python (documentation only: docstrings / source comment) ----------------
 PY_SVC=python/src/basecamp/generated/services/search.py
 # Present on both the sync and async search methods.
 assert_count "$PY_SVC" "^ +- type: prefer type_names\[\]\." 2 "Python: search docstring (sync + async)"
 assert_contains python/src/basecamp/generated/types.py '"""Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead"""' "Python: ClientSide TypedDict docstring"
 assert_contains python/src/basecamp/generated/types.py "# deprecated (source-only): This shape is deprecated since 2024-01: Use Client Visibility feature instead" "Python: clientside source-only comment"
+assert_contains python/src/basecamp/generated/types.py "# Deprecated: renamed to Subtask, the same Kanban::Step record." "Python: CardStep alias source comment"
+assert_contains python/src/basecamp/generated/types.py "CardStep = Subtask" "Python: CardStep alias of Subtask"
 
 # ---- Control: the plural replacements and search method stay clean -----------
 # The exact-count assertions above already prove no field beyond the three
@@ -241,8 +277,9 @@ fi
 
 # ---- Ruby YARD registry: docstrings actually attach --------------------------
 # Parse the generated types with YARD and assert the deprecation attaches to the
-# clientside attribute and the ClientSide class (a text grep can't prove the
-# grouped-attr_accessor @!attribute directive bound correctly).
+# clientside attribute, the ClientSide class and the CardStep constant (a text
+# grep can't prove the grouped-attr_accessor @!attribute directive bound
+# correctly, nor that the alias's comment attached to the constant).
 if command -v ruby >/dev/null 2>&1; then
     if (cd ruby && bundle exec ruby "$SCRIPT_DIR/check-ruby-deprecation-yard.rb"); then
         pass=$((pass + 1))

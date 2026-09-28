@@ -235,7 +235,7 @@ func TestMoveCardColumn_RejectsOutOfRangePosition(t *testing.T) {
 	}
 }
 
-// Card and CardStep expose CompletedAt as *time.Time, so presence is already
+// Card and Subtask expose CompletedAt as *time.Time, so presence is already
 // representable — an `!IsZero()` guard on top of the nil check threw that away,
 // collapsing a present (if implausible) zero timestamp into "never completed".
 func TestCardFromGenerated_PresentZeroCompletedAtSurvives(t *testing.T) {
@@ -245,7 +245,7 @@ func TestCardFromGenerated_PresentZeroCompletedAtSurvives(t *testing.T) {
 	if card.CompletedAt == nil {
 		t.Error("a present zero completed_at must survive as non-nil")
 	}
-	step := cardStepFromGenerated(generated.CardStep{CompletedAt: &zero})
+	step := subtaskFromGenerated(generated.Subtask{CompletedAt: &zero})
 	if step.CompletedAt == nil {
 		t.Error("a present zero completed_at must survive as non-nil on steps")
 	}

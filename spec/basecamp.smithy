@@ -1719,10 +1719,10 @@ structure Todo {
   subtasks_url: String
 
   /// The first 100 subtasks, embedded read-only (BC5 addition). The shared
-  /// `subtasks/subtask` jbuilder partial emits the same shape as `CardStep`,
-  /// so the existing `CardStepList` is reused. A to-do with more than 100
-  /// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
-  steps: CardStepList
+  /// `subtasks/subtask` jbuilder partial emits the same `Subtask` shape a card
+  /// embeds. A to-do with more than 100 reports the total in
+  /// `subtasks_count`; fetch the rest from `subtasks_url`.
+  steps: SubtaskList
 }
 
 list RichTextAttachmentList {
@@ -5838,7 +5838,7 @@ structure GetCardStepInput {
 }
 
 structure GetCardStepOutput {
-  step: CardStep
+  step: Subtask
 }
 
 /// Create a step on a card
@@ -5868,7 +5868,7 @@ structure CreateCardStepInput {
 
 structure CreateCardStepOutput {
 
-  step: CardStep
+  step: Subtask
 }
 
 /// Update an existing step
@@ -5898,7 +5898,7 @@ structure UpdateCardStepInput {
 
 structure UpdateCardStepOutput {
 
-  step: CardStep
+  step: Subtask
 }
 
 /// Set card step completion status (PUT with completion: "on" to complete, "" to uncomplete)
@@ -5928,7 +5928,7 @@ structure SetCardStepCompletionInput {
 
 structure SetCardStepCompletionOutput {
 
-  step: CardStep
+  step: Subtask
 }
 
 /// Reposition a step within a card
@@ -6282,7 +6282,7 @@ structure Card {
   completion_subscribers: PersonList
   /// The first 100 subtasks, embedded read-only. A card with more than 100
   /// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
-  steps: CardStepList
+  steps: SubtaskList
   boosts_count: Integer
   boosts_url: String
 
@@ -6294,11 +6294,22 @@ structure Card {
   subtasks_url: String
 }
 
-list CardStepList {
-  member: CardStep
+list SubtaskList {
+  member: Subtask
 }
 
-structure CardStep {
+// A subtask: a checklist item under a to-do or a card. Kanban card steps are
+// subtasks too; the CardSteps operations address the same records through the
+// legacy card-scoped `/card_tables/steps` routes. The wire `type` stays
+// `"Kanban::Step"` permanently (BC3 #12544, #12639).
+//
+// This shape was named `CardStep` until the Step-to-Subtask rename.
+// `openapi.json` keeps a deprecated `CardStep` component that is a `$ref` to
+// this one (smithy-build.json `jsonAdd`), and every SDK emits `CardStep` as a
+// deprecated alias of `Subtask`, so existing callers keep compiling. These are
+// line comments, not `///` docs, on purpose: a doc here would be copied onto
+// every `*ResponseContent` alias of the shape.
+structure Subtask {
   @required
   id: CardStepId
   @required
@@ -13349,11 +13360,12 @@ structure FolderWithProjects {
 //
 // A subtask is a checklist item under a to-do or a card. It was born as a
 // Kanban card step, and the wire keeps that history: the payload's `type` is
-// `"Kanban::Step"` permanently and the shape is the `CardStep` structure,
-// which to-dos and cards also embed under `steps`. These are the canonical
-// flat routes bc3 documents in `doc/api/sections/subtasks.md` (BC3 #12659);
-// the card-scoped `/card_tables/steps` spellings the CardSteps operations
-// model stay served indefinitely as legacy aliases of the same records.
+// `"Kanban::Step"` permanently and the shape is the `Subtask` structure
+// (formerly `CardStep`), which to-dos and cards also embed under `steps`.
+// These are the canonical flat routes bc3 documents in
+// `doc/api/sections/subtasks.md` (BC3 #12659); the card-scoped
+// `/card_tables/steps` spellings the CardSteps operations model stay served
+// indefinitely as legacy aliases of the same records.
 
 // ===== Subtask Operations =====
 
@@ -13391,7 +13403,7 @@ structure ListSubtasksInput {
 }
 
 structure ListSubtasksOutput {
-  subtasks: CardStepList
+  subtasks: SubtaskList
 }
 
 /// Get a subtask by ID
@@ -13415,7 +13427,7 @@ structure GetSubtaskInput {
 }
 
 structure GetSubtaskOutput {
-  subtask: CardStep
+  subtask: Subtask
 }
 
 /// Create a subtask under a to-do or a card
@@ -13446,7 +13458,7 @@ structure CreateSubtaskInput {
 }
 
 structure CreateSubtaskOutput {
-  subtask: CardStep
+  subtask: Subtask
 }
 
 /// Update a subtask
@@ -13482,7 +13494,7 @@ structure UpdateSubtaskInput {
 }
 
 structure UpdateSubtaskOutput {
-  subtask: CardStep
+  subtask: Subtask
 }
 
 /// Mark a subtask as completed

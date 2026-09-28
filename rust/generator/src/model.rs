@@ -203,6 +203,7 @@ impl Model {
         let components = openapi["components"]["schemas"]
             .as_object()
             .ok_or("openapi.json has no components.schemas")?;
+        check_deprecated_aliases(components, naming)?;
         let request_shapes = request_shapes(openapi, components)?;
         let schemas = build_schemas(components, &request_shapes, naming)?;
         let services = build_services(openapi, behavior, naming, emittable_verbs)?;
@@ -212,6 +213,81 @@ impl Model {
             services,
         })
     }
+}
+
+/// The keys a deprecated alias component may carry: a rename kept for compatibility
+/// (`CardStep` -> `Subtask`) is nothing but a deprecated `$ref`.
+const DEPRECATED_ALIAS_KEYS: &[&str] =
+    &["$ref", "deprecated", "description", "x-deprecated-reason"];
+
+/// The names `generated/types.rs` imports. A schema named like one of them would be a
+/// second definition of that name, which rustc rejects.
+const TYPES_PRELUDE: &[&str] = &[
+    "BTreeMap",
+    "Serialize",
+    "Deserialize",
+    "AuthRoutableUrl",
+    "Date",
+    "DateTime",
+    "FlexibleTime",
+    "SensitiveString",
+];
+
+fn is_deprecated_alias(schema: &Value) -> bool {
+    schema.as_object().is_some_and(|object| {
+        object.get("deprecated").and_then(Value::as_bool) == Some(true)
+            && object.get("$ref").is_some_and(Value::is_string)
+            && object
+                .keys()
+                .all(|key| DEPRECATED_ALIAS_KEYS.contains(&key.as_str()))
+    })
+}
+
+fn is_object_model(schema: &Value) -> bool {
+    schema["type"].as_str() == Some("object")
+        && schema["properties"]
+            .as_object()
+            .is_some_and(|properties| !properties.is_empty())
+}
+
+/// Refuses a deprecated alias the other SDK generators cannot place, so the spec fails
+/// here too rather than shipping an alias only Rust has: a missing target (which would
+/// otherwise render as a `pub type` naming a type that does not exist), an alias of an
+/// alias (rejected, not resolved), a target that is not an object model, and a name that
+/// collides with another type in `generated/types.rs`.
+fn check_deprecated_aliases(
+    components: &serde_json::Map<String, Value>,
+    naming: &Naming,
+) -> Result<(), String> {
+    for (name, schema) in components {
+        if !is_deprecated_alias(schema) {
+            continue;
+        }
+        let target = reference_name(schema["$ref"].as_str().unwrap_or_default());
+        let rust_name = naming.type_for(name);
+        let problem = match components.get(&target) {
+            None => Some("target schema does not exist".to_string()),
+            Some(target_schema) if is_deprecated_alias(target_schema) => Some(format!(
+                "target is itself a deprecated alias; point {name} at the model directly"
+            )),
+            Some(target_schema) if !is_object_model(target_schema) => {
+                Some("target is not an object model".to_string())
+            }
+            Some(_)
+                if TYPES_PRELUDE.contains(&rust_name.as_str())
+                    || components
+                        .keys()
+                        .any(|other| other != name && naming.type_for(other) == rust_name) =>
+            {
+                Some(format!("{rust_name} collides with an existing type"))
+            }
+            Some(_) => None,
+        };
+        if let Some(problem) = problem {
+            return Err(format!("deprecated alias {name} -> {target}: {problem}"));
+        }
+    }
+    Ok(())
 }
 
 /// Every schema a request body references, directly or through another schema.

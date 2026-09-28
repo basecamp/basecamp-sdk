@@ -120,6 +120,60 @@ def schema_to_type(schema: dict, schemas: dict, *, optional: bool = False) -> st
     return t
 
 
+# The names the generated module imports from typing. A deprecated alias may not
+# rebind one of them.
+TYPING_IMPORTS = ("Any", "NotRequired", "Optional", "TypedDict")
+
+DEPRECATED_ALIAS_KEYS = {"$ref", "deprecated", "description", "x-deprecated-reason"}
+
+
+def _emits_typeddict(schema: object) -> bool:
+    """Whether main() emits a TypedDict for this component."""
+    return isinstance(schema, dict) and schema.get("type") == "object" and bool(schema.get("properties"))
+
+
+def _is_deprecated_alias(schema: object) -> bool:
+    """A component that is nothing but a deprecated ``$ref``: a rename kept for
+    compatibility, e.g. CardStep -> Subtask. ``deprecated`` must be the JSON
+    boolean true (``is True``, as in every other generator), so ``1`` or
+    ``"false"`` is not an alias."""
+    return (
+        isinstance(schema, dict)
+        and schema.get("deprecated") is True
+        and isinstance(schema.get("$ref"), str)
+        and not set(schema) - DEPRECATED_ALIAS_KEYS
+    )
+
+
+def deprecated_aliases(schemas: dict) -> list[tuple[str, str]]:
+    """Every deprecated alias as (alias, target), sorted by alias.
+
+    Exits on one this generator cannot place, the same cases every SDK generator
+    refuses: a missing target, an alias of an alias (rejected, not resolved), a
+    target that is not a generated TypedDict (an enum or a scalar), and a name
+    that would rebind one of the module's imports.
+    """
+    aliases = []
+    for name in sorted(schemas):
+        schema = schemas[name]
+        if not _is_deprecated_alias(schema):
+            continue
+        target = schema["$ref"].rsplit("/", 1)[-1]
+        if target not in schemas:
+            problem = "target schema does not exist"
+        elif _is_deprecated_alias(schemas[target]):
+            problem = f"target is itself a deprecated alias; point {name} at the model directly"
+        elif not _emits_typeddict(schemas[target]):
+            problem = "target is not an object model (no TypedDict is generated for it)"
+        elif name in TYPING_IMPORTS:
+            problem = f"{name} collides with an existing name the generated module imports"
+        else:
+            aliases.append((name, target))
+            continue
+        raise SystemExit(f"Error: deprecated alias {name} -> {target}: {problem}")
+    return aliases
+
+
 def main() -> None:
     import argparse
     parser = argparse.ArgumentParser()
@@ -131,13 +185,15 @@ def main() -> None:
         spec = json.load(f)
 
     schemas = spec.get("components", {}).get("schemas", {})
+    # Validated before anything is written, so a refusal leaves types.py as it was.
+    aliases = deprecated_aliases(schemas)
 
     lines: list[str] = [
         "# @generated from OpenAPI spec — do not edit manually",
         "",
         "from __future__ import annotations",
         "",
-        "from typing import Any, NotRequired, Optional, TypedDict",
+        f"from typing import {', '.join(TYPING_IMPORTS)}",
     ]
 
     # Emit type aliases for map schemas (object with additionalProperties, no properties)
@@ -224,6 +280,17 @@ def main() -> None:
                 lines.append("    system_label: NotRequired[str]")
 
         generated_count += 1
+
+    # Deprecated former names (see deprecated_aliases), each a module-level alias
+    # of its TypedDict. Emitted after every class so the target is already
+    # defined. Documentation-only deprecation (see #406): a source comment, no
+    # runtime or type-checker signal.
+    for name, target in aliases:
+        schema = schemas[name]
+        reason = escape_py_string(schema.get("x-deprecated-reason") or "deprecated")
+        lines.append("")
+        lines.append(f"# Deprecated: {reason}")
+        lines.append(f"{name} = {target}")
 
     if generated_count == 0:
         lines.append("")

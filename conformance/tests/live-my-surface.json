@@ -300,7 +300,7 @@
   {
     "mode": "live",
     "name": "ListTodos exercises Todo.steps additive field",
-    "description": "When BC5 emits Todo.steps, the additive field decodes through the existing CardStep shape.",
+    "description": "When BC5 emits Todo.steps, the additive field decodes through the existing Subtask (formerly CardStep) shape.",
     "operation": "ListTodos",
     "method": "GET",
     "path": "/todolists/${TODOLIST_ID}/todos.json",

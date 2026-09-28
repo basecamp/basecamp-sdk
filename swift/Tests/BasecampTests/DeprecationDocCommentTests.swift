@@ -50,6 +50,14 @@ final class DeprecationDocCommentTests: XCTestCase {
         XCTAssertEqual(lines.first, "/// Deprecated: line one")
     }
 
+    func testCRLFReasonSplitsIntoDocCommentLines() {
+        // Swift reads "\r\n" as ONE Character, so splitting on "\n" alone left a
+        // CRLF reason on one line and its continuation outside the comment.
+        let lines = deprecationDocLines(reason: "first\r\nsecond\rthird", indent: "")
+        assertAllDocComment(lines, indent: "")
+        XCTAssertEqual(lines, ["/// Deprecated: first", "/// second", "/// third"])
+    }
+
     func testSingleLineReasonIsOneLine() {
         let lines = deprecationDocLines(reason: "prefer type_names[].", indent: "    ")
         XCTAssertEqual(lines, ["    /// Deprecated: prefer type_names[]."])
