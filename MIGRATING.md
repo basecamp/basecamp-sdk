@@ -76,8 +76,9 @@ following bc3's own Step-to-Subtask rename. Nothing changes on the wire (the
 route is renamed: `CardStepsService` still speaks the card-scoped `/steps`
 routes and now returns `Subtask`.
 
-`CardStep` keeps working everywhere as an alias of `Subtask`, so existing code
-compiles unchanged. Kotlin and Rust mark the alias with a compiler deprecation
+`CardStep` keeps working as an alias of `Subtask` in every SDK's own language,
+so existing code compiles unchanged. The one exception is Java calling the
+Kotlin SDK (below). Kotlin and Rust mark the alias with a compiler deprecation
 warning, as they do every deprecated site, so a build that promotes warnings
 to errors has to switch spellings (or allow that warning) there. Switch to
 `Subtask` when convenient; the alias is deprecated and will go in a future
@@ -96,11 +97,14 @@ breaking release.
 `openapi.json` keeps a `CardStep` component too, as a deprecated `$ref` to
 `Subtask`, so a client generated from the spec still resolves the old name.
 
-Two edges the alias cannot cover. In Kotlin and Swift it is source
-compatibility, not binary: the JVM class and the Swift type symbol are now
-`Subtask`, so a library or framework compiled against an earlier SDK must be
-rebuilt. And in every SDK, anything that reads the type's runtime
-name through the old spelling sees the new one, because the alias is the same
+Three edges the alias cannot cover. Java source cannot see a Kotlin
+`typealias`, so a Java caller of the Kotlin SDK that names `CardStep` stops
+compiling and must switch to `Subtask`; there is no JVM class called
+`CardStep` any more. Kotlin callers are unaffected. In Kotlin and Swift the
+alias is source compatibility, not binary: the JVM class and the Swift type
+symbol are now `Subtask`, so a library or framework compiled against an
+earlier SDK must be rebuilt. And in every SDK, anything that reads the
+type's runtime name through the old spelling sees the new one, because the alias is the same
 type: Go's `reflect.TypeOf(CardStep{}).Name()`, Ruby's `CardStep.name`,
 Python's `CardStep.__name__`, Swift's `String(describing: CardStep.self)`,
 Kotlin's `CardStep::class.simpleName` and Rust's
