@@ -454,8 +454,11 @@ func (s *TimesheetService) Update(ctx context.Context, entryID int64, req *Updat
 	return &entry, nil
 }
 
-// Destroy permanently deletes a timesheet entry. Unlike Trash, this cannot be
-// undone. The API answers 403 when the caller may not archive or trash the entry.
+// Destroy permanently deletes a timesheet entry. It cannot be undone: the entry
+// never appears in the trash and cannot be restored. It is the only way to
+// remove a timesheet entry — bc3 refuses Recordings().Trash and
+// Recordings().Archive with 403 for every timesheet entry. The API answers 403
+// when the caller may not remove the entry.
 func (s *TimesheetService) Destroy(ctx context.Context, entryID int64) (err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "Destroy",
@@ -472,30 +475,6 @@ func (s *TimesheetService) Destroy(ctx context.Context, entryID int64) (err erro
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	resp, err := s.client.parent.gen.DestroyTimesheetEntryWithResponse(ctx, s.client.accountID, entryID)
-	if err != nil {
-		return err
-	}
-	return checkResponse(resp.HTTPResponse, resp.Body)
-}
-
-// Trash moves a timesheet entry to the trash, where it can still be recovered.
-// Use Destroy to delete it outright.
-func (s *TimesheetService) Trash(ctx context.Context, entryID int64) (err error) {
-	op := OperationInfo{
-		Service: "Timesheet", Operation: "Trash",
-		ResourceType: "timesheet_entry", IsMutation: true,
-		ResourceID: entryID,
-	}
-	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
-		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
-			return
-		}
-	}
-	start := time.Now()
-	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, entryID)
 	if err != nil {
 		return err
 	}

@@ -83,7 +83,10 @@ impl<'a> TimesheetsService<'a> {
         self.client.send(operation).await
     }
 
-    /// Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.
+    /// Permanently delete a timesheet entry. This cannot be undone: bc3 marks the entry
+    /// deleted, so it never appears in the trash and cannot be restored. It is the only
+    /// way to remove a timesheet entry — bc3 refuses TrashRecording and ArchiveRecording
+    /// with 403 for every timesheet entry. Answers 403 when the caller may not remove it.
     ///
     /// `DELETE /timesheet_entries/{entryId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn destroy(&self, entry_id: i64) -> Result<(), Error> {

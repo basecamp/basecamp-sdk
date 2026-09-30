@@ -296,7 +296,7 @@ export class TimesheetsService extends BaseService {
   }
 
   /**
-   * Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.
+   * Permanently delete a timesheet entry. This cannot be undone: bc3 marks the entry
    * @param entryId - The entry ID
    * @returns void
    * @throws {BasecampError} If the request fails

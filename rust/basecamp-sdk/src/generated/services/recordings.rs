@@ -46,7 +46,8 @@ impl<'a> RecordingsService<'a> {
         self.client
     }
 
-    /// Archive a recording
+    /// Archive a recording. bc3 answers 403 for recording types it never lets be archived,
+    /// timesheet entries among them.
     ///
     /// `PUT /recordings/{recordingId}/status/archived.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn archive(&self, recording_id: i64) -> Result<(), Error> {
@@ -91,7 +92,8 @@ impl<'a> RecordingsService<'a> {
         self.client.send(operation).await
     }
 
-    /// Trash a recording
+    /// Trash a recording. bc3 answers 403 for recording types it never lets be trashed:
+    /// a timesheet entry is removed only by DestroyTimesheetEntry, permanently.
     ///
     /// `PUT /recordings/{recordingId}/status/trashed.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn trash(&self, recording_id: i64) -> Result<(), Error> {

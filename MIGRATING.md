@@ -113,6 +113,26 @@ module-qualified in Ruby and Rust (`Basecamp::Types::Subtask`,
 `basecamp_sdk::generated::types::Subtask`). TypeScript's alias is erased at
 compile time, so it has no runtime name to report.
 
+### Go: `Timesheet().Trash` removed — bc3 refuses it for every entry
+
+`TimesheetService.Trash` sent the generic `PUT /recordings/{id}/status/trashed.json`.
+Since bc3 #12052, `Timesheet::Entry#trashable?` (and `archivable?`) is `false`,
+and `Recordings::StatusController`'s `ensure_trashable` answers **403 for every
+timesheet entry**, whoever the caller is. The method could not succeed, so it is
+removed rather than deprecated; nothing that works stops working, and the
+compiler finds every call.
+
+There is no recoverable removal for a timesheet entry. The one that works is
+`Timesheet().Destroy(ctx, entryID)` (`DELETE /timesheet_entries/{id}`), and it
+is **permanent**: bc3 marks the entry `deleted`, which never shows in the trash
+and is incinerated days later. Do not sed `Trash` into `Destroy` — decide
+whether the caller meant to delete for good, and confirm it with the person if
+it is acting for one. `Recordings().Trash` and `Recordings().Archive` on a
+timesheet entry ID answer the same 403, in every SDK.
+
+The other six SDKs never had a timesheet trash method; only their doc comments
+change.
+
 # v0.20.0
 
 ### `listLineupMarkers` moves from the Automation service to the Lineup service

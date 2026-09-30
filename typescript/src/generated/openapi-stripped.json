@@ -17586,7 +17586,7 @@
     },
     "/recordings/{recordingId}/status/archived.json": {
       "put": {
-        "description": "Archive a recording",
+        "description": "Archive a recording. bc3 answers 403 for recording types it never lets be archived,\ntimesheet entries among them.",
         "operationId": "ArchiveRecording",
         "parameters": [
           {
@@ -17673,7 +17673,7 @@
     },
     "/recordings/{recordingId}/status/trashed.json": {
       "put": {
-        "description": "Trash a recording",
+        "description": "Trash a recording. bc3 answers 403 for recording types it never lets be trashed:\na timesheet entry is removed only by DestroyTimesheetEntry, permanently.",
         "operationId": "TrashRecording",
         "parameters": [
           {
@@ -22646,7 +22646,7 @@
     },
     "/timesheet_entries/{entryId}": {
       "delete": {
-        "description": "Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.",
+        "description": "Permanently delete a timesheet entry. This cannot be undone: bc3 marks the entry\ndeleted, so it never appears in the trash and cannot be restored. It is the only\nway to remove a timesheet entry — bc3 refuses TrashRecording and ArchiveRecording\nwith 403 for every timesheet entry. Answers 403 when the caller may not remove it.",
         "operationId": "DestroyTimesheetEntry",
         "parameters": [
           {

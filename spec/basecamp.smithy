@@ -3853,7 +3853,10 @@ structure UpdateTimesheetEntryOutput {
   entry: TimesheetEntry
 }
 
-/// Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.
+/// Permanently delete a timesheet entry. This cannot be undone: bc3 marks the entry
+/// deleted, so it never appears in the trash and cannot be restored. It is the only
+/// way to remove a timesheet entry — bc3 refuses TrashRecording and ArchiveRecording
+/// with 403 for every timesheet entry. Answers 403 when the caller may not remove it.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -3876,8 +3879,9 @@ structure DestroyTimesheetEntryInput {
 
 structure DestroyTimesheetEntryOutput {}
 
-// Note: DestroyTimesheetEntry deletes outright and cannot be undone. Use
-// TrashRecording to trash a timesheet entry recoverably instead.
+// Note: there is no recoverable removal for a timesheet entry. bc3's
+// Timesheet::Entry declares trashable? and archivable? false (bc3 #12052), so
+// TrashRecording and ArchiveRecording answer 403 for every entry.
 
 // ===== Comment Shapes (Batch 1) =====
 
@@ -7855,7 +7859,8 @@ structure UnspotlightRecordingInput {
 
 structure UnspotlightRecordingOutput {}
 
-/// Trash a recording
+/// Trash a recording. bc3 answers 403 for recording types it never lets be trashed:
+/// a timesheet entry is removed only by DestroyTimesheetEntry, permanently.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -7878,7 +7883,8 @@ structure TrashRecordingInput {
 
 structure TrashRecordingOutput {}
 
-/// Archive a recording
+/// Archive a recording. bc3 answers 403 for recording types it never lets be archived,
+/// timesheet entries among them.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)

@@ -156,7 +156,10 @@ class TimesheetsService(BaseService):
         )
 
     def destroy(self, *, entry_id: int) -> None:
-        """Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.
+        """Permanently delete a timesheet entry. This cannot be undone: bc3 marks the entry
+        deleted, so it never appears in the trash and cannot be restored. It is the only
+        way to remove a timesheet entry — bc3 refuses TrashRecording and ArchiveRecording
+        with 403 for every timesheet entry. Answers 403 when the caller may not remove it.
 
         Args:
             entry_id: The entry id.
@@ -317,7 +320,10 @@ class AsyncTimesheetsService(AsyncBaseService):
         )
 
     async def destroy(self, *, entry_id: int) -> None:
-        """Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.
+        """Permanently delete a timesheet entry. This cannot be undone: bc3 marks the entry
+        deleted, so it never appears in the trash and cannot be restored. It is the only
+        way to remove a timesheet entry — bc3 refuses TrashRecording and ArchiveRecording
+        with 403 for every timesheet entry. Answers 403 when the caller may not remove it.
 
         Args:
             entry_id: The entry id.

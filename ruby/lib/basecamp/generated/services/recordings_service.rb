@@ -52,7 +52,7 @@ module Basecamp
         end
       end
 
-      # Archive a recording
+      # Archive a recording. bc3 answers 403 for recording types it never lets be archived,
       # @param recording_id [Integer] recording id ID
       # @return [void]
       def archive(recording_id:)
@@ -62,7 +62,7 @@ module Basecamp
         end
       end
 
-      # Trash a recording
+      # Trash a recording. bc3 answers 403 for recording types it never lets be trashed:
       # @param recording_id [Integer] recording id ID
       # @return [void]
       def trash(recording_id:)

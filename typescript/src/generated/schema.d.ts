@@ -2709,7 +2709,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description Archive a recording */
+        /**
+         * @description Archive a recording. bc3 answers 403 for recording types it never lets be archived,
+         *     timesheet entries among them.
+         */
         put: operations["ArchiveRecording"];
         post?: never;
         delete?: never;
@@ -2726,7 +2729,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description Trash a recording */
+        /**
+         * @description Trash a recording. bc3 answers 403 for recording types it never lets be trashed:
+         *     a timesheet entry is removed only by DestroyTimesheetEntry, permanently.
+         */
         put: operations["TrashRecording"];
         post?: never;
         delete?: never;
@@ -3425,7 +3431,12 @@ export interface paths {
         /** @description Update a timesheet entry */
         put: operations["UpdateTimesheetEntry"];
         post?: never;
-        /** @description Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it. */
+        /**
+         * @description Permanently delete a timesheet entry. This cannot be undone: bc3 marks the entry
+         *     deleted, so it never appears in the trash and cannot be restored. It is the only
+         *     way to remove a timesheet entry — bc3 refuses TrashRecording and ArchiveRecording
+         *     with 403 for every timesheet entry. Answers 403 when the caller may not remove it.
+         */
         delete: operations["DestroyTimesheetEntry"];
         options?: never;
         head?: never;
