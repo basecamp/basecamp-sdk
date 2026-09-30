@@ -163,7 +163,7 @@ export class RecordingsService extends BaseService {
   }
 
   /**
-   * Archive a recording. bc3 answers 403 for recording types it never lets be archived,
+   * Archive a recording; bc3 answers 403 for types it never lets be archived, timesheet entries among them
    * @param recordingId - The recording ID
    * @returns void
    * @throws {BasecampError} If the request fails
@@ -192,7 +192,7 @@ export class RecordingsService extends BaseService {
   }
 
   /**
-   * Trash a recording. bc3 answers 403 for recording types it never lets be trashed:. Trashed items can be recovered.
+   * Trash a recording; bc3 answers 403 for types it never lets be trashed, timesheet entries among them (DestroyTimesheetEntry removes those, permanently). Trashed items can be recovered.
    * @param recordingId - The recording ID
    * @returns void
    * @throws {BasecampError} If the request fails

@@ -164,7 +164,7 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Permanently delete a timesheet entry. This cannot be undone: bc3 marks the entry
+     * Permanently delete a timesheet entry, which never appears in the trash and cannot be restored; this is the only way to remove one, since bc3 answers 403 to TrashRecording and ArchiveRecording for every timesheet entry, and it answers 403 when the caller may not remove the entry.
      * @param entryId The entry ID
      */
     suspend fun destroy(entryId: Long): Unit {
