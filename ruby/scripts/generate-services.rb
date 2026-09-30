@@ -215,7 +215,10 @@ class ServiceGenerator
     'Search' => 'search',
     'CreateProjectFromTemplate' => 'create_project',
     'GetProjectConstruction' => 'get_construction',
-    'GetTemplateLibrary' => 'get_library',
+    'GetTemplateLibraryTodolists' => 'get_library_todolists',
+    'GetTemplateLibraryCardTables' => 'get_library_card_tables',
+    'CreateTemplateLibraryCardTable' => 'create_library_card_table',
+    'CreateTemplateLibraryTodolist' => 'create_library_todolist',
     'CreateTemplateLibraryCopy' => 'create_library_copy',
     'GetTemplateLibraryCopy' => 'get_library_copy',
     'GetRecordingTimesheet' => 'for_recording',
@@ -792,7 +795,7 @@ class ServiceGenerator
     op[:path_params].each do |p|
       ruby_name = to_snake_case(p[:name])
       type = p[:type] || 'Integer'
-      desc = p[:description] || "#{ruby_name.gsub('_', ' ')} ID"
+      desc = yard_param_description(p[:description] || "#{ruby_name.gsub('_', ' ')} ID")
       lines << "      # @param #{ruby_name} [#{type}] #{desc}"
     end
 

@@ -79,6 +79,7 @@ making the absorption journey publicly auditable.
 | [subtasks-canonical-rename](subtasks-canonical-rename.md) | absorbed-in-sdk | master | medium |
 | [recent-projects](recent-projects.md) | absorbed-in-sdk | master | medium |
 | [template-library](template-library.md) | absorbed-in-sdk | master | high |
+| [template-library-card-tables](template-library-card-tables.md) | absorbed-in-sdk | master | high |
 | [delegated-events-performed-by](delegated-events-performed-by.md) | absorbed-in-sdk | master | low |
 | [recording-bubble-up-write](recording-bubble-up-write.md) | partial-coverage | master | medium |
 | [project-client-users](project-client-users.md) | absorbed-in-sdk | master | high |
@@ -112,14 +113,36 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `5daa0911d33` (2026-09-15). <!-- @bc3-pin -->
+> The provenance pin is `66d387b62fb` (2026-09-15). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
 >
-> The `c680233ba0e..5daa0911d33` range is **249 commits** (44 merges, 205
+> The `5daa0911d33..66d387b62fb` range is **217 commits** (14 merges, 203
+> non-merge). Twelve non-merge commits touch `doc/api` or `app/views/api`, and
+> the vendored route table moves from 398 routes across 68 sections to 403
+> across 70.
+>
+> The substantive API addition is the per-kind template library and
+> templatifications, absorbed here in all seven SDKs. `4baa3931385` routes
+> to-do list templates by kind; `e9302173649`, `33cc345aafc` and `66a0bb79df9`
+> add card table template reads, template creation and templatification;
+> `4ca4595e131` names the destination project on a copy; and `e83bec21754`
+> rejects a destination that cannot hold the copied kind. The related view
+> commits add the card table template container and widen copies to both kinds,
+> all covered by `TemplateLibraryCardTables`, `TemplateLibraryCopy` and
+> `Templatification`. [`template-library-card-tables.md`](template-library-card-tables.md)
+> closes `absorbed-in-sdk` at this repin.
+>
+> The remainder is wire-neutral for the modelled surface. BC3 #13317's
+> authorization-document parity remains covered outside the Smithy spec;
+> agents, embeds, membership chat lines, and circle API views add no newly
+> documented modelled route or field. The `bc3-four` compatibility pin does not
+> move: this sync re-verifies only `master`.
+>
+> The previous `c680233ba0e..5daa0911d33` range was **249 commits** (44 merges, 205
 > non-merge), read from a local bc3 checkout. Eleven non-merge commits touch
 > `doc/api` or `app/views/api`, and the vendored route table moves from 382
 > routes across 66 sections to 398 across 68 — sixteen routes, every one

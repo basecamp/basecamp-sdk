@@ -1,7 +1,7 @@
 // @generated from OpenAPI spec — do not edit directly
 import Foundation
 
-public struct TemplateLibrary: Codable, Sendable {
+public struct TemplateLibraryTodolists: Codable, Sendable {
     public let bucket: RecordingBucket
     public let todolists: [Todolist]
     public let todoset: RecordingParent

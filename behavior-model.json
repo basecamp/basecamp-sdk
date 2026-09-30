@@ -362,7 +362,40 @@
         ]
       }
     },
+    "CreateTemplateLibraryCardTable": {
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateTemplateLibraryCopy": {
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateTemplateLibraryTodolist": {
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateTemplatification": {
       "retry": {
         "max": 2,
         "base_delay_ms": 1000,
@@ -1756,7 +1789,7 @@
         ]
       }
     },
-    "GetTemplateLibrary": {
+    "GetTemplateLibraryCardTables": {
       "readonly": true,
       "retry": {
         "max": 3,
@@ -1769,6 +1802,30 @@
       }
     },
     "GetTemplateLibraryCopy": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetTemplateLibraryTodolists": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetTemplatification": {
       "readonly": true,
       "retry": {
         "max": 3,

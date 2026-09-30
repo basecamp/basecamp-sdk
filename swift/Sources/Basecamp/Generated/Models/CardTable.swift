@@ -16,6 +16,9 @@ public struct CardTable: Codable, Sendable {
     public let visibleToClients: Bool
     public var bookmarkUrl: String?
     public var lists: [CardColumn]?
+    public var parent: RecordingParent?
+    public var position: Int32?
+    public var publicLinkUrl: String?
     public var subscribers: [Person]?
     public var subscriptionUrl: String?
     public var wormholes: [Wormhole]?
@@ -35,6 +38,9 @@ public struct CardTable: Codable, Sendable {
         visibleToClients: Bool,
         bookmarkUrl: String? = nil,
         lists: [CardColumn]? = nil,
+        parent: RecordingParent? = nil,
+        position: Int32? = nil,
+        publicLinkUrl: String? = nil,
         subscribers: [Person]? = nil,
         subscriptionUrl: String? = nil,
         wormholes: [Wormhole]? = nil
@@ -53,6 +59,9 @@ public struct CardTable: Codable, Sendable {
         self.visibleToClients = visibleToClients
         self.bookmarkUrl = bookmarkUrl
         self.lists = lists
+        self.parent = parent
+        self.position = position
+        self.publicLinkUrl = publicLinkUrl
         self.subscribers = subscribers
         self.subscriptionUrl = subscriptionUrl
         self.wormholes = wormholes
@@ -73,6 +82,9 @@ public struct CardTable: Codable, Sendable {
         case visibleToClients
         case bookmarkUrl
         case lists
+        case parent
+        case position
+        case publicLinkUrl
         case subscribers
         case subscriptionUrl
         case wormholes
@@ -94,6 +106,9 @@ public struct CardTable: Codable, Sendable {
         self.visibleToClients = try container.decode(Bool.self, forKey: .visibleToClients)
         self.bookmarkUrl = try container.decodeIfPresent(String.self, forKey: .bookmarkUrl)
         self.lists = try container.decodeIfPresent([CardColumn].self, forKey: .lists)
+        self.parent = try container.decodeIfPresent(RecordingParent.self, forKey: .parent)
+        self.position = try container.decodeIfPresent(Int32.self, forKey: .position)
+        self.publicLinkUrl = try container.decodeIfPresent(String.self, forKey: .publicLinkUrl)
         self.subscribers = try container.decodePeopleIfPresent([Person].self, forKey: .subscribers)
         self.subscriptionUrl = try container.decodeIfPresent(String.self, forKey: .subscriptionUrl)
         self.wormholes = try container.decodeIfPresent([Wormhole].self, forKey: .wormholes)
@@ -115,6 +130,9 @@ public struct CardTable: Codable, Sendable {
         try container.encode(self.visibleToClients, forKey: .visibleToClients)
         try container.encodeIfPresent(self.bookmarkUrl, forKey: .bookmarkUrl)
         try container.encodeIfPresent(self.lists, forKey: .lists)
+        try container.encodeIfPresent(self.parent, forKey: .parent)
+        try container.encodeIfPresent(self.position, forKey: .position)
+        try container.encodeIfPresent(self.publicLinkUrl, forKey: .publicLinkUrl)
         try container.encodeIfPresent(self.subscribers, forKey: .subscribers)
         try container.encodeIfPresent(self.subscriptionUrl, forKey: .subscriptionUrl)
         try container.encodeIfPresent(self.wormholes, forKey: .wormholes)

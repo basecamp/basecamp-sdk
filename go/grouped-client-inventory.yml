@@ -127,16 +127,26 @@ grouped:
   TemplatesService:
     - operation: CreateTemplate
       methods: ["CreateWithBody", "Create"]
+    - operation: CreateTemplateLibraryCardTable
+      methods: ["CreateLibraryCardTableWithBody", "CreateLibraryCardTable"]
     - operation: CreateTemplateLibraryCopy
       methods: ["CreateLibraryCopyWithBody", "CreateLibraryCopy"]
+    - operation: CreateTemplateLibraryTodolist
+      methods: ["CreateLibraryTodolistWithBody", "CreateLibraryTodolist"]
+    - operation: CreateTemplatification
+      methods: ["CreateTemplatificationWithBody", "CreateTemplatification"]
     - operation: DeleteTemplate
       methods: ["Delete"]
     - operation: GetTemplate
       methods: ["Get"]
-    - operation: GetTemplateLibrary
-      methods: ["GetLibrary"]
+    - operation: GetTemplateLibraryCardTables
+      methods: ["GetLibraryCardTables"]
     - operation: GetTemplateLibraryCopy
       methods: ["GetLibraryCopy"]
+    - operation: GetTemplateLibraryTodolists
+      methods: ["GetLibraryTodolists"]
+    - operation: GetTemplatification
+      methods: ["GetTemplatification"]
     - operation: ListTemplates
       methods: ["List"]
     - operation: UpdateTemplate
