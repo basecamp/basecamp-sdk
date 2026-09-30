@@ -267,9 +267,9 @@ type Card struct {
 
 	// Steps The first 100 subtasks, embedded read-only. A card with more than 100
 	// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
-	Steps                  []CardStep `json:"steps,omitempty"`
-	SubscriptionUrl        *string    `json:"subscription_url,omitempty"`
-	SubtasksCompletedCount *int32     `json:"subtasks_completed_count,omitempty"`
+	Steps                  []Subtask `json:"steps,omitempty"`
+	SubscriptionUrl        *string   `json:"subscription_url,omitempty"`
+	SubtasksCompletedCount *int32    `json:"subtasks_completed_count,omitempty"`
 
 	// SubtasksCount Subtask accounting (BC3 #12659). `subtasks_count` is the real total,
 	// `subtasks_completed_count` how many are done, and `subtasks_url` the
@@ -319,31 +319,6 @@ type CardColumnOnHold struct {
 	Status         string    `json:"status"`
 	Title          string    `json:"title"`
 	UpdatedAt      time.Time `json:"updated_at"`
-}
-
-// CardStep defines model for CardStep.
-type CardStep struct {
-	AppUrl           string          `json:"app_url"`
-	Assignees        []Person        `json:"assignees,omitempty"`
-	BookmarkUrl      *string         `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	Completed        *bool           `json:"completed,omitempty"`
-	CompletedAt      *time.Time      `json:"completed_at,omitempty"`
-	Completer        *Person         `json:"completer,omitempty"`
-	CompletionUrl    *string         `json:"completion_url,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	DueOn            *types.Date     `json:"due_on,omitempty"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Position         *int32          `json:"position,omitempty"`
-	Status           string          `json:"status"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // CardTable defines model for CardTable.
@@ -669,7 +644,7 @@ type CreateCardStepRequestContent struct {
 }
 
 // CreateCardStepResponseContent defines model for CreateCardStepResponseContent.
-type CreateCardStepResponseContent = CardStep
+type CreateCardStepResponseContent = Subtask
 
 // CreateChatbotRequestContent defines model for CreateChatbotRequestContent.
 type CreateChatbotRequestContent struct {
@@ -971,7 +946,7 @@ type CreateSubtaskRequestContent struct {
 }
 
 // CreateSubtaskResponseContent defines model for CreateSubtaskResponseContent.
-type CreateSubtaskResponseContent = CardStep
+type CreateSubtaskResponseContent = Subtask
 
 // CreateTemplateLibraryCardTableRequestContent defines model for CreateTemplateLibraryCardTableRequestContent.
 type CreateTemplateLibraryCardTableRequestContent struct {
@@ -1803,7 +1778,7 @@ type GetCardColumnResponseContent = CardColumn
 type GetCardResponseContent = Card
 
 // GetCardStepResponseContent defines model for GetCardStepResponseContent.
-type GetCardStepResponseContent = CardStep
+type GetCardStepResponseContent = Subtask
 
 // GetCardTableResponseContent defines model for GetCardTableResponseContent.
 type GetCardTableResponseContent = CardTable
@@ -2028,7 +2003,7 @@ type GetSearchMetadataResponseContent = SearchMetadata
 type GetSubscriptionResponseContent = Subscription
 
 // GetSubtaskResponseContent defines model for GetSubtaskResponseContent.
-type GetSubtaskResponseContent = CardStep
+type GetSubtaskResponseContent = Subtask
 
 // GetTemplateLibraryCardTablesResponseContent defines model for GetTemplateLibraryCardTablesResponseContent.
 type GetTemplateLibraryCardTablesResponseContent = TemplateLibraryCardTables
@@ -2336,7 +2311,7 @@ type ListRecordingsResponseContent = []Recording
 type ListScheduleEntriesResponseContent = []ScheduleEntry
 
 // ListSubtasksResponseContent defines model for ListSubtasksResponseContent.
-type ListSubtasksResponseContent = []CardStep
+type ListSubtasksResponseContent = []Subtask
 
 // ListTemplatesResponseContent defines model for ListTemplatesResponseContent.
 type ListTemplatesResponseContent = []Template
@@ -3590,7 +3565,7 @@ type SetCardStepCompletionRequestContent struct {
 }
 
 // SetCardStepCompletionResponseContent defines model for SetCardStepCompletionResponseContent.
-type SetCardStepCompletionResponseContent = CardStep
+type SetCardStepCompletionResponseContent = Subtask
 
 // SetClientVisibilityRequestContent defines model for SetClientVisibilityRequestContent.
 type SetClientVisibilityRequestContent struct {
@@ -3623,6 +3598,36 @@ type Subscription struct {
 	Subscribers []Person `json:"subscribers,omitempty"`
 	Url         string   `json:"url"`
 }
+
+// Subtask defines model for Subtask.
+type Subtask struct {
+	AppUrl           string          `json:"app_url"`
+	Assignees        []Person        `json:"assignees,omitempty"`
+	BookmarkUrl      *string         `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket      `json:"bucket"`
+	Completed        *bool           `json:"completed,omitempty"`
+	CompletedAt      *time.Time      `json:"completed_at,omitempty"`
+	Completer        *Person         `json:"completer,omitempty"`
+	CompletionUrl    *string         `json:"completion_url,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Creator          Person          `json:"creator"`
+	DueOn            *types.Date     `json:"due_on,omitempty"`
+	Id               int64           `json:"id"`
+	InheritsStatus   bool            `json:"inherits_status"`
+	Parent           RecordingParent `json:"parent"`
+	Position         *int32          `json:"position,omitempty"`
+	Status           string          `json:"status"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
+}
+
+// CardStep is the deprecated former name of Subtask.
+//
+// Deprecated: renamed to Subtask, the same Kanban::Step record.
+type CardStep = Subtask
 
 // Template defines model for Template.
 type Template struct {
@@ -3955,12 +3960,12 @@ type Todo struct {
 	Status string `json:"status"`
 
 	// Steps The first 100 subtasks, embedded read-only (BC5 addition). The shared
-	// `subtasks/subtask` jbuilder partial emits the same shape as `CardStep`,
-	// so the existing `CardStepList` is reused. A to-do with more than 100
-	// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
-	Steps                  []CardStep `json:"steps,omitempty"`
-	SubscriptionUrl        *string    `json:"subscription_url,omitempty"`
-	SubtasksCompletedCount *int32     `json:"subtasks_completed_count,omitempty"`
+	// `subtasks/subtask` jbuilder partial emits the same `Subtask` shape a card
+	// embeds. A to-do with more than 100 reports the total in
+	// `subtasks_count`; fetch the rest from `subtasks_url`.
+	Steps                  []Subtask `json:"steps,omitempty"`
+	SubscriptionUrl        *string   `json:"subscription_url,omitempty"`
+	SubtasksCompletedCount *int32    `json:"subtasks_completed_count,omitempty"`
 
 	// SubtasksCount Subtask accounting (BC3 #12659). `subtasks_count` is the real total,
 	// `subtasks_completed_count` how many are done, and `subtasks_url` the
@@ -4465,7 +4470,7 @@ type UpdateCardStepRequestContent struct {
 }
 
 // UpdateCardStepResponseContent defines model for UpdateCardStepResponseContent.
-type UpdateCardStepResponseContent = CardStep
+type UpdateCardStepResponseContent = Subtask
 
 // UpdateChatbotRequestContent defines model for UpdateChatbotRequestContent.
 type UpdateChatbotRequestContent struct {
@@ -4697,7 +4702,7 @@ type UpdateSubtaskRequestContent struct {
 }
 
 // UpdateSubtaskResponseContent defines model for UpdateSubtaskResponseContent.
-type UpdateSubtaskResponseContent = CardStep
+type UpdateSubtaskResponseContent = Subtask
 
 // UpdateTemplateRequestContent defines model for UpdateTemplateRequestContent.
 type UpdateTemplateRequestContent struct {

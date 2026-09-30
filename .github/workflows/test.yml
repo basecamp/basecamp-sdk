@@ -207,6 +207,14 @@ jobs:
       - name: Generator verb inversion self-test
         run: make test-generator-verb-inversion
 
+      # A deprecated alias a generator cannot place (an alias of an enum, of a
+      # missing schema, of another alias, or a name collision) must fail the run
+      # by name, never vanish from one SDK (#955). Drives Go's jq post-pass and
+      # the Ruby and Python type generators; the compiled four are covered by
+      # scripts/test-compiled-generator-refusal in their language jobs.
+      - name: Deprecated alias refusal self-test
+        run: make test-deprecated-alias-refusal
+
       - name: api-gaps registry frontmatter + allowlist schema
         run: make validate-api-gaps
         env:

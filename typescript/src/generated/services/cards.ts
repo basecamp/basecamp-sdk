@@ -181,7 +181,7 @@ export class CardsService extends BaseService {
    * List cards in a column
    * @param columnId - The column ID
    * @param options - Optional query parameters
-   * @returns All Card across all pages, with .meta.totalCount
+   * @returns Every Card across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

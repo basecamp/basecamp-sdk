@@ -33,6 +33,11 @@
               "name": "Basecamp",
               "url": "https://github.com/basecamp/basecamp-sdk"
             },
+            "/components/schemas/CardStep": {
+              "$ref": "#/components/schemas/Subtask",
+              "deprecated": true,
+              "description": "Deprecated: renamed to Subtask, the same Kanban::Step record."
+            },
             "/components/schemas/Todolist/properties/color/type": ["string", "null"],
             "/components/schemas/Todolist/properties/color/x-go-type": "string",
             "/components/schemas/Todolist/required/-": "color",

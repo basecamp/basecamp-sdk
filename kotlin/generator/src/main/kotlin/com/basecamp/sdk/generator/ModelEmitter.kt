@@ -8,6 +8,30 @@ import kotlinx.serialization.json.*
 class ModelEmitter(private val api: OpenApiParser) {
 
     /**
+     * Generate a deprecated former name as a typealias of the model it was
+     * renamed to (e.g. CardStep -> Subtask). A typealias shares the target's
+     * serializer, so decoding is unchanged. Compiler-level deprecation, the
+     * Kotlin signal class (#406); nothing generated references the alias, so it
+     * cannot make the SDK warn on itself.
+     */
+    fun generateDeprecatedAlias(aliasName: String, targetTypeName: String): String {
+        val schema = api.getSchema(aliasName)
+        val reason = schema?.get("x-deprecated-reason")?.jsonPrimitive?.content ?: "deprecated"
+        val lines = mutableListOf<String>()
+        lines += "package com.basecamp.sdk.generated.models"
+        lines += ""
+        lines += "/**"
+        lines += " * Deprecated former name of [$targetTypeName]."
+        lines += " *"
+        lines += " * @generated from OpenAPI spec — do not edit directly"
+        lines += " */"
+        lines += "@Deprecated(${kotlinStringLiteral(reason)}, ReplaceWith(${kotlinStringLiteral(targetTypeName)}, ${kotlinStringLiteral("com.basecamp.sdk.generated.models.$targetTypeName")}))"
+        lines += "typealias $aliasName = $targetTypeName"
+        lines += ""
+        return lines.joinToString("\n")
+    }
+
+    /**
      * Generate a Kotlin model file for a given entity schema.
      * Returns null if the schema can't be generated (e.g., not an object type).
      */

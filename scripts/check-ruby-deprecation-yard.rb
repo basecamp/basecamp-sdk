@@ -46,8 +46,30 @@ if sibling && !sibling.tag(:deprecated).nil?
   failures << 'control violated: Basecamp::Types::Project#name is unexpectedly @deprecated'
 end
 
+# CardStep is a constant alias of Subtask (#955). The alias pass prints the
+# `# @deprecated` comment directly above `CardStep = Subtask`; the registry
+# proves YARD attaches it to the constant rather than to whatever comes next.
+card_step = YARD::Registry.at('Basecamp::Types::CardStep')
+if card_step.nil?
+  failures << 'Basecamp::Types::CardStep not found in registry'
+elsif card_step.type != :constant
+  failures << "Basecamp::Types::CardStep is a #{card_step.type}, not a constant alias"
+elsif (tag = card_step.tag(:deprecated)).nil?
+  failures << 'Basecamp::Types::CardStep is missing a @deprecated tag'
+elsif tag.text.to_s.strip != 'renamed to Subtask, the same Kanban::Step record.'
+  failures << "Basecamp::Types::CardStep @deprecated reason mismatch: #{tag.text.inspect}"
+end
+
+# Control: the class the alias names must NOT be deprecated.
+subtask = YARD::Registry.at('Basecamp::Types::Subtask')
+if subtask.nil?
+  failures << 'Basecamp::Types::Subtask not found in registry'
+elsif !subtask.tag(:deprecated).nil?
+  failures << 'control violated: Basecamp::Types::Subtask is unexpectedly @deprecated'
+end
+
 if failures.empty?
-  puts '  Ruby YARD registry: clientside/ClientSide deprecation attached; controls clean'
+  puts '  Ruby YARD registry: clientside/ClientSide and CardStep deprecation attached; controls clean'
   exit 0
 else
   failures.each { |f| warn "    #{f}" }

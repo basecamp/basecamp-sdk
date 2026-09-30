@@ -484,7 +484,9 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   Card: ["Card", "entity"],
   CardTable: ["CardTable", "entity"],
   CardColumn: ["CardColumn", "entity"],
-  CardStep: ["CardStep", "entity"],
+  // Formerly CardStep. The CardStep component survives in openapi.json as a
+  // deprecated $ref to Subtask, exported beside it as a deprecated alias.
+  Subtask: ["Subtask", "entity"],
   Wormhole: ["Wormhole", "entity"],
   Campfire: ["Campfire", "entity"],
   CampfireLine: ["CampfireLine", "entity"],
@@ -592,6 +594,68 @@ function setSchemas(schemas: Record<string, Schema>) {
 
 function resolveRef(ref: string): string {
   return ref.split("/").pop() || "";
+}
+
+const DEPRECATED_ALIAS_KEYS = ["$ref", "deprecated", "description", "x-deprecated-reason"];
+
+/**
+ * A component that is nothing but a deprecated `$ref`: a rename kept for
+ * compatibility, e.g. `CardStep` -> `Subtask`. `deprecated` must be the JSON
+ * boolean `true`, as in every other generator.
+ */
+function isDeprecatedAlias(schema: Schema | undefined): boolean {
+  return schema !== undefined && schema.deprecated === true && typeof schema.$ref === "string"
+    && Object.keys(schema).every((k) => DEPRECATED_ALIAS_KEYS.includes(k));
+}
+
+/**
+ * Every deprecated alias component, alias -> target. Throws on one no generator
+ * can place — a missing target, an alias of an alias (rejected, not resolved),
+ * a target that is not an object model — so the spec fails here exactly as it
+ * fails in the other six generators.
+ */
+function deprecatedAliasComponents(): Map<string, string> {
+  const aliases = new Map<string, string>();
+  for (const name of Object.keys(globalSchemas).sort(byCodeUnit)) {
+    const schema = globalSchemas[name];
+    if (!isDeprecatedAlias(schema)) continue;
+    const target = resolveRef(schema.$ref!);
+    const targetSchema = globalSchemas[target];
+    let problem: string | null = null;
+    if (!targetSchema) problem = "target schema does not exist";
+    else if (isDeprecatedAlias(targetSchema)) problem = `target is itself a deprecated alias; point ${name} at the model directly`;
+    else if (targetSchema.type !== "object" || Object.keys(targetSchema.properties ?? {}).length === 0) problem = "target is not an object model";
+    if (problem) throw new Error(`deprecated alias ${name} -> ${target}: ${problem}`);
+    aliases.set(name, target);
+  }
+  return aliases;
+}
+
+/** Locale-independent ordering, so the output is the same on every machine. */
+function byCodeUnit(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Deprecated former names of a component, as [alias, reason], sorted.
+ */
+function deprecatedAliasesOf(schemaName: string): Array<[string, string]> {
+  return Object.entries(globalSchemas)
+    .filter(([, s]) => isDeprecatedAlias(s) && resolveRef(s.$ref!) === schemaName)
+    .map(([name, s]): [string, string] => [name, s["x-deprecated-reason"] || "deprecated"])
+    .sort(([a], [b]) => byCodeUnit(a, b));
+}
+
+/** Aliases some service file exported; main() refuses any alias left out. */
+const emittedAliases = new Set<string>();
+
+/**
+ * Text safe inside a single-line JSDoc comment: a `*\/` would end the comment
+ * early and turn the rest into code, and a line break would leave the
+ * continuation outside any `*` line.
+ */
+function jsdocText(text: string): string {
+  return text.replace(/\*\//g, "*\\/").replace(/\r\n|\r|\n/g, " ");
 }
 
 function getSchemaProperties(schemaRef: string): { properties: Record<string, Schema>; required: string[] } {
@@ -1033,6 +1097,20 @@ function generateService(service: ServiceDefinition): string {
 
   lines.push(`}`);
 
+  // A deprecated alias named like another export of this file (a request or
+  // options interface, the service class) is a duplicate identifier.
+  const exported = new Map<string, number>();
+  for (const line of lines) {
+    const m = /^export (?:type|interface|class) (\w+)/.exec(line);
+    if (m) exported.set(m[1], (exported.get(m[1]) ?? 0) + 1);
+  }
+  for (const [name, count] of exported) {
+    if (count > 1 && emittedAliases.has(name)) {
+      const target = resolveRef(globalSchemas[name].$ref!);
+      throw new Error(`deprecated alias ${name} -> ${target}: ${name} collides with an existing type in the ${serviceName} service`);
+    }
+  }
+
   return lines.join("\n");
 }
 
@@ -1051,6 +1129,15 @@ function collectTypeExports(service: ServiceDefinition): string[] {
           exports.push(`/** ${typeName} entity from the Basecamp API. */`);
           exports.push(`export type ${typeName} = components["schemas"]["${entitySchema}"];`);
           added.add(typeName);
+          for (const [aliasName, reason] of deprecatedAliasesOf(entitySchema)) {
+            if (added.has(aliasName)) {
+              throw new Error(`deprecated alias ${aliasName} -> ${entitySchema}: ${aliasName} collides with an existing type in the ${service.name} service`);
+            }
+            exports.push(`/** @deprecated ${jsdocText(reason)} */`);
+            exports.push(`export type ${aliasName} = ${typeName};`);
+            added.add(aliasName);
+            emittedAliases.add(aliasName);
+          }
         }
       }
 
@@ -1177,7 +1264,7 @@ function generateRequestInterfaces(service: ServiceDefinition): string[] {
           // suggestion diagnostic), not a tsc compile warning. See #406.
           lines.push(`  /**`);
           lines.push(`   * ${desc}`);
-          lines.push(`   * @deprecated ${param.deprecationReason || "deprecated"}`);
+          lines.push(`   * @deprecated ${jsdocText(param.deprecationReason || "deprecated")}`);
           lines.push(`   */`);
           lines.push(`  ${toCamelCase(param.name)}?: ${param.type};`);
         } else {
@@ -1251,7 +1338,7 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
     lines.push(`   * @returns void`);
   } else if (op.returnsArray && op.hasPagination) {
     const entityType = getEntityTypeName(op.responseSchemaRef || "");
-    lines.push(`   * @returns All ${entityType || "results"} across all pages, with .meta.totalCount`);
+    lines.push(`   * @returns ${entityType ? `Every ${entityType}` : "All results"} across all pages, with .meta.totalCount`);
   } else if (op.hasPagination && !op.returnsArray && op.paginationKey) {
     const entityType = getEntityTypeName(op.responseSchemaRef || "", op.paginationKey);
     lines.push(`   * @returns Wrapper with ${op.paginationKey} as ListResult<${entityType || "unknown"}> across all pages`);
@@ -1797,10 +1884,23 @@ function main() {
     fs.mkdirSync(resolvedOutputDir, { recursive: true });
   }
 
-  const generatedFiles: string[] = [];
+  // Render every service before writing any, so a refusal below leaves the
+  // committed tree untouched.
+  const aliases = deprecatedAliasComponents();
+  const renderedServices: Array<[string, string, ServiceDefinition]> = [];
   for (const [name, service] of services) {
-    const code = generateService(service);
-    const fileName = `${toKebabCase(name)}.ts`;
+    renderedServices.push([`${toKebabCase(name)}.ts`, generateService(service), service]);
+  }
+  // An alias is exported beside its target's entity type, so an alias whose
+  // target no generated service exports as an entity would vanish in silence.
+  for (const [alias, target] of aliases) {
+    if (!emittedAliases.has(alias)) {
+      throw new Error(`deprecated alias ${alias} -> ${target}: target model was not emitted (no generated service exports ${target} as an entity)`);
+    }
+  }
+
+  const generatedFiles: string[] = [];
+  for (const [fileName, code, service] of renderedServices) {
     const filePath = path.join(resolvedOutputDir, fileName);
     fs.writeFileSync(filePath, code);
     generatedFiles.push(fileName);

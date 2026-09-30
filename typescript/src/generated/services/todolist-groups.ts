@@ -88,7 +88,7 @@ export class TodolistGroupsService extends BaseService {
    * List groups in a todolist
    * @param todolistId - The todolist ID
    * @param options - Optional query parameters
-   * @returns All Todolist across all pages, with .meta.totalCount
+   * @returns Every Todolist across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

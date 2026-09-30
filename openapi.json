@@ -30502,7 +30502,7 @@
           "steps": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CardStep"
+              "$ref": "#/components/schemas/Subtask"
             },
             "description": "The first 100 subtasks, embedded read-only. A card with more than 100\nreports the total in `subtasks_count`; fetch the rest from `subtasks_url`.",
             "x-go-type-skip-optional-pointer": true
@@ -30693,111 +30693,6 @@
           "status",
           "title",
           "updated_at"
-        ]
-      },
-      "CardStep": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "status": {
-            "type": "string"
-          },
-          "visible_to_clients": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            }
-          },
-          "updated_at": {
-            "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            }
-          },
-          "title": {
-            "type": "string"
-          },
-          "inherits_status": {
-            "type": "boolean"
-          },
-          "type": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "app_url": {
-            "type": "string"
-          },
-          "bookmark_url": {
-            "type": "string"
-          },
-          "position": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "due_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            }
-          },
-          "completed": {
-            "type": "boolean"
-          },
-          "completed_at": {
-            "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            }
-          },
-          "parent": {
-            "$ref": "#/components/schemas/RecordingParent"
-          },
-          "bucket": {
-            "$ref": "#/components/schemas/TodoBucket"
-          },
-          "creator": {
-            "$ref": "#/components/schemas/Person"
-          },
-          "completer": {
-            "$ref": "#/components/schemas/Person"
-          },
-          "assignees": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Person"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "completion_url": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "app_url",
-          "bucket",
-          "created_at",
-          "creator",
-          "id",
-          "inherits_status",
-          "parent",
-          "status",
-          "title",
-          "type",
-          "updated_at",
-          "url",
-          "visible_to_clients"
         ]
       },
       "CardTable": {
@@ -31722,7 +31617,7 @@
         ]
       },
       "CreateCardStepResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
+        "$ref": "#/components/schemas/Subtask"
       },
       "CreateChatbotRequestContent": {
         "type": "object",
@@ -32230,7 +32125,7 @@
         ]
       },
       "CreateSubtaskResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
+        "$ref": "#/components/schemas/Subtask"
       },
       "CreateTemplateLibraryCardTableRequestContent": {
         "type": "object",
@@ -33991,7 +33886,7 @@
         "$ref": "#/components/schemas/Card"
       },
       "GetCardStepResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
+        "$ref": "#/components/schemas/Subtask"
       },
       "GetCardTableResponseContent": {
         "$ref": "#/components/schemas/CardTable"
@@ -34355,7 +34250,7 @@
         "$ref": "#/components/schemas/Subscription"
       },
       "GetSubtaskResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
+        "$ref": "#/components/schemas/Subtask"
       },
       "GetTemplateLibraryCardTablesResponseContent": {
         "$ref": "#/components/schemas/TemplateLibraryCardTables"
@@ -34989,7 +34884,7 @@
       "ListSubtasksResponseContent": {
         "type": "array",
         "items": {
-          "$ref": "#/components/schemas/CardStep"
+          "$ref": "#/components/schemas/Subtask"
         }
       },
       "ListTemplatesResponseContent": {
@@ -37787,7 +37682,7 @@
         ]
       },
       "SetCardStepCompletionResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
+        "$ref": "#/components/schemas/Subtask"
       },
       "SetClientVisibilityRequestContent": {
         "type": "object",
@@ -37849,6 +37744,111 @@
           "count",
           "subscribed",
           "url"
+        ]
+      },
+      "Subtask": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "visible_to_clients": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "inherits_status": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "bookmark_url": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "due_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "completed_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "parent": {
+            "$ref": "#/components/schemas/RecordingParent"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/TodoBucket"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "completer": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Person"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "completion_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
         ]
       },
       "Template": {
@@ -38560,9 +38560,9 @@
           "steps": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CardStep"
+              "$ref": "#/components/schemas/Subtask"
             },
-            "description": "The first 100 subtasks, embedded read-only (BC5 addition). The shared\n`subtasks/subtask` jbuilder partial emits the same shape as `CardStep`,\nso the existing `CardStepList` is reused. A to-do with more than 100\nreports the total in `subtasks_count`; fetch the rest from `subtasks_url`.",
+            "description": "The first 100 subtasks, embedded read-only (BC5 addition). The shared\n`subtasks/subtask` jbuilder partial emits the same `Subtask` shape a card\nembeds. A to-do with more than 100 reports the total in\n`subtasks_count`; fetch the rest from `subtasks_url`.",
             "x-go-type-skip-optional-pointer": true
           }
         },
@@ -39372,7 +39372,7 @@
         }
       },
       "UpdateCardStepResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
+        "$ref": "#/components/schemas/Subtask"
       },
       "UpdateChatbotRequestContent": {
         "type": "object",
@@ -39816,7 +39816,7 @@
         }
       },
       "UpdateSubtaskResponseContent": {
-        "$ref": "#/components/schemas/CardStep"
+        "$ref": "#/components/schemas/Subtask"
       },
       "UpdateTemplateRequestContent": {
         "type": "object",
@@ -40553,6 +40553,12 @@
           "url",
           "visible_to_clients"
         ]
+      },
+      "CardStep": {
+        "$ref": "#/components/schemas/Subtask",
+        "deprecated": true,
+        "description": "Deprecated: renamed to Subtask, the same Kanban::Step record.",
+        "x-deprecated-reason": "renamed to Subtask, the same Kanban::Step record."
       }
     }
   }

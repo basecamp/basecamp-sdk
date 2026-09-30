@@ -99,7 +99,7 @@ export class TimesheetsService extends BaseService {
    * Get timesheet for a specific project
    * @param projectId - The project ID
    * @param options - Optional query parameters
-   * @returns All TimesheetEntry across all pages, with .meta.totalCount
+   * @returns Every TimesheetEntry across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -130,7 +130,7 @@ export class TimesheetsService extends BaseService {
    * Get timesheet for a specific recording
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
-   * @returns All TimesheetEntry across all pages, with .meta.totalCount
+   * @returns Every TimesheetEntry across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

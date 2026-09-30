@@ -353,7 +353,7 @@ export class SchedulesService extends BaseService {
    * List entries on a schedule
    * @param scheduleId - The schedule ID
    * @param options - Optional query parameters
-   * @returns All ScheduleEntry across all pages, with .meta.totalCount
+   * @returns Every ScheduleEntry across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

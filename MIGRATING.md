@@ -63,8 +63,55 @@ The same PR is why there is a new `Subtasks` service (`ListSubtasks`,
 `GetSubtask`, `CreateSubtask`, `UpdateSubtask`, `CompleteSubtask`,
 `UncompleteSubtask`, `RepositionSubtask`, `DeleteSubtask`) and why `Todo`,
 `Card` and `Recording` carry `subtasks_count`, `subtasks_completed_count` and
-`subtasks_url`. Both are additive: a subtask is a `CardStep` on the wire, and
-the `CardSteps` operations keep working at their legacy card-scoped paths.
+`subtasks_url`. Both are additive: a subtask is the same record as a card
+step on the wire, and the `CardSteps` operations keep working at their legacy
+card-scoped paths.
+
+### `CardStep` is now `Subtask`; the old name is a deprecated alias
+
+The shape both the `Subtasks` and `CardSteps` services return, and that `Card`
+and `Todo` embed under `steps`, is renamed from `CardStep` to `Subtask`,
+following bc3's own Step-to-Subtask rename. Nothing changes on the wire (the
+`type` is still `"Kanban::Step"`), and no service, method, request type or
+route is renamed: `CardStepsService` still speaks the card-scoped `/steps`
+routes and now returns `Subtask`.
+
+`CardStep` keeps working as an alias of `Subtask` in every SDK's own language,
+so existing code compiles unchanged. The one exception is Java calling the
+Kotlin SDK (below). Kotlin and Rust mark the alias with a compiler deprecation
+warning, as they do every deprecated site, so a build that promotes warnings
+to errors has to switch spellings (or allow that warning) there. Switch to
+`Subtask` when convenient; the alias is deprecated and will go in a future
+breaking release.
+
+| SDK | new name | old name still works as |
+|---|---|---|
+| Go | `basecamp.Subtask`, `generated.Subtask` | `type CardStep = Subtask`, with `// Deprecated:` (staticcheck/gopls flag it) |
+| TypeScript | `Subtask` | `type CardStep = Subtask`, with `@deprecated` |
+| Ruby | `Basecamp::Types::Subtask` | constant `Basecamp::Types::CardStep`, the same class |
+| Python | `basecamp.generated.types.Subtask` | `CardStep = Subtask`, the same TypedDict |
+| Swift | `Subtask` | `typealias CardStep = Subtask`, deprecated in its doc comment |
+| Kotlin | `com.basecamp.sdk.generated.models.Subtask` | `@Deprecated typealias CardStep` (a warning, with `ReplaceWith`) |
+| Rust | `models::Subtask` | `#[deprecated] pub type CardStep` (a warning) |
+
+`openapi.json` keeps a `CardStep` component too, as a deprecated `$ref` to
+`Subtask`, so a client generated from the spec still resolves the old name.
+
+Three edges the alias cannot cover. Java source cannot see a Kotlin
+`typealias`, so a Java caller of the Kotlin SDK that names `CardStep` stops
+compiling and must switch to `Subtask`; there is no JVM class called
+`CardStep` any more. Kotlin callers are unaffected. In Kotlin and Swift the
+alias is source compatibility, not binary: the JVM class and the Swift type
+symbol are now `Subtask`, so a library or framework compiled against an
+earlier SDK must be rebuilt. And in every SDK, anything that reads the
+type's runtime name through the old spelling sees the new one, because the alias is the same
+type: Go's `reflect.TypeOf(CardStep{}).Name()`, Ruby's `CardStep.name`,
+Python's `CardStep.__name__`, Swift's `String(describing: CardStep.self)`,
+Kotlin's `CardStep::class.simpleName` and Rust's
+`std::any::type_name::<CardStep>()` all report the `Subtask` name,
+module-qualified in Ruby and Rust (`Basecamp::Types::Subtask`,
+`basecamp_sdk::generated::types::Subtask`). TypeScript's alias is erased at
+compile time, so it has no runtime name to report.
 
 # v0.20.0
 

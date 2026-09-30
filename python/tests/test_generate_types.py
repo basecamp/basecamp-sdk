@@ -49,3 +49,47 @@ def test_flexible_int64_is_not_treated_as_flexint():
 def test_nullable_string_is_optional():
     schema = {"type": "string", "nullable": True}
     assert schema_to_type(schema, {}, optional=True) == "NotRequired[Optional[str]]"
+
+
+def test_card_step_is_a_deprecated_alias_of_subtask():
+    # CardStep is the deprecated former name of Subtask: the generated module
+    # binds the old name to the very same TypedDict, so annotations that spell
+    # CardStep keep meaning exactly what they meant.
+    from basecamp.generated import types
+
+    assert types.CardStep is types.Subtask
+
+
+def test_deprecated_ref_only_component_emits_an_alias(tmp_path):
+    # A component that is nothing but a deprecated $ref to a generated TypedDict
+    # becomes a module-level alias after every class, with a source comment.
+    import json
+    import sys
+
+    spec = {
+        "components": {
+            "schemas": {
+                "New": {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]},
+                "Old": {
+                    "$ref": "#/components/schemas/New",
+                    "deprecated": True,
+                    "description": "Deprecated: renamed to New.",
+                    "x-deprecated-reason": "renamed to New.",
+                },
+                "NotAnAlias": {"$ref": "#/components/schemas/New"},
+            }
+        }
+    }
+    openapi = tmp_path / "openapi.json"
+    openapi.write_text(json.dumps(spec))
+    out = tmp_path / "types.py"
+    argv = sys.argv
+    sys.argv = ["generate_types.py", "--openapi", str(openapi), "--output", str(out)]
+    try:
+        generate_types.main()
+    finally:
+        sys.argv = argv
+    text = out.read_text()
+    assert "# Deprecated: renamed to New.\nOld = New" in text
+    assert text.index("class New(TypedDict):") < text.index("Old = New")
+    assert "NotAnAlias" not in text

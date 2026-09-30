@@ -61,7 +61,7 @@ export class WebhooksService extends BaseService {
    * List all webhooks for a project
    * @param bucketId - The bucket ID
    * @param options - Optional query parameters
-   * @returns All Webhook across all pages, with .meta.totalCount
+   * @returns Every Webhook across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

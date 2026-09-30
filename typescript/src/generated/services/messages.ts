@@ -75,7 +75,7 @@ export class MessagesService extends BaseService {
    * List messages on a message board
    * @param boardId - The board ID
    * @param options - Optional query parameters
-   * @returns All Message across all pages, with .meta.totalCount
+   * @returns Every Message across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

@@ -84,7 +84,7 @@ export class ForwardsService extends BaseService {
    * List all replies to a forward
    * @param forwardId - The forward ID
    * @param options - Optional query parameters
-   * @returns All ForwardReply across all pages, with .meta.totalCount
+   * @returns Every ForwardReply across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -179,7 +179,7 @@ export class ForwardsService extends BaseService {
    * List all forwards in an inbox
    * @param inboxId - The inbox ID
    * @param options - Optional query parameters
-   * @returns All Forward across all pages, with .meta.totalCount
+   * @returns Every Forward across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

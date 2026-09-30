@@ -2,7 +2,7 @@
 import Foundation
 
 public final class CardStepsService: BaseService, @unchecked Sendable {
-    public func create(cardId: Int, req: CreateCardStepRequest) async throws -> CardStep {
+    public func create(cardId: Int, req: CreateCardStepRequest) async throws -> Subtask {
         return try await request(
             OperationInfo(service: "CardSteps", operation: "CreateCardStep", resourceType: "card_step", isMutation: true, resourceId: cardId),
             method: "POST",
@@ -12,7 +12,7 @@ public final class CardStepsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func get(stepId: Int) async throws -> CardStep {
+    public func get(stepId: Int) async throws -> Subtask {
         return try await request(
             OperationInfo(service: "CardSteps", operation: "GetCardStep", resourceType: "card_step", isMutation: false, resourceId: stepId),
             method: "GET",
@@ -31,7 +31,7 @@ public final class CardStepsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func setCompletion(stepId: Int, req: SetCardStepCompletionRequest) async throws -> CardStep {
+    public func setCompletion(stepId: Int, req: SetCardStepCompletionRequest) async throws -> Subtask {
         return try await request(
             OperationInfo(service: "CardSteps", operation: "SetCardStepCompletion", resourceType: "card_step_completion", isMutation: true, resourceId: stepId),
             method: "PUT",
@@ -41,7 +41,7 @@ public final class CardStepsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func update(stepId: Int, req: UpdateCardStepRequest) async throws -> CardStep {
+    public func update(stepId: Int, req: UpdateCardStepRequest) async throws -> Subtask {
         return try await request(
             OperationInfo(service: "CardSteps", operation: "UpdateCardStep", resourceType: "card_step", isMutation: true, resourceId: stepId),
             method: "PUT",

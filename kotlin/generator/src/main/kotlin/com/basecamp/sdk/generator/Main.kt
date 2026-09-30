@@ -100,8 +100,35 @@ fun main(args: Array<String>) {
         rendered[File(modelsDir, "$typeName.kt")] = code
         println("  model: $typeName.kt (supporting)")
     }
+
     val modelCount = rendered.size
     println("Generated $modelCount models")
+
+    // Deprecated former names (e.g. CardStep -> Subtask), as typealiases of a
+    // model emitted above. One this generator cannot place fails the run, as in
+    // every other SDK generator, rather than vanishing from the Kotlin SDK;
+    // this is still the render phase, so nothing has been deleted yet.
+    var aliasCount = 0
+    for ((aliasName, target) in api.deprecatedAliasSchemas()) {
+        val targetSchema = api.getSchema(target)
+        fun refuse(problem: String): Nothing = error("deprecated alias $aliasName -> $target: $problem")
+        when {
+            targetSchema == null -> refuse("target schema does not exist")
+            api.isDeprecatedAlias(targetSchema) ->
+                refuse("target is itself a deprecated alias; point $aliasName at the model directly")
+            !api.isObjectModel(targetSchema) -> refuse("target is not an object model")
+        }
+        val targetTypeName = TYPE_ALIASES[target] ?: supportingModels[target]
+        if (targetTypeName == null || !rendered.containsKey(File(modelsDir, "$targetTypeName.kt"))) {
+            refuse("target model was not emitted (neither TYPE_ALIASES nor a supporting model)")
+        }
+        val aliasFile = File(modelsDir, "$aliasName.kt")
+        if (rendered.containsKey(aliasFile)) refuse("$aliasName collides with an existing model")
+        rendered[aliasFile] = modelEmitter.generateDeprecatedAlias(aliasName, targetTypeName)
+        aliasCount++
+        println("  model: $aliasName.kt (deprecated alias of $targetTypeName)")
+    }
+    println("Generated $aliasCount deprecated aliases")
 
     // 2. Service classes
     val serviceEmitter = ServiceEmitter(api)

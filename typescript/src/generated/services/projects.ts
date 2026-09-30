@@ -88,7 +88,7 @@ export class ProjectsService extends BaseService {
   /**
    * List projects (active by default; optionally archived/trashed)
    * @param options - Optional query parameters
-   * @returns All Project across all pages, with .meta.totalCount
+   * @returns Every Project across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

@@ -37,7 +37,7 @@ bc3_refs:
     - UpdateCardStep
     - SetCardStepCompletion
     - RepositionCardStep
-    - CardStep
+    - Subtask
 ---
 
 # Subtasks — the canonical routes moved out from under the documented /steps spellings
@@ -78,7 +78,7 @@ originated as card steps, and webhook events render `kind` through
 `Event#api_kind` so the same public discriminator survives independently of
 the renamed model. The route declarations now point at `Kanban::StepsController`
 and `Kanban::Steps::CompletionsController` without changing any documented
-path. `CardStep.type` and `Event.kind` already model strings, so the SDK contract
+path. `Subtask.type` and `Event.kind` already model strings, so the SDK contract
 remains current.
 
 What is missing is on the bc3 side: the canonical routes the code now
@@ -122,7 +122,7 @@ Nothing to absorb today. If bc3 documents the canonical `/subtasks` routes:
   wire shapes are unchanged, so no structure work is expected.
 - Watch the payload keys: absorption is only mechanical while `json.steps`
   and `"Kanban::Step"` survive on the wire; if either moves with the docs,
-  the `CardStep` structure and its consumers need a real pass.
+  the `Subtask` structure and its consumers need a real pass.
 - [[step-top-level]] records how the `/steps` spellings were absorbed and
   stays the historical record for them; this brief owns the canonical-rename
   follow-through.
@@ -154,5 +154,13 @@ counted from 1, so `RepositionCardStep`'s member documentation and the Go
 wrapper's lower bound moved with it.
 
 Two fixtures under `spec/fixtures/subtasks/` are the documented examples and
-are validated as `CardStep` by `make check-fixture-coverage`; `todos/get.json`
+are validated as `Subtask` (the shape was `CardStep` until it was renamed) by
+`make check-fixture-coverage`; `todos/get.json`
 and `cards/get.json` gained the three accounting keys.
+
+The structure itself followed bc3's model-wide rename in #955: `CardStep` became
+`Subtask` in the spec and in all seven SDKs. `CardStep` survives in
+`openapi.json` as a deprecated `$ref` to `Subtask`, which every generator emits
+as a deprecated alias, so code spelling the old name keeps compiling. The
+`CardSteps` operations keep their names, since they model the legacy `/steps`
+routes.

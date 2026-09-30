@@ -36,7 +36,10 @@ func queryItemAppendLines(_ q: QueryParam, accessor: String, indent: String) -> 
 /// `leader` precedes the first reason line (e.g. `"Deprecated: "` or
 /// `"- Parameter foo: Deprecated: "`); continuation lines carry no leader.
 func deprecationDocLines(reason: String, indent: String, leader: String = "Deprecated: ") -> [String] {
-    let reasonLines = reason.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+    // `\.isNewline`, not "\n": Swift reads "\r\n" as ONE Character, which a
+    // "\n" separator never matches, so a CRLF reason stayed on one line and its
+    // continuation escaped the `///` comment.
+    let reasonLines = reason.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).map(String.init)
     let first = reasonLines.first ?? ""
     var out = ["\(indent)/// \(leader)\(first)"]
     for line in reasonLines.dropFirst() {

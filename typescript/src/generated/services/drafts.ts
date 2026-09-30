@@ -37,7 +37,7 @@ export class DraftsService extends BaseService {
   /**
    * List the current user's drafts across their active projects, most recently
    * @param options - Optional query parameters
-   * @returns All Draft across all pages, with .meta.totalCount
+   * @returns Every Draft across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

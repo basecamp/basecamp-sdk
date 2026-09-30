@@ -5,6 +5,8 @@ import kotlinx.serialization.json.*
 /**
  * Parses the OpenAPI spec JSON into structured data.
  */
+private val DEPRECATED_ALIAS_KEYS = setOf("\$ref", "deprecated", "description", "x-deprecated-reason")
+
 class OpenApiParser(private val root: JsonObject) {
     private val schemas: JsonObject = root["components"]!!
         .jsonObject["schemas"]!!
@@ -15,6 +17,37 @@ class OpenApiParser(private val root: JsonObject) {
     fun resolveRef(ref: String): String = ref.substringAfterLast("/")
 
     fun getSchema(name: String): JsonObject? = schemas[name]?.jsonObject
+
+    /**
+     * A component that is nothing but a deprecated `$ref` (a rename kept for
+     * compatibility, e.g. CardStep -> Subtask). `deprecated` must be the JSON
+     * boolean true, as in every other generator: `booleanOrNull` alone would
+     * also read the STRING "true" as true.
+     */
+    fun isDeprecatedAlias(schema: JsonObject?): Boolean {
+        if (schema == null) return false
+        val deprecated = schema["deprecated"] as? JsonPrimitive ?: return false
+        if (deprecated.isString || deprecated.booleanOrNull != true) return false
+        val ref = schema["\$ref"] as? JsonPrimitive ?: return false
+        return ref.isString && DEPRECATED_ALIAS_KEYS.containsAll(schema.keys)
+    }
+
+    /** Whether a component is an object model: `type: object` with properties. */
+    fun isObjectModel(schema: JsonObject?): Boolean =
+        schema != null &&
+            (schema["type"] as? JsonPrimitive)?.contentOrNull == "object" &&
+            (schema["properties"] as? JsonObject)?.isNotEmpty() == true
+
+    /**
+     * Deprecated former names: every deprecated alias component, as alias ->
+     * target schema name, sorted by alias (String.compareTo, so no locale).
+     */
+    fun deprecatedAliasSchemas(): List<Pair<String, String>> =
+        schemas.entries.mapNotNull { (name, value) ->
+            val schema = value as? JsonObject
+            if (!isDeprecatedAlias(schema)) return@mapNotNull null
+            name to resolveRef(schema!!["\$ref"]!!.jsonPrimitive.content)
+        }.sortedBy { it.first }
 
     /**
      * Find the underlying entity schema for a ResponseContent type.

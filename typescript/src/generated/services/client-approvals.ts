@@ -42,7 +42,7 @@ export class ClientApprovalsService extends BaseService {
    * List all client approvals in a project
    * @param bucketId - The bucket ID
    * @param options - Optional query parameters
-   * @returns All ClientApproval across all pages, with .meta.totalCount
+   * @returns Every ClientApproval across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

@@ -924,6 +924,35 @@ async fn subtasks_get_reaches_the_wire() {
     account(&server).subtasks().get(100).await.unwrap();
 }
 
+/// `CardStep` is the deprecated former name of `Subtask`: a type alias, so a
+/// value the old spelling names is the very value both services return, and
+/// it still decodes the wire shape.
+#[test]
+#[allow(deprecated)]
+fn card_step_is_a_deprecated_alias_of_subtask() {
+    fn takes_subtask(s: &basecamp_sdk::models::Subtask) -> i64 {
+        s.id
+    }
+    let step: basecamp_sdk::models::CardStep = serde_json::from_value(serde_json::json!({
+        "id": 100,
+        "status": "active",
+        "visible_to_clients": false,
+        "created_at": "2026-07-02T00:23:00Z",
+        "updated_at": "2026-07-02T00:23:00Z",
+        "title": "Hero shot on the desk",
+        "inherits_status": true,
+        "type": "Kanban::Step",
+        "url": "https://3.basecampapi.com/999/buckets/1/subtasks/100.json",
+        "app_url": "https://3.basecamp.com/999/buckets/1/todos/200#__recording_100",
+        "parent": {"id": 200, "title": "Shot list", "type": "Todo", "url": "u", "app_url": "a"},
+        "bucket": {"id": 1, "name": "The Leto Laptop", "type": "Project"},
+        "creator": {"id": 7, "name": "Matt Donahue"}
+    }))
+    .unwrap();
+    assert_eq!(step.r#type, "Kanban::Step");
+    assert_eq!(takes_subtask(&step), 100);
+}
+
 #[tokio::test]
 async fn templates_get_library_todolists_reaches_the_wire() {
     let server = MockServer::start().await;

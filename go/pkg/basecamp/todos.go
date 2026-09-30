@@ -64,10 +64,9 @@ type Todo struct {
 	// (nil marshals as null, empty as []) instead of dropping it.
 	CompletionSubscribers []Person `json:"completion_subscribers"`
 	Position              int      `json:"position"`
-	// Steps are the BC5-added subtasks embedded in a Todo response.
-	// The shared `steps/step` jbuilder partial emits the same shape as
-	// `CardStep`, so this is `[]CardStep` rather than a separate type.
-	Steps []CardStep `json:"steps,omitempty"`
+	// Steps are the BC5-added subtasks embedded in a Todo response, the same
+	// Subtask shape a card embeds.
+	Steps []Subtask `json:"steps,omitempty"`
 }
 
 // Person represents a Basecamp user or system actor.
@@ -988,9 +987,9 @@ func todoFromGenerated(gt generated.Todo) Todo {
 
 	// BC5: convert embedded steps
 	if len(gt.Steps) > 0 {
-		t.Steps = make([]CardStep, 0, len(gt.Steps))
+		t.Steps = make([]Subtask, 0, len(gt.Steps))
 		for _, gs := range gt.Steps {
-			t.Steps = append(t.Steps, cardStepFromGenerated(gs))
+			t.Steps = append(t.Steps, subtaskFromGenerated(gs))
 		}
 	}
 

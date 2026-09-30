@@ -164,7 +164,7 @@ export class TodosService extends BaseService {
    * List todos in a todolist
    * @param todolistId - The todolist ID
    * @param options - Optional query parameters
-   * @returns All Todo across all pages, with .meta.totalCount
+   * @returns Every Todo across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

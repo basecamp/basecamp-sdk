@@ -373,7 +373,7 @@ export class TemplatesService extends BaseService {
   /**
    * List all templates visible to the current user
    * @param options - Optional query parameters
-   * @returns All Template across all pages, with .meta.totalCount
+   * @returns Every Template across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

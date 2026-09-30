@@ -116,21 +116,23 @@ type Card struct {
 	CommentCount           int                  `json:"comment_count"`
 	// SubtasksCount is the real number of subtasks; Steps embeds at most 100.
 	// SubtasksURL lists all of them, paginated (SubtasksService.List).
-	SubtasksCount          int        `json:"subtasks_count,omitempty"`
-	SubtasksCompletedCount int        `json:"subtasks_completed_count,omitempty"`
-	SubtasksURL            string     `json:"subtasks_url,omitempty"`
-	CompletionURL          string     `json:"completion_url,omitempty"`
-	Parent                 *Parent    `json:"parent,omitempty"`
-	Bucket                 *Bucket    `json:"bucket,omitempty"`
-	Creator                *Person    `json:"creator,omitempty"`
-	Completer              *Person    `json:"completer,omitempty"`
-	Assignees              []Person   `json:"assignees,omitempty"`
-	CompletionSubscribers  []Person   `json:"completion_subscribers,omitempty"`
-	Steps                  []CardStep `json:"steps,omitempty"`
+	SubtasksCount          int       `json:"subtasks_count,omitempty"`
+	SubtasksCompletedCount int       `json:"subtasks_completed_count,omitempty"`
+	SubtasksURL            string    `json:"subtasks_url,omitempty"`
+	CompletionURL          string    `json:"completion_url,omitempty"`
+	Parent                 *Parent   `json:"parent,omitempty"`
+	Bucket                 *Bucket   `json:"bucket,omitempty"`
+	Creator                *Person   `json:"creator,omitempty"`
+	Completer              *Person   `json:"completer,omitempty"`
+	Assignees              []Person  `json:"assignees,omitempty"`
+	CompletionSubscribers  []Person  `json:"completion_subscribers,omitempty"`
+	Steps                  []Subtask `json:"steps,omitempty"`
 }
 
-// CardStep represents a step (checklist item) on a card.
-type CardStep struct {
+// Subtask is a checklist item under a to-do or a card. Kanban card steps are
+// subtasks too: SubtasksService and CardStepsService return the same records,
+// whose wire `type` stays "Kanban::Step" permanently.
+type Subtask struct {
 	ID               int64      `json:"id"`
 	Status           string     `json:"status"`
 	VisibleToClients bool       `json:"visible_to_clients"`
@@ -153,6 +155,11 @@ type CardStep struct {
 	Completer        *Person    `json:"completer,omitempty"`
 	Assignees        []Person   `json:"assignees,omitempty"`
 }
+
+// CardStep is the deprecated former name of Subtask.
+//
+// Deprecated: renamed to Subtask, the same Kanban::Step record.
+type CardStep = Subtask
 
 // CreateCardRequest specifies the parameters for creating a card.
 type CreateCardRequest struct {
@@ -1097,7 +1104,7 @@ func NewCardStepsService(client *AccountClient) *CardStepsService {
 }
 
 // Get retrieves a card step by ID.
-func (s *CardStepsService) Get(ctx context.Context, stepID int64) (result *CardStep, err error) {
+func (s *CardStepsService) Get(ctx context.Context, stepID int64) (result *Subtask, err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Get",
 		ResourceType: "card_step", IsMutation: false,
@@ -1124,13 +1131,13 @@ func (s *CardStepsService) Get(ctx context.Context, stepID int64) (result *CardS
 		return nil, err
 	}
 
-	step := cardStepFromGenerated(*resp.JSON200)
+	step := subtaskFromGenerated(*resp.JSON200)
 	return &step, nil
 }
 
 // Create creates a new step on a card.
 // Returns the created step.
-func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *CreateStepRequest) (result *CardStep, err error) {
+func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *CreateStepRequest) (result *Subtask, err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Create",
 		ResourceType: "card_step", IsMutation: true,
@@ -1180,13 +1187,13 @@ func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *Create
 		return nil, err
 	}
 
-	step := cardStepFromGenerated(*resp.JSON201)
+	step := subtaskFromGenerated(*resp.JSON201)
 	return &step, nil
 }
 
 // Update updates an existing step.
 // Returns the updated step.
-func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *UpdateStepRequest) (result *CardStep, err error) {
+func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *UpdateStepRequest) (result *Subtask, err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Update",
 		ResourceType: "card_step", IsMutation: true,
@@ -1246,13 +1253,13 @@ func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *Update
 		return nil, err
 	}
 
-	step := cardStepFromGenerated(*resp.JSON200)
+	step := subtaskFromGenerated(*resp.JSON200)
 	return &step, nil
 }
 
 // Complete marks a step as completed.
 // Returns the updated step.
-func (s *CardStepsService) Complete(ctx context.Context, stepID int64) (result *CardStep, err error) {
+func (s *CardStepsService) Complete(ctx context.Context, stepID int64) (result *Subtask, err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Complete",
 		ResourceType: "card_step", IsMutation: true,
@@ -1280,13 +1287,13 @@ func (s *CardStepsService) Complete(ctx context.Context, stepID int64) (result *
 		return nil, err
 	}
 
-	step := cardStepFromGenerated(*resp.JSON200)
+	step := subtaskFromGenerated(*resp.JSON200)
 	return &step, nil
 }
 
 // Uncomplete marks a step as incomplete.
 // Returns the updated step.
-func (s *CardStepsService) Uncomplete(ctx context.Context, stepID int64) (result *CardStep, err error) {
+func (s *CardStepsService) Uncomplete(ctx context.Context, stepID int64) (result *Subtask, err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Uncomplete",
 		ResourceType: "card_step", IsMutation: true,
@@ -1314,7 +1321,7 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, stepID int64) (result
 		return nil, err
 	}
 
-	step := cardStepFromGenerated(*resp.JSON200)
+	step := subtaskFromGenerated(*resp.JSON200)
 	return &step, nil
 }
 
@@ -1604,9 +1611,9 @@ func cardFromGenerated(gc generated.Card) Card {
 	}
 
 	if len(gc.Steps) > 0 {
-		c.Steps = make([]CardStep, 0, len(gc.Steps))
+		c.Steps = make([]Subtask, 0, len(gc.Steps))
 		for _, gs := range gc.Steps {
-			c.Steps = append(c.Steps, cardStepFromGenerated(gs))
+			c.Steps = append(c.Steps, subtaskFromGenerated(gs))
 		}
 	}
 
@@ -1615,9 +1622,9 @@ func cardFromGenerated(gc generated.Card) Card {
 	return c
 }
 
-// cardStepFromGenerated converts a generated CardStep to our clean CardStep type.
-func cardStepFromGenerated(gs generated.CardStep) CardStep {
-	s := CardStep{
+// subtaskFromGenerated converts a generated Subtask to our clean Subtask type.
+func subtaskFromGenerated(gs generated.Subtask) Subtask {
+	s := Subtask{
 		Status:           gs.Status,
 		VisibleToClients: gs.VisibleToClients,
 		Title:            gs.Title,

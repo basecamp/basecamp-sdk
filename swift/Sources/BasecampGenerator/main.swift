@@ -116,11 +116,13 @@ func run() throws {
     var rendered: [(path: String, code: String)] = []
 
     var entityCount = 0
+    var emittedEntities = Set<String>()
     for schemaName in entitySchemaNames {
         let code = emitEntityModel(schemaName: schemaName, schemas: schemas)
         if code.isEmpty { continue }
         let typeName = typeAliases[schemaName]?.name ?? schemaName
         rendered.append((modelsDir + "/\(typeName).swift", code))
+        emittedEntities.insert(schemaName)
         entityCount += 1
     }
     print("Generated \(entityCount) entity models")
@@ -140,6 +142,34 @@ func run() throws {
         requestCount += 1
     }
     print("Generated \(requestCount) request models")
+
+    // Deprecated former names (e.g. CardStep -> Subtask), after every model so
+    // a collision with any of them is seen. One this generator cannot place
+    // stops the run, as in every other SDK generator, rather than vanishing from
+    // the Swift SDK or overwriting another model's file; nothing is deleted yet.
+    let deprecated = strictlyDeprecatedComponents(openapiData: openapiData)
+    for (alias, target) in deprecatedAliasSchemas(schemas: schemas, deprecated: deprecated) {
+        let aliasPath = modelsDir + "/\(alias).swift"
+        var problem: String?
+        if schemas[target] == nil {
+            problem = "target schema does not exist"
+        } else if isDeprecatedAlias(target, schemas: schemas, deprecated: deprecated) {
+            problem = "target is itself a deprecated alias; point \(alias) at the model directly"
+        } else if !isObjectModel(target, schemas: schemas) {
+            problem = "target is not an object model"
+        } else if !emittedEntities.contains(target) {
+            problem = "target model was not emitted (it is not an entity model)"
+        } else if rendered.contains(where: { $0.path.lowercased() == aliasPath.lowercased() }) {
+            // Case-insensitively: on macOS Answer.swift and answer.swift are one file.
+            problem = "\(alias) collides with an existing model"
+        }
+        if let problem {
+            printError("Error: deprecated alias \(alias) -> \(target): \(problem)\n")
+            exit(1)
+        }
+        rendered.append((aliasPath, emitDeprecatedAliasModel(alias: alias, target: target, schemas: schemas)))
+        print("Generated deprecated alias \(alias) = \(target)")
+    }
 
     for (_, service) in services.sorted(by: { $0.key < $1.key }) {
         rendered.append((servicesDir + "/\(service.className).swift", emitService(service, schemas: schemas)))

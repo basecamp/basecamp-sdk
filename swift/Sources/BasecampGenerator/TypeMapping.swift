@@ -13,7 +13,9 @@ let typeAliases: [String: (name: String, kind: String)] = [
     "Card": ("Card", "entity"),
     "CardTable": ("CardTable", "entity"),
     "CardColumn": ("CardColumn", "entity"),
-    "CardStep": ("CardStep", "entity"),
+    // Formerly CardStep; openapi.json keeps CardStep as a deprecated $ref,
+    // emitted as a deprecated typealias (see emitDeprecatedAliasModel).
+    "Subtask": ("Subtask", "entity"),
     "Campfire": ("Campfire", "entity"),
     "CampfireLine": ("CampfireLine", "entity"),
     "Chatbot": ("Chatbot", "entity"),

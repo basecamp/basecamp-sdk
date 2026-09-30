@@ -39,7 +39,7 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
      * @param cardId The card ID
      * @param body Request body
      */
-    suspend fun create(cardId: Long, body: CreateCardStepBody): CardStep {
+    suspend fun create(cardId: Long, body: CreateCardStepBody): Subtask {
         val info = OperationInfo(
             service = "CardSteps",
             operation = "CreateCardStep",
@@ -55,7 +55,7 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
                 body.assigneeIds?.let { put("assignee_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
             }), operationName = info.operation)
         }) { body ->
-            json.decodeFromString<CardStep>(body)
+            json.decodeFromString<Subtask>(body)
         }
     }
 
@@ -63,7 +63,7 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
      * Get a step by ID
      * @param stepId The step ID
      */
-    suspend fun get(stepId: Long): CardStep {
+    suspend fun get(stepId: Long): Subtask {
         val info = OperationInfo(
             service = "CardSteps",
             operation = "GetCardStep",
@@ -75,7 +75,7 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
         return request(info, {
             httpGet("/card_tables/steps/${stepId}", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<CardStep>(body)
+            json.decodeFromString<Subtask>(body)
         }
     }
 
@@ -84,7 +84,7 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
      * @param stepId The step ID
      * @param body Request body
      */
-    suspend fun update(stepId: Long, body: UpdateCardStepBody): CardStep {
+    suspend fun update(stepId: Long, body: UpdateCardStepBody): Subtask {
         val info = OperationInfo(
             service = "CardSteps",
             operation = "UpdateCardStep",
@@ -100,7 +100,7 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
                 body.assigneeIds?.let { put("assignee_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
             }), operationName = info.operation)
         }) { body ->
-            json.decodeFromString<CardStep>(body)
+            json.decodeFromString<Subtask>(body)
         }
     }
 
@@ -109,7 +109,7 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
      * @param stepId The step ID
      * @param body Request body
      */
-    suspend fun setCompletion(stepId: Long, body: SetCardStepCompletionBody): CardStep {
+    suspend fun setCompletion(stepId: Long, body: SetCardStepCompletionBody): Subtask {
         val info = OperationInfo(
             service = "CardSteps",
             operation = "SetCardStepCompletion",
@@ -123,7 +123,7 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
                 put("completion", kotlinx.serialization.json.JsonPrimitive(body.completion))
             }), operationName = info.operation)
         }) { body ->
-            json.decodeFromString<CardStep>(body)
+            json.decodeFromString<Subtask>(body)
         }
     }
 }

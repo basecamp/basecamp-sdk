@@ -123,6 +123,76 @@ private func collectEntitySchemas(fromProperties schemaRef: String, schemas: [St
     }
 }
 
+private let deprecatedAliasKeys: Set<String> = ["$ref", "deprecated", "description", "x-deprecated-reason"]
+
+/// The components whose `deprecated` is the JSON boolean `true`.
+///
+/// Read with `JSONDecoder` rather than from the `JSONSerialization` tree the
+/// rest of the generator walks: there a JSON `1` is an `NSNumber` that
+/// `as? Bool` bridges to `true`, so `deprecated: 1` would pass. `JSONDecoder`
+/// decodes a `Bool` only from a JSON boolean, on Darwin and Linux alike, which
+/// is the strict test the other six generators apply.
+func strictlyDeprecatedComponents(openapiData: Data) -> Set<String> {
+    struct Flag: Decodable {
+        let isTrue: Bool
+        enum Key: String, CodingKey { case deprecated }
+        init(from decoder: Decoder) throws {
+            let container = try? decoder.container(keyedBy: Key.self)
+            isTrue = (try? container?.decode(Bool.self, forKey: .deprecated)) == true
+        }
+    }
+    struct Components: Decodable { let schemas: [String: Flag]? }
+    struct Document: Decodable { let components: Components? }
+    guard let document = try? JSONDecoder().decode(Document.self, from: openapiData) else { return [] }
+    return Set((document.components?.schemas ?? [:]).filter { $0.value.isTrue }.keys)
+}
+
+/// Whether a component is nothing but a deprecated `$ref`: a rename kept for
+/// compatibility, e.g. `CardStep` -> `Subtask`. `deprecated` is the set from
+/// `strictlyDeprecatedComponents`.
+func isDeprecatedAlias(_ name: String, schemas: [String: Any], deprecated: Set<String>) -> Bool {
+    guard deprecated.contains(name),
+          let schema = schemas[name] as? [String: Any],
+          schema["$ref"] is String else { return false }
+    return Set(schema.keys).isSubset(of: deprecatedAliasKeys)
+}
+
+/// Whether a component is an object model: `type: object` with properties.
+func isObjectModel(_ name: String, schemas: [String: Any]) -> Bool {
+    guard let schema = schemas[name] as? [String: Any],
+          schema["type"] as? String == "object",
+          let properties = schema["properties"] as? [String: Any] else { return false }
+    return !properties.isEmpty
+}
+
+/// The deprecated former names of emitted models, each paired with the
+/// component it points at. Sorted by alias.
+func deprecatedAliasSchemas(schemas: [String: Any], deprecated: Set<String>) -> [(alias: String, target: String)] {
+    return schemas.keys.compactMap { name -> (alias: String, target: String)? in
+        guard isDeprecatedAlias(name, schemas: schemas, deprecated: deprecated),
+              let schema = schemas[name] as? [String: Any],
+              let ref = schema["$ref"] as? String else { return nil }
+        return (name, resolveRef(ref))
+    }.sorted { $0.alias < $1.alias }
+}
+
+/// Emits a deprecated former name as a typealias of the model it was renamed
+/// to. Documentation-only deprecation, Swift's signal class (#406): a `///`
+/// doc comment, no `@available`, so a caller that spells the old name keeps
+/// compiling warning-free — including under warnings-as-errors.
+func emitDeprecatedAliasModel(alias: String, target: String, schemas: [String: Any]) -> String {
+    guard let schema = schemas[alias] as? [String: Any] else { return "" }
+    let targetName = typeAliases[target]?.name ?? target
+    var lines: [String] = []
+    lines.append("// @generated from OpenAPI spec \u{2014} do not edit directly")
+    lines.append("import Foundation")
+    lines.append("")
+    lines += deprecationDocLines(reason: (schema["x-deprecated-reason"] as? String) ?? "deprecated", indent: "")
+    lines.append("public typealias \(alias) = \(targetName)")
+    lines.append("")
+    return lines.joined(separator: "\n")
+}
+
 /// Emits a Swift Codable struct for an entity or supporting schema.
 func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
     guard let schema = schemas[schemaName] as? [String: Any] else { return "" }

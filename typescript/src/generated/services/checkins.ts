@@ -257,7 +257,7 @@ export class CheckinsService extends BaseService {
    * List all questions in a questionnaire
    * @param questionnaireId - The questionnaire ID
    * @param options - Optional query parameters
-   * @returns All Question across all pages, with .meta.totalCount
+   * @returns Every Question across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -399,7 +399,7 @@ export class CheckinsService extends BaseService {
    * List all answers for a question
    * @param questionId - The question ID
    * @param options - Optional query parameters
-   * @returns All Answer across all pages, with .meta.totalCount
+   * @returns Every Answer across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -474,7 +474,7 @@ export class CheckinsService extends BaseService {
    * List all people who have answered a question (answerers)
    * @param questionId - The question ID
    * @param options - Optional query parameters
-   * @returns All Person across all pages, with .meta.totalCount
+   * @returns Every Person across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -505,7 +505,7 @@ export class CheckinsService extends BaseService {
    * @param questionId - The question ID
    * @param personId - The person ID
    * @param options - Optional query parameters
-   * @returns All Answer across all pages, with .meta.totalCount
+   * @returns Every Answer across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

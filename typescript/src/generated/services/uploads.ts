@@ -158,7 +158,7 @@ export class UploadsService extends BaseService {
    * List versions of an upload
    * @param uploadId - The upload ID
    * @param options - Optional query parameters
-   * @returns All UploadVersion across all pages, with .meta.totalCount
+   * @returns Every UploadVersion across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -229,7 +229,7 @@ export class UploadsService extends BaseService {
    * List uploads in a vault
    * @param vaultId - The vault ID
    * @param options - Optional query parameters
-   * @returns All Upload across all pages, with .meta.totalCount
+   * @returns Every Upload across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

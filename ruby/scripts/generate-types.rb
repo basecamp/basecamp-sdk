@@ -132,6 +132,59 @@ def deprecation_doc_lines(reason, indent:, tag_prefix: '')
   out
 end
 
+# Whether the main loop emits a class for this component. The alias pass checks
+# its targets against exactly this predicate, so an alias can never name a
+# class that was not emitted (a *RequestContent target used to produce
+# `Alias = CreateCardStepRequestContent`, a NameError the moment types.rb loads).
+def emits_class?(name, schema)
+  return false if SKIP_PATTERNS.any? { |p| name.match?(p) }
+
+  schema.is_a?(Hash) && schema['type'] == 'object' && !(schema['properties'] || {}).empty?
+end
+
+DEPRECATED_ALIAS_KEYS = %w[$ref deprecated description x-deprecated-reason].freeze
+
+# A component that is nothing but a deprecated $ref: a rename kept for
+# compatibility, e.g. CardStep -> Subtask. `deprecated` must be the JSON boolean
+# true, as in every other generator; 1 or "false" is not an alias.
+def deprecated_alias?(schema)
+  schema.is_a?(Hash) && schema['deprecated'] == true && schema['$ref'].is_a?(String) &&
+    (schema.keys - DEPRECATED_ALIAS_KEYS).empty?
+end
+
+# Constants Basecamp::Types already holds besides the generated classes.
+RESERVED_TYPE_CONSTANTS = %w[TypeHelpers].freeze
+
+# Every deprecated alias as [alias, target], sorted by alias. Aborts on one this
+# generator cannot place, the same cases every SDK generator refuses: a missing
+# target, an alias of an alias (rejected, not resolved), a target that is not an
+# object model, a target this generator does not emit, and a name collision.
+def deprecated_aliases(schemas)
+  schemas.keys.sort.filter_map do |name|
+    schema = schemas[name]
+    next unless deprecated_alias?(schema)
+
+    target = schema['$ref'].split('/').last
+    target_schema = schemas[target]
+    problem =
+      if !schemas.key?(target)
+        'target schema does not exist'
+      elsif deprecated_alias?(target_schema)
+        "target is itself a deprecated alias; point #{name} at the model directly"
+      elsif !(target_schema.is_a?(Hash) && target_schema['type'] == 'object' &&
+              !(target_schema['properties'] || {}).empty?)
+        'target is not an object model'
+      elsif !emits_class?(target, target_schema)
+        'target class was not emitted (SKIP_PATTERNS excludes it)'
+      elsif RESERVED_TYPE_CONSTANTS.include?(name)
+        "#{name} collides with an existing constant in Basecamp::Types"
+      end
+    abort "Error: deprecated alias #{name} -> #{target}: #{problem}" if problem
+
+    [ name, target ]
+  end
+end
+
 # Main execution
 if __FILE__ == $PROGRAM_NAME
   openapi_path = ARGV[0] || File.expand_path('../../openapi.json', __dir__)
@@ -141,6 +194,13 @@ if __FILE__ == $PROGRAM_NAME
     exit 1
   end
 
+  # UTF-8 regardless of process locale — see generate-metadata.rb
+  schemas = JSON.parse(File.read(openapi_path, encoding: 'UTF-8'))['components']['schemas'] || {}
+  sorted = schemas.keys.sort
+  # Validated before the first line is printed, so a refusal leaves no partial
+  # types.rb on stdout.
+  aliases = deprecated_aliases(schemas)
+
   puts header
   puts generate_helpers
   puts ''
@@ -148,18 +208,11 @@ if __FILE__ == $PROGRAM_NAME
   puts '  module Types'
   puts '    include TypeHelpers'
 
-  # UTF-8 regardless of process locale — see generate-metadata.rb
-  schemas = JSON.parse(File.read(openapi_path, encoding: 'UTF-8'))['components']['schemas'] || {}
-  sorted = schemas.keys.sort
-
   sorted.each do |name|
-    next if SKIP_PATTERNS.any? { |p| name.match?(p) }
-
     schema = schemas[name]
-    next unless schema['type'] == 'object'
+    next unless emits_class?(name, schema)
 
-    properties = schema['properties'] || {}
-    next if properties.empty?
+    properties = schema['properties']
 
     required_fields = schema['required'] || []
     required_set = required_fields.to_set
@@ -271,6 +324,17 @@ if __FILE__ == $PROGRAM_NAME
     puts '      end'
 
     puts '    end'
+  end
+
+  # Deprecated former names (see deprecated_aliases), emitted after every class
+  # because the alias must reference an already-defined constant. The alias
+  # also keeps Basecamp::Types.const_get("CardStep") resolving.
+  aliases.each do |name, target|
+    schema = schemas[name]
+    puts ''
+    puts "    # #{name}"
+    puts deprecation_doc_lines(schema['x-deprecated-reason'] || 'deprecated', indent: '    ')
+    puts "    #{name} = #{target}"
   end
 
   puts '  end'

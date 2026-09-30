@@ -39,7 +39,7 @@ export class BookmarksService extends BaseService {
   /**
    * List the current user's bookmarks, most recently bookmarked first (paginated).
    * @param options - Optional query parameters
-   * @returns All Bookmark across all pages, with .meta.totalCount
+   * @returns Every Bookmark across all pages, with .meta.totalCount
    *
    * @example
    * ```ts

@@ -17,7 +17,7 @@ class SubtasksService(client: AccountClient) : BaseService(client) {
      * @param recordingId The recording ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(recordingId: Long, options: ListSubtasksOptions? = null): ListResult<CardStep> {
+    suspend fun list(recordingId: Long, options: ListSubtasksOptions? = null): ListResult<Subtask> {
         val info = OperationInfo(
             service = "Subtasks",
             operation = "ListSubtasks",
@@ -32,7 +32,7 @@ class SubtasksService(client: AccountClient) : BaseService(client) {
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/recordings/${recordingId}/subtasks.json" + qs, operationName = info.operation)
         }) { body ->
-            json.decodeFromString<List<CardStep>>(body)
+            json.decodeFromString<List<Subtask>>(body)
         }
     }
 
@@ -41,7 +41,7 @@ class SubtasksService(client: AccountClient) : BaseService(client) {
      * @param recordingId The recording ID
      * @param body Request body
      */
-    suspend fun create(recordingId: Long, body: CreateSubtaskBody): CardStep {
+    suspend fun create(recordingId: Long, body: CreateSubtaskBody): Subtask {
         val info = OperationInfo(
             service = "Subtasks",
             operation = "CreateSubtask",
@@ -57,7 +57,7 @@ class SubtasksService(client: AccountClient) : BaseService(client) {
                 body.assigneeIds?.let { put("assignee_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
             }), operationName = info.operation)
         }) { body ->
-            json.decodeFromString<CardStep>(body)
+            json.decodeFromString<Subtask>(body)
         }
     }
 
@@ -65,7 +65,7 @@ class SubtasksService(client: AccountClient) : BaseService(client) {
      * Get a subtask by ID
      * @param subtaskId The subtask ID
      */
-    suspend fun get(subtaskId: Long): CardStep {
+    suspend fun get(subtaskId: Long): Subtask {
         val info = OperationInfo(
             service = "Subtasks",
             operation = "GetSubtask",
@@ -77,7 +77,7 @@ class SubtasksService(client: AccountClient) : BaseService(client) {
         return request(info, {
             httpGet("/subtasks/${subtaskId}", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<CardStep>(body)
+            json.decodeFromString<Subtask>(body)
         }
     }
 
@@ -86,7 +86,7 @@ class SubtasksService(client: AccountClient) : BaseService(client) {
      * @param subtaskId The subtask ID
      * @param body Request body
      */
-    suspend fun update(subtaskId: Long, body: UpdateSubtaskBody): CardStep {
+    suspend fun update(subtaskId: Long, body: UpdateSubtaskBody): Subtask {
         val info = OperationInfo(
             service = "Subtasks",
             operation = "UpdateSubtask",
@@ -102,7 +102,7 @@ class SubtasksService(client: AccountClient) : BaseService(client) {
                 body.assigneeIds?.let { put("assignee_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
             }), operationName = info.operation)
         }) { body ->
-            json.decodeFromString<CardStep>(body)
+            json.decodeFromString<Subtask>(body)
         }
     }
 

@@ -18,11 +18,12 @@ const DefaultSubtaskLimit = 100
 
 // A subtask is a checklist item under a to-do or a card. It was born as a
 // Kanban card step and the wire keeps that history: the payload's `type` is
-// "Kanban::Step" permanently and the shape is CardStep, which to-dos and cards
-// also embed under Steps. SubtasksService speaks the canonical flat routes bc3
-// documents in doc/api/sections/subtasks.md (basecamp/bc3#12659); the
-// card-scoped /card_tables/steps spellings CardStepsService speaks stay served
-// indefinitely as aliases of the same records.
+// "Kanban::Step" permanently and the shape is Subtask (formerly CardStep),
+// which to-dos and cards also embed under Steps. SubtasksService speaks the
+// canonical flat routes bc3 documents in doc/api/sections/subtasks.md
+// (basecamp/bc3#12659); the card-scoped /card_tables/steps spellings
+// CardStepsService speaks stay served indefinitely as aliases of the same
+// records.
 
 // CreateSubtaskRequest specifies the parameters for creating a subtask.
 type CreateSubtaskRequest struct {
@@ -67,7 +68,7 @@ type SubtaskListOptions struct {
 // SubtaskListResult contains the results from listing subtasks.
 type SubtaskListResult struct {
 	// Subtasks is the list of subtasks returned, in position order.
-	Subtasks []CardStep
+	Subtasks []Subtask
 	// Meta contains pagination metadata (total count, etc.).
 	Meta ListMeta
 }
@@ -127,10 +128,10 @@ func (s *SubtasksService) List(ctx context.Context, recordingID int64, opts *Sub
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	var subtasks []CardStep
+	var subtasks []Subtask
 	if resp.JSON200 != nil {
 		for _, gs := range *resp.JSON200 {
-			subtasks = append(subtasks, cardStepFromGenerated(gs))
+			subtasks = append(subtasks, subtaskFromGenerated(gs))
 		}
 	}
 
@@ -158,18 +159,18 @@ func (s *SubtasksService) List(ctx context.Context, recordingID int64, opts *Sub
 	}
 
 	for _, raw := range rawMore {
-		var gs generated.CardStep
+		var gs generated.Subtask
 		if err := json.Unmarshal(raw, &gs); err != nil {
 			return nil, fmt.Errorf("failed to parse subtask: %w", err)
 		}
-		subtasks = append(subtasks, cardStepFromGenerated(gs))
+		subtasks = append(subtasks, subtaskFromGenerated(gs))
 	}
 
 	return &SubtaskListResult{Subtasks: subtasks, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Get returns a subtask by ID.
-func (s *SubtasksService) Get(ctx context.Context, subtaskID int64) (result *CardStep, err error) {
+func (s *SubtasksService) Get(ctx context.Context, subtaskID int64) (result *Subtask, err error) {
 	op := OperationInfo{
 		Service: "Subtasks", Operation: "Get",
 		ResourceType: "subtask", IsMutation: false,
@@ -196,13 +197,13 @@ func (s *SubtasksService) Get(ctx context.Context, subtaskID int64) (result *Car
 		return nil, err
 	}
 
-	subtask := cardStepFromGenerated(*resp.JSON200)
+	subtask := subtaskFromGenerated(*resp.JSON200)
 	return &subtask, nil
 }
 
 // Create creates a subtask under a to-do or a card. Any other recording answers
 // 403 Forbidden. Returns the created subtask.
-func (s *SubtasksService) Create(ctx context.Context, recordingID int64, req *CreateSubtaskRequest) (result *CardStep, err error) {
+func (s *SubtasksService) Create(ctx context.Context, recordingID int64, req *CreateSubtaskRequest) (result *Subtask, err error) {
 	op := OperationInfo{
 		Service: "Subtasks", Operation: "Create",
 		ResourceType: "subtask", IsMutation: true,
@@ -249,13 +250,13 @@ func (s *SubtasksService) Create(ctx context.Context, recordingID int64, req *Cr
 		return nil, err
 	}
 
-	subtask := cardStepFromGenerated(*resp.JSON201)
+	subtask := subtaskFromGenerated(*resp.JSON201)
 	return &subtask, nil
 }
 
 // Update updates a subtask. Omitted fields are left unchanged; see
 // UpdateSubtaskRequest for how to clear one. Returns the updated subtask.
-func (s *SubtasksService) Update(ctx context.Context, subtaskID int64, req *UpdateSubtaskRequest) (result *CardStep, err error) {
+func (s *SubtasksService) Update(ctx context.Context, subtaskID int64, req *UpdateSubtaskRequest) (result *Subtask, err error) {
 	op := OperationInfo{
 		Service: "Subtasks", Operation: "Update",
 		ResourceType: "subtask", IsMutation: true,
@@ -316,7 +317,7 @@ func (s *SubtasksService) Update(ctx context.Context, subtaskID int64, req *Upda
 		return nil, err
 	}
 
-	subtask := cardStepFromGenerated(*resp.JSON200)
+	subtask := subtaskFromGenerated(*resp.JSON200)
 	return &subtask, nil
 }
 
