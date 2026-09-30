@@ -83,7 +83,7 @@ module Basecamp
         end
       end
 
-      # Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.
+      # Permanently delete a timesheet entry, which never appears in the trash and cannot be restored; this is the only way to remove one, since bc3 answers 403 to TrashRecording and ArchiveRecording for every timesheet entry, and it answers 403 when the caller may not remove the entry.
       # @param entry_id [Integer] entry id ID
       # @return [void]
       def destroy(entry_id:)

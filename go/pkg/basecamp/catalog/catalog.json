@@ -49,7 +49,7 @@
       "tag": "Recordings",
       "method": "PUT",
       "path": "/{accountId}/recordings/{recordingId}/status/archived.json",
-      "doc": "Archive a recording",
+      "doc": "Archive a recording; bc3 answers 403 for types it never lets be archived, timesheet entries among them",
       "readonly": false,
       "idempotent": true,
       "retry": {
@@ -3448,7 +3448,7 @@
       "tag": "Schedule",
       "method": "DELETE",
       "path": "/{accountId}/timesheet_entries/{entryId}",
-      "doc": "Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.",
+      "doc": "Permanently delete a timesheet entry, which never appears in the trash and cannot be restored; this is the only way to remove one, since bc3 answers 403 to TrashRecording and ArchiveRecording for every timesheet entry, and it answers 403 when the caller may not remove the entry.",
       "readonly": false,
       "idempotent": true,
       "retry": {
@@ -11957,7 +11957,7 @@
       "tag": "Recordings",
       "method": "PUT",
       "path": "/{accountId}/recordings/{recordingId}/status/trashed.json",
-      "doc": "Trash a recording",
+      "doc": "Trash a recording; bc3 answers 403 for types it never lets be trashed, timesheet entries among them (DestroyTimesheetEntry removes those, permanently)",
       "readonly": false,
       "idempotent": true,
       "retry": {

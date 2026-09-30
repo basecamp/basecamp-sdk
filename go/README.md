@@ -576,7 +576,7 @@ for both.
 |---------|---------|
 | `Timeline()` | Progress, ProjectTimeline, PersonProgress |
 | `Reports()` | AssignablePeople, AssignedTodos, OverdueTodos, UpcomingSchedule |
-| `Timesheet()` | MyEntries, ProjectEntries |
+| `Timesheet()` | Report, ProjectReport, RecordingReport, Get, Create, Update, Destroy |
 | `Search()` | Search |
 | `Events()` | List, ListForRecording |
 

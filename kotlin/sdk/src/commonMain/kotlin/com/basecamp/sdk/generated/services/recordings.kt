@@ -98,7 +98,7 @@ open class RecordingsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Archive a recording
+     * Archive a recording; bc3 answers 403 for types it never lets be archived, timesheet entries among them
      * @param recordingId The recording ID
      */
     suspend fun archive(recordingId: Long): Unit {
@@ -116,7 +116,7 @@ open class RecordingsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Trash a recording. Trashed items can be recovered.
+     * Trash a recording; bc3 answers 403 for types it never lets be trashed, timesheet entries among them (DestroyTimesheetEntry removes those, permanently). Trashed items can be recovered.
      * @param recordingId The recording ID
      */
     suspend fun trash(recordingId: Long): Unit {

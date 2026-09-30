@@ -87,7 +87,7 @@ class RecordingsService(BaseService):
         )
 
     def archive(self, *, recording_id: int) -> None:
-        """Archive a recording.
+        """Archive a recording; bc3 answers 403 for types it never lets be archived, timesheet entries among them.
 
         Args:
             recording_id: The recording id.
@@ -100,7 +100,7 @@ class RecordingsService(BaseService):
         )
 
     def trash(self, *, recording_id: int) -> None:
-        """Trash a recording.
+        """Trash a recording; bc3 answers 403 for types it never lets be trashed, timesheet entries among them (DestroyTimesheetEntry removes those, permanently).
 
         Args:
             recording_id: The recording id.
@@ -190,7 +190,7 @@ class AsyncRecordingsService(AsyncBaseService):
         )
 
     async def archive(self, *, recording_id: int) -> None:
-        """Archive a recording.
+        """Archive a recording; bc3 answers 403 for types it never lets be archived, timesheet entries among them.
 
         Args:
             recording_id: The recording id.
@@ -203,7 +203,7 @@ class AsyncRecordingsService(AsyncBaseService):
         )
 
     async def trash(self, *, recording_id: int) -> None:
-        """Trash a recording.
+        """Trash a recording; bc3 answers 403 for types it never lets be trashed, timesheet entries among them (DestroyTimesheetEntry removes those, permanently).
 
         Args:
             recording_id: The recording id.
