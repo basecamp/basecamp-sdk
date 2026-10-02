@@ -45,6 +45,34 @@ class RecordingsService(BaseService):
             operation="ListRecordings",
         )
 
+    def move_to_vault(self, *, recording_id: int, parent_id: int, position: int | None = None) -> None:
+        """Move a document, upload or vault into another vault in the same project, or
+        change its position within the vault it is already in. The recording moves in
+        place: its id, comments, bookmarks and history stay with it, and a vault takes
+        everything inside it along. A destination in another project is 404; moves to
+        another project are not this operation. 404, 403 and some 422s carry no body.
+
+        403 when the caller may not move the recording (an account can restrict moves
+        to admins and creators). 422 when position is not a positive whole number, the
+        destination is not a vault or is not active, the recording is not active, or a
+        vault would move into one of its own vaults; only the position and vault-cycle
+        refusals carry an `error` message.
+
+        Args:
+            recording_id: The recording id.
+            parent_id: The destination vault. The recording's current vault keeps it where it is and
+                changes only its position.
+            position: 1-indexed position within the destination vault. Defaults to 1 (first); a
+                position past the end places it last.
+        """
+        self._request_void(
+            OperationInfo(service="recordings", operation="move_to_vault", is_mutation=True, resource_id=recording_id),
+            "POST",
+            f"/recordings/{recording_id}/filing.json",
+            json_body=self._compact(parent_id=parent_id, position=position),
+            operation="MoveRecordingToVault",
+        )
+
     def spotlight(self, *, recording_id: int) -> dict[str, Any]:
         """Put a recording's card in the spotlight area on its project or template home page.
         Idempotent: spotlighting an already-spotlighted recording still returns 201.
@@ -146,6 +174,34 @@ class AsyncRecordingsService(AsyncBaseService):
             params=self._compact(type=type, bucket=bucket, status=status, sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListRecordings",
+        )
+
+    async def move_to_vault(self, *, recording_id: int, parent_id: int, position: int | None = None) -> None:
+        """Move a document, upload or vault into another vault in the same project, or
+        change its position within the vault it is already in. The recording moves in
+        place: its id, comments, bookmarks and history stay with it, and a vault takes
+        everything inside it along. A destination in another project is 404; moves to
+        another project are not this operation. 404, 403 and some 422s carry no body.
+
+        403 when the caller may not move the recording (an account can restrict moves
+        to admins and creators). 422 when position is not a positive whole number, the
+        destination is not a vault or is not active, the recording is not active, or a
+        vault would move into one of its own vaults; only the position and vault-cycle
+        refusals carry an `error` message.
+
+        Args:
+            recording_id: The recording id.
+            parent_id: The destination vault. The recording's current vault keeps it where it is and
+                changes only its position.
+            position: 1-indexed position within the destination vault. Defaults to 1 (first); a
+                position past the end places it last.
+        """
+        await self._request_void(
+            OperationInfo(service="recordings", operation="move_to_vault", is_mutation=True, resource_id=recording_id),
+            "POST",
+            f"/recordings/{recording_id}/filing.json",
+            json_body=self._compact(parent_id=parent_id, position=position),
+            operation="MoveRecordingToVault",
         )
 
     async def spotlight(self, *, recording_id: int) -> dict[str, Any]:

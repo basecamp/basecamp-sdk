@@ -68,6 +68,16 @@ public final class RecordingsService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func moveToVault(recordingId: Int, req: MoveRecordingToVaultRequest) async throws {
+        try await requestVoid(
+            OperationInfo(service: "Recordings", operation: "MoveRecordingToVault", resourceType: "recording", isMutation: true, resourceId: recordingId),
+            method: "POST",
+            path: "/recordings/\(recordingId)/filing.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "MoveRecordingToVault")
+        )
+    }
+
     public func spotlight(recordingId: Int) async throws -> Recording {
         return try await request(
             OperationInfo(service: "Recordings", operation: "SpotlightRecording", resourceType: "recording", isMutation: true, resourceId: recordingId),

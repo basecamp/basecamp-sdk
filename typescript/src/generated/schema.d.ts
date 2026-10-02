@@ -2660,6 +2660,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recordings/{recordingId}/filing.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Move a document, upload or vault into another vault in the same project, or
+         *     change its position within the vault it is already in. The recording moves in
+         *     place: its id, comments, bookmarks and history stay with it, and a vault takes
+         *     everything inside it along. A destination in another project is 404; moves to
+         *     another project are not this operation. 404, 403 and some 422s carry no body.
+         *
+         *     403 when the caller may not move the recording (an account can restrict moves
+         *     to admins and creators). 422 when position is not a positive whole number, the
+         *     destination is not a vault or is not active, the recording is not active, or a
+         *     vault would move into one of its own vaults; only the position and vault-cycle
+         *     refusals carry an `error` message.
+         */
+        post: operations["MoveRecordingToVault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/recordings/{recordingId}/spotlight.json": {
         parameters: {
             query?: never;
@@ -5837,6 +5866,20 @@ export interface components {
             /**
              * Format: int32
              * @description 1-indexed position within the destination column. Defaults to 1 (top).
+             */
+            position?: number;
+        };
+        MoveRecordingToVaultRequestContent: {
+            /**
+             * Format: int64
+             * @description The destination vault. The recording's current vault keeps it where it is
+             *     and changes only its position.
+             */
+            parent_id: number;
+            /**
+             * Format: int32
+             * @description 1-indexed position within the destination vault. Defaults to 1 (first); a
+             *     position past the end places it last.
              */
             position?: number;
         };
@@ -19974,6 +20017,89 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    MoveRecordingToVault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveRecordingToVaultRequestContent"];
+            };
+        };
+        responses: {
+            /** @description MoveRecordingToVault 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description BadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description BareForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description BareNotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description ValidationError 422 response */
             422: {

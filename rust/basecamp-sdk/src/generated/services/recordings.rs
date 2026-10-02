@@ -77,6 +77,31 @@ impl<'a> RecordingsService<'a> {
         self.client.send_page(operation).await
     }
 
+    /// Move a document, upload or vault into another vault in the same project, or
+    /// change its position within the vault it is already in. The recording moves in
+    /// place: its id, comments, bookmarks and history stay with it, and a vault takes
+    /// everything inside it along. A destination in another project is 404; moves to
+    /// another project are not this operation. 404, 403 and some 422s carry no body.
+    ///
+    /// 403 when the caller may not move the recording (an account can restrict moves
+    /// to admins and creators). 422 when position is not a positive whole number, the
+    /// destination is not a vault or is not active, the recording is not active, or a
+    /// vault would move into one of its own vaults; only the position and vault-cycle
+    /// refusals carry an `error` message.
+    ///
+    /// `POST /recordings/{recordingId}/filing.json` — not idempotent, sent exactly once.
+    pub async fn move_to_vault(
+        &self,
+        recording_id: i64,
+        body: &MoveRecordingToVaultRequestContent,
+    ) -> Result<(), Error> {
+        let mut operation = self
+            .client
+            .operation(&routes::MOVE_RECORDING_TO_VAULT, &[&recording_id]);
+        operation.json(body)?;
+        self.client.send_unit(operation).await
+    }
+
     /// Put a recording's card in the spotlight area on its project or template home page.
     /// Idempotent: spotlighting an already-spotlighted recording still returns 201.
     ///

@@ -32,6 +32,18 @@ export interface ListRecordingOptions extends PaginationOptions {
   page?: number;
 }
 
+/**
+ * Request parameters for moveToVault.
+ */
+export interface MoveToVaultRecordingRequest {
+  /** The destination vault. The recording's current vault keeps it where it is
+and changes only its position. */
+  parentId: number;
+  /** 1-indexed position within the destination vault. Defaults to 1 (first); a
+position past the end places it last. */
+  position?: number;
+}
+
 
 // =============================================================================
 // Service
@@ -71,6 +83,40 @@ export class RecordingsService extends BaseService {
           },
         })
       , options
+    );
+  }
+
+  /**
+   * Move a document, upload or vault into another vault in the same project, or
+   * @param recordingId - The recording ID
+   * @param req - Recording request parameters
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.recordings.moveToVault(123, { parentId: 1 });
+   * ```
+   */
+  async moveToVault(recordingId: number, req: MoveToVaultRecordingRequest): Promise<void> {
+    await this.request(
+      {
+        service: "Recordings",
+        operation: "MoveRecordingToVault",
+        resourceType: "recording",
+        isMutation: true,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.POST("/recordings/{recordingId}/filing.json", {
+          params: {
+            path: { recordingId },
+          },
+          body: {
+            parent_id: req.parentId,
+            position: req.position,
+          },
+        })
     );
   }
 

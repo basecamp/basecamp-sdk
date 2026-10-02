@@ -430,6 +430,52 @@ func (s *RecordingsService) Unarchive(ctx context.Context, recordingID int64) (e
 	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
+// MoveToVaultOptions specifies optional parameters for MoveToVault.
+type MoveToVaultOptions struct {
+	// Position is the 1-indexed position within the destination vault. When
+	// zero, the server places the recording first; past the end places it last.
+	Position int32
+}
+
+// MoveToVault moves a document, upload or vault into the vault vaultID in the same
+// project, or changes its position when vaultID is the vault it is already in.
+// The recording keeps its id, comments and history; a vault takes its contents
+// along. A destination in another project is a not-found error.
+func (s *RecordingsService) MoveToVault(ctx context.Context, recordingID, vaultID int64, opts *MoveToVaultOptions) (err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "MoveToVault",
+		ResourceType: "recording", IsMutation: true,
+		ResourceID: recordingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	body := generated.MoveRecordingToVaultJSONRequestBody{
+		ParentId: vaultID,
+	}
+	if opts != nil {
+		if opts.Position < 0 {
+			err = ErrUsage("position must be at least 1")
+			return err
+		}
+		if opts.Position > 0 {
+			body.Position = &opts.Position
+		}
+	}
+
+	resp, err := s.client.parent.gen.MoveRecordingToVaultWithResponse(ctx, s.client.accountID, recordingID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
 // SetClientVisibility sets whether a recording is visible to clients.
 // visible specifies whether the recording should be visible to clients.
 // Returns the updated recording.

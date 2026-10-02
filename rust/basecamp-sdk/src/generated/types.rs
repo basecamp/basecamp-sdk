@@ -3554,6 +3554,18 @@ pub struct MoveCardRequestContent {
     pub position: Option<i32>,
 }
 
+/// The `MoveRecordingToVaultRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct MoveRecordingToVaultRequestContent {
+    /// The destination vault. The recording's current vault keeps it where it is
+    /// and changes only its position.
+    pub parent_id: i64,
+    /// 1-indexed position within the destination vault. Defaults to 1 (first); a
+    /// position past the end places it last.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<i32>,
+}
+
 /// The `MyAssignment` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]

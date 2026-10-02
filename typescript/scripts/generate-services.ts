@@ -300,6 +300,7 @@ const VERB_PATTERNS = [
 const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
   SpotlightRecording: "recording",
   UnspotlightRecording: "recording",
+  MoveRecordingToVault: "recording",
   UpdateHillChartSettings: "hill_chart",
   // The whole family reports "bookmark"; the inferred "my_bookmark" would
   // split the list operation into its own telemetry category.
@@ -332,6 +333,7 @@ const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
 const METHOD_NAME_OVERRIDES: Record<string, string> = {
   SpotlightRecording: "spotlight",
   UnspotlightRecording: "unspotlight",
+  MoveRecordingToVault: "moveToVault",
   GetMyProfile: "me",
   // "bookmark(id)" reads as the action; keep the getter explicit.
   GetBookmark: "getBookmark",

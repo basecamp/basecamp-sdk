@@ -10370,6 +10370,65 @@
       "bodyRequired": true
     },
     {
+      "operationId": "MoveRecordingToVault",
+      "tag": "Recordings",
+      "method": "POST",
+      "path": "/{accountId}/recordings/{recordingId}/filing.json",
+      "doc": "Move a document, upload or vault into another vault in the same project, or\nchange its position within the vault it is already in. The recording moves in\nplace: its id, comments, bookmarks and history stay with it, and a vault takes\neverything inside it along. A destination in another project is 404; moves to\nanother project are not this operation. 404, 403 and some 422s carry no body.\n\n403 when the caller may not move the recording (an account can restrict moves\nto admins and creators). 422 when position is not a positive whole number, the\ndestination is not a vault or is not active, the recording is not active, or a\nvault would move into one of its own vaults; only the position and vault-cycle\nrefusals carry an `error` message.",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "recordingId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "parent_id": {
+            "description": "The destination vault. The recording's current vault keeps it where it is\nand changes only its position.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "position": {
+            "description": "1-indexed position within the destination vault. Defaults to 1 (first); a\nposition past the end places it last.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "parent_id"
+        ],
+        "type": "object"
+      },
+      "bodyRequired": true
+    },
+    {
       "operationId": "PauseQuestion",
       "tag": "Checkins",
       "method": "POST",

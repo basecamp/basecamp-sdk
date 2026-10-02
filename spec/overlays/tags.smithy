@@ -370,7 +370,7 @@ apply PollEvents @tags(["EventFeed"])
 apply PollInbox @tags(["EventFeed"])
 apply CreateStreamTicket @tags(["EventFeed"])
 
-// Recordings (recording lifecycle: list, spotlight, trash, archive; and the
+// Recordings (recording lifecycle: list, spotlight, trash, archive, move; and the
 // recording's own event history).
 //
 // The six lifecycle operations came first (#922), and this paragraph is about
@@ -413,6 +413,7 @@ apply UnspotlightRecording @tags(["Recordings"])
 apply TrashRecording @tags(["Recordings"])
 apply ArchiveRecording @tags(["Recordings"])
 apply UnarchiveRecording @tags(["Recordings"])
+apply MoveRecordingToVault @tags(["Recordings"])
 apply ListEvents @tags(["Recordings"])
 // Subtasks (wire type "Kanban::Step")
 apply ListSubtasks @tags(["Subtasks"])

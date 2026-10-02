@@ -105,6 +105,8 @@ grouped:
       methods: ["Archive"]
     - operation: ListRecordings
       methods: ["List"]
+    - operation: MoveRecordingToVault
+      methods: ["MoveToVaultWithBody", "MoveToVault"]
     - operation: SpotlightRecording
       methods: ["Spotlight"]
     - operation: TrashRecording

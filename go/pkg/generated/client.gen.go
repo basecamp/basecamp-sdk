@@ -2416,6 +2416,17 @@ type MoveCardRequestContent struct {
 	Position *int32 `json:"position,omitempty"`
 }
 
+// MoveRecordingToVaultRequestContent defines model for MoveRecordingToVaultRequestContent.
+type MoveRecordingToVaultRequestContent struct {
+	// ParentId The destination vault. The recording's current vault keeps it where it is
+	// and changes only its position.
+	ParentId int64 `json:"parent_id"`
+
+	// Position 1-indexed position within the destination vault. Defaults to 1 (first); a
+	// position past the end places it last.
+	Position *int32 `json:"position,omitempty"`
+}
+
 // MyAssignment defines model for MyAssignment.
 type MyAssignment struct {
 	AppUrl         *string                `json:"app_url,omitempty"`
@@ -5895,6 +5906,9 @@ type CreateCommentJSONRequestBody = CreateCommentRequestContent
 // CreateEventBoostJSONRequestBody defines body for CreateEventBoost for application/json ContentType.
 type CreateEventBoostJSONRequestBody = CreateEventBoostRequestContent
 
+// MoveRecordingToVaultJSONRequestBody defines body for MoveRecordingToVault for application/json ContentType.
+type MoveRecordingToVaultJSONRequestBody = MoveRecordingToVaultRequestContent
+
 // UpdateSubscriptionJSONRequestBody defines body for UpdateSubscription for application/json ContentType.
 type UpdateSubscriptionJSONRequestBody = UpdateSubscriptionRequestContent
 
@@ -7213,6 +7227,11 @@ type ClientInterface interface {
 	CreateEventBoostWithBody(ctx context.Context, accountId string, recordingId int64, eventId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateEventBoost(ctx context.Context, accountId string, recordingId int64, eventId int64, body CreateEventBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MoveRecordingToVaultWithBody request with any body
+	MoveRecordingToVaultWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	MoveRecordingToVault(ctx context.Context, accountId string, recordingId int64, body MoveRecordingToVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnspotlightRecording request
 	UnspotlightRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -10188,6 +10207,36 @@ func (c *Client) CreateEventBoostWithBody(ctx context.Context, accountId string,
 func (c *Client) CreateEventBoost(ctx context.Context, accountId string, recordingId int64, eventId int64, body CreateEventBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateEventBoostRequest(c.Server, accountId, recordingId, eventId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// MoveRecordingToVaultWithBody executes the MoveRecordingToVault operation.
+
+func (c *Client) MoveRecordingToVaultWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewMoveRecordingToVaultRequestWithBody(c.Server, accountId, recordingId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) MoveRecordingToVault(ctx context.Context, accountId string, recordingId int64, body MoveRecordingToVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewMoveRecordingToVaultRequest(c.Server, accountId, recordingId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -21445,6 +21494,60 @@ func NewCreateEventBoostRequestWithBody(server string, accountId string, recordi
 	return req, nil
 }
 
+// NewMoveRecordingToVaultRequest calls the generic MoveRecordingToVault builder with application/json body
+func NewMoveRecordingToVaultRequest(server string, accountId string, recordingId int64, body MoveRecordingToVaultJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewMoveRecordingToVaultRequestWithBody(server, accountId, recordingId, "application/json", bodyReader)
+}
+
+// NewMoveRecordingToVaultRequestWithBody generates requests for MoveRecordingToVault with any type of body
+func NewMoveRecordingToVaultRequestWithBody(server string, accountId string, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/filing.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewUnspotlightRecordingRequest generates requests for UnspotlightRecording
 func NewUnspotlightRecordingRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
 	var err error
@@ -26955,6 +27058,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"ListEvents":                         {Idempotent: true, HasSensitiveParams: false},
 	"ListEventBoosts":                    {Idempotent: true, HasSensitiveParams: false},
 	"CreateEventBoost":                   {Idempotent: false, HasSensitiveParams: false},
+	"MoveRecordingToVault":               {Idempotent: false, HasSensitiveParams: false},
 	"UnspotlightRecording":               {Idempotent: true, HasSensitiveParams: false},
 	"SpotlightRecording":                 {Idempotent: true, HasSensitiveParams: false},
 	"UnarchiveRecording":                 {Idempotent: true, HasSensitiveParams: false},
@@ -27242,6 +27346,7 @@ var operationRetryMax = map[string]int{
 	"ListEvents":                         3,
 	"ListEventBoosts":                    3,
 	"CreateEventBoost":                   2,
+	"MoveRecordingToVault":               2,
 	"UnspotlightRecording":               3,
 	"SpotlightRecording":                 3,
 	"UnarchiveRecording":                 3,
@@ -27527,6 +27632,7 @@ var operationRetryOn = map[string][]int{
 	"ListEvents":                         {429, 503},
 	"ListEventBoosts":                    {429, 503},
 	"CreateEventBoost":                   {429, 503},
+	"MoveRecordingToVault":               {429, 503},
 	"UnspotlightRecording":               {429, 503},
 	"SpotlightRecording":                 {429, 503},
 	"UnarchiveRecording":                 {429, 503},
@@ -28478,6 +28584,14 @@ func (s *EventsService) List(ctx context.Context, accountId string, recordingId 
 	return s.client.ListEvents(ctx, accountId, recordingId, params, reqEditors...)
 }
 
+func (s *RecordingsService) MoveToVaultWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.MoveRecordingToVaultWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
+}
+
+func (s *RecordingsService) MoveToVault(ctx context.Context, accountId string, recordingId int64, body MoveRecordingToVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.MoveRecordingToVault(ctx, accountId, recordingId, body, reqEditors...)
+}
+
 func (s *RecordingsService) Unspotlight(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.UnspotlightRecording(ctx, accountId, recordingId, reqEditors...)
 }
@@ -29386,6 +29500,11 @@ type ClientWithResponsesInterface interface {
 	CreateEventBoostWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEventBoostResponse, error)
 
 	CreateEventBoostWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, body CreateEventBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEventBoostResponse, error)
+
+	// MoveRecordingToVaultWithBodyWithResponse request with any body
+	MoveRecordingToVaultWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveRecordingToVaultResponse, error)
+
+	MoveRecordingToVaultWithResponse(ctx context.Context, accountId string, recordingId int64, body MoveRecordingToVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveRecordingToVaultResponse, error)
 
 	// UnspotlightRecordingWithResponse request
 	UnspotlightRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*UnspotlightRecordingResponse, error)
@@ -35931,6 +36050,40 @@ func (r CreateEventBoostResponse) ContentType() string {
 	return ""
 }
 
+type MoveRecordingToVaultResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *BadRequestErrorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r MoveRecordingToVaultResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MoveRecordingToVaultResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MoveRecordingToVaultResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UnspotlightRecordingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -41398,6 +41551,23 @@ func (c *ClientWithResponses) CreateEventBoostWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseCreateEventBoostResponse(rsp)
+}
+
+// MoveRecordingToVaultWithBodyWithResponse request with arbitrary body returning *MoveRecordingToVaultResponse
+func (c *ClientWithResponses) MoveRecordingToVaultWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveRecordingToVaultResponse, error) {
+	rsp, err := c.MoveRecordingToVaultWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMoveRecordingToVaultResponse(rsp)
+}
+
+func (c *ClientWithResponses) MoveRecordingToVaultWithResponse(ctx context.Context, accountId string, recordingId int64, body MoveRecordingToVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveRecordingToVaultResponse, error) {
+	rsp, err := c.MoveRecordingToVault(ctx, accountId, recordingId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMoveRecordingToVaultResponse(rsp)
 }
 
 // UnspotlightRecordingWithResponse request returning *UnspotlightRecordingResponse
@@ -51972,6 +52142,64 @@ func ParseCreateEventBoostResponse(rsp *http.Response) (*CreateEventBoostRespons
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
 		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseMoveRecordingToVaultResponse parses an HTTP response from a MoveRecordingToVaultWithResponse call
+func ParseMoveRecordingToVaultResponse(rsp *http.Response) (*MoveRecordingToVaultResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MoveRecordingToVaultResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON400 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case rsp.StatusCode == 403:
+		break // No content-type
+
+	case rsp.StatusCode == 404:
+		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest ValidationErrorResponseContent
