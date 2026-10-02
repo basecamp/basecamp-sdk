@@ -11,6 +11,29 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Check-in question notification settings: the two fields are `responding` and `subscribed`
+
+`UpdateQuestionNotificationSettings` sent `notify_on_answer` and
+`digest_include_unanswered`. Basecamp reads neither: it reads `responding`
+(whether you are asked the question) and `subscribed` (whether you are notified
+when someone answers), ignores every other key, and answers `200` with your
+unchanged settings. Every call made through the old fields did nothing.
+
+The request members are renamed, which breaks source in every typed SDK:
+
+- `notify_on_answer` becomes `subscribed`: Go's `NotifyOnAnswer` is now
+  `Subscribed`, TypeScript's `notifyOnAnswer` is now `subscribed`, and Python's
+  and Ruby's `notify_on_answer:` keyword is now `subscribed:`. Kotlin, Swift and
+  Rust rename the same way.
+- `digest_include_unanswered` is gone, since Basecamp has no such setting.
+  `responding` takes its place, and it is a different setting: it adds you to or
+  removes you from the people the question asks.
+
+The response is unchanged, `{"responding": …, "subscribed": …}`. Compare it with
+what you sent if you need to know the change took.
+
 # v0.21.0
 
 ### Template library: `GetTemplateLibrary` is renamed, and card table templates arrive

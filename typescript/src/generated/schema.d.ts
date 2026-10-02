@@ -7951,10 +7951,10 @@ export interface components {
         };
         UpdateProjectResponseContent: components["schemas"]["Project"];
         UpdateQuestionNotificationSettingsRequestContent: {
-            /** @description Notify when someone answers */
-            notify_on_answer?: boolean;
-            /** @description Include unanswered in digest */
-            digest_include_unanswered?: boolean;
+            /** @description Whether the authenticated user is asked this question. Omit to leave it unchanged. */
+            responding?: boolean;
+            /** @description Whether the authenticated user is notified when someone answers. Omit to leave it unchanged. */
+            subscribed?: boolean;
         };
         UpdateQuestionNotificationSettingsResponseContent: {
             responding?: boolean;

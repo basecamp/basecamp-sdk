@@ -264,8 +264,8 @@ data class GetAnswersByPersonOptions(
 
 /** Request body for UpdateQuestionNotificationSettings. */
 data class UpdateQuestionNotificationSettingsBody(
-    val notifyOnAnswer: Boolean? = null,
-    val digestIncludeUnanswered: Boolean? = null
+    val responding: Boolean? = null,
+    val subscribed: Boolean? = null
 )
 
 /** Options for ListClientApprovals. */

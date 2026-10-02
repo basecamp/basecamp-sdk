@@ -225,14 +225,16 @@ class CheckinsService(BaseService):
         )
 
     def update_notification_settings(
-        self, *, question_id: int, notify_on_answer: bool | None = None, digest_include_unanswered: bool | None = None
+        self, *, question_id: int, responding: bool | None = None, subscribed: bool | None = None
     ) -> dict[str, Any]:
         """Update notification settings for a check-in question.
 
         Args:
             question_id: The question id.
-            notify_on_answer: Notify when someone answers
-            digest_include_unanswered: Include unanswered in digest
+            responding: Whether the authenticated user is asked this question. Omit to leave it
+                unchanged.
+            subscribed: Whether the authenticated user is notified when someone answers. Omit to
+                leave it unchanged.
         """
         return self._request(
             OperationInfo(
@@ -240,9 +242,7 @@ class CheckinsService(BaseService):
             ),
             "PUT",
             f"/questions/{question_id}/notification_settings.json",
-            json_body=self._compact(
-                notify_on_answer=notify_on_answer, digest_include_unanswered=digest_include_unanswered
-            ),
+            json_body=self._compact(responding=responding, subscribed=subscribed),
             operation="UpdateQuestionNotificationSettings",
         )
 
@@ -490,14 +490,16 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def update_notification_settings(
-        self, *, question_id: int, notify_on_answer: bool | None = None, digest_include_unanswered: bool | None = None
+        self, *, question_id: int, responding: bool | None = None, subscribed: bool | None = None
     ) -> dict[str, Any]:
         """Update notification settings for a check-in question.
 
         Args:
             question_id: The question id.
-            notify_on_answer: Notify when someone answers
-            digest_include_unanswered: Include unanswered in digest
+            responding: Whether the authenticated user is asked this question. Omit to leave it
+                unchanged.
+            subscribed: Whether the authenticated user is notified when someone answers. Omit to
+                leave it unchanged.
         """
         return await self._request(
             OperationInfo(
@@ -505,9 +507,7 @@ class AsyncCheckinsService(AsyncBaseService):
             ),
             "PUT",
             f"/questions/{question_id}/notification_settings.json",
-            json_body=self._compact(
-                notify_on_answer=notify_on_answer, digest_include_unanswered=digest_include_unanswered
-            ),
+            json_body=self._compact(responding=responding, subscribed=subscribed),
             operation="UpdateQuestionNotificationSettings",
         )
 

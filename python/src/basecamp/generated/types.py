@@ -2312,8 +2312,8 @@ class UpdateProjectRequestContent(TypedDict):
 
 
 class UpdateQuestionNotificationSettingsRequestContent(TypedDict):
-    digest_include_unanswered: NotRequired[bool]
-    notify_on_answer: NotRequired[bool]
+    responding: NotRequired[bool]
+    subscribed: NotRequired[bool]
 
 
 class UpdateQuestionNotificationSettingsResponseContent(TypedDict):

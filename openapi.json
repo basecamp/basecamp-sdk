@@ -39719,13 +39719,13 @@
       "UpdateQuestionNotificationSettingsRequestContent": {
         "type": "object",
         "properties": {
-          "notify_on_answer": {
+          "responding": {
             "type": "boolean",
-            "description": "Notify when someone answers"
+            "description": "Whether the authenticated user is asked this question. Omit to leave it unchanged."
           },
-          "digest_include_unanswered": {
+          "subscribed": {
             "type": "boolean",
-            "description": "Include unanswered in digest"
+            "description": "Whether the authenticated user is notified when someone answers. Omit to leave it unchanged."
           }
         }
       },
