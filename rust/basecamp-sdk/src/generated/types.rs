@@ -6771,6 +6771,7 @@ pub type UpdateProjectResponseContent = Project;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateQuestionNotificationSettingsRequestContent {
     /// Whether the authenticated user is asked this question. Omit to leave it unchanged.
+    /// Turning it on also subscribes the user unless `subscribed: false` is sent with it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub responding: Option<bool>,
     /// Whether the authenticated user is notified when someone answers. Omit to leave it unchanged.

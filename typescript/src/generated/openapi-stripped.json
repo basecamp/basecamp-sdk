@@ -36554,7 +36554,7 @@
         "properties": {
           "responding": {
             "type": "boolean",
-            "description": "Whether the authenticated user is asked this question. Omit to leave it unchanged."
+            "description": "Whether the authenticated user is asked this question. Omit to leave it unchanged.\nTurning it on also subscribes the user unless `subscribed: false` is sent with it."
           },
           "subscribed": {
             "type": "boolean",

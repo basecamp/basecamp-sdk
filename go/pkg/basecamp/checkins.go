@@ -208,7 +208,8 @@ type UpdateAnswerRequest struct {
 // leaves that setting unchanged; a non-nil value is sent verbatim, and an
 // explicit false reaches the wire (the pointer distinguishes unset from false).
 type UpdateQuestionNotificationSettingsRequest struct {
-	// Responding controls whether the user is asked this question.
+	// Responding controls whether the user is asked this question. Turning it
+	// on also subscribes the user unless Subscribed is false in the same request.
 	Responding *bool `json:"responding,omitempty"`
 	// Subscribed controls whether the user is notified when someone answers.
 	Subscribed *bool `json:"subscribed,omitempty"`

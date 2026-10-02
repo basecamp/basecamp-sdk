@@ -142,6 +142,7 @@ module Basecamp
       # Update notification settings for a check-in question
       # @param question_id [Integer] question id ID
       # @param responding [Boolean, nil] Whether the authenticated user is asked this question. Omit to leave it unchanged.
+      #   Turning it on also subscribes the user unless `subscribed: false` is sent with it.
       # @param subscribed [Boolean, nil] Whether the authenticated user is notified when someone answers. Omit to leave it unchanged.
       # @return [Hash] response data
       def update_notification_settings(question_id:, responding: nil, subscribed: nil)

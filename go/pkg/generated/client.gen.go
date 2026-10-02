@@ -4655,6 +4655,7 @@ type UpdateProjectResponseContent = Project
 // UpdateQuestionNotificationSettingsRequestContent defines model for UpdateQuestionNotificationSettingsRequestContent.
 type UpdateQuestionNotificationSettingsRequestContent struct {
 	// Responding Whether the authenticated user is asked this question. Omit to leave it unchanged.
+	// Turning it on also subscribes the user unless `subscribed: false` is sent with it.
 	Responding *bool `json:"responding,omitempty"`
 
 	// Subscribed Whether the authenticated user is notified when someone answers. Omit to leave it unchanged.

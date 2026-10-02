@@ -29,7 +29,8 @@ The request members are renamed, which breaks source in every typed SDK:
   Rust rename the same way.
 - `digest_include_unanswered` is gone, since Basecamp has no such setting.
   `responding` takes its place, and it is a different setting: it adds you to or
-  removes you from the people the question asks.
+  removes you from the people the question asks. Turning it on also subscribes
+  you, as it does in Basecamp, unless you send `subscribed: false` with it.
 
 The response is unchanged, `{"responding": …, "subscribed": …}`. Compare it with
 what you sent if you need to know the change took.

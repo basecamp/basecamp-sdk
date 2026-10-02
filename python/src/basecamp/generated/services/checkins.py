@@ -232,7 +232,8 @@ class CheckinsService(BaseService):
         Args:
             question_id: The question id.
             responding: Whether the authenticated user is asked this question. Omit to leave it
-                unchanged.
+                unchanged. Turning it on also subscribes the user unless `subscribed: false` is sent
+                with it.
             subscribed: Whether the authenticated user is notified when someone answers. Omit to
                 leave it unchanged.
         """
@@ -497,7 +498,8 @@ class AsyncCheckinsService(AsyncBaseService):
         Args:
             question_id: The question id.
             responding: Whether the authenticated user is asked this question. Omit to leave it
-                unchanged.
+                unchanged. Turning it on also subscribes the user unless `subscribed: false` is sent
+                with it.
             subscribed: Whether the authenticated user is notified when someone answers. Omit to
                 leave it unchanged.
         """

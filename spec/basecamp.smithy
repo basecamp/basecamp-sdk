@@ -8528,6 +8528,7 @@ structure UpdateQuestionNotificationSettingsInput {
   questionId: QuestionId
 
   /// Whether the authenticated user is asked this question. Omit to leave it unchanged.
+  /// Turning it on also subscribes the user unless `subscribed: false` is sent with it.
   responding: Boolean
 
   /// Whether the authenticated user is notified when someone answers. Omit to leave it unchanged.
