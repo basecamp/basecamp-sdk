@@ -179,6 +179,7 @@ class ServiceGenerator
   METHOD_NAME_OVERRIDES = {
     'SpotlightRecording' => 'spotlight',
     'UnspotlightRecording' => 'unspotlight',
+    'MoveRecordingToVault' => 'move_to_vault',
     'GetMyProfile' => 'my_profile',
     'GetTodolistOrGroup' => 'get',
     # The plain `update` name belongs to the merge-safe composite; the raw

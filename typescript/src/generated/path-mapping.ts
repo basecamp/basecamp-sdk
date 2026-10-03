@@ -137,6 +137,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/{accountId}/recordings/{recordingId}/client_visibility.json": "SetClientVisibility",
   "GET:/{accountId}/recordings/{recordingId}/comments.json": "ListComments",
   "POST:/{accountId}/recordings/{recordingId}/comments.json": "CreateComment",
+  "POST:/{accountId}/recordings/{recordingId}/filing.json": "MoveRecordingToVault",
   "DELETE:/{accountId}/recordings/{recordingId}/spotlight.json": "UnspotlightRecording",
   "POST:/{accountId}/recordings/{recordingId}/spotlight.json": "SpotlightRecording",
   "PUT:/{accountId}/recordings/{recordingId}/status/active.json": "UnarchiveRecording",

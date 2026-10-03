@@ -3,6 +3,8 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -533,5 +535,99 @@ func TestRecordingsListOptions_BuildsQueryParams(t *testing.T) {
 	}
 	if opts.Direction != "asc" {
 		t.Errorf("expected direction 'asc', got %q", opts.Direction)
+	}
+}
+
+func testMoveToVaultClient(t *testing.T, handler http.HandlerFunc) *RecordingsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	return NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").Recordings()
+}
+
+func TestRecordingsServiceMoveToVault(t *testing.T) {
+	tests := []struct {
+		name string
+		opts *MoveToVaultOptions
+		want string
+	}{
+		{"without a position", nil, `{"parent_id":789}`},
+		{"with a zero position", &MoveToVaultOptions{}, `{"parent_id":789}`},
+		{"with a position", &MoveToVaultOptions{Position: 3}, `{"parent_id":789,"position":3}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var body string
+			svc := testMoveToVaultClient(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost {
+					t.Errorf("expected POST, got %s", r.Method)
+				}
+				if r.URL.Path != "/99999/recordings/456/filing.json" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				raw, _ := io.ReadAll(r.Body)
+				body = string(raw)
+				w.WriteHeader(http.StatusNoContent)
+			})
+
+			if err := svc.MoveToVault(context.Background(), 456, 789, tt.opts); err != nil {
+				t.Fatalf("MoveToVault failed: %v", err)
+			}
+			if body != tt.want {
+				t.Errorf("body = %s, want %s", body, tt.want)
+			}
+		})
+	}
+}
+
+func TestRecordingsServiceMoveToVaultRejectsNegativePosition(t *testing.T) {
+	svc := testMoveToVaultClient(t, func(http.ResponseWriter, *http.Request) {
+		t.Error("a negative position must not reach the wire")
+	})
+
+	err := svc.MoveToVault(context.Background(), 456, 789, &MoveToVaultOptions{Position: -1})
+	if apiErr, ok := errors.AsType[*Error](err); !ok || apiErr.Code != CodeUsage {
+		t.Fatalf("expected usage error, got: %v", err)
+	}
+}
+
+func TestRecordingsServiceMoveToVaultErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		body    string
+		code    string
+		message string
+	}{
+		{"vault into its own vault", http.StatusUnprocessableEntity, `{"error":"Parent must not be self or descendant"}`, CodeValidation, "Parent must not be self or descendant"},
+		{"inactive destination", http.StatusUnprocessableEntity, "", CodeValidation, ""},
+		{"moves restricted", http.StatusForbidden, "", CodeForbidden, ""},
+		{"destination in another project", http.StatusNotFound, "", CodeNotFound, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := testMoveToVaultClient(t, func(w http.ResponseWriter, _ *http.Request) {
+				if tt.body != "" {
+					w.Header().Set("Content-Type", "application/json")
+				}
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(tt.body))
+			})
+
+			err := svc.MoveToVault(context.Background(), 456, 789, nil)
+			apiErr, ok := errors.AsType[*Error](err)
+			if !ok {
+				t.Fatalf("expected *Error, got: %v", err)
+			}
+			if apiErr.Code != tt.code || apiErr.HTTPStatus != tt.status {
+				t.Errorf("got code %q status %d, want %q %d", apiErr.Code, apiErr.HTTPStatus, tt.code, tt.status)
+			}
+			if tt.message != "" && apiErr.Message != tt.message {
+				t.Errorf("message = %q, want %q", apiErr.Message, tt.message)
+			}
+		})
 	}
 }

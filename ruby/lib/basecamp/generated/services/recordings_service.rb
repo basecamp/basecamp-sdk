@@ -23,6 +23,20 @@ module Basecamp
         end
       end
 
+      # Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
+      # @param recording_id [Integer] recording id ID
+      # @param parent_id [Integer] The destination vault. The recording's current vault keeps it where it is
+      #   and changes only its position.
+      # @param position [Integer, nil] 1-indexed position within the destination vault. Defaults to 1 (first); a
+      #   position past the end places it last.
+      # @return [void]
+      def move_to_vault(recording_id:, parent_id:, position: nil)
+        with_operation(service: "recordings", operation: "move_to_vault", is_mutation: true, resource_id: recording_id) do
+          http_post("/recordings/#{recording_id}/filing.json", body: compact_params(parent_id: parent_id, position: position))
+          nil
+        end
+      end
+
       # Put a recording's card in the spotlight area on its project or template home page.
       # @param recording_id [Integer] recording id ID
       # @return [Hash] response data

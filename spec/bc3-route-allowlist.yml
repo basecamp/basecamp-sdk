@@ -188,6 +188,20 @@ sdk_routes_absent_from_bc3_docs:
       so no API view is needed; covered by the "destroy json" case in
       test/controllers/recordings/bubble_ups_controller_test.rb.
 
+  - method: POST
+    path: /recordings/:id/filing
+    reason: >-
+      MoveRecordingToVault. Documented in bc3 master's doc/api/sections/vaults.md
+      ("Move a document, upload, or vault") by bc3 #13644 (4312abe566, merged
+      2026-10-02), which is past the revision spec/api-provenance.json currently
+      pins, so the vendored route table cannot see it yet. `resource :filing,
+      only: :create` (config/routes.rb:260) sits in `concern :recording_actions`
+      (:239), included flat at :310 inside `resources :recordings, only: :show`
+      (commented "CANONICAL: Top-level unscoped routes for recording actions").
+      Recordings::FilingsController#create answers `head :no_content`, so no API
+      view is needed; test/api/recordings/filings_controller_api_test.rb calls
+      the flat route on the API host. Delete at the next repin.
+
 # ---------------------------------------------------------------------------
 # Known-defective SDK routes — bc3 does NOT serve these, and we know it.
 #

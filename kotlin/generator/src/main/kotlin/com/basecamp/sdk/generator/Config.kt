@@ -166,6 +166,7 @@ val VERB_PATTERNS = listOf(
 val METHOD_NAME_OVERRIDES = mapOf(
     "SpotlightRecording" to "spotlight",
     "UnspotlightRecording" to "unspotlight",
+    "MoveRecordingToVault" to "moveToVault",
     "GetMyProfile" to "me",
     // "bookmark(id)" reads as the action; keep the getter explicit.
     "GetBookmark" to "getBookmark",
@@ -301,6 +302,7 @@ val METHOD_NAME_OVERRIDES = mapOf(
 val RESOURCE_TYPE_OVERRIDES = mapOf(
     "SpotlightRecording" to "recording",
     "UnspotlightRecording" to "recording",
+    "MoveRecordingToVault" to "recording",
     "UpdateHillChartSettings" to "hill_chart",
     // The whole family reports "bookmark"; the inferred "my_bookmark" would
     // split the list operation into its own telemetry category.

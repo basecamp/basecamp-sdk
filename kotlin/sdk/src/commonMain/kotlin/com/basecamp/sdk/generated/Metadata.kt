@@ -225,6 +225,7 @@ object Metadata {
         "MarkAsRead" to OperationConfig(true, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "MoveCard" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "MoveCardColumn" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
+        "MoveRecordingToVault" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "PauseQuestion" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "PinMessage" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "PollEvents" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

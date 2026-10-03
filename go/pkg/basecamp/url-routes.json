@@ -2112,6 +2112,23 @@
       }
     },
     {
+      "pattern": "/{accountId}/recordings/{recordingId}/filing",
+      "resource": "Recordings",
+      "operations": {
+        "POST": "MoveRecordingToVault"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/recordings/{recordingId}/spotlight",
       "resource": "Recordings",
       "operations": {

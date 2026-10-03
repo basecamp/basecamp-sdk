@@ -620,6 +620,9 @@ pub static MOVE_CARD: OperationMetadata = OperationMetadata { operation: "MoveCa
 /// `MoveCardColumn`.
 #[rustfmt::skip]
 pub static MOVE_CARD_COLUMN: OperationMetadata = OperationMetadata { operation: "MoveCardColumn", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `MoveRecordingToVault`.
+#[rustfmt::skip]
+pub static MOVE_RECORDING_TO_VAULT: OperationMetadata = OperationMetadata { operation: "MoveRecordingToVault", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `PauseQuestion`.
 #[rustfmt::skip]
 pub static PAUSE_QUESTION: OperationMetadata = OperationMetadata { operation: "PauseQuestion", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -1047,6 +1050,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &MARK_AS_READ,
     &MOVE_CARD,
     &MOVE_CARD_COLUMN,
+    &MOVE_RECORDING_TO_VAULT,
     &PAUSE_QUESTION,
     &PIN_MESSAGE,
     &POLL_EVENTS,

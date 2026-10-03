@@ -36,6 +36,7 @@ let verbPatterns: [(prefix: String, method: String)] = [
 let methodNameOverrides: [String: String] = [
     "SpotlightRecording": "spotlight",
     "UnspotlightRecording": "unspotlight",
+    "MoveRecordingToVault": "moveToVault",
     // "bookmark(id)" reads as the action; keep the getter explicit.
     "GetBookmark": "getBookmark",
     // "folder(id)" reads as a noun with no verb; the rest of the family is

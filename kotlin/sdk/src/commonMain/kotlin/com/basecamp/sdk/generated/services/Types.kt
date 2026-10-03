@@ -901,6 +901,12 @@ data class ListRecordingsOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
+/** Request body for MoveRecordingToVault. */
+data class MoveRecordingToVaultBody(
+    val parentId: Long,
+    val position: Int? = null
+)
+
 /** Options for GetProgressReport. */
 data class GetProgressReportOptions(
     /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */

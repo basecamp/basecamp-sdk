@@ -42,6 +42,28 @@ open class RecordingsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
+     * @param recordingId The recording ID
+     * @param body Request body
+     */
+    suspend fun moveToVault(recordingId: Long, body: MoveRecordingToVaultBody): Unit {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "MoveRecordingToVault",
+            resourceType = "recording",
+            isMutation = true,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        request(info, {
+            httpPost("/recordings/${recordingId}/filing.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("parent_id", kotlinx.serialization.json.JsonPrimitive(body.parentId))
+                body.position?.let { put("position", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
      * Put a recording's card in the spotlight area on its project or template home page.
      * @param recordingId The recording ID
      */

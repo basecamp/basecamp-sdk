@@ -4290,6 +4290,26 @@ pub static MOVE_CARD_COLUMN: Route = Route {
     metadata: &metadata::MOVE_CARD_COLUMN,
 };
 
+/// `POST /recordings/{recordingId}/filing.json`.
+pub static MOVE_RECORDING_TO_VAULT: Route = Route {
+    id: "MoveRecordingToVault",
+    service: "Recordings",
+    method: Method::POST,
+    path: "/recordings/{recordingId}/filing.json",
+    pattern: "/recordings/{recordingId}/filing",
+    resource_type: "recording",
+    params: &[RouteParam {
+        name: "recordingId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Json,
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::MOVE_RECORDING_TO_VAULT,
+};
+
 /// `POST /questions/{questionId}/pause.json`.
 pub static PAUSE_QUESTION: Route = Route {
     id: "PauseQuestion",
@@ -5981,6 +6001,7 @@ pub static ROUTES: &[&Route] = &[
     &MARK_AS_READ,
     &MOVE_CARD,
     &MOVE_CARD_COLUMN,
+    &MOVE_RECORDING_TO_VAULT,
     &PAUSE_QUESTION,
     &PIN_MESSAGE,
     &POLL_EVENTS,

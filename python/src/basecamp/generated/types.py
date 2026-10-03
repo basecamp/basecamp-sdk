@@ -1190,6 +1190,11 @@ class MoveCardRequestContent(TypedDict):
     position: NotRequired[int]
 
 
+class MoveRecordingToVaultRequestContent(TypedDict):
+    parent_id: int
+    position: NotRequired[int]
+
+
 class MyAssignment(TypedDict):
     app_url: NotRequired[str]
     assignees: NotRequired[list[MyAssignmentAssignee]]
