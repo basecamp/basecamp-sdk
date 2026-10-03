@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 import respx
@@ -112,4 +114,69 @@ class TestAsyncRecordingSpotlights:
         client = AsyncClient(access_token="test-token")
         with pytest.raises(ForbiddenError):
             await client.for_account("12345").recordings.unspotlight(recording_id=456)
+        await client.close()
+
+
+class TestRecordingMoveToVault:
+    @respx.mock
+    def test_posts_the_vault_and_the_position_only_when_given(self):
+        route = respx.post(f"{BASE}/recordings/456/filing.json").mock(return_value=httpx.Response(204))
+
+        client, account = make_account()
+        assert account.recordings.move_to_vault(recording_id=456, parent_id=789) is None
+        assert account.recordings.move_to_vault(recording_id=456, parent_id=789, position=2) is None
+        client.close()
+
+        bodies = [json.loads(call.request.content) for call in route.calls]
+        assert bodies == [{"parent_id": 789}, {"parent_id": 789, "position": 2}]
+
+    @respx.mock
+    def test_surfaces_the_refusal_reason(self):
+        respx.post(f"{BASE}/recordings/456/filing.json").mock(
+            return_value=httpx.Response(422, json={"error": "Parent must not be self or descendant"})
+        )
+
+        client, account = make_account()
+        with pytest.raises(ValidationError) as excinfo:
+            account.recordings.move_to_vault(recording_id=456, parent_id=789)
+        client.close()
+
+        assert excinfo.value.http_status == 422
+        assert "Parent must not be self or descendant" in str(excinfo.value)
+
+    @respx.mock
+    def test_surfaces_a_bodiless_refusal(self):
+        respx.post(f"{BASE}/recordings/456/filing.json").mock(return_value=httpx.Response(403))
+
+        client, account = make_account()
+        with pytest.raises(ForbiddenError) as excinfo:
+            account.recordings.move_to_vault(recording_id=456, parent_id=789)
+        client.close()
+
+        assert excinfo.value.http_status == 403
+
+
+class TestAsyncRecordingMoveToVault:
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_posts_the_vault_and_the_position_only_when_given(self):
+        route = respx.post(f"{BASE}/recordings/456/filing.json").mock(return_value=httpx.Response(204))
+
+        client = AsyncClient(access_token="test-token")
+        recordings = client.for_account("12345").recordings
+        assert await recordings.move_to_vault(recording_id=456, parent_id=789) is None
+        assert await recordings.move_to_vault(recording_id=456, parent_id=789, position=2) is None
+        await client.close()
+
+        bodies = [json.loads(call.request.content) for call in route.calls]
+        assert bodies == [{"parent_id": 789}, {"parent_id": 789, "position": 2}]
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_surfaces_a_bodiless_refusal(self):
+        respx.post(f"{BASE}/recordings/456/filing.json").mock(return_value=httpx.Response(422))
+
+        client = AsyncClient(access_token="test-token")
+        with pytest.raises(ValidationError):
+            await client.for_account("12345").recordings.move_to_vault(recording_id=456, parent_id=789)
         await client.close()

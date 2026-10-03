@@ -10374,7 +10374,7 @@
       "tag": "Recordings",
       "method": "POST",
       "path": "/{accountId}/recordings/{recordingId}/filing.json",
-      "doc": "Move a document, upload or vault into another vault in the same project, or\nchange its position within the vault it is already in. The recording moves in\nplace: its id, comments, bookmarks and history stay with it, and a vault takes\neverything inside it along. A destination in another project is 404; moves to\nanother project are not this operation. 404, 403 and some 422s carry no body.\n\n403 when the caller may not move the recording (an account can restrict moves\nto admins and creators). 422 when position is not a positive whole number, the\ndestination is not a vault or is not active, the recording is not active, or a\nvault would move into one of its own vaults; only the position and vault-cycle\nrefusals carry an `error` message.",
+      "doc": "Move a document, upload or vault into another vault in the same project.\n\nThe same call with the vault it is already in changes only its position. The\nrecording moves in place: its id, comments, bookmarks and history stay with\nit, and a vault takes everything inside it along. A destination in another\nproject is 404; moves to another project are not this operation. 404, 403 and\nsome 422s carry no body.\n\n403 when the caller may not move the recording (an account can restrict moves\nto admins and creators). 422 when position is not a positive whole number, the\ndestination is not a vault or is not active, the recording is not active, or a\nvault would move into one of its own vaults; only the position and vault-cycle\nrefusals carry an `error` message.",
       "readonly": false,
       "idempotent": false,
       "retry": {

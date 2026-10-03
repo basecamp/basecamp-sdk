@@ -5211,7 +5211,7 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 - Total operations: `279` <!-- @operation-count -->
 - Idempotent: 97 (flagged with `idempotent: true`)
-- Non-idempotent: 181 (no `idempotent` field, or not present)
+- Non-idempotent: 182 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` (`[503]`)
 
 ---

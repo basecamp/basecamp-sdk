@@ -46,11 +46,13 @@ class RecordingsService(BaseService):
         )
 
     def move_to_vault(self, *, recording_id: int, parent_id: int, position: int | None = None) -> None:
-        """Move a document, upload or vault into another vault in the same project, or
-        change its position within the vault it is already in. The recording moves in
-        place: its id, comments, bookmarks and history stay with it, and a vault takes
-        everything inside it along. A destination in another project is 404; moves to
-        another project are not this operation. 404, 403 and some 422s carry no body.
+        """Move a document, upload or vault into another vault in the same project.
+
+        The same call with the vault it is already in changes only its position. The
+        recording moves in place: its id, comments, bookmarks and history stay with
+        it, and a vault takes everything inside it along. A destination in another
+        project is 404; moves to another project are not this operation. 404, 403 and
+        some 422s carry no body.
 
         403 when the caller may not move the recording (an account can restrict moves
         to admins and creators). 422 when position is not a positive whole number, the
@@ -177,11 +179,13 @@ class AsyncRecordingsService(AsyncBaseService):
         )
 
     async def move_to_vault(self, *, recording_id: int, parent_id: int, position: int | None = None) -> None:
-        """Move a document, upload or vault into another vault in the same project, or
-        change its position within the vault it is already in. The recording moves in
-        place: its id, comments, bookmarks and history stay with it, and a vault takes
-        everything inside it along. A destination in another project is 404; moves to
-        another project are not this operation. 404, 403 and some 422s carry no body.
+        """Move a document, upload or vault into another vault in the same project.
+
+        The same call with the vault it is already in changes only its position. The
+        recording moves in place: its id, comments, bookmarks and history stay with
+        it, and a vault takes everything inside it along. A destination in another
+        project is 404; moves to another project are not this operation. 404, 403 and
+        some 422s carry no body.
 
         403 when the caller may not move the recording (an account can restrict moves
         to admins and creators). 422 when position is not a positive whole number, the

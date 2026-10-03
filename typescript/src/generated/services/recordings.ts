@@ -87,7 +87,7 @@ export class RecordingsService extends BaseService {
   }
 
   /**
-   * Move a document, upload or vault into another vault in the same project, or
+   * Move a document, upload or vault into another vault in the same project.
    * @param recordingId - The recording ID
    * @param req - Recording request parameters
    * @returns void

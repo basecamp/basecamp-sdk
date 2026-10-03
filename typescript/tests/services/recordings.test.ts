@@ -168,6 +168,47 @@ describe("RecordingsService", () => {
     });
   });
 
+  describe("moveToVault", () => {
+    it("should post the destination vault, and the position only when given", async () => {
+      const bodies: unknown[] = [];
+      server.use(
+        http.post(`${BASE_URL}/recordings/3001/filing.json`, async ({ request }) => {
+          bodies.push(await request.json());
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      await expect(service.moveToVault(3001, { parentId: 4001 })).resolves.toBeUndefined();
+      await expect(service.moveToVault(3001, { parentId: 4001, position: 2 })).resolves.toBeUndefined();
+      expect(bodies).toEqual([{ parent_id: 4001 }, { parent_id: 4001, position: 2 }]);
+    });
+
+    it("should surface the reason a refused move gives", async () => {
+      server.use(
+        http.post(`${BASE_URL}/recordings/3001/filing.json`, () => {
+          return HttpResponse.json({ error: "Parent must not be self or descendant" }, { status: 422 });
+        }),
+      );
+
+      const error = await service.moveToVault(3001, { parentId: 4001 }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).httpStatus).toBe(422);
+      expect((error as BasecampError).message).toContain("Parent must not be self or descendant");
+    });
+
+    it("should surface a refusal without a body", async () => {
+      server.use(
+        http.post(`${BASE_URL}/recordings/3001/filing.json`, () => {
+          return new HttpResponse(null, { status: 403 });
+        }),
+      );
+
+      const error = await service.moveToVault(3001, { parentId: 4001 }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).httpStatus).toBe(403);
+    });
+  });
+
   describe("trash", () => {
     it("should move a recording to trash", async () => {
       server.use(

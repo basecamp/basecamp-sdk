@@ -89,6 +89,39 @@ class RecordingsServiceTest < Minitest::Test
     assert_equal 403, error.http_status
   end
 
+  def test_move_to_vault
+    bodies = []
+    stub_request(:post, "https://3.basecampapi.com/12345/recordings/456/filing.json")
+      .with { |req| bodies << JSON.parse(req.body) }
+      .to_return(status: 204)
+
+    assert_nil @account.recordings.move_to_vault(recording_id: 456, parent_id: 789)
+    assert_nil @account.recordings.move_to_vault(recording_id: 456, parent_id: 789, position: 2)
+    assert_equal [ { "parent_id" => 789 }, { "parent_id" => 789, "position" => 2 } ], bodies
+  end
+
+  def test_move_to_vault_surfaces_the_refusal_reason
+    stub_request(:post, "https://3.basecampapi.com/12345/recordings/456/filing.json")
+      .to_return(status: 422, body: { error: "Parent must not be self or descendant" }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @account.recordings.move_to_vault(recording_id: 456, parent_id: 789)
+    end
+    assert_equal 422, error.http_status
+    assert_includes error.message, "Parent must not be self or descendant"
+  end
+
+  def test_move_to_vault_surfaces_a_bodiless_refusal
+    stub_request(:post, "https://3.basecampapi.com/12345/recordings/456/filing.json")
+      .to_return(status: 403, body: "")
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.recordings.move_to_vault(recording_id: 456, parent_id: 789)
+    end
+    assert_equal 403, error.http_status
+  end
+
   def test_archive
     stub_put("/12345/recordings/456/status/archived.json", response_body: {})
 

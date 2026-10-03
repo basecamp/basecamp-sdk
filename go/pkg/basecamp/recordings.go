@@ -461,7 +461,7 @@ func (s *RecordingsService) MoveToVault(ctx context.Context, recordingID, vaultI
 	}
 	if opts != nil {
 		if opts.Position < 0 {
-			err = ErrUsage("position must be at least 1")
+			err = ErrUsage("position must not be negative (0 means first)")
 			return err
 		}
 		if opts.Position > 0 {
