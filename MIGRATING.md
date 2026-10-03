@@ -39,7 +39,7 @@ what you sent if you need to know the change took.
 
 `MoveRecordingToVault` is a new operation, and additive for every caller: the
 Recordings service gains `moveToVault` (`MoveToVault` in Go, `move_to_vault` in
-Python and Ruby). It breaks only Go code that implements the generated
+Python, Ruby and Rust). It breaks only Go code that implements the generated
 `ClientInterface` / `ClientWithResponsesInterface` itself, which gain
 `MoveRecordingToVault` and `MoveRecordingToVaultWithBody` and their
 `...WithResponse` forms. The generated client is the only intended implementer;
