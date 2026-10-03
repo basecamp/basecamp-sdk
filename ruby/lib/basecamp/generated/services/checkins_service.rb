@@ -141,12 +141,13 @@ module Basecamp
 
       # Update notification settings for a check-in question
       # @param question_id [Integer] question id ID
-      # @param notify_on_answer [Boolean, nil] Notify when someone answers
-      # @param digest_include_unanswered [Boolean, nil] Include unanswered in digest
+      # @param responding [Boolean, nil] Whether the authenticated user is asked this question. Omit to leave it unchanged.
+      #   Turning it on also subscribes the user unless `subscribed: false` is sent with it.
+      # @param subscribed [Boolean, nil] Whether the authenticated user is notified when someone answers. Omit to leave it unchanged.
       # @return [Hash] response data
-      def update_notification_settings(question_id:, notify_on_answer: nil, digest_include_unanswered: nil)
+      def update_notification_settings(question_id:, responding: nil, subscribed: nil)
         with_operation(service: "checkins", operation: "update_notification_settings", is_mutation: true, resource_id: question_id) do
-          http_put("/questions/#{question_id}/notification_settings.json", body: compact_params(notify_on_answer: notify_on_answer, digest_include_unanswered: digest_include_unanswered)).json(operation: "UpdateQuestionNotificationSettings")
+          http_put("/questions/#{question_id}/notification_settings.json", body: compact_params(responding: responding, subscribed: subscribed)).json(operation: "UpdateQuestionNotificationSettings")
         end
       end
 

@@ -353,8 +353,8 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
         )
         return request(info, {
             httpPut("/questions/${questionId}/notification_settings.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                body.notifyOnAnswer?.let { put("notify_on_answer", kotlinx.serialization.json.JsonPrimitive(it)) }
-                body.digestIncludeUnanswered?.let { put("digest_include_unanswered", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.responding?.let { put("responding", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.subscribed?.let { put("subscribed", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<JsonElement>(body)

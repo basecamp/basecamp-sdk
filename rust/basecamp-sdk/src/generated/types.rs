@@ -6770,12 +6770,13 @@ pub type UpdateProjectResponseContent = Project;
 /// The `UpdateQuestionNotificationSettingsRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateQuestionNotificationSettingsRequestContent {
-    /// Notify when someone answers
+    /// Whether the authenticated user is asked this question. Omit to leave it unchanged.
+    /// Turning it on also subscribes the user unless `subscribed: false` is sent with it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub notify_on_answer: Option<bool>,
-    /// Include unanswered in digest
+    pub responding: Option<bool>,
+    /// Whether the authenticated user is notified when someone answers. Omit to leave it unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub digest_include_unanswered: Option<bool>,
+    pub subscribed: Option<bool>,
 }
 
 /// The `UpdateQuestionNotificationSettingsResponseContent` shape of the Basecamp API.

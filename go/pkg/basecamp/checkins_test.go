@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"testing"
 )
@@ -1357,7 +1358,9 @@ func TestCheckinsService_PauseQuestionError(t *testing.T) {
 
 // TestCheckinsService_UpdateQuestionNotificationSettings verifies the wire
 // shape (PUT to notification_settings.json) and the tri-state request fields:
-// nil omits a key, and an explicit false is sent (not dropped).
+// nil omits a key, and an explicit false is sent (not dropped). The keys are
+// the two bc3's Questions::NotificationSettingsController reads; it ignores any
+// other key and still answers 200, so a wrong name fails silently.
 func TestCheckinsService_UpdateQuestionNotificationSettings(t *testing.T) {
 	fls := false
 
@@ -1373,7 +1376,7 @@ func TestCheckinsService_UpdateQuestionNotificationSettings(t *testing.T) {
 	})
 
 	settings, err := svc.UpdateQuestionNotificationSettings(context.Background(), 1069479410, &UpdateQuestionNotificationSettingsRequest{
-		NotifyOnAnswer: &fls,
+		Subscribed: &fls,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1386,11 +1389,9 @@ func TestCheckinsService_UpdateQuestionNotificationSettings(t *testing.T) {
 		t.Errorf("expected path /99999/questions/1069479410/notification_settings.json, got %q", requestedPath)
 	}
 
-	if got, ok := receivedBody["notify_on_answer"]; !ok || got != false {
-		t.Errorf("expected notify_on_answer false to reach the wire, got %v (present=%v)", got, ok)
-	}
-	if _, ok := receivedBody["digest_include_unanswered"]; ok {
-		t.Errorf("expected digest_include_unanswered to be omitted when nil, but it was present: %v", receivedBody["digest_include_unanswered"])
+	want := map[string]any{"subscribed": false}
+	if !reflect.DeepEqual(receivedBody, want) {
+		t.Errorf("expected request body %v, got %v", want, receivedBody)
 	}
 
 	if !settings.Responding {
@@ -1398,6 +1399,30 @@ func TestCheckinsService_UpdateQuestionNotificationSettings(t *testing.T) {
 	}
 	if settings.Subscribed {
 		t.Error("expected Subscribed false")
+	}
+}
+
+func TestCheckinsService_UpdateQuestionNotificationSettingsSendsBoth(t *testing.T) {
+	tru, fls := true, false
+
+	var receivedBody map[string]any
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`{"responding":true,"subscribed":false}`))
+	})
+
+	if _, err := svc.UpdateQuestionNotificationSettings(context.Background(), 1069479410, &UpdateQuestionNotificationSettingsRequest{
+		Responding: &tru,
+		Subscribed: &fls,
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := map[string]any{"responding": true, "subscribed": false}
+	if !reflect.DeepEqual(receivedBody, want) {
+		t.Errorf("expected request body %v, got %v", want, receivedBody)
 	}
 }
 

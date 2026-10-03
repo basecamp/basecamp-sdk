@@ -2,11 +2,11 @@
 import Foundation
 
 public struct UpdateQuestionNotificationSettingsRequest: Codable, Sendable {
-    public var digestIncludeUnanswered: Bool?
-    public var notifyOnAnswer: Bool?
+    public var responding: Bool?
+    public var subscribed: Bool?
 
-    public init(digestIncludeUnanswered: Bool? = nil, notifyOnAnswer: Bool? = nil) {
-        self.digestIncludeUnanswered = digestIncludeUnanswered
-        self.notifyOnAnswer = notifyOnAnswer
+    public init(responding: Bool? = nil, subscribed: Bool? = nil) {
+        self.responding = responding
+        self.subscribed = subscribed
     }
 }

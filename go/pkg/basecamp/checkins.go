@@ -208,11 +208,11 @@ type UpdateAnswerRequest struct {
 // leaves that setting unchanged; a non-nil value is sent verbatim, and an
 // explicit false reaches the wire (the pointer distinguishes unset from false).
 type UpdateQuestionNotificationSettingsRequest struct {
-	// NotifyOnAnswer controls whether the user is notified when someone answers.
-	NotifyOnAnswer *bool `json:"notify_on_answer,omitempty"`
-	// DigestIncludeUnanswered controls whether unanswered questions are
-	// included in the digest.
-	DigestIncludeUnanswered *bool `json:"digest_include_unanswered,omitempty"`
+	// Responding controls whether the user is asked this question. Turning it
+	// on also subscribes the user unless Subscribed is false in the same request.
+	Responding *bool `json:"responding,omitempty"`
+	// Subscribed controls whether the user is notified when someone answers.
+	Subscribed *bool `json:"subscribed,omitempty"`
 }
 
 // QuestionListResult contains the results from listing questions.
@@ -582,8 +582,8 @@ func (s *CheckinsService) UpdateQuestionNotificationSettings(ctx context.Context
 	}
 
 	body := generated.UpdateQuestionNotificationSettingsJSONRequestBody{
-		NotifyOnAnswer:          req.NotifyOnAnswer,
-		DigestIncludeUnanswered: req.DigestIncludeUnanswered,
+		Responding: req.Responding,
+		Subscribed: req.Subscribed,
 	}
 
 	resp, err := s.client.parent.gen.UpdateQuestionNotificationSettingsWithResponse(ctx, s.client.accountID, questionID, body)

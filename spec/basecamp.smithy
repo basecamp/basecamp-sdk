@@ -8527,11 +8527,12 @@ structure UpdateQuestionNotificationSettingsInput {
   @httpLabel
   questionId: QuestionId
 
-  /// Notify when someone answers
-  notify_on_answer: Boolean
+  /// Whether the authenticated user is asked this question. Omit to leave it unchanged.
+  /// Turning it on also subscribes the user unless `subscribed: false` is sent with it.
+  responding: Boolean
 
-  /// Include unanswered in digest
-  digest_include_unanswered: Boolean
+  /// Whether the authenticated user is notified when someone answers. Omit to leave it unchanged.
+  subscribed: Boolean
 }
 
 structure UpdateQuestionNotificationSettingsOutput {

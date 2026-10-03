@@ -4654,11 +4654,12 @@ type UpdateProjectResponseContent = Project
 
 // UpdateQuestionNotificationSettingsRequestContent defines model for UpdateQuestionNotificationSettingsRequestContent.
 type UpdateQuestionNotificationSettingsRequestContent struct {
-	// DigestIncludeUnanswered Include unanswered in digest
-	DigestIncludeUnanswered *bool `json:"digest_include_unanswered,omitempty"`
+	// Responding Whether the authenticated user is asked this question. Omit to leave it unchanged.
+	// Turning it on also subscribes the user unless `subscribed: false` is sent with it.
+	Responding *bool `json:"responding,omitempty"`
 
-	// NotifyOnAnswer Notify when someone answers
-	NotifyOnAnswer *bool `json:"notify_on_answer,omitempty"`
+	// Subscribed Whether the authenticated user is notified when someone answers. Omit to leave it unchanged.
+	Subscribed *bool `json:"subscribed,omitempty"`
 }
 
 // UpdateQuestionNotificationSettingsResponseContent defines model for UpdateQuestionNotificationSettingsResponseContent.
