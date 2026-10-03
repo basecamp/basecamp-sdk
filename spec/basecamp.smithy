@@ -7926,9 +7926,9 @@ structure UnarchiveRecordingInput {
 
 structure UnarchiveRecordingOutput {}
 
-/// Move a document, upload or vault into another vault in the same project.
+/// Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
 ///
-/// The same call with the vault it is already in changes only its position. The
+/// Passing the vault it is already in changes only its position. The
 /// recording moves in place: its id, comments, bookmarks and history stay with
 /// it, and a vault takes everything inside it along. A destination in another
 /// project is 404; moves to another project are not this operation. 404, 403 and

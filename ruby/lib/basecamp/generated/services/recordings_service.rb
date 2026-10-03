@@ -23,7 +23,7 @@ module Basecamp
         end
       end
 
-      # Move a document, upload or vault into another vault in the same project.
+      # Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
       # @param recording_id [Integer] recording id ID
       # @param parent_id [Integer] The destination vault. The recording's current vault keeps it where it is
       #   and changes only its position.

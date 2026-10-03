@@ -42,7 +42,7 @@ open class RecordingsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Move a document, upload or vault into another vault in the same project.
+     * Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
      * @param recordingId The recording ID
      * @param body Request body
      */
