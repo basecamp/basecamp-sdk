@@ -35,6 +35,16 @@ The request members are renamed, which breaks source in every typed SDK:
 The response is unchanged, `{"responding": …, "subscribed": …}`. Compare it with
 what you sent if you need to know the change took.
 
+### Recordings: moving a document, upload or vault to another vault (#960)
+
+`MoveRecordingToVault` is a new operation, and additive for every caller: the
+Recordings service gains `moveToVault` (`MoveToVault` in Go, `move_to_vault` in
+Python and Ruby). It breaks only Go code that implements the generated
+`ClientInterface` / `ClientWithResponsesInterface` itself, which gain
+`MoveRecordingToVault` and `MoveRecordingToVaultWithBody` and their
+`...WithResponse` forms. The generated client is the only intended implementer;
+a mock or fake of your own must add the four methods.
+
 # v0.21.0
 
 ### Template library: `GetTemplateLibrary` is renamed, and card table templates arrive
