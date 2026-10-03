@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.22.0
 
 ### Check-in question notification settings: the two fields are `responding` and `subscribed`
 
