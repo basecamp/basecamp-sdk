@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.23.0
 
 ### Check-in questions: create and update take the time of day as `time_of_day`
 
