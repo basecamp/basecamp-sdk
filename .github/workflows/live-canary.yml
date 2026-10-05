@@ -115,7 +115,7 @@ jobs:
 
       - name: Set up Ruby
         if: steps.secrets.outputs.configured == 'true'
-        uses: ruby/setup-ruby@a0102e0972be65f351c307e2d64b9314a57c8073 # v1.324.0
+        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
         with:
           ruby-version: '3.3'
           bundler-cache: true
@@ -123,7 +123,7 @@ jobs:
 
       - name: Install uv (Python)
         if: steps.secrets.outputs.configured == 'true'
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
 
       - name: Build TypeScript SDK
         if: steps.secrets.outputs.configured == 'true'
