@@ -414,11 +414,10 @@ func TestQuestionAnswer_UnmarshalGet(t *testing.T) {
 func TestCreateQuestionRequest_Marshal(t *testing.T) {
 	req := CreateQuestionRequest{
 		Title: "What are you working on?",
-		Schedule: &QuestionSchedule{
+		Schedule: &QuestionScheduleInput{
 			Frequency: "every_day",
 			Days:      []int{1, 2, 3, 4, 5},
-			Hour:      intPtr(17),
-			Minute:    intPtr(0),
+			TimeOfDay: "5:00pm",
 		},
 	}
 
@@ -443,13 +442,8 @@ func TestCreateQuestionRequest_Marshal(t *testing.T) {
 	if schedule["frequency"] != "every_day" {
 		t.Errorf("unexpected frequency: %v", schedule["frequency"])
 	}
-	hour, _ := schedule["hour"].(json.Number).Int64()
-	if hour != 17 {
-		t.Errorf("unexpected hour: %v", schedule["hour"])
-	}
-	minute, _ := schedule["minute"].(json.Number).Int64()
-	if minute != 0 {
-		t.Errorf("unexpected minute: %v", schedule["minute"])
+	if schedule["time_of_day"] != "5:00pm" {
+		t.Errorf("unexpected time_of_day: %v", schedule["time_of_day"])
 	}
 
 	days, ok := schedule["days"].([]any)
@@ -481,11 +475,10 @@ func TestUpdateQuestionRequest_Marshal(t *testing.T) {
 	paused := true
 	req := UpdateQuestionRequest{
 		Title: "Updated question text",
-		Schedule: &QuestionSchedule{
+		Schedule: &QuestionScheduleInput{
 			Frequency: "every_week",
 			Days:      []int{5},
-			Hour:      intPtr(16),
-			Minute:    intPtr(30),
+			TimeOfDay: "4:30pm",
 		},
 		Paused: &paused,
 	}
@@ -717,10 +710,10 @@ func TestCheckinsService_UpdateQuestionPartialSchedule(t *testing.T) {
 		w.Write(fixture)
 	})
 
-	// Update only the schedule end_date — other schedule fields must not leak
+	// Update only the schedule's time of day — other schedule fields must not leak
 	_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
-		Schedule: &QuestionSchedule{
-			EndDate: "2025-06-30",
+		Schedule: &QuestionScheduleInput{
+			TimeOfDay: "9:00am",
 		},
 	})
 	if err != nil {
@@ -736,12 +729,12 @@ func TestCheckinsService_UpdateQuestionPartialSchedule(t *testing.T) {
 		t.Fatalf("expected schedule to be a map, got %T", schedRaw)
 	}
 
-	if sched["end_date"] != "2025-06-30" {
-		t.Errorf("expected end_date '2025-06-30', got %v", sched["end_date"])
+	if sched["time_of_day"] != "9:00am" {
+		t.Errorf("expected time_of_day '9:00am', got %v", sched["time_of_day"])
 	}
 
 	// Zero-valued schedule fields must NOT be present
-	for _, field := range []string{"frequency", "days", "hour", "minute", "start_date"} {
+	for _, field := range []string{"frequency", "days", "week_instance", "start_date"} {
 		if _, ok := sched[field]; ok {
 			t.Errorf("expected schedule.%q to be omitted, but it was present: %v", field, sched[field])
 		}
@@ -762,7 +755,7 @@ func TestCheckinsService_UpdateQuestionEmptySchedule(t *testing.T) {
 	// Non-nil but entirely empty Schedule must not leak as {}
 	_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
 		Title:    "New title",
-		Schedule: &QuestionSchedule{},
+		Schedule: &QuestionScheduleInput{},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -794,29 +787,25 @@ func TestCheckinsService_QuestionBodyBytes(t *testing.T) {
 			call: func(svc *CheckinsService) error {
 				_, err := svc.CreateQuestion(context.Background(), 777, &CreateQuestionRequest{
 					Title: "What did you work on today?",
-					Schedule: &QuestionSchedule{
-						Frequency:     "on_certain_days",
-						Days:          []int{1, 2, 3, 4, 5},
-						Hour:          intp(17),
-						Minute:        intp(0),
-						WeekInstance:  intp(1),
-						WeekInterval:  intp(2),
-						MonthInterval: intp(3),
-						StartDate:     "2025-01-01",
-						EndDate:       "2025-06-30",
+					Schedule: &QuestionScheduleInput{
+						Frequency:    "on_certain_days",
+						Days:         []int{1, 2, 3, 4, 5},
+						TimeOfDay:    "5:00pm",
+						WeekInstance: intp(1),
+						StartDate:    "2025-01-01",
 					},
 					VisibleToClients: boolp(true),
 				})
 				return err
 			},
-			want: `{"schedule":{"days":[1,2,3,4,5],"end_date":"2025-06-30","frequency":"on_certain_days","hour":17,"minute":0,"month_interval":3,"start_date":"2025-01-01","week_instance":1,"week_interval":2},"title":"What did you work on today?","visible_to_clients":true}`,
+			want: `{"schedule":{"days":[1,2,3,4,5],"frequency":"on_certain_days","start_date":"2025-01-01","time_of_day":"5:00pm","week_instance":1},"title":"What did you work on today?","visible_to_clients":true}`,
 		},
 		{
 			name: "create explicit empty days",
 			call: func(svc *CheckinsService) error {
 				_, err := svc.CreateQuestion(context.Background(), 777, &CreateQuestionRequest{
 					Title: "Standup?",
-					Schedule: &QuestionSchedule{
+					Schedule: &QuestionScheduleInput{
 						Frequency: "every_day",
 						Days:      []int{},
 					},
@@ -830,7 +819,7 @@ func TestCheckinsService_QuestionBodyBytes(t *testing.T) {
 			call: func(svc *CheckinsService) error {
 				_, err := svc.CreateQuestion(context.Background(), 777, &CreateQuestionRequest{
 					Title:    "Standup?",
-					Schedule: &QuestionSchedule{Frequency: "every_day"},
+					Schedule: &QuestionScheduleInput{Frequency: "every_day"},
 				})
 				return err
 			},
@@ -860,18 +849,18 @@ func TestCheckinsService_QuestionBodyBytes(t *testing.T) {
 			name: "update partial schedule",
 			call: func(svc *CheckinsService) error {
 				_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
-					Schedule: &QuestionSchedule{EndDate: "2025-06-30"},
+					Schedule: &QuestionScheduleInput{TimeOfDay: "9:00am"},
 				})
 				return err
 			},
-			want: `{"schedule":{"end_date":"2025-06-30"}}`,
+			want: `{"schedule":{"time_of_day":"9:00am"}}`,
 		},
 		{
 			name: "update empty schedule struct omitted",
 			call: func(svc *CheckinsService) error {
 				_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
 					Title:    "New title",
-					Schedule: &QuestionSchedule{},
+					Schedule: &QuestionScheduleInput{},
 				})
 				return err
 			},
@@ -934,13 +923,13 @@ func TestCheckinsService_QuestionScheduleRejectsOutOfRangeInts(t *testing.T) {
 		"create days": func() error {
 			_, err := svc.CreateQuestion(context.Background(), 777, &CreateQuestionRequest{
 				Title:    "Standup?",
-				Schedule: &QuestionSchedule{Frequency: "every_day", Days: []int{big}},
+				Schedule: &QuestionScheduleInput{Frequency: "every_day", Days: []int{big}},
 			})
 			return err
 		},
-		"update hour": func() error {
+		"update week_instance": func() error {
 			_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
-				Schedule: &QuestionSchedule{Hour: &big},
+				Schedule: &QuestionScheduleInput{WeekInstance: &big},
 			})
 			return err
 		},
@@ -1270,7 +1259,7 @@ func TestCheckinsService_CreateQuestionVisibleToClients(t *testing.T) {
 
 			_, err := svc.CreateQuestion(context.Background(), 12345, &CreateQuestionRequest{
 				Title:            "How are you?",
-				Schedule:         &QuestionSchedule{Frequency: "every_day", Days: []int{1, 2, 3, 4, 5}},
+				Schedule:         &QuestionScheduleInput{Frequency: "every_day", Days: []int{1, 2, 3, 4, 5}},
 				VisibleToClients: tc.value,
 			})
 			if err != nil {
@@ -1649,6 +1638,56 @@ func TestCheckinsService_ListQuestionReminders_Pagination(t *testing.T) {
 			}
 			if result.Meta.Truncated != tc.wantTruncated {
 				t.Errorf("expected Truncated=%v, got %v", tc.wantTruncated, result.Meta.Truncated)
+			}
+		})
+	}
+}
+
+// BC3 reads a question's time of day from schedule.time_of_day ("5:00pm") on
+// create and update, and answers 422 when it is missing; hour and minute exist
+// only in the response.
+func TestCheckinsService_QuestionScheduleSendsTimeOfDay(t *testing.T) {
+	fixture := loadCheckinsFixture(t, "question.json")
+	schedule := &QuestionScheduleInput{Frequency: "every_day", Days: []int{1, 2, 3, 4, 5}, TimeOfDay: "5:00pm"}
+
+	for _, tc := range []struct {
+		name   string
+		status int
+		call   func(svc *CheckinsService) error
+	}{
+		{"create", 201, func(svc *CheckinsService) error {
+			_, err := svc.CreateQuestion(context.Background(), 12345, &CreateQuestionRequest{Title: "How are you?", Schedule: schedule})
+			return err
+		}},
+		{"update", 200, func(svc *CheckinsService) error {
+			_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{Schedule: schedule})
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedBody map[string]any
+			svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				receivedBody = decodeRequestBody(t, r)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				w.Write(fixture)
+			})
+
+			if err := tc.call(svc); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			sched, ok := receivedBody["schedule"].(map[string]any)
+			if !ok {
+				t.Fatalf("expected a schedule object, got %v", receivedBody["schedule"])
+			}
+			if sched["time_of_day"] != "5:00pm" {
+				t.Errorf("schedule.time_of_day = %v, want \"5:00pm\" (schedule=%v)", sched["time_of_day"], sched)
+			}
+			for _, field := range []string{"hour", "minute"} {
+				if _, present := sched[field]; present {
+					t.Errorf("schedule.%s must not be sent; BC3 ignores it (schedule=%v)", field, sched)
+				}
 			}
 		})
 	}

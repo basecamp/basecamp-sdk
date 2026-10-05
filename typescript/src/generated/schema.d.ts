@@ -4670,7 +4670,7 @@ export interface components {
         CreateProjectResponseContent: components["schemas"]["Project"];
         CreateQuestionRequestContent: {
             title: string;
-            schedule: components["schemas"]["QuestionSchedule"];
+            schedule: components["schemas"]["QuestionScheduleInput"];
             visible_to_clients?: boolean;
         };
         CreateQuestionResponseContent: components["schemas"]["Question"];
@@ -6326,6 +6326,18 @@ export interface components {
             month_interval?: number;
             start_date?: string;
             end_date?: string;
+        };
+        /**
+         * @description The schedule a question is created or updated with. BC3 reads the time of
+         *     day as a string ("5:00pm"); hour and minute appear only in responses.
+         */
+        QuestionScheduleInput: {
+            frequency?: string;
+            days?: number[];
+            time_of_day?: string;
+            /** Format: int32 */
+            week_instance?: number;
+            start_date?: string;
         };
         Questionnaire: {
             /** Format: int64 */
@@ -8010,7 +8022,7 @@ export interface components {
         };
         UpdateQuestionRequestContent: {
             title?: string;
-            schedule?: components["schemas"]["QuestionSchedule"];
+            schedule?: components["schemas"]["QuestionScheduleInput"];
             paused?: boolean;
         };
         UpdateQuestionResponseContent: components["schemas"]["Question"];

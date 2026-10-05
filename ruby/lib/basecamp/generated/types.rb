@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-03T00:10:53Z
+# Generated: 2026-10-05T19:11:15Z
 
 require "json"
 require "time"
@@ -3700,6 +3700,34 @@ module Basecamp
           "start_date" => @start_date,
           "week_instance" => @week_instance,
           "week_interval" => @week_interval,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # QuestionScheduleInput
+    class QuestionScheduleInput
+      include TypeHelpers
+      attr_accessor :days, :frequency, :start_date, :time_of_day, :week_instance
+
+      def initialize(data = {})
+        @days = data["days"]
+        @frequency = data["frequency"]
+        @start_date = data["start_date"]
+        @time_of_day = data["time_of_day"]
+        @week_instance = parse_integer(data["week_instance"])
+      end
+
+      def to_h
+        {
+          "days" => @days,
+          "frequency" => @frequency,
+          "start_date" => @start_date,
+          "time_of_day" => @time_of_day,
+          "week_instance" => @week_instance,
         }.compact
       end
 

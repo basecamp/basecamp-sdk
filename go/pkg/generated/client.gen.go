@@ -835,9 +835,11 @@ type CreateProjectResponseContent = Project
 
 // CreateQuestionRequestContent defines model for CreateQuestionRequestContent.
 type CreateQuestionRequestContent struct {
-	Schedule         QuestionSchedule `json:"schedule"`
-	Title            string           `json:"title"`
-	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
+	// Schedule The schedule a question is created or updated with. BC3 reads the time of
+	// day as a string ("5:00pm"); hour and minute appear only in responses.
+	Schedule         QuestionScheduleInput `json:"schedule"`
+	Title            string                `json:"title"`
+	VisibleToClients *bool                 `json:"visible_to_clients,omitempty"`
 }
 
 // CreateQuestionResponseContent defines model for CreateQuestionResponseContent.
@@ -2854,15 +2856,25 @@ type QuestionReminder struct {
 
 // QuestionSchedule defines model for QuestionSchedule.
 type QuestionSchedule struct {
-	Days          *[]int32 `json:"days,omitempty"`
-	EndDate       *string  `json:"end_date,omitempty"`
-	Frequency     *string  `json:"frequency,omitempty"`
-	Hour          *int32   `json:"hour,omitempty"`
-	Minute        *int32   `json:"minute,omitempty"`
-	MonthInterval *int32   `json:"month_interval,omitempty"`
-	StartDate     *string  `json:"start_date,omitempty"`
-	WeekInstance  *int32   `json:"week_instance,omitempty"`
-	WeekInterval  *int32   `json:"week_interval,omitempty"`
+	Days          []int32 `json:"days,omitempty"`
+	EndDate       *string `json:"end_date,omitempty"`
+	Frequency     *string `json:"frequency,omitempty"`
+	Hour          *int32  `json:"hour,omitempty"`
+	Minute        *int32  `json:"minute,omitempty"`
+	MonthInterval *int32  `json:"month_interval,omitempty"`
+	StartDate     *string `json:"start_date,omitempty"`
+	WeekInstance  *int32  `json:"week_instance,omitempty"`
+	WeekInterval  *int32  `json:"week_interval,omitempty"`
+}
+
+// QuestionScheduleInput The schedule a question is created or updated with. BC3 reads the time of
+// day as a string ("5:00pm"); hour and minute appear only in responses.
+type QuestionScheduleInput struct {
+	Days         *[]int32 `json:"days,omitempty"`
+	Frequency    *string  `json:"frequency,omitempty"`
+	StartDate    *string  `json:"start_date,omitempty"`
+	TimeOfDay    *string  `json:"time_of_day,omitempty"`
+	WeekInstance *int32   `json:"week_instance,omitempty"`
 }
 
 // Questionnaire defines model for Questionnaire.
@@ -4681,9 +4693,12 @@ type UpdateQuestionNotificationSettingsResponseContent struct {
 
 // UpdateQuestionRequestContent defines model for UpdateQuestionRequestContent.
 type UpdateQuestionRequestContent struct {
-	Paused   *bool             `json:"paused,omitempty"`
-	Schedule *QuestionSchedule `json:"schedule,omitempty"`
-	Title    *string           `json:"title,omitempty"`
+	Paused *bool `json:"paused,omitempty"`
+
+	// Schedule The schedule a question is created or updated with. BC3 reads the time of
+	// day as a string ("5:00pm"); hour and minute appear only in responses.
+	Schedule *QuestionScheduleInput `json:"schedule,omitempty"`
+	Title    *string                `json:"title,omitempty"`
 }
 
 // UpdateQuestionResponseContent defines model for UpdateQuestionResponseContent.

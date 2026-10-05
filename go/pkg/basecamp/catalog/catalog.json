@@ -1512,6 +1512,7 @@
       "body": {
         "properties": {
           "schedule": {
+            "description": "The schedule a question is created or updated with. BC3 reads the time of\nday as a string (\"5:00pm\"); hour and minute appear only in responses.",
             "properties": {
               "days": {
                 "items": {
@@ -1520,32 +1521,16 @@
                 },
                 "type": "array"
               },
-              "end_date": {
-                "type": "string"
-              },
               "frequency": {
                 "type": "string"
-              },
-              "hour": {
-                "format": "int32",
-                "type": "integer"
-              },
-              "minute": {
-                "format": "int32",
-                "type": "integer"
-              },
-              "month_interval": {
-                "format": "int32",
-                "type": "integer"
               },
               "start_date": {
                 "type": "string"
               },
-              "week_instance": {
-                "format": "int32",
-                "type": "integer"
+              "time_of_day": {
+                "type": "string"
               },
-              "week_interval": {
+              "week_instance": {
                 "format": "int32",
                 "type": "integer"
               }
@@ -13891,6 +13876,7 @@
             "type": "boolean"
           },
           "schedule": {
+            "description": "The schedule a question is created or updated with. BC3 reads the time of\nday as a string (\"5:00pm\"); hour and minute appear only in responses.",
             "properties": {
               "days": {
                 "items": {
@@ -13899,32 +13885,16 @@
                 },
                 "type": "array"
               },
-              "end_date": {
-                "type": "string"
-              },
               "frequency": {
                 "type": "string"
-              },
-              "hour": {
-                "format": "int32",
-                "type": "integer"
-              },
-              "minute": {
-                "format": "int32",
-                "type": "integer"
-              },
-              "month_interval": {
-                "format": "int32",
-                "type": "integer"
               },
               "start_date": {
                 "type": "string"
               },
-              "week_instance": {
-                "format": "int32",
-                "type": "integer"
+              "time_of_day": {
+                "type": "string"
               },
-              "week_interval": {
+              "week_instance": {
                 "format": "int32",
                 "type": "integer"
               }

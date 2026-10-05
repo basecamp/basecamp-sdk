@@ -32085,7 +32085,7 @@
             "type": "string"
           },
           "schedule": {
-            "$ref": "#/components/schemas/QuestionSchedule"
+            "$ref": "#/components/schemas/QuestionScheduleInput"
           },
           "visible_to_clients": {
             "type": "boolean"
@@ -36511,7 +36511,8 @@
             "items": {
               "type": "integer",
               "format": "int32"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "hour": {
             "type": "integer",
@@ -36537,6 +36538,32 @@
             "type": "string"
           },
           "end_date": {
+            "type": "string"
+          }
+        }
+      },
+      "QuestionScheduleInput": {
+        "type": "object",
+        "description": "The schedule a question is created or updated with. BC3 reads the time of\nday as a string (\"5:00pm\"); hour and minute appear only in responses.",
+        "properties": {
+          "frequency": {
+            "type": "string"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "time_of_day": {
+            "type": "string"
+          },
+          "week_instance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "start_date": {
             "type": "string"
           }
         }
@@ -39876,7 +39903,7 @@
             "type": "string"
           },
           "schedule": {
-            "$ref": "#/components/schemas/QuestionSchedule"
+            "$ref": "#/components/schemas/QuestionScheduleInput"
           },
           "paused": {
             "type": "boolean"

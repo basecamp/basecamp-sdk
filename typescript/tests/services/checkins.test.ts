@@ -16,8 +16,7 @@ import { createBasecampClient, type BasecampClient } from "../../src/client.js";
 const SCHEDULE = {
   frequency: "every_day",
   days: [1, 2, 3, 4, 5],
-  hour: 16,
-  minute: 0,
+  time_of_day: "4:00pm",
 };
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -196,8 +195,7 @@ describe("CheckinsService", () => {
         schedule: {
           frequency: "every_week",
           days: [1],
-          hour: 9,
-          minute: 0,
+          time_of_day: "9:00am",
         },
       });
 
