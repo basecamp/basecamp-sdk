@@ -2,6 +2,8 @@ module github.com/basecamp/basecamp-sdk/go
 
 go 1.26.0
 
+toolchain go1.26.8
+
 require (
 	github.com/basecamp/actioncable-go v1.2.0
 	github.com/basecamp/surfguard/go v0.1.0
