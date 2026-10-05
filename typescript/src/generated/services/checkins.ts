@@ -56,7 +56,7 @@ export interface CreateQuestionCheckinRequest {
   /** Title */
   title: string;
   /** Schedule */
-  schedule: components["schemas"]["QuestionSchedule"];
+  schedule: components["schemas"]["QuestionScheduleInput"];
   /** Visible to clients */
   visibleToClients?: boolean;
 }
@@ -68,7 +68,7 @@ export interface UpdateQuestionCheckinRequest {
   /** Title */
   title?: string;
   /** Schedule */
-  schedule?: components["schemas"]["QuestionSchedule"];
+  schedule?: components["schemas"]["QuestionScheduleInput"];
   /** Paused */
   paused?: boolean;
 }

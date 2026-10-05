@@ -8461,7 +8461,7 @@ structure CreateQuestionInput {
   title: String
 
   @required
-  schedule: QuestionSchedule
+  schedule: QuestionScheduleInput
 
   visible_to_clients: Boolean
 }
@@ -8492,7 +8492,7 @@ structure UpdateQuestionInput {
   questionId: QuestionId
 
   title: String
-  schedule: QuestionSchedule
+  schedule: QuestionScheduleInput
   paused: Boolean
 }
 
@@ -8911,6 +8911,16 @@ structure QuestionSchedule {
   month_interval: Integer
   start_date: ISO8601Date
   end_date: ISO8601Date
+}
+
+/// The schedule a question is created or updated with. BC3 reads the time of
+/// day as a string ("5:00pm"); hour and minute appear only in responses.
+structure QuestionScheduleInput {
+  frequency: String
+  days: IntegerList
+  time_of_day: String
+  week_instance: Integer
+  start_date: ISO8601Date
 }
 
 list IntegerList {

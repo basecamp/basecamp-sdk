@@ -11,6 +11,33 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Check-in questions: create and update take the time of day as `time_of_day`
+
+`CreateQuestion` and `UpdateQuestion` sent the schedule's time as `hour` and
+`minute`. Basecamp reads neither on a write: it reads `time_of_day`, a string
+such as `"5:00pm"` or `"17:00"`, and permits only `frequency`, `days`,
+`time_of_day`, `week_instance` and `start_date` in the schedule. Every create
+was refused with `422`, and so was any update that sent a schedule.
+
+Create and update now take a `QuestionScheduleInput` with exactly those five
+fields, which breaks source in every typed SDK: Go's `CreateQuestionRequest`
+and `UpdateQuestionRequest` take `*QuestionScheduleInput` (set `TimeOfDay`
+instead of `Hour` and `Minute`), and the other SDKs' request types drop `hour`,
+`minute`, `week_interval`, `month_interval` and `end_date` and gain
+`time_of_day`. Nothing that worked stops working.
+
+The response is unchanged: a question's `schedule` still reports `hour` and
+`minute`. Go's response-side `QuestionSchedule` is untouched; the generated
+type's `Days` is now `[]int32` rather than a pointer, which matters only to code
+reading `generated.QuestionSchedule` directly.
+
+Basecamp replaces a question's whole schedule on update, so send every part of
+it, not only the one you are changing: a schedule without its `frequency` or
+`time_of_day` is refused, and one without its `start_date` re-anchors the
+recurrence on today.
+
 # v0.22.0
 
 ### Check-in question notification settings: the two fields are `responding` and `subscribed`

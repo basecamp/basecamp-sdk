@@ -74,7 +74,7 @@ class CheckinsServiceTest < Minitest::Test
     question = @account.checkins.create_question(
       questionnaire_id: 200,
       title: "New question",
-      schedule: { frequency: "every_week", days: [ 1 ], hour: 9, minute: 0 }
+      schedule: { frequency: "every_week", days: [ 1 ], time_of_day: "9:00am" }
     )
 
     assert_equal 999, question["id"]

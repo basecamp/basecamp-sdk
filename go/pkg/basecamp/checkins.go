@@ -87,6 +87,17 @@ type QuestionSchedule struct {
 	EndDate       string `json:"end_date,omitempty"`
 }
 
+// QuestionScheduleInput is the schedule a question is created or updated with.
+// BC3 takes the time of day as a string such as "5:00pm"; the Hour and Minute
+// a QuestionSchedule reports are response-only.
+type QuestionScheduleInput struct {
+	Frequency    string `json:"frequency,omitempty"`
+	Days         []int  `json:"days,omitempty"`
+	TimeOfDay    string `json:"time_of_day,omitempty"`
+	WeekInstance *int   `json:"week_instance,omitempty"`
+	StartDate    string `json:"start_date,omitempty"`
+}
+
 // Question represents a Basecamp automatic check-in question.
 type Question struct {
 	ID               int64             `json:"id"`
@@ -166,7 +177,7 @@ type CreateQuestionRequest struct {
 	// Title is the question text (required).
 	Title string `json:"title"`
 	// Schedule is the question schedule configuration (required).
-	Schedule *QuestionSchedule `json:"schedule"`
+	Schedule *QuestionScheduleInput `json:"schedule"`
 	// VisibleToClients sets client visibility at create time (optional, tri-state).
 	// nil omits the field so the server applies its own default visibility rule; a
 	// non-nil value is sent verbatim, and an explicit false reaches the wire (the
@@ -179,7 +190,7 @@ type UpdateQuestionRequest struct {
 	// Title is the question text.
 	Title string `json:"title,omitempty"`
 	// Schedule is the question schedule configuration.
-	Schedule *QuestionSchedule `json:"schedule,omitempty"`
+	Schedule *QuestionScheduleInput `json:"schedule,omitempty"`
 	// Paused indicates whether the question is paused.
 	Paused *bool `json:"paused,omitempty"`
 }
@@ -1130,8 +1141,8 @@ func questionFromGenerated(gq generated.Question) Question {
 	if gq.Schedule != nil {
 		var days []int
 		if gq.Schedule.Days != nil {
-			days = make([]int, len(*gq.Schedule.Days))
-			for i, d := range *gq.Schedule.Days {
+			days = make([]int, len(gq.Schedule.Days))
+			for i, d := range gq.Schedule.Days {
 				days[i] = int(d)
 			}
 		}
@@ -1283,8 +1294,8 @@ func questionScheduleInt32(v int, field string) (int32, error) {
 // explicit empty day list still reaches the wire as `[]`: `omitempty` tests
 // pointer nil-ness, not pointee emptiness, and a non-nil pointer to an empty
 // slice survives it.
-func questionScheduleToGenerated(s *QuestionSchedule) (*generated.QuestionSchedule, error) {
-	gs := generated.QuestionSchedule{}
+func questionScheduleToGenerated(s *QuestionScheduleInput) (*generated.QuestionScheduleInput, error) {
+	gs := generated.QuestionScheduleInput{}
 	set := false
 	if s.Frequency != "" {
 		gs.Frequency = &s.Frequency
@@ -1304,32 +1315,20 @@ func questionScheduleToGenerated(s *QuestionSchedule) (*generated.QuestionSchedu
 		gs.Days = &days
 		set = true
 	}
-	for _, f := range []struct {
-		dst  **int32
-		src  *int
-		name string
-	}{
-		{&gs.Hour, s.Hour, "hour"},
-		{&gs.Minute, s.Minute, "minute"},
-		{&gs.WeekInstance, s.WeekInstance, "week_instance"},
-		{&gs.WeekInterval, s.WeekInterval, "week_interval"},
-		{&gs.MonthInterval, s.MonthInterval, "month_interval"},
-	} {
-		if f.src != nil {
-			v, err := questionScheduleInt32(*f.src, f.name)
-			if err != nil {
-				return nil, err
-			}
-			*f.dst = &v
-			set = true
+	if s.TimeOfDay != "" {
+		gs.TimeOfDay = &s.TimeOfDay
+		set = true
+	}
+	if s.WeekInstance != nil {
+		v, err := questionScheduleInt32(*s.WeekInstance, "week_instance")
+		if err != nil {
+			return nil, err
 		}
+		gs.WeekInstance = &v
+		set = true
 	}
 	if s.StartDate != "" {
 		gs.StartDate = &s.StartDate
-		set = true
-	}
-	if s.EndDate != "" {
-		gs.EndDate = &s.EndDate
 		set = true
 	}
 	if !set {

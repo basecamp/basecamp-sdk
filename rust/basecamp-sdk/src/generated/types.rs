@@ -1386,7 +1386,7 @@ pub struct CreateQuestionRequestContent {
     /// `title`.
     pub title: String,
     /// `schedule`.
-    pub schedule: QuestionSchedule,
+    pub schedule: QuestionScheduleInput,
     /// `visible_to_clients`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub visible_to_clients: Option<bool>,
@@ -4333,6 +4333,7 @@ pub struct QuestionReminder {
 
 /// The `QuestionSchedule` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct QuestionSchedule {
     /// `frequency`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4361,6 +4362,27 @@ pub struct QuestionSchedule {
     /// `end_date`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_date: Option<String>,
+}
+
+/// The schedule a question is created or updated with. BC3 reads the time of
+/// day as a string ("5:00pm"); hour and minute appear only in responses.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct QuestionScheduleInput {
+    /// `frequency`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frequency: Option<String>,
+    /// `days`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub days: Option<Vec<i32>>,
+    /// `time_of_day`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_of_day: Option<String>,
+    /// `week_instance`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub week_instance: Option<i32>,
+    /// `start_date`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_date: Option<String>,
 }
 
 /// The `Questionnaire` shape of the Basecamp API.
@@ -6811,7 +6833,7 @@ pub struct UpdateQuestionRequestContent {
     pub title: Option<String>,
     /// `schedule`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub schedule: Option<QuestionSchedule>,
+    pub schedule: Option<QuestionScheduleInput>,
     /// `paused`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub paused: Option<bool>,

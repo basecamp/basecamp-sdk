@@ -106,7 +106,8 @@ class CheckinsService(BaseService):
         Args:
             questionnaire_id: The questionnaire id.
             title: The title.
-            schedule: The schedule.
+            schedule: The schedule a question is created or updated with. BC3 reads the time of day
+                as a string ("5:00pm"); hour and minute appear only in responses.
             visible_to_clients: The visible to clients.
         """
         return self._request(
@@ -140,7 +141,8 @@ class CheckinsService(BaseService):
         Args:
             question_id: The question id.
             title: The title.
-            schedule: The schedule.
+            schedule: The schedule a question is created or updated with. BC3 reads the time of day
+                as a string ("5:00pm"); hour and minute appear only in responses.
             paused: The paused.
         """
         return self._request(
@@ -370,7 +372,8 @@ class AsyncCheckinsService(AsyncBaseService):
         Args:
             questionnaire_id: The questionnaire id.
             title: The title.
-            schedule: The schedule.
+            schedule: The schedule a question is created or updated with. BC3 reads the time of day
+                as a string ("5:00pm"); hour and minute appear only in responses.
             visible_to_clients: The visible to clients.
         """
         return await self._request(
@@ -404,7 +407,8 @@ class AsyncCheckinsService(AsyncBaseService):
         Args:
             question_id: The question id.
             title: The title.
-            schedule: The schedule.
+            schedule: The schedule a question is created or updated with. BC3 reads the time of day
+                as a string ("5:00pm"); hour and minute appear only in responses.
             paused: The paused.
         """
         return await self._request(

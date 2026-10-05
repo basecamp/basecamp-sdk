@@ -550,7 +550,7 @@ class CreateProjectRequestContent(TypedDict):
 
 
 class CreateQuestionRequestContent(TypedDict):
-    schedule: QuestionSchedule
+    schedule: QuestionScheduleInput
     title: str
     visible_to_clients: NotRequired[bool]
 
@@ -1507,6 +1507,14 @@ class QuestionSchedule(TypedDict):
     week_interval: NotRequired[int]
 
 
+class QuestionScheduleInput(TypedDict):
+    days: NotRequired[list[int]]
+    frequency: NotRequired[str]
+    start_date: NotRequired[str]
+    time_of_day: NotRequired[str]
+    week_instance: NotRequired[int]
+
+
 class Questionnaire(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
@@ -2328,7 +2336,7 @@ class UpdateQuestionNotificationSettingsResponseContent(TypedDict):
 
 class UpdateQuestionRequestContent(TypedDict):
     paused: NotRequired[bool]
-    schedule: NotRequired[QuestionSchedule]
+    schedule: NotRequired[QuestionScheduleInput]
     title: NotRequired[str]
 
 

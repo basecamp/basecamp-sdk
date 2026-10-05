@@ -2,11 +2,11 @@
 import Foundation
 
 public struct CreateQuestionRequest: Codable, Sendable {
-    public let schedule: QuestionSchedule
+    public let schedule: QuestionScheduleInput
     public let title: String
     public var visibleToClients: Bool?
 
-    public init(schedule: QuestionSchedule, title: String, visibleToClients: Bool? = nil) {
+    public init(schedule: QuestionScheduleInput, title: String, visibleToClients: Bool? = nil) {
         self.schedule = schedule
         self.title = title
         self.visibleToClients = visibleToClients
