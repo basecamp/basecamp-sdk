@@ -33,7 +33,7 @@ repositories {
 }
 
 dependencies {
-    implementation("software.amazon.smithy:smithy-openapi:1.73.0")
+    implementation("software.amazon.smithy:smithy-openapi:1.74.0")
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
 }
