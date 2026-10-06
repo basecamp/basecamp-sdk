@@ -506,7 +506,7 @@ class OAuthTest {
                     )
                 }
                 assertEquals(code, e.code, "$status $body")
-                if (code == "api_error") assertEquals(status, e.httpStatus, "$status $body")
+                assertEquals(status, e.httpStatus, "$status $body")
                 assertFalse(e.message!!.contains("<html>"), "the body is never echoed")
             } finally {
                 httpClient.close()

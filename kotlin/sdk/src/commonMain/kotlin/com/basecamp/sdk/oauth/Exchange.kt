@@ -85,6 +85,7 @@ internal fun tokenEndpointError(status: Int, body: String): BasecampException {
         BasecampException.Auth(
             message = message,
             hint = "The authorization server refused this grant or client: authorize again, or check the client credentials",
+            httpStatus = status,
         )
     } else {
         BasecampException.Api(message, httpStatus = status)
