@@ -385,6 +385,10 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	if resp.StatusCode != http.StatusOK {
 		body, err := limitedReadAll(resp.Body, MaxErrorBodyBytes)
 		if err != nil {
+			// The caller's own cancellation is theirs to see as such.
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return fmt.Errorf("reading token refresh response: %w", ctxErr)
+			}
 			// An unreadable or oversized refusal names no OAuth error, but
 			// its status and Retry-After still classify it: a 429 whose
 			// body could not be read is still a rate limit with a wait.

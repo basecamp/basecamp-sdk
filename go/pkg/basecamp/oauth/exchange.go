@@ -306,6 +306,11 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	body, err := io.ReadAll(lr)
 	oversized := err == nil && int64(len(body)) > maxTokenResponseBytes
 	if (err != nil || oversized) && resp.StatusCode != http.StatusOK {
+		// The caller's own cancellation is theirs to see as such, not a
+		// refusal.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, fmt.Errorf("reading token response: %w", ctxErr)
+		}
 		// A refusal is classified by its status and Retry-After whatever
 		// its body: the body only adds the OAuth error to it. A 429 whose
 		// body could not be read is still a rate limit with a wait.

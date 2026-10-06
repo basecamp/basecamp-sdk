@@ -216,3 +216,40 @@ func TestRequestDeviceAuthorization_BoundsTheComposedMessage(t *testing.T) {
 		t.Errorf("len(Message) = %d, want ≤ %d", len(bcErr.Message), maxErrorMessageLen)
 	}
 }
+
+// A caller that cancels while a refusal's body is still arriving sees its
+// cancellation, not a refusal classified from the status alone.
+func TestExchanger_Refresh_CancelledDuringRefusalBodyIsCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusTooManyRequests,
+			Header:     http.Header{"Retry-After": []string{"600"}},
+			Body:       cancellingBody{cancel: cancel, ctx: req.Context()},
+			Request:    req,
+		}, nil
+	})
+
+	_, err := NewExchanger(&http.Client{Transport: transport}).Refresh(ctx, RefreshRequest{
+		TokenEndpoint: "https://issuer.example/oauth/tokens",
+		RefreshToken:  "refresh123",
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %T %v, want context.Canceled", err, err)
+	}
+}
+
+// cancellingBody cancels the caller's context on its first read and fails
+// that read the way a cancelled transport does.
+type cancellingBody struct {
+	cancel context.CancelFunc
+	ctx    context.Context
+}
+
+func (b cancellingBody) Read([]byte) (int, error) {
+	b.cancel()
+	<-b.ctx.Done()
+	return 0, b.ctx.Err()
+}
+
+func (cancellingBody) Close() error { return nil }
