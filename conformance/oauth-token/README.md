@@ -5,7 +5,7 @@ RFC 8707 `resource` echo on refresh requests, the decode rules for a token
 response's `resource` member (round-trip, absent/JSON-null as unset,
 present-empty/non-string rejected), and the error code a refused or failed
 token request raises — `auth_required` by OAuth error code or for any 401,
-`api_error` otherwise. See SPEC.md §16, "Token Response `resource` Indicator"
+`api_error` otherwise (Rust refines a 429 to `rate_limit`; no fixture pins it). See SPEC.md §16, "Token Response `resource` Indicator"
 and "Token Endpoint Error Classification".
 
 A separate family from `conformance/oauth/` — that schema is discovery-only

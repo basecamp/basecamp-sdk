@@ -705,6 +705,23 @@ describe("Token-Endpoint Transport Policy", () => {
     expect(err.httpStatus).toBeUndefined();
   });
 
+  it.each([
+    [401, "auth_required"],
+    [400, "api_error"],
+  ])("classifies a %i with a null body by status alone, never the body reader's api_error", async (status, code) => {
+    // A Response whose body is null and has no Content-Length: the body reader
+    // fails closed on exactly that shape, so a bare 401 must not reach it.
+    const bare = new Response(null, { status });
+    const err = await refreshToken(
+      { tokenEndpoint, refreshToken: "my_refresh_token" },
+      { fetch: async () => bare }
+    ).catch((e) => e);
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe(code);
+    expect(err.httpStatus).toBe(status);
+    expect(err.message).not.toContain("Content-Length");
+  });
+
   it.each([Number.NaN, Infinity, -5, 0])(
     "normalizes invalid timeoutMs %p to the default instead of instant-aborting",
     async (badTimeout) => {

@@ -55,7 +55,7 @@
         "code": {
           "type": "string",
           "enum": ["auth_required", "api_error"],
-          "description": "On `reject`: the SDK error code the failure carries (Ruby's OauthError spells auth_required as type \"auth\"). auth_required is an OAuth error the caller fixes by signing in again — invalid_grant, invalid_client, unauthorized_client or access_denied, on any status — or any 401, whatever its body; every other failure is api_error."
+          "description": "On `reject`: the SDK error code the failure carries (Ruby's OauthError spells auth_required as type \"auth\"). auth_required is a refused grant or client — invalid_grant, invalid_client, unauthorized_client or access_denied, on any status — or any 401, whatever its body; every other failure is api_error."
         },
         "resource": {
           "type": "string",

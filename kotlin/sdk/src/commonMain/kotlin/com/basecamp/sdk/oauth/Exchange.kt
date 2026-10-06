@@ -84,7 +84,7 @@ internal fun tokenEndpointError(status: Int, body: String): BasecampException {
     return if (status == 401 || error in AUTH_ERROR_CODES) {
         BasecampException.Auth(
             message = message,
-            hint = "The authorization code, refresh token or client credentials were rejected",
+            hint = "The authorization server refused this grant or client: authorize again, or check the client credentials",
         )
     } else {
         BasecampException.Api(message, httpStatus = status)

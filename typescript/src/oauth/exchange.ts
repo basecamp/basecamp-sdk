@@ -332,7 +332,7 @@ function tokenEndpointError(status: number, responseText: string): BasecampError
   if (status === 401 || (errorCode !== undefined && AUTH_ERROR_CODES.has(errorCode))) {
     return new BasecampError("auth_required", message, {
       httpStatus: status,
-      hint: "The authorization code, refresh token or client credentials were rejected",
+      hint: "The authorization server refused this grant or client: authorize again, or check the client credentials",
     });
   }
 
@@ -404,6 +404,14 @@ async function doTokenRequest(
           `redirect ${raced.status} on the token endpoint is not followed`,
           { httpStatus: raced.status }
         );
+      }
+
+      // A refusal with no body (a bare 401 whose Response carries a null
+      // body) has nothing to read, and its status alone classifies it:
+      // never send it through the reader, which fails closed on a null body
+      // without a Content-Length.
+      if (!raced.ok && !raced.body) {
+        return { response: raced, responseText: "" };
       }
 
       const MAX_TOKEN_RESPONSE_BYTES = 1 * 1024 * 1024; // 1 MB

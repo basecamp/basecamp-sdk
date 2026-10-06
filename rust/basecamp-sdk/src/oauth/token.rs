@@ -271,7 +271,7 @@ fn require(condition: bool, message: &str) -> Result<(), Error> {
 ///
 /// The code follows what the caller can do about it: a grant or client the server no longer
 /// honours (`invalid_grant`, `invalid_client`, `unauthorized_client` or `access_denied`, on
-/// any status — RFC 6749 §5.2 answers `invalid_client` with a 400 unless the client
+/// any status but a redirect, which is refused by status alone — RFC 6749 §5.2 answers `invalid_client` with a 400 unless the client
 /// authenticated through the Authorization header — or any 401, whatever its body) is
 /// `auth_required` — sign in again; a 429 is `rate_limit`; a 5xx is a retryable `api_error`;
 /// anything else, a 400 `invalid_request` included, is `api_error`. The auth set and the

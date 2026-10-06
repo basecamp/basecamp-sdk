@@ -378,7 +378,7 @@ module Basecamp
             "auth",
             error_msg,
             http_status: status,
-            hint: "The authorization code, refresh token or client credentials were rejected"
+            hint: "The authorization server refused this grant or client: authorize again, or check the client credentials"
           )
         end
 
