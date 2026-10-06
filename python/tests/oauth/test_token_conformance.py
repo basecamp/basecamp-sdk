@@ -1,7 +1,8 @@
 """Drives the shared, data-only fixtures in ``conformance/oauth-token/fixtures``:
 one refresh round-trip per fixture, asserting the sent resource form parameter
 and the response decode (round-trip, absent/null as unset,
-present-empty/non-string rejected). Lifecycle preservation across a stored
+present-empty/non-string rejected), and the error code a failed request raises
+(auth_required or api_error). Lifecycle preservation across a stored
 credential is per-manager behavior — not modeled here.
 """
 
@@ -31,9 +32,13 @@ def test_oauth_token_fixture(path: Path) -> None:
     fixture = json.loads(path.read_text())
     assert fixture["operation"] == "refreshToken"
 
-    route = respx.post(TOKEN_ENDPOINT).mock(
-        return_value=httpx.Response(fixture["response"].get("status", 200), json=fixture["response"]["body"])
-    )
+    response = fixture["response"]
+    status = response.get("status", 200)
+    if "rawBody" in response:
+        mocked = httpx.Response(status, text=response["rawBody"], headers={"Content-Type": "text/plain"})
+    else:
+        mocked = httpx.Response(status, json=response["body"])
+    route = respx.post(TOKEN_ENDPOINT).mock(return_value=mocked)
 
     kwargs = {}
     resource = fixture.get("request", {}).get("resource")
@@ -50,7 +55,7 @@ def test_oauth_token_fixture(path: Path) -> None:
     else:
         with pytest.raises(OAuthError) as exc_info:
             refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-token", client_id="basecamp-cli", **kwargs)
-        assert exc_info.value.code == "api_error"
+        assert exc_info.value.code == expect["code"]
 
     # keep_blank_values: a regression that sends `resource=` (blank value)
     # instead of omitting the key must FAIL formResourceAbsent — parse_qs drops

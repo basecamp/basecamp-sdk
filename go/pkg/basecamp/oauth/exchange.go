@@ -14,6 +14,7 @@ import (
 	surfguard "github.com/basecamp/surfguard/go"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp/internal/oautherror"
 )
 
 // Exchanger handles OAuth 2.0 token exchange and refresh operations.
@@ -199,6 +200,35 @@ func isRedirectStatus(status int) bool {
 	return false
 }
 
+// tokenEndpointError classifies a non-200 token response as a typed
+// *basecamp.Error: auth_required for an OAuth error code the caller resolves by
+// signing in again, or for any 401 whatever its body; api_error otherwise
+// (oautherror.AuthRequired). The message is the RFC 6749 error and description
+// when the body carries them, else the status and the truncated body.
+func tokenEndpointError(status int, body []byte) *basecamp.Error {
+	code, desc := oautherror.Parse(body)
+	var message string
+	if code != "" {
+		if len(desc) > maxErrorMessageLen {
+			desc = desc[:maxErrorMessageLen-3] + "..."
+		}
+		message = "token error: " + code
+		if desc != "" {
+			message += " - " + desc
+		}
+	} else {
+		bodyStr := string(body)
+		if len(bodyStr) > maxErrorMessageLen {
+			bodyStr = bodyStr[:maxErrorMessageLen-3] + "..."
+		}
+		message = fmt.Sprintf("token request failed with status %d: %s", status, bodyStr)
+	}
+	if oautherror.AuthRequired(status, code) {
+		return &basecamp.Error{Code: basecamp.CodeAuth, Message: message, HTTPStatus: status}
+	}
+	return basecamp.ErrAPI(status, message)
+}
+
 func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, data url.Values) (*Token, error) {
 	// Validate HTTPS to prevent sending tokens/credentials over plaintext
 	// Allow localhost for testing against local mock OAuth servers
@@ -261,26 +291,7 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		// Try to parse error response
-		var errResp struct {
-			Error            string `json:"error"`
-			ErrorDescription string `json:"error_description"`
-		}
-		if json.Unmarshal(body, &errResp) == nil && errResp.Error != "" {
-			desc := errResp.ErrorDescription
-			if len(desc) > maxErrorMessageLen {
-				desc = desc[:maxErrorMessageLen-3] + "..."
-			}
-			if desc != "" {
-				return nil, fmt.Errorf("token error: %s - %s", errResp.Error, desc)
-			}
-			return nil, fmt.Errorf("token error: %s", errResp.Error)
-		}
-		bodyStr := string(body)
-		if len(bodyStr) > maxErrorMessageLen {
-			bodyStr = bodyStr[:maxErrorMessageLen-3] + "..."
-		}
-		return nil, fmt.Errorf("token request failed with status %d: %s", resp.StatusCode, bodyStr)
+		return nil, tokenEndpointError(resp.StatusCode, body)
 	}
 
 	var token Token

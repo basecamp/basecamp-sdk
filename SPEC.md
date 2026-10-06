@@ -2637,6 +2637,32 @@ preserve the prior stored value on the rotated credentials (same
 carry-forward rule as an omitted rotated `refresh_token`). A refresh response
 that carries `resource` replaces the stored value.
 
+### Token Endpoint Error Classification `[conformance]`
+
+A non-2xx response to an authorization-code exchange or a refresh is classified
+by its RFC 6749 §5.2 `error` code first and its status second:
+
+1. `error` ∈ {`invalid_grant`, `invalid_client`, `unauthorized_client`,
+   `access_denied`}, on any status → `auth_required` — the caller signs in
+   again.
+2. Status 401, whatever the body — an OAuth error object, some other JSON, no
+   body at all → `auth_required`.
+3. Anything else → `api_error` carrying the status. Rust refines two cases:
+   429 is `rate_limit` (retryable) and a 5xx is a retryable `api_error`.
+
+Keying on 401 alone is wrong: RFC 6749 §5.2 answers `invalid_client` with a 400
+unless the client authenticated through the `Authorization` header, and RFC 9110
+§15.5.2 requires a 401 to carry a `WWW-Authenticate` challenge — so bc3 answers
+a body-authenticated `invalid_client` with a 400 and keeps the 401 for Basic
+auth. Rule 2 keeps Launchpad and other servers that refuse with a bare 401
+classified. The body is read only for the `error` and `error_description`
+string members and is never echoed; a non-JSON body never becomes a
+parse-failure `api_error` on a non-2xx. `conformance/oauth-token` pins the
+rule; Go's `AuthManager` refresh applies it too. The device flow's poll keeps
+its own reason-keyed outcomes (§16 RFC 8628 below), and the Ruby and Python
+legacy Launchpad token providers, which raise their auth error on any refused
+refresh, are outside it.
+
 ### RFC 8628 Device Authorization Grant `[conformance]`
 
 *BC5 go-live (communique §4). Public pre-registered client `basecamp-cli`:

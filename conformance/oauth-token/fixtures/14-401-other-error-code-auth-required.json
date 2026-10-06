@@ -1,0 +1,16 @@
+{
+  "name": "401-other-error-code-auth-required",
+  "description": "A 401 carrying an OAuth error outside the auth set is still auth_required: the status alone says the credential was refused.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 401,
+    "body": {
+      "error": "invalid_request"
+    }
+  },
+  "expect": {
+    "outcome": "reject",
+    "code": "auth_required",
+    "formResourceAbsent": true
+  }
+}

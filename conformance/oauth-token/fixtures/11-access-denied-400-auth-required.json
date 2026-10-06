@@ -1,0 +1,16 @@
+{
+  "name": "access-denied-400-auth-required",
+  "description": "access_denied \u2014 the resource owner refused \u2014 is auth_required wherever the token endpoint returns it, matching the device flow's access_denied reason (SPEC \u00a716).",
+  "operation": "refreshToken",
+  "response": {
+    "status": 400,
+    "body": {
+      "error": "access_denied"
+    }
+  },
+  "expect": {
+    "outcome": "reject",
+    "code": "auth_required",
+    "formResourceAbsent": true
+  }
+}

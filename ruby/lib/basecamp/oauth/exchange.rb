@@ -288,9 +288,16 @@ module Basecamp
       end
 
       def parse_token_response(status, body)
-        data = JSON.parse(body)
+        # A failed request is classified from its status and OAuth error
+        # object BEFORE the body is parsed as a token: a refusal whose body is
+        # not JSON (a bare 401, an HTML error page) must surface as that
+        # refusal, not as a malformed token response.
+        handle_error_response(status, body) unless (200..299).cover?(status)
 
-        handle_error_response(status, data) unless (200..299).cover?(status)
+        data = JSON.parse(body)
+        unless data.is_a?(Hash)
+          raise OauthError.new("api_error", "Token response is not a JSON object", http_status: status)
+        end
 
         unless data["access_token"].is_a?(String) && !data["access_token"].empty?
           raise OauthError.new(
@@ -344,19 +351,48 @@ module Basecamp
         ), cause: nil
       end
 
-      def handle_error_response(status, data)
-        error_msg = Basecamp::Security.truncate(data["error_description"] || data["error"] || "Token request failed")
+      # The OAuth error codes a caller resolves by signing in again: the grant
+      # is invalid, expired or revoked (+invalid_grant+), the client failed to
+      # authenticate (+invalid_client+) or may not use this grant
+      # (+unauthorized_client+), or the resource owner refused
+      # (+access_denied+). Classified by code, not status: RFC 6749 §5.2
+      # answers +invalid_client+ with a 400 unless the client authenticated
+      # through the Authorization header, so a 401 cannot be the only signal.
+      # Matches every other SDK's token endpoint (conformance/oauth-token).
+      AUTH_ERROR_CODES = %w[invalid_grant invalid_client unauthorized_client access_denied].freeze
 
-        if status == 401 || data["error"] == "invalid_grant"
+      # Classifies a non-2xx token endpoint response: "auth" for an error code
+      # in AUTH_ERROR_CODES on any status, or for any 401 whatever its body
+      # (Launchpad and other servers refuse with a bare status); "api_error"
+      # for everything else. The body is read only for the RFC 6749 +error+
+      # and +error_description+ members and is never echoed — a body that is
+      # not an OAuth error object contributes nothing.
+      def handle_error_response(status, body)
+        data = oauth_error_object(body)
+        error_code = data["error"] if data["error"].is_a?(String)
+        description = data["error_description"] if data["error_description"].is_a?(String)
+        error_msg = Basecamp::Security.truncate(description || error_code || "Token request failed")
+
+        if status == 401 || AUTH_ERROR_CODES.include?(error_code)
           raise OauthError.new(
             "auth",
             error_msg,
             http_status: status,
-            hint: "The authorization code or refresh token may be invalid or expired"
+            hint: "The authorization code, refresh token or client credentials were rejected"
           )
         end
 
         raise OauthError.new("api_error", error_msg, http_status: status)
+      end
+
+      # The response body as an OAuth error object, or {} when it is not one.
+      # The parser error is discarded, never chained: its message embeds the
+      # offending input.
+      def oauth_error_object(body)
+        parsed = JSON.parse(body)
+        parsed.is_a?(Hash) ? parsed : {}
+      rescue JSON::ParserError
+        {}
       end
     end
   end

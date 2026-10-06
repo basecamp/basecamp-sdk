@@ -1,0 +1,14 @@
+{
+  "name": "bare-401-non-json-body-auth-required",
+  "description": "A 401 whose body is not JSON is auth_required, never the parse failure's api_error \u2014 and the body is not echoed.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 401,
+    "rawBody": "<html><body>Unauthorized</body></html>"
+  },
+  "expect": {
+    "outcome": "reject",
+    "code": "auth_required",
+    "formResourceAbsent": true
+  }
+}

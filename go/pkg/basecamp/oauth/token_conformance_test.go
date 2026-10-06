@@ -3,12 +3,14 @@ package oauth
 // Drives the shared, data-only fixtures in conformance/oauth-token/fixtures:
 // one refresh round-trip per fixture, asserting the sent resource form
 // parameter and the response decode (round-trip, absent/null as unset,
-// present-empty/non-string rejected). Lifecycle preservation across a stored
+// present-empty/non-string rejected), and the error code a failed request
+// raises (auth_required or api_error). Lifecycle preservation across a stored
 // credential is per-manager behavior, tested in auth_test.go — not here.
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,6 +19,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
 type tokenFixture struct {
@@ -27,11 +31,13 @@ type tokenFixture struct {
 		Resource string `json:"resource"`
 	} `json:"request"`
 	Response struct {
-		Status int             `json:"status"`
-		Body   json.RawMessage `json:"body"`
+		Status  int             `json:"status"`
+		Body    json.RawMessage `json:"body"`
+		RawBody *string         `json:"rawBody"`
 	} `json:"response"`
 	Expect struct {
 		Outcome            string  `json:"outcome"`
+		Code               string  `json:"code"`
 		Resource           *string `json:"resource"`
 		ResourceAbsent     bool    `json:"resourceAbsent"`
 		FormResource       *string `json:"formResource"`
@@ -90,6 +96,12 @@ func TestOAuthTokenFixtures(t *testing.T) {
 				_ = r.ParseForm()
 				_, sawResourceKey = r.PostForm["resource"]
 				sentResource = r.PostFormValue("resource")
+				if fx.Response.RawBody != nil {
+					w.Header().Set("Content-Type", "text/plain")
+					w.WriteHeader(status)
+					_, _ = w.Write([]byte(*fx.Response.RawBody))
+					return
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(status)
 				_, _ = w.Write(fx.Response.Body)
@@ -118,6 +130,13 @@ func TestOAuthTokenFixtures(t *testing.T) {
 			case "reject":
 				if err == nil {
 					t.Fatal("expected rejection, got token")
+				}
+				var bcErr *basecamp.Error
+				if !errors.As(err, &bcErr) {
+					t.Fatalf("expected *basecamp.Error, got %T: %v", err, err)
+				}
+				if bcErr.Code != fx.Expect.Code {
+					t.Errorf("error code = %q, want %q (%v)", bcErr.Code, fx.Expect.Code, err)
 				}
 			default:
 				t.Fatalf("unsupported outcome %q", fx.Expect.Outcome)

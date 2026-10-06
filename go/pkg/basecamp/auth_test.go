@@ -506,6 +506,60 @@ func TestAuthManager_Refresh_MissingAccessTokenIsAPIError(t *testing.T) {
 	}
 }
 
+// A refused refresh is classified by its OAuth error code, not its status:
+// bc3 answers a body-authenticated invalid_client with a 400 (RFC 6749 §5.2),
+// so keying on 401 alone would report it as an api fault. A 401 stays
+// auth_required whatever its body. Same rule as the oauth package's Exchanger
+// (conformance/oauth-token).
+func TestAuthManager_Refresh_ClassifiesTokenEndpointRefusals(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	for _, tc := range []struct {
+		name   string
+		status int
+		body   string
+		want   string
+	}{
+		{"400 invalid_client", 400, `{"error":"invalid_client"}`, CodeAuth},
+		{"400 unauthorized_client", 400, `{"error":"unauthorized_client"}`, CodeAuth},
+		{"400 invalid_grant", 400, `{"error":"invalid_grant"}`, CodeAuth},
+		{"400 access_denied", 400, `{"error":"access_denied"}`, CodeAuth},
+		{"401 bare", 401, ``, CodeAuth},
+		{"401 non-JSON", 401, `Unauthorized`, CodeAuth},
+		{"401 other code", 401, `{"error":"invalid_request"}`, CodeAuth},
+		{"400 invalid_request", 400, `{"error":"invalid_request"}`, CodeAPI},
+		{"500 server_error", 500, `{"error":"server_error"}`, CodeAPI},
+		{"400 non-JSON", 400, `Bad Request`, CodeAPI},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer ts.Close()
+
+			store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+			_ = store.Save(NormalizeBaseURL(ts.URL), &Credentials{
+				AccessToken:   "old-access",
+				RefreshToken:  "old-refresh",
+				ExpiresAt:     1,
+				TokenEndpoint: ts.URL + "/token",
+			})
+			m := NewAuthManagerWithStore(&Config{BaseURL: ts.URL}, ts.Client(), store)
+
+			err := m.Refresh(context.Background())
+			var bcErr *Error
+			if !errors.As(err, &bcErr) {
+				t.Fatalf("error = %T %v, want *Error", err, err)
+			}
+			if bcErr.Code != tc.want || bcErr.HTTPStatus != tc.status {
+				t.Errorf("error = %s/%d, want %s/%d", bcErr.Code, bcErr.HTTPStatus, tc.want, tc.status)
+			}
+		})
+	}
+}
+
 func TestAuthManager_Refresh_NonStringResourceIsAPIError(t *testing.T) {
 	t.Setenv("BASECAMP_TOKEN", "")
 	t.Setenv("BASECAMP_NO_KEYRING", "1")

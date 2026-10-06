@@ -1,0 +1,14 @@
+{
+  "name": "bare-401-empty-body-auth-required",
+  "description": "A 401 with no body at all (Launchpad and other servers that answer a refused credential with a bare status) is still auth_required: a 401 is an authentication failure whether or not it carries an OAuth error object.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 401,
+    "rawBody": ""
+  },
+  "expect": {
+    "outcome": "reject",
+    "code": "auth_required",
+    "formResourceAbsent": true
+  }
+}

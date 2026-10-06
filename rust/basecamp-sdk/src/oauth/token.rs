@@ -269,10 +269,13 @@ fn require(condition: bool, message: &str) -> Result<(), Error> {
 /// `error_description` alone (SPEC §9), carrying `Retry-After` and `X-Request-Id` as the
 /// structured fields of SPEC §6's record.
 ///
-/// The code follows what the caller can do about it: a grant the server no longer honours
-/// (`invalid_grant`, `invalid_client`, `unauthorized_client`, `access_denied`, or a 401) is
-/// `auth_required` — sign in again; a 429 is `rate_limit`; another 400 or 422 is
-/// `validation`; a 5xx is a retryable `api_error`; anything else is `api_error`.
+/// The code follows what the caller can do about it: a grant or client the server no longer
+/// honours (`invalid_grant`, `invalid_client`, `unauthorized_client` or `access_denied`, on
+/// any status — RFC 6749 §5.2 answers `invalid_client` with a 400 unless the client
+/// authenticated through the Authorization header — or any 401, whatever its body) is
+/// `auth_required` — sign in again; a 429 is `rate_limit`; a 5xx is a retryable `api_error`;
+/// anything else, a 400 `invalid_request` included, is `api_error`. The auth set and the
+/// `api_error` default are shared with every SDK (`conformance/oauth-token`).
 pub(super) fn token_endpoint_error(status: StatusCode, headers: &HeaderMap, body: &[u8]) -> Error {
     let code = status.as_u16();
     let fields = if status.is_redirection() {
@@ -286,7 +289,6 @@ pub(super) fn token_endpoint_error(status: StatusCode, headers: &HeaderMap, body
         }
         (401, _) => (ErrorCode::AuthRequired, false),
         (429, _) => (ErrorCode::RateLimit, true),
-        (400 | 422, _) => (ErrorCode::Validation, false),
         (500..=599, _) => (ErrorCode::ApiError, true),
         _ => (ErrorCode::ApiError, false),
     };
@@ -913,15 +915,18 @@ mod tests {
         }
 
         #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
         struct Response {
             status: Option<u16>,
-            body: Value,
+            body: Option<Value>,
+            raw_body: Option<String>,
         }
 
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct Expect {
             outcome: String,
+            code: Option<String>,
             resource: Option<String>,
             resource_absent: Option<bool>,
             form_resource: Option<String>,
@@ -960,12 +965,15 @@ mod tests {
             assert_eq!(fixture.operation, "refreshToken", "{name}");
 
             let server = MockServer::start().await;
+            let template = ResponseTemplate::new(fixture.response.status.unwrap_or(200));
+            let template = match (&fixture.response.body, &fixture.response.raw_body) {
+                (Some(body), None) => template.set_body_json(body),
+                (None, Some(raw)) => template.set_body_raw(raw.clone(), "text/plain"),
+                _ => panic!("{name}: exactly one of body and rawBody"),
+            };
             Mock::given(method("POST"))
                 .and(path("/token"))
-                .respond_with(
-                    ResponseTemplate::new(fixture.response.status.unwrap_or(200))
-                        .set_body_json(&fixture.response.body),
-                )
+                .respond_with(template)
                 .mount(&server)
                 .await;
 
@@ -992,7 +1000,12 @@ mod tests {
                     let error = result
                         .err()
                         .unwrap_or_else(|| panic!("{name}: expected a rejection"));
-                    assert_eq!(error.code(), ErrorCode::ApiError, "{name}");
+                    let want = match fixture.expect.code.as_deref() {
+                        Some("auth_required") => ErrorCode::AuthRequired,
+                        Some("api_error") => ErrorCode::ApiError,
+                        other => panic!("{name}: unknown code {other:?}"),
+                    };
+                    assert_eq!(error.code(), want, "{name}: {error:?}");
                 }
                 other => panic!("{name}: unknown outcome {other}"),
             }

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/zalando/go-keyring"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp/internal/oautherror"
 )
 
 const serviceName = "basecamp-sdk"
@@ -382,7 +384,14 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
-		return ErrAPI(resp.StatusCode, fmt.Sprintf("token refresh failed: %s", truncateString(string(body), MaxErrorMessageBytes)))
+		message := fmt.Sprintf("token refresh failed: %s", truncateString(string(body), MaxErrorMessageBytes))
+		// Same classification as the oauth package's Exchanger: a refused
+		// grant or client (by OAuth error code, on any status) or any 401 is
+		// auth_required — sign in again; everything else is api_error.
+		if code, _ := oautherror.Parse(body); oautherror.AuthRequired(resp.StatusCode, code) {
+			return &Error{Code: CodeAuth, Message: message, HTTPStatus: resp.StatusCode}
+		}
+		return ErrAPI(resp.StatusCode, message)
 	}
 
 	var tokenResp struct {

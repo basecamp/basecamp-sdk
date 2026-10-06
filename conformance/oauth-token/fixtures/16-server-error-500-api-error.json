@@ -1,0 +1,16 @@
+{
+  "name": "server-error-500-api-error",
+  "description": "A server failure is api_error, never auth_required, even with an OAuth error object.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 500,
+    "body": {
+      "error": "server_error"
+    }
+  },
+  "expect": {
+    "outcome": "reject",
+    "code": "api_error",
+    "formResourceAbsent": true
+  }
+}

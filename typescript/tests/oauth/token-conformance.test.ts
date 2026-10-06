@@ -2,7 +2,8 @@
  * Drives the shared, data-only fixtures in conformance/oauth-token/fixtures:
  * one refresh round-trip per fixture, asserting the sent resource form
  * parameter and the response decode (round-trip, absent/null as unset,
- * present-empty/non-string rejected). Lifecycle preservation across a stored
+ * present-empty/non-string rejected), and the error code a failed request
+ * raises (auth_required or api_error). Lifecycle preservation across a stored
  * credential is per-manager behavior, tested in token-manager.test.ts — not
  * here.
  */
@@ -23,9 +24,10 @@ interface TokenFixture {
   name: string;
   operation: string;
   request?: { resource?: string };
-  response: { status?: number; body: Record<string, unknown> };
+  response: { status?: number; body?: Record<string, unknown>; rawBody?: string };
   expect: {
     outcome: "token" | "reject";
+    code?: "auth_required" | "api_error";
     resource?: string;
     resourceAbsent?: boolean;
     formResource?: string;
@@ -71,9 +73,13 @@ describe("conformance/oauth-token fixtures", () => {
         const params = new URLSearchParams(await request.text());
         sawResourceKey = params.has("resource");
         sentResource = params.get("resource");
-        return HttpResponse.json(fixture.response.body, {
-          status: fixture.response.status ?? 200,
-        });
+        const status = fixture.response.status ?? 200;
+        return fixture.response.rawBody !== undefined
+          ? new HttpResponse(fixture.response.rawBody, {
+              status,
+              headers: { "Content-Type": "text/plain" },
+            })
+          : HttpResponse.json(fixture.response.body, { status });
       })
     );
 
@@ -93,7 +99,8 @@ describe("conformance/oauth-token fixtures", () => {
         expect(token.resource).toBeUndefined();
       }
     } else {
-      await expect(call).rejects.toMatchObject({ code: "api_error" });
+      expect(fixture.expect.code).toBeDefined();
+      await expect(call).rejects.toMatchObject({ code: fixture.expect.code });
     }
 
     if (fixture.expect.formResource !== undefined) {

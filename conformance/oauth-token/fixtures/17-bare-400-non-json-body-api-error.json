@@ -1,0 +1,14 @@
+{
+  "name": "bare-400-non-json-body-api-error",
+  "description": "A non-401 with no parseable OAuth error object is api_error.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 400,
+    "rawBody": "Bad Request"
+  },
+  "expect": {
+    "outcome": "reject",
+    "code": "api_error",
+    "formResourceAbsent": true
+  }
+}

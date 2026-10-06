@@ -763,8 +763,8 @@ func TestExchanger_RefusesTokenEndpointRedirects(t *testing.T) {
 }
 
 // TestExchanger_304StaysGenericNon200 pins the boundary of the refused set: a
-// 304 is a cache validator, not a followable redirect, and keeps the untyped
-// non-200 wrap.
+// 304 is a cache validator, not a followable redirect, and keeps the generic
+// non-200 classification: api_error carrying the status.
 func TestExchanger_304StaysGenericNon200(t *testing.T) {
 	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
@@ -781,6 +781,10 @@ func TestExchanger_304StaysGenericNon200(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "status 304") {
 		t.Errorf("error = %v, want the generic status-304 wrap", err)
+	}
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) || bcErr.Code != basecamp.CodeAPI || bcErr.HTTPStatus != http.StatusNotModified {
+		t.Errorf("error = %T %v, want *basecamp.Error api_error/304", err, err)
 	}
 }
 

@@ -1,0 +1,17 @@
+{
+  "name": "invalid-grant-400-auth-required",
+  "description": "An invalid, expired or revoked grant is auth_required: the caller signs in again.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 400,
+    "body": {
+      "error": "invalid_grant",
+      "error_description": "Refresh token revoked"
+    }
+  },
+  "expect": {
+    "outcome": "reject",
+    "code": "auth_required",
+    "formResourceAbsent": true
+  }
+}

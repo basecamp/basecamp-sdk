@@ -1,0 +1,16 @@
+{
+  "name": "unauthorized-client-400-auth-required",
+  "description": "unauthorized_client \u2014 the client may not use this grant \u2014 is auth_required on a 400.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 400,
+    "body": {
+      "error": "unauthorized_client"
+    }
+  },
+  "expect": {
+    "outcome": "reject",
+    "code": "auth_required",
+    "formResourceAbsent": true
+  }
+}

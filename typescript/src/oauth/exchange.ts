@@ -286,6 +286,62 @@ async function readResponseWithByteLimit(
 /**
  * Performs the actual HTTP token request.
  */
+/**
+ * The OAuth error codes a caller resolves by signing in again: the grant is
+ * invalid, expired or revoked (`invalid_grant`), the client failed to
+ * authenticate (`invalid_client`) or may not use this grant
+ * (`unauthorized_client`), or the resource owner refused (`access_denied`).
+ * Classified by code, not status: RFC 6749 §5.2 answers `invalid_client` with
+ * a 400 unless the client authenticated through the Authorization header, so
+ * a 401 cannot be the only signal. Matches every other SDK's token endpoint
+ * (conformance/oauth-token).
+ */
+const AUTH_ERROR_CODES: ReadonlySet<string> = new Set([
+  "invalid_grant",
+  "invalid_client",
+  "unauthorized_client",
+  "access_denied",
+]);
+
+/**
+ * Classifies a non-2xx token endpoint response: `auth_required` for an error
+ * code in {@link AUTH_ERROR_CODES} on any status, or for any 401 whatever its
+ * body (Launchpad and other servers refuse with a bare status); `api_error`
+ * for everything else. The body is read only for the RFC 6749 `error` and
+ * `error_description` members and is never echoed — a body that is not an
+ * OAuth error object contributes nothing.
+ */
+function tokenEndpointError(status: number, responseText: string): BasecampError {
+  let errorData: Partial<Record<keyof OAuthErrorResponse, unknown>> = {};
+  try {
+    const parsed: unknown = JSON.parse(responseText);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      errorData = parsed;
+    }
+  } catch {
+    // Not JSON: the status alone classifies it.
+  }
+
+  // Non-string error/error_description (numbers, objects) are ignored rather
+  // than allowed to throw a raw TypeError, which would be misclassified as a
+  // retryable network failure.
+  const errorCode = typeof errorData.error === "string" ? errorData.error : undefined;
+  const rawMessage =
+    (typeof errorData.error_description === "string" && errorData.error_description) ||
+    errorCode ||
+    "Token request failed";
+  const message = rawMessage.length > 500 ? rawMessage.slice(0, 497) + "..." : rawMessage;
+
+  if (status === 401 || (errorCode !== undefined && AUTH_ERROR_CODES.has(errorCode))) {
+    return new BasecampError("auth_required", message, {
+      httpStatus: status,
+      hint: "The authorization code, refresh token or client credentials were rejected",
+    });
+  }
+
+  return new BasecampError("api_error", message, { httpStatus: status });
+}
+
 async function doTokenRequest(
   tokenEndpoint: string,
   body: URLSearchParams,
@@ -362,7 +418,15 @@ async function doTokenRequest(
       return { response: raced, responseText: racedText };
     });
 
-    let data: RawTokenResponse | OAuthErrorResponse;
+    // A failed request is classified from its status and OAuth error object
+    // BEFORE the body is parsed as a token: a refusal whose body is not JSON
+    // (a bare 401, an HTML error page) must surface as that refusal, not as
+    // a malformed token response.
+    if (!response.ok) {
+      throw tokenEndpointError(response.status, responseText);
+    }
+
+    let data: RawTokenResponse;
 
     try {
       data = JSON.parse(responseText);
@@ -377,41 +441,15 @@ async function doTokenRequest(
     }
 
     // A valid-JSON-but-non-object body (null, array, number, string) is a
-    // malformed response on EVERY status — the error branch below would
-    // otherwise deref null and surface a raw TypeError misclassified as
-    // retryable network. Fail as api_error carrying the HTTP status.
+    // malformed token response. Fail as api_error carrying the HTTP status.
     if (typeof data !== "object" || data === null || Array.isArray(data)) {
       throw new BasecampError("api_error", "Token response is not a JSON object", {
         httpStatus: response.status,
       });
     }
 
-    // Check for error response
-    if (!response.ok) {
-      const errorData = data as OAuthErrorResponse;
-      // Non-string error/error_description (numbers, objects) must not throw
-      // a raw TypeError below — that would be misclassified as retryable
-      // network, losing the api_error status context.
-      const rawMessage =
-        (typeof errorData.error_description === "string" && errorData.error_description) ||
-        (typeof errorData.error === "string" && errorData.error) ||
-        "Token request failed";
-      const message = rawMessage.length > 500 ? rawMessage.slice(0, 497) + "..." : rawMessage;
-
-      if (response.status === 401 || errorData.error === "invalid_grant") {
-        throw new BasecampError("auth_required", message, {
-          httpStatus: response.status,
-          hint: "The authorization code or refresh token may be invalid or expired",
-        });
-      }
-
-      throw new BasecampError("api_error", message, {
-        httpStatus: response.status,
-      });
-    }
-
     // Parse successful response
-    const tokenData = data as RawTokenResponse;
+    const tokenData = data;
 
     // Non-empty STRING, not merely truthy: a numeric access_token is not a
     // usable credential. Carry the HTTP status like every other malformed-
