@@ -2651,7 +2651,14 @@ Policy, above), as is a body over the response size cap:
 2. Status 401, whatever the body — an OAuth error object, some other JSON, no
    body at all → `auth_required`.
 3. Anything else → `api_error` carrying the status. Rust refines two cases:
-   429 is `rate_limit` (retryable) and a 5xx is a retryable `api_error`.
+   429 is `rate_limit` (retryable) and a 5xx is a retryable `api_error`. Go
+   refines the first: 429 is `rate_limit`.
+
+Go also carries, on every class, the `error` code the body named (`OAuthError`,
+empty when it named none) and the wait a `Retry-After` names (`RetryAfter`,
+parsed as §6 parses it). bc3's abuse tracker answers every OAuth endpoint with a
+429 for up to a day once a client and address have failed often enough, and a
+caller that cannot read the wait has nothing to do but resend into the block.
 
 Keying on 401 alone is wrong: RFC 6749 §5.2 answers `invalid_client` with a 400
 unless the client authenticated through the `Authorization` header, and RFC 9110
@@ -2694,6 +2701,13 @@ FUNCTION requestDeviceAuthorization(deviceAuthEndpoint, clientId, scope?, loginH
                               # authenticates. Go and Rust only, today.
   3. Parse → { device_code, user_code, verification_uri,
                verification_uri_complete?, expires_in, interval? }
+     A non-2xx is api_error carrying its status. Go types it as the token
+     endpoint's refusals are typed: a 429 is `rate_limit`, and a 4xx body's
+     `error` and `error_description` are read (as the poll reads only a 4xx's)
+     into `OAuthError` and the message, with `Retry-After` in `RetryAfter`.
+     A body that cannot be read leaves the status to classify alone — never a
+     transport failure. Nothing here is `auth_required`: the refusal is of the
+     login being started.
   4. Validate: device_code, user_code, verification_uri non-empty;
      expires_in and interval are positive WHOLE seconds ≤ 2147483 — an
      integer-valued float (900.0) is accepted, a fractional value (2.5) is

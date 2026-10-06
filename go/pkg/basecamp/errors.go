@@ -75,6 +75,12 @@ type Error struct {
 	// time.Second` overflows: both doors onto the field — the wire parser and
 	// ErrRateLimit — run it through clampRetryAfterSeconds.
 	RetryAfter int
+	// OAuthError is the RFC 6749 §5.2 `error` code an OAuth token or device
+	// authorization endpoint refused with — "invalid_grant",
+	// "too_many_requests" — so a caller acts on the server's own verdict
+	// rather than on Message. Empty for every other error, and for a refusal
+	// whose body named no code (SPEC §16).
+	OAuthError string
 	RequestID  string
 	Cause      error
 }

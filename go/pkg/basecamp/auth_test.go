@@ -793,3 +793,63 @@ func TestAuthManager_Refresh_RefusesTokenEndpointRedirects(t *testing.T) {
 		})
 	}
 }
+
+// A refused refresh carries the server's own verdict, not just a class: the
+// RFC 6749 error code (OAuthError) and the wait a Retry-After names
+// (RetryAfter). A 429 is rate_limit, so a caller holds off for that wait
+// instead of resending into an abuse block that answers every attempt with
+// another 429 — the same refinement Rust applies (SPEC §16).
+func TestAuthManager_Refresh_CarriesOAuthErrorAndRetryAfter(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	for _, tc := range []struct {
+		name       string
+		status     int
+		retryAfter string
+		body       string
+		wantCode   string
+		wantOAuth  string
+		wantWait   int
+	}{
+		{"429 abuse block", 429, "14400", `{"error":"too_many_requests","error_description":"Temporarily blocked due to repeated failures. Try again later."}`, CodeRateLimit, "too_many_requests", 14400},
+		{"429 bare", 429, "60", ``, CodeRateLimit, "", 60},
+		{"400 invalid_grant", 400, "", `{"error":"invalid_grant","error_description":"Token has been revoked"}`, CodeAuth, "invalid_grant", 0},
+		{"503 with Retry-After", 503, "30", ``, CodeAPI, "", 30},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tc.retryAfter != "" {
+					w.Header().Set("Retry-After", tc.retryAfter)
+				}
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer ts.Close()
+
+			store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+			_ = store.Save(NormalizeBaseURL(ts.URL), &Credentials{
+				AccessToken:   "old-access",
+				RefreshToken:  "old-refresh",
+				ExpiresAt:     1,
+				TokenEndpoint: ts.URL + "/token",
+			})
+			m := NewAuthManagerWithStore(&Config{BaseURL: ts.URL}, ts.Client(), store)
+
+			err := m.Refresh(context.Background())
+			var bcErr *Error
+			if !errors.As(err, &bcErr) {
+				t.Fatalf("error = %T %v, want *Error", err, err)
+			}
+			if bcErr.Code != tc.wantCode || bcErr.HTTPStatus != tc.status {
+				t.Errorf("error = %s/%d, want %s/%d", bcErr.Code, bcErr.HTTPStatus, tc.wantCode, tc.status)
+			}
+			if bcErr.OAuthError != tc.wantOAuth {
+				t.Errorf("OAuthError = %q, want %q", bcErr.OAuthError, tc.wantOAuth)
+			}
+			if bcErr.RetryAfter != tc.wantWait {
+				t.Errorf("RetryAfter = %d, want %d", bcErr.RetryAfter, tc.wantWait)
+			}
+		})
+	}
+}

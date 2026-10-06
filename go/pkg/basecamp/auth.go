@@ -403,11 +403,22 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		}
 		// Same classification as the oauth package's Exchanger: a refused
 		// grant or client (by OAuth error code, on any status) or any 401 is
-		// auth_required; everything else is api_error.
-		if oautherror.AuthRequired(resp.StatusCode, code) {
-			return &Error{Code: CodeAuth, Message: message, HTTPStatus: resp.StatusCode}
+		// auth_required; a 429 is rate_limit; everything else is api_error.
+		// Each carries the code and the Retry-After wait, whatever its class.
+		wait := parseRetryAfter(resp.Header.Get("Retry-After"))
+		var refusal *Error
+		switch {
+		case oautherror.AuthRequired(resp.StatusCode, code):
+			refusal = &Error{Code: CodeAuth, Message: message, HTTPStatus: resp.StatusCode}
+		case resp.StatusCode == http.StatusTooManyRequests:
+			refusal = ErrRateLimit(wait)
+			refusal.Message = message
+		default:
+			refusal = ErrAPI(resp.StatusCode, message)
 		}
-		return ErrAPI(resp.StatusCode, message)
+		refusal.OAuthError = code
+		refusal.RetryAfter = wait
+		return refusal
 	}
 
 	var tokenResp struct {
