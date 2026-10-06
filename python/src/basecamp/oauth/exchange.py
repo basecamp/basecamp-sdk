@@ -286,7 +286,10 @@ def _token_endpoint_error(status: int, body: bytes) -> OAuthError:
             "auth",
             message,
             http_status=status,
-            hint="The authorization server refused this grant or client: authorize again, or check the client credentials",
+            hint=(
+                "The authorization server refused this grant or client: "
+                "authorize again, or check the client credentials"
+            ),
         )
 
     return OAuthError("api_error", message, http_status=status)
