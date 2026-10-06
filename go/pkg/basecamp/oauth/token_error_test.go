@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -57,6 +58,9 @@ func TestExchanger_Refresh_CarriesOAuthErrorAndRetryAfter(t *testing.T) {
 			}
 			if bcErr.OAuthError != tc.wantOAuth {
 				t.Errorf("OAuthError = %q, want %q", bcErr.OAuthError, tc.wantOAuth)
+			}
+			if want := oauthDescription(tc.body); bcErr.OAuthErrorDescription != want {
+				t.Errorf("OAuthErrorDescription = %q, want %q", bcErr.OAuthErrorDescription, want)
 			}
 			// An HTTP-date is resolved against the clock, so allow a second's
 			// drift between the header being written and being read.
@@ -117,6 +121,9 @@ func TestRequestDeviceAuthorization_CarriesOAuthErrorAndRetryAfter(t *testing.T)
 			if bcErr.RetryAfter != tc.wantWait {
 				t.Errorf("RetryAfter = %d, want %d", bcErr.RetryAfter, tc.wantWait)
 			}
+			if want := oauthDescription(tc.body); bcErr.OAuthErrorDescription != want {
+				t.Errorf("OAuthErrorDescription = %q, want %q", bcErr.OAuthErrorDescription, want)
+			}
 			if bcErr.Message != tc.wantMessage {
 				t.Errorf("Message = %q, want %q", bcErr.Message, tc.wantMessage)
 			}
@@ -125,5 +132,40 @@ func TestRequestDeviceAuthorization_CarriesOAuthErrorAndRetryAfter(t *testing.T)
 				t.Errorf("error = %q renders the response body", bcErr.Error())
 			}
 		})
+	}
+}
+
+// oauthDescription is the error_description a test body carries, or "".
+func oauthDescription(body string) string {
+	var fields struct {
+		Description string `json:"error_description"`
+	}
+	_ = json.Unmarshal([]byte(body), &fields)
+	return fields.Description
+}
+
+// Server text is bounded in the typed fields as it is in the message, so an
+// endpoint answering with an enormous error code or description cannot hand a
+// caller an unbounded string to log or render.
+func TestExchanger_Refresh_BoundsOAuthErrorFields(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error":             strings.Repeat("e", 10000),
+			"error_description": strings.Repeat("d", 10000),
+		})
+	}))
+	defer server.Close()
+
+	_, err := NewExchanger(server.Client()).Refresh(context.Background(), RefreshRequest{
+		TokenEndpoint: server.URL,
+		RefreshToken:  "refresh123",
+	})
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error = %T %v, want *basecamp.Error", err, err)
+	}
+	if len(bcErr.OAuthError) > maxErrorMessageLen || len(bcErr.OAuthErrorDescription) > maxErrorMessageLen {
+		t.Errorf("OAuthError/Description lengths = %d/%d, want ≤ %d", len(bcErr.OAuthError), len(bcErr.OAuthErrorDescription), maxErrorMessageLen)
 	}
 }

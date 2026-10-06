@@ -81,8 +81,12 @@ type Error struct {
 	// rather than on Message. Empty for every other error, and for a refusal
 	// whose body named no code (SPEC §16).
 	OAuthError string
-	RequestID  string
-	Cause      error
+	// OAuthErrorDescription is the RFC 6749 §5.2 `error_description` beside
+	// OAuthError, as the message renders it (truncated, never any other part
+	// of the body — SPEC §9). Empty when the refusal named none.
+	OAuthErrorDescription string
+	RequestID             string
+	Cause                 error
 }
 
 // PeopleConfirmationRequiredError reports the people who need destination-project access before a template copy can start.

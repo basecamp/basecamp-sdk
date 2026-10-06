@@ -212,11 +212,9 @@ func isRedirectStatus(status int) bool {
 // echo what was sent).
 func tokenEndpointError(status int, header http.Header, body []byte) *basecamp.Error {
 	code, desc := oautherror.Parse(body)
+	code, desc = boundServerText(code), boundServerText(desc)
 	var message string
 	if code != "" {
-		if len(desc) > maxErrorMessageLen {
-			desc = desc[:maxErrorMessageLen-3] + "..."
-		}
 		message = "token error: " + code
 		if desc != "" {
 			message += " - " + desc
@@ -236,8 +234,19 @@ func tokenEndpointError(status int, header http.Header, body []byte) *basecamp.E
 		refusal = basecamp.ErrAPI(status, message)
 	}
 	refusal.OAuthError = code
+	refusal.OAuthErrorDescription = desc
 	refusal.RetryAfter = wait
 	return refusal
+}
+
+// boundServerText bounds an error or error_description a server sent to
+// maxErrorMessageLen, so neither a message nor the typed fields beside it
+// carry an unbounded string.
+func boundServerText(s string) string {
+	if len(s) > maxErrorMessageLen {
+		return s[:maxErrorMessageLen-3] + "..."
+	}
+	return s
 }
 
 func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, data url.Values) (*Token, error) {

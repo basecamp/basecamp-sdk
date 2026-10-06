@@ -416,7 +416,9 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		default:
 			refusal = ErrAPI(resp.StatusCode, message)
 		}
-		refusal.OAuthError = code
+		// Both are server text, bounded as the message is.
+		refusal.OAuthError = truncateString(code, MaxErrorMessageBytes)
+		refusal.OAuthErrorDescription = truncateString(desc, MaxErrorMessageBytes)
 		refusal.RetryAfter = wait
 		return refusal
 	}

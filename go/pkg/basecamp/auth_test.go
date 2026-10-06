@@ -850,6 +850,13 @@ func TestAuthManager_Refresh_CarriesOAuthErrorAndRetryAfter(t *testing.T) {
 			if bcErr.RetryAfter != tc.wantWait {
 				t.Errorf("RetryAfter = %d, want %d", bcErr.RetryAfter, tc.wantWait)
 			}
+			var fields struct {
+				Description string `json:"error_description"`
+			}
+			_ = json.Unmarshal([]byte(tc.body), &fields)
+			if bcErr.OAuthErrorDescription != fields.Description {
+				t.Errorf("OAuthErrorDescription = %q, want %q", bcErr.OAuthErrorDescription, fields.Description)
+			}
 		})
 	}
 }

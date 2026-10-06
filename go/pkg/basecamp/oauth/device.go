@@ -427,17 +427,14 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 func deviceAuthorizationRefusal(resp *http.Response) *basecamp.Error {
 	status := resp.StatusCode
 	message := fmt.Sprintf("device authorization failed with status %d", status)
-	var code string
+	var code, desc string
 	if status >= 400 && status < 500 {
 		if body, err := readBoundedBody(resp.Body, maxTokenResponseBytes); err == nil {
-			var desc string
 			code, desc = oautherror.Parse(body)
+			code, desc = boundServerText(code), boundServerText(desc)
 			if code != "" {
 				message += ": " + code
 				if desc != "" {
-					if len(desc) > maxErrorMessageLen {
-						desc = desc[:maxErrorMessageLen-3] + "..."
-					}
 					message += " - " + desc
 				}
 			}
@@ -453,6 +450,7 @@ func deviceAuthorizationRefusal(resp *http.Response) *basecamp.Error {
 		refusal = basecamp.ErrAPI(status, message)
 	}
 	refusal.OAuthError = code
+	refusal.OAuthErrorDescription = desc
 	refusal.RetryAfter = wait
 	return refusal
 }
