@@ -284,9 +284,6 @@ async function readResponseWithByteLimit(
 }
 
 /**
- * Performs the actual HTTP token request.
- */
-/**
  * The OAuth error codes a caller resolves by signing in again: the grant is
  * invalid, expired or revoked (`invalid_grant`), the client failed to
  * authenticate (`invalid_client`) or may not use this grant
@@ -342,6 +339,9 @@ function tokenEndpointError(status: number, responseText: string): BasecampError
   return new BasecampError("api_error", message, { httpStatus: status });
 }
 
+/**
+ * Performs the actual HTTP token request.
+ */
 async function doTokenRequest(
   tokenEndpoint: string,
   body: URLSearchParams,
