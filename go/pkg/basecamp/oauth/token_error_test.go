@@ -64,7 +64,8 @@ func TestExchanger_Refresh_CarriesOAuthErrorAndRetryAfter(t *testing.T) {
 			}
 			// An HTTP-date is resolved against the clock, so allow a second's
 			// drift between the header being written and being read.
-			if bcErr.RetryAfter != tc.wantWait && !(strings.Contains(tc.retryAfter, "GMT") && bcErr.RetryAfter == tc.wantWait-1) {
+			drifted := strings.Contains(tc.retryAfter, "GMT") && bcErr.RetryAfter == tc.wantWait-1
+			if bcErr.RetryAfter != tc.wantWait && !drifted {
 				t.Errorf("RetryAfter = %d, want %d", bcErr.RetryAfter, tc.wantWait)
 			}
 		})
