@@ -219,6 +219,7 @@ func tokenEndpointError(status int, header http.Header, body []byte) *basecamp.E
 		if desc != "" {
 			message += " - " + desc
 		}
+		message = boundServerText(message)
 	} else {
 		message = fmt.Sprintf("token request failed with status %d", status)
 	}
@@ -303,10 +304,17 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	// Bounded read to prevent OOM from malicious/corrupted responses
 	lr := io.LimitReader(resp.Body, maxTokenResponseBytes+1)
 	body, err := io.ReadAll(lr)
+	oversized := err == nil && int64(len(body)) > maxTokenResponseBytes
+	if (err != nil || oversized) && resp.StatusCode != http.StatusOK {
+		// A refusal is classified by its status and Retry-After whatever
+		// its body: the body only adds the OAuth error to it. A 429 whose
+		// body could not be read is still a rate limit with a wait.
+		return nil, tokenEndpointError(resp.StatusCode, resp.Header, nil)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("reading token response: %w", err)
 	}
-	if int64(len(body)) > maxTokenResponseBytes {
+	if oversized {
 		return nil, fmt.Errorf("token response body exceeds %d byte limit", maxTokenResponseBytes)
 	}
 

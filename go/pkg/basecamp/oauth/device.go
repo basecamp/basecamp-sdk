@@ -437,6 +437,7 @@ func deviceAuthorizationRefusal(resp *http.Response) *basecamp.Error {
 				if desc != "" {
 					message += " - " + desc
 				}
+				message = boundServerText(message)
 			}
 		}
 	}

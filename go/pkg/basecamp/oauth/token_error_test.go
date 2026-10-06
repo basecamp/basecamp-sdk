@@ -64,7 +64,7 @@ func TestExchanger_Refresh_CarriesOAuthErrorAndRetryAfter(t *testing.T) {
 			}
 			// An HTTP-date is resolved against the clock, so allow a second's
 			// drift between the header being written and being read.
-			if bcErr.RetryAfter < tc.wantWait-1 || bcErr.RetryAfter > tc.wantWait {
+			if bcErr.RetryAfter != tc.wantWait && !(strings.Contains(tc.retryAfter, "GMT") && bcErr.RetryAfter == tc.wantWait-1) {
 				t.Errorf("RetryAfter = %d, want %d", bcErr.RetryAfter, tc.wantWait)
 			}
 		})
@@ -167,5 +167,51 @@ func TestExchanger_Refresh_BoundsOAuthErrorFields(t *testing.T) {
 	}
 	if len(bcErr.OAuthError) > maxErrorMessageLen || len(bcErr.OAuthErrorDescription) > maxErrorMessageLen {
 		t.Errorf("OAuthError/Description lengths = %d/%d, want ≤ %d", len(bcErr.OAuthError), len(bcErr.OAuthErrorDescription), maxErrorMessageLen)
+	}
+}
+
+// A refusal whose body cannot be read is still classified by its status and
+// Retry-After: an oversized 429 is a rate limit with its wait, not an untyped
+// read error a caller would retry straight into the block.
+func TestExchanger_Refresh_OversizedRefusalKeepsStatusAndRetryAfter(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "600")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(strings.Repeat("x", int(maxTokenResponseBytes)+10)))
+	}))
+	defer server.Close()
+
+	_, err := NewExchanger(server.Client()).Refresh(context.Background(), RefreshRequest{
+		TokenEndpoint: server.URL,
+		RefreshToken:  "refresh123",
+	})
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error = %T %v, want *basecamp.Error", err, err)
+	}
+	if bcErr.Code != basecamp.CodeRateLimit || bcErr.RetryAfter != 600 || bcErr.OAuthError != "" {
+		t.Errorf("error = %s RetryAfter=%d OAuthError=%q, want rate_limit 600 \"\"", bcErr.Code, bcErr.RetryAfter, bcErr.OAuthError)
+	}
+}
+
+// The composed message is bounded too, not just its parts: a code and a
+// description each near the cap must not make a message twice its size.
+func TestRequestDeviceAuthorization_BoundsTheComposedMessage(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error":             strings.Repeat("e", 490),
+			"error_description": strings.Repeat("d", 490),
+		})
+	}))
+	defer srv.Close()
+
+	_, err := RequestDeviceAuthorization(context.Background(), srv.URL, "basecamp-cli", WithDeviceHTTPClient(tlsClient(srv)))
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error = %T %v, want *basecamp.Error", err, err)
+	}
+	if len(bcErr.Message) > maxErrorMessageLen {
+		t.Errorf("len(Message) = %d, want ≤ %d", len(bcErr.Message), maxErrorMessageLen)
 	}
 }

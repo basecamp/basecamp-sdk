@@ -2657,7 +2657,8 @@ Policy, above), as is a body over the response size cap:
 Go also carries, on every class, the `error` code and `error_description` the
 body named (`OAuthError`, `OAuthErrorDescription`; empty when it named none,
 bounded as the message is) and the wait a `Retry-After` names (`RetryAfter`,
-parsed as §6 parses it). bc3's abuse tracker answers every OAuth endpoint with a
+parsed as §6 parses it). A refusal whose body cannot be read, or is over the
+cap, is classified by its status and `Retry-After` alone, with no OAuth error. bc3's abuse tracker answers every OAuth endpoint with a
 429 for up to a day once a client and address have failed often enough, and a
 caller that cannot read the wait has nothing to do but resend into the block.
 

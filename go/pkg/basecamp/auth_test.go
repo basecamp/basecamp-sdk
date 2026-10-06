@@ -860,3 +860,35 @@ func TestAuthManager_Refresh_CarriesOAuthErrorAndRetryAfter(t *testing.T) {
 		})
 	}
 }
+
+// An unreadable or oversized refusal is still classified by its status and
+// Retry-After, with no OAuth error: a 429 stays a rate limit with its wait.
+func TestAuthManager_Refresh_OversizedRateLimitKeepsRetryAfter(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "600")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(strings.Repeat("x", int(MaxErrorBodyBytes)+10)))
+	}))
+	defer ts.Close()
+
+	store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+	_ = store.Save(NormalizeBaseURL(ts.URL), &Credentials{
+		AccessToken: "old-access", RefreshToken: "old-refresh", ExpiresAt: 1, TokenEndpoint: ts.URL + "/token",
+	})
+	m := NewAuthManagerWithStore(&Config{BaseURL: ts.URL}, ts.Client(), store)
+
+	err := m.Refresh(context.Background())
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error = %T %v, want *Error", err, err)
+	}
+	if bcErr.Code != CodeRateLimit || bcErr.RetryAfter != 600 || bcErr.OAuthError != "" {
+		t.Errorf("error = %s RetryAfter=%d OAuthError=%q, want rate_limit 600 \"\"", bcErr.Code, bcErr.RetryAfter, bcErr.OAuthError)
+	}
+	if !strings.Contains(bcErr.Message, "unreadable response body") {
+		t.Errorf("Message = %q, want it to say the body was unreadable", bcErr.Message)
+	}
+}
