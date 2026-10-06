@@ -526,7 +526,7 @@ func TestAuthManager_Refresh_ClassifiesTokenEndpointRefusals(t *testing.T) {
 		{"400 invalid_grant", 400, `{"error":"invalid_grant"}`, CodeAuth},
 		{"400 access_denied", 400, `{"error":"access_denied"}`, CodeAuth},
 		{"401 bare", 401, ``, CodeAuth},
-		{"401 non-JSON", 401, `Unauthorized`, CodeAuth},
+		{"401 non-JSON", 401, `refresh_token=secret-refresh`, CodeAuth},
 		{"401 other code", 401, `{"error":"invalid_request"}`, CodeAuth},
 		{"400 invalid_request", 400, `{"error":"invalid_request"}`, CodeAPI},
 		{"500 server_error", 500, `{"error":"server_error"}`, CodeAPI},
@@ -555,6 +555,10 @@ func TestAuthManager_Refresh_ClassifiesTokenEndpointRefusals(t *testing.T) {
 			}
 			if bcErr.Code != tc.want || bcErr.HTTPStatus != tc.status {
 				t.Errorf("error = %s/%d, want %s/%d", bcErr.Code, bcErr.HTTPStatus, tc.want, tc.status)
+			}
+			// SPEC §9: only error and error_description are rendered.
+			if strings.Contains(bcErr.Error(), "secret-refresh") || strings.Contains(bcErr.Error(), "Bad Request") {
+				t.Errorf("error = %q renders the response body", bcErr.Error())
 			}
 		})
 	}

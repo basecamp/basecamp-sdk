@@ -204,7 +204,8 @@ func isRedirectStatus(status int) bool {
 // *basecamp.Error: auth_required for an OAuth error code the caller resolves by
 // signing in again, or for any 401 whatever its body; api_error otherwise
 // (oautherror.AuthRequired). The message is the RFC 6749 error and description
-// when the body carries them, else the status and the truncated body.
+// when the body carries them, else the status alone: no other part of the body
+// is rendered (SPEC §9 — a token endpoint's error body can echo what was sent).
 func tokenEndpointError(status int, body []byte) *basecamp.Error {
 	code, desc := oautherror.Parse(body)
 	var message string
@@ -217,11 +218,7 @@ func tokenEndpointError(status int, body []byte) *basecamp.Error {
 			message += " - " + desc
 		}
 	} else {
-		bodyStr := string(body)
-		if len(bodyStr) > maxErrorMessageLen {
-			bodyStr = bodyStr[:maxErrorMessageLen-3] + "..."
-		}
-		message = fmt.Sprintf("token request failed with status %d: %s", status, bodyStr)
+		message = fmt.Sprintf("token request failed with status %d", status)
 	}
 	if oautherror.AuthRequired(status, code) {
 		return &basecamp.Error{Code: basecamp.CodeAuth, Message: message, HTTPStatus: status}

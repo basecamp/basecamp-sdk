@@ -2659,9 +2659,8 @@ unless the client authenticated through the `Authorization` header, and RFC 9110
 a body-authenticated `invalid_client` with a 400 and keeps the 401 for Basic
 auth. Rule 2 keeps Launchpad and other servers that refuse with a bare 401
 classified. The body is read for the `error` and `error_description` string
-members, and a non-JSON body never becomes a parse-failure `api_error` on a
-non-2xx. TypeScript, Ruby, Python, Kotlin and Rust never echo any other body
-content; Go's message carries the truncated body when it holds no `error`. `conformance/oauth-token` pins the
+members — no other part of it is rendered (§9) — and a non-JSON body never
+becomes a parse-failure `api_error` on a non-2xx. `conformance/oauth-token` pins the
 rule; Go's `AuthManager` refresh applies it too. The device flow's poll keeps
 its own reason-keyed outcomes (§16 RFC 8628 below), and the Ruby and Python
 legacy Launchpad token providers, which raise their auth error on any refused

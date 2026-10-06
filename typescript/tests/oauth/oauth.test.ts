@@ -722,6 +722,16 @@ describe("Token-Endpoint Transport Policy", () => {
     expect(err.message).not.toContain("Content-Length");
   });
 
+  it("refuses a null-body refusal that declares an oversized Content-Length before classifying it", async () => {
+    const oversized = new Response(null, { status: 401, headers: { "Content-Length": String(2 * 1024 * 1024) } });
+    const err = await refreshToken(
+      { tokenEndpoint, refreshToken: "my_refresh_token" },
+      { fetch: async () => oversized }
+    ).catch((e) => e);
+    expect(err.code).toBe("api_error");
+    expect(err.message).toContain("too large");
+  });
+
   it.each([Number.NaN, Infinity, -5, 0])(
     "normalizes invalid timeoutMs %p to the default instead of instant-aborting",
     async (badTimeout) => {

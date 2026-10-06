@@ -234,6 +234,11 @@ async function readResponseWithByteLimit(
 
   // If no body or body isn't streamable, require valid Content-Length
   if (!response.body) {
+    // A refusal with no body (a bare 401 whose Response carries a null body)
+    // has nothing to read, and its status alone classifies it — never read
+    // it, and never fail it closed as a missing-length api_error. A declared
+    // length over the cap was already refused above.
+    if (!response.ok) return "";
     // If Content-Length is missing or invalid, we cannot protect against DoS - fail closed.
     // If it was valid and within limits, we can safely read.
     if (contentLengthBytes === null) {
@@ -404,14 +409,6 @@ async function doTokenRequest(
           `redirect ${raced.status} on the token endpoint is not followed`,
           { httpStatus: raced.status }
         );
-      }
-
-      // A refusal with no body (a bare 401 whose Response carries a null
-      // body) has nothing to read, and its status alone classifies it:
-      // never send it through the reader, which fails closed on a null body
-      // without a Content-Length.
-      if (!raced.ok && !raced.body) {
-        return { response: raced, responseText: "" };
       }
 
       const MAX_TOKEN_RESPONSE_BYTES = 1 * 1024 * 1024; // 1 MB
