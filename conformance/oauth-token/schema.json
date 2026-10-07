@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://basecamp.com/schemas/oauth-token-fixture.json",
   "title": "OAuth Token Wire-Behavior Fixture",
-  "description": "Data-only, cross-language fixture describing one token-endpoint wire behavior: what a refresh request sends (the RFC 8707 resource form parameter) and how a token response's resource member decodes (round-trip, absent/null as unset, present-empty/non-string rejected). Lifecycle behavior — response-omission preservation across a stored credential — is deliberately NOT modeled here: it lives in per-manager tests (TS TokenManager, Go AuthManager, CLI). Validated by `make oauth-token-fixtures-check`. Kotlin mirrors these scenarios in code (its established pattern); Go/TS/Python/Ruby load these files directly.",
+  "description": "Data-only, cross-language fixture describing one token-endpoint wire behavior: what a refresh request sends (the RFC 8707 resource form parameter), how a token response's resource member decodes (round-trip, absent/null as unset, present-empty/non-string rejected), and which error code a failed token request raises (auth_required for an OAuth error code the caller fixes by signing in again, or for any 401; api_error otherwise). Lifecycle behavior — response-omission preservation across a stored credential — is deliberately NOT modeled here: it lives in per-manager tests (TS TokenManager, Go AuthManager, CLI). Validated by `make oauth-token-fixtures-check`. Kotlin mirrors these scenarios in code (its established pattern); Go/TS/Python/Ruby/Rust load these files directly.",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "operation", "response", "expect"],
@@ -29,12 +29,16 @@
     "response": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["body"],
+      "oneOf": [{ "required": ["body"] }, { "required": ["rawBody"] }],
       "properties": {
         "status": { "type": "integer", "minimum": 100, "maximum": 599, "default": 200 },
         "body": {
           "type": "object",
-          "description": "Raw JSON token response the mock endpoint returns, verbatim — including malformed resource values the SDK must reject."
+          "description": "Raw JSON token response the mock endpoint returns, verbatim — including malformed resource values the SDK must reject, and RFC 6749 §5.2 error objects."
+        },
+        "rawBody": {
+          "type": "string",
+          "description": "A non-JSON (or empty) body the mock endpoint returns verbatim as text/plain — an endpoint that answers without an OAuth error object, such as a bare 401. Exactly one of body and rawBody."
         }
       }
     },
@@ -46,7 +50,12 @@
         "outcome": {
           "type": "string",
           "enum": ["token", "reject"],
-          "description": "token: the call returns a token. reject: the call fails (Go surfaces a plain error; the other SDKs raise their api_error taxonomy)."
+          "description": "token: the call returns a token. reject: the call fails with the SDK error code `code` names."
+        },
+        "code": {
+          "type": "string",
+          "enum": ["auth_required", "api_error"],
+          "description": "On `reject`: the SDK error code the failure carries (Ruby's OauthError spells auth_required as type \"auth\"). auth_required is a refused grant or client — invalid_grant, invalid_client, unauthorized_client or access_denied, on any status — or any 401, whatever its body; every other failure is api_error."
         },
         "resource": {
           "type": "string",
@@ -72,6 +81,12 @@
           "description": "A token fixture must pin the resource expectation exactly one way — a fixture stating both a value and absence is contradictory.",
           "if": { "required": ["outcome"], "properties": { "outcome": { "const": "token" } } },
           "then": { "oneOf": [{ "required": ["resource"] }, { "required": ["resourceAbsent"] }] }
+        },
+        {
+          "description": "A rejection must name its error code — a harness asserting only that the call failed would pass for the wrong classification — and a token outcome carries none.",
+          "if": { "required": ["outcome"], "properties": { "outcome": { "const": "reject" } } },
+          "then": { "required": ["code"] },
+          "else": { "not": { "required": ["code"] } }
         },
         {
           "description": "Every refresh round-trip sends a form: pin the resource key exactly one way. A fixture omitting both would silently skip the form assertion entirely, and stating both is contradictory.",

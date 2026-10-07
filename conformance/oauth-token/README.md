@@ -1,10 +1,12 @@
 # OAuth token wire-behavior fixtures
 
 Data-only, cross-language fixtures for token-endpoint **wire behavior**: the
-RFC 8707 `resource` echo on refresh requests and the decode rules for a token
+RFC 8707 `resource` echo on refresh requests, the decode rules for a token
 response's `resource` member (round-trip, absent/JSON-null as unset,
-present-empty/non-string rejected). See SPEC.md §16, "Token Response `resource`
-Indicator".
+present-empty/non-string rejected), and the error code a refused or failed
+token request raises — `auth_required` by OAuth error code or for any 401,
+`api_error` otherwise (Rust refines a 429 to `rate_limit`; no fixture pins it). See SPEC.md §16, "Token Response `resource` Indicator"
+and "Token Endpoint Error Classification".
 
 A separate family from `conformance/oauth/` — that schema is discovery-only
 and every discovery harness globs its whole fixtures directory, so token cases
@@ -16,6 +18,7 @@ Consumers:
 - **TypeScript** `typescript/tests/oauth/token-conformance.test.ts`
 - **Python** `python/tests/oauth/test_token_conformance.py`
 - **Ruby** `ruby/test/basecamp/oauth_token_conformance_test.rb`
+- **Rust** `rust/basecamp-sdk/src/oauth/token.rs` (`tests::conformance`)
 - **Kotlin** mirrors the scenarios in code (`OAuthTest.kt`), its established
   pattern for the discovery fixtures.
 

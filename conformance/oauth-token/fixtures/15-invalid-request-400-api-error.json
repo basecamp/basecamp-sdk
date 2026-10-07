@@ -1,0 +1,17 @@
+{
+  "name": "invalid-request-400-api-error",
+  "description": "A malformed request is not something signing in again fixes: invalid_request on a 400 is api_error.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 400,
+    "body": {
+      "error": "invalid_request",
+      "error_description": "Missing grant_type"
+    }
+  },
+  "expect": {
+    "outcome": "reject",
+    "code": "api_error",
+    "formResourceAbsent": true
+  }
+}

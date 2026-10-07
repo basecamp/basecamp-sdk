@@ -5,13 +5,18 @@ require "test_helper"
 # Drives the shared, data-only fixtures in conformance/oauth-token/fixtures:
 # one refresh round-trip per fixture, asserting the sent resource form
 # parameter and the response decode (round-trip, absent/null as unset,
-# present-empty/non-string rejected). Lifecycle preservation across a stored
+# present-empty/non-string rejected), and the error code a failed request
+# raises (auth_required or api_error). Lifecycle preservation across a stored
 # credential is per-manager behavior — not modeled here.
 class OAuthTokenConformanceTest < Minitest::Test
   include TestHelper
 
   FIXTURE_DIR = File.expand_path("../../../conformance/oauth-token/fixtures", __dir__)
   TOKEN_ENDPOINT = "https://issuer.token-fixtures.example/oauth/token"
+
+  # The shared fixtures name SDK error codes; Ruby's OauthError spells
+  # auth_required as the type "auth".
+  ERROR_TYPES = { "auth_required" => "auth", "api_error" => "api_error" }.freeze
 
   fixtures = Dir.glob(File.join(FIXTURE_DIR, "*.json")).sort
   raise "no fixtures found in #{FIXTURE_DIR}" if fixtures.empty?
@@ -23,13 +28,16 @@ class OAuthTokenConformanceTest < Minitest::Test
       assert_equal "refreshToken", fixture["operation"]
 
       sent_form = nil
+      response = fixture.fetch("response")
+      body, content_type =
+        if response.key?("rawBody")
+          [ response["rawBody"], "text/plain" ]
+        else
+          [ response.fetch("body").to_json, "application/json" ]
+        end
       stub_request(:post, TOKEN_ENDPOINT)
         .with { |req| sent_form = URI.decode_www_form(req.body).to_h }
-        .to_return(
-          status: fixture["response"].fetch("status", 200),
-          body: fixture["response"].fetch("body").to_json,
-          headers: { "Content-Type" => "application/json" }
-        )
+        .to_return(status: response.fetch("status", 200), body: body, headers: { "Content-Type" => content_type })
 
       resource = fixture.dig("request", "resource")
       expect = fixture.fetch("expect")
@@ -47,7 +55,7 @@ class OAuthTokenConformanceTest < Minitest::Test
         assert_nil token.resource if expect["resourceAbsent"]
       else
         error = assert_raises(Basecamp::Oauth::OauthError) { run_refresh.call }
-        assert_equal "api_error", error.type
+        assert_equal ERROR_TYPES.fetch(expect.fetch("code")), error.type
       end
 
       assert_not_nil sent_form, "the refresh request never reached the stub"

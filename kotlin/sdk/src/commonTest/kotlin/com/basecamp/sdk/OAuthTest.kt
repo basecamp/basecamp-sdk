@@ -474,6 +474,46 @@ class OAuthTest {
         }
     }
 
+    @Test
+    fun refreshTokenClassifiesRefusalsByOAuthErrorCode() = runTest {
+        // Mirrors conformance/oauth-token 08–17: an OAuth error the caller
+        // fixes by signing in again is auth_required on any status, and so is
+        // any 401 whatever its body; everything else is api_error.
+        val cases = listOf(
+            Triple(400, """{"error": "invalid_client", "error_description": "Client authentication failed"}""", "auth_required"),
+            Triple(400, """{"error": "unauthorized_client"}""", "auth_required"),
+            Triple(400, """{"error": "invalid_grant", "error_description": "Refresh token revoked"}""", "auth_required"),
+            Triple(400, """{"error": "access_denied"}""", "auth_required"),
+            Triple(401, "", "auth_required"),
+            Triple(401, "<html><body>Unauthorized</body></html>", "auth_required"),
+            Triple(401, """{"error": "invalid_request"}""", "auth_required"),
+            Triple(400, """{"error": "invalid_request", "error_description": "Missing grant_type"}""", "api_error"),
+            Triple(500, """{"error": "server_error"}""", "api_error"),
+            Triple(400, "Bad Request", "api_error"),
+        )
+        for ((status, body, code) in cases) {
+            val engine = MockEngine { _ ->
+                respond(content = body, status = HttpStatusCode.fromValue(status))
+            }
+            val httpClient = HttpClient(engine)
+            try {
+                val e = assertFailsWith<BasecampException> {
+                    refreshToken(
+                        tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                        refreshToken = "refresh-456",
+                        clientId = "basecamp-cli",
+                        client = httpClient,
+                    )
+                }
+                assertEquals(code, e.code, "$status $body")
+                assertEquals(status, e.httpStatus, "$status $body")
+                assertFalse(e.message!!.contains("<html>"), "the body is never echoed")
+            } finally {
+                httpClient.close()
+            }
+        }
+    }
+
     // =========================================================================
     // PKCE challenge is correct SHA-256 of verifier
     // =========================================================================
@@ -608,7 +648,7 @@ class OAuthTest {
         }
         val httpClient = HttpClient(engine)
         try {
-            val e = assertFailsWith<BasecampException.Auth> {
+            val e = assertFailsWith<BasecampException.Api> {
                 exchangeCode(
                     tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
                     code = "c",

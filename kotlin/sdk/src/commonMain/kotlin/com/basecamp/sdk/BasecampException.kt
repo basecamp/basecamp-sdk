@@ -52,13 +52,23 @@ sealed class BasecampException(
     /** Exit code for CLI applications (matches Go/TS/Ruby SDKs). */
     val exitCode: Int get() = exitCodeFor(code)
 
-    /** Authentication error (401). */
-    class Auth(
-        message: String = "Authentication required",
-        hint: String? = "Check your access token or refresh it if expired",
-        requestId: String? = null,
-        cause: Throwable? = null,
-    ) : BasecampException(message, CODE_AUTH, hint, 401, false, requestId, cause)
+    /**
+     * Authentication error — a 401, or an OAuth token endpoint refusing a
+     * grant or client by error code on another status (SPEC §16 "Token
+     * Endpoint Error Classification"), which carries that status.
+     */
+    class Auth : BasecampException {
+        constructor(
+            message: String = "Authentication required",
+            hint: String? = "Check your access token or refresh it if expired",
+            requestId: String? = null,
+            cause: Throwable? = null,
+        ) : super(message, CODE_AUTH, hint, 401, false, requestId, cause)
+
+        /** A token endpoint refusal, carrying the status it arrived with. */
+        internal constructor(message: String, hint: String?, httpStatus: Int) :
+            super(message, CODE_AUTH, hint, httpStatus, false, null, null)
+    }
 
     /** Forbidden error (403). */
     class Forbidden(

@@ -435,12 +435,12 @@ func TestExchanger_Refresh_RejectsHTTPEndpoint(t *testing.T) {
 	}
 }
 
-func TestExchanger_Exchange_TruncatesLargeErrorBody(t *testing.T) {
+func TestExchanger_Exchange_NeverRendersANonOAuthErrorBody(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		// Write a large error body (not valid JSON, falls through to raw body path)
-		largeBody := strings.Repeat("x", 10000)
-		fmt.Fprint(w, largeBody)
+		// Not an OAuth error object: SPEC §9 renders only error and
+		// error_description, so none of this body may reach the message.
+		fmt.Fprint(w, "refresh_token=secret-refresh "+strings.Repeat("x", 10000))
 	}))
 	defer server.Close()
 
@@ -454,14 +454,8 @@ func TestExchanger_Exchange_TruncatesLargeErrorBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected error")
 	}
-	errMsg := err.Error()
-	// The truncated body portion must be at most maxErrorMessageLen (500).
-	// Full message includes prefix "token request failed with status 400: " (38 chars) + body (<=500).
-	if len(errMsg) > 600 {
-		t.Errorf("Error message too long (%d chars), truncated body should be at most %d", len(errMsg), maxErrorMessageLen)
-	}
-	if !strings.Contains(errMsg, "...") {
-		t.Error("Expected '...' suffix in truncated error")
+	if got, want := err.Error(), "token request failed with status 400"; got != want {
+		t.Errorf("error = %q, want %q", got, want)
 	}
 }
 
@@ -763,8 +757,8 @@ func TestExchanger_RefusesTokenEndpointRedirects(t *testing.T) {
 }
 
 // TestExchanger_304StaysGenericNon200 pins the boundary of the refused set: a
-// 304 is a cache validator, not a followable redirect, and keeps the untyped
-// non-200 wrap.
+// 304 is a cache validator, not a followable redirect, and keeps the generic
+// non-200 classification: api_error carrying the status.
 func TestExchanger_304StaysGenericNon200(t *testing.T) {
 	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
@@ -781,6 +775,10 @@ func TestExchanger_304StaysGenericNon200(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "status 304") {
 		t.Errorf("error = %v, want the generic status-304 wrap", err)
+	}
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) || bcErr.Code != basecamp.CodeAPI || bcErr.HTTPStatus != http.StatusNotModified {
+		t.Errorf("error = %T %v, want *basecamp.Error api_error/304", err, err)
 	}
 }
 

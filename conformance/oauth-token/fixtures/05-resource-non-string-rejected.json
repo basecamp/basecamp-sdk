@@ -12,6 +12,7 @@
   },
   "expect": {
     "outcome": "reject",
+    "code": "api_error",
     "formResourceAbsent": true
   }
 }

@@ -1,0 +1,17 @@
+{
+  "name": "invalid-client-400-auth-required",
+  "description": "A client-authentication failure answered as a 400 (RFC 6749 \u00a75.2 for a client that did not authenticate with an Authorization header; RFC 9110 \u00a715.5.2 reserves 401 for a challenge) is classified by its error code, not its status: auth_required.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 400,
+    "body": {
+      "error": "invalid_client",
+      "error_description": "Client authentication failed"
+    }
+  },
+  "expect": {
+    "outcome": "reject",
+    "code": "auth_required",
+    "formResourceAbsent": true
+  }
+}

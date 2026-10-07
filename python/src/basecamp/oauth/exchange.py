@@ -167,6 +167,13 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
 
 
 def _parse_token_response(status: int, body: bytes) -> OAuthToken:
+    # A failed request is classified from its status and OAuth error object
+    # BEFORE the body is parsed as a token: a refusal whose body is not JSON
+    # (a bare 401, an HTML error page) must surface as that refusal, not as a
+    # malformed token response.
+    if not 200 <= status < 300:
+        raise _token_endpoint_error(status, body)
+
     parse_error: OAuthError | None = None
     try:
         data = json.loads(body)
@@ -194,9 +201,6 @@ def _parse_token_response(status: int, body: bytes) -> OAuthToken:
             f"Expected JSON object in token response, got {type(data).__name__}",
             http_status=status,
         )
-
-    if not 200 <= status < 300:
-        _handle_error(status, data)
 
     access_token = data.get("access_token")
     if not isinstance(access_token, str) or not access_token:
@@ -243,15 +247,49 @@ def _parse_token_response(status: int, body: bytes) -> OAuthToken:
     )
 
 
-def _handle_error(status: int, data: dict) -> None:
-    message = truncate(data.get("error_description") or data.get("error") or "Token request failed")
+# The OAuth error codes a caller resolves by signing in again: the grant is
+# invalid, expired or revoked (``invalid_grant``), the client failed to
+# authenticate (``invalid_client``) or may not use this grant
+# (``unauthorized_client``), or the resource owner refused (``access_denied``).
+# Classified by code, not status: RFC 6749 §5.2 answers ``invalid_client`` with
+# a 400 unless the client authenticated through the Authorization header, so a
+# 401 cannot be the only signal. Matches every other SDK's token endpoint
+# (conformance/oauth-token).
+_AUTH_ERROR_CODES = frozenset({"invalid_grant", "invalid_client", "unauthorized_client", "access_denied"})
 
-    if status == 401 or data.get("error") == "invalid_grant":
-        raise OAuthError(
+
+def _token_endpoint_error(status: int, body: bytes) -> OAuthError:
+    """Classify a non-2xx token endpoint response.
+
+    ``auth`` for an error code in ``_AUTH_ERROR_CODES`` on any status, or for
+    any 401 whatever its body (Launchpad and other servers refuse with a bare
+    status); ``api_error`` for everything else. The body is read only for the
+    RFC 6749 ``error`` and ``error_description`` members and is never echoed —
+    a body that is not an OAuth error object contributes nothing.
+    """
+    data: dict = {}
+    try:
+        parsed = json.loads(body)
+    except ValueError:
+        # Not JSON: the status alone classifies it. The decode error is
+        # dropped here — it retains the whole body (SPEC §9).
+        parsed = None
+    if isinstance(parsed, dict):
+        data = parsed
+
+    error_code = data.get("error") if isinstance(data.get("error"), str) else None
+    description = data.get("error_description") if isinstance(data.get("error_description"), str) else None
+    message = truncate(description or error_code or "Token request failed")
+
+    if status == 401 or error_code in _AUTH_ERROR_CODES:
+        return OAuthError(
             "auth",
             message,
             http_status=status,
-            hint="The authorization code or refresh token may be invalid or expired",
+            hint=(
+                "The authorization server refused this grant or client: "
+                "authorize again, or check the client credentials"
+            ),
         )
 
-    raise OAuthError("api_error", message, http_status=status)
+    return OAuthError("api_error", message, http_status=status)

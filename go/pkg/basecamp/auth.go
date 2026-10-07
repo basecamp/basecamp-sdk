@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/zalando/go-keyring"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp/internal/oautherror"
 )
 
 const serviceName = "basecamp-sdk"
@@ -381,8 +383,31 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
-		return ErrAPI(resp.StatusCode, fmt.Sprintf("token refresh failed: %s", truncateString(string(body), MaxErrorMessageBytes)))
+		body, err := limitedReadAll(resp.Body, MaxErrorBodyBytes)
+		if err != nil {
+			// An unreadable or oversized refusal is refused before it is
+			// classified, like every other size-capped read.
+			return ErrAPI(resp.StatusCode, fmt.Sprintf("token refresh failed with status %d: unreadable response body", resp.StatusCode))
+		}
+		// Only RFC 6749's error and error_description are rendered, never the
+		// rest of the body (SPEC §9: a token endpoint's error body can echo
+		// the refresh token it was sent).
+		code, desc := oautherror.Parse(body)
+		message := fmt.Sprintf("token refresh failed with status %d", resp.StatusCode)
+		if code != "" {
+			message = "token refresh failed: " + code
+			if desc != "" {
+				message += " - " + desc
+			}
+			message = truncateString(message, MaxErrorMessageBytes)
+		}
+		// Same classification as the oauth package's Exchanger: a refused
+		// grant or client (by OAuth error code, on any status) or any 401 is
+		// auth_required; everything else is api_error.
+		if oautherror.AuthRequired(resp.StatusCode, code) {
+			return &Error{Code: CodeAuth, Message: message, HTTPStatus: resp.StatusCode}
+		}
+		return ErrAPI(resp.StatusCode, message)
 	}
 
 	var tokenResp struct {

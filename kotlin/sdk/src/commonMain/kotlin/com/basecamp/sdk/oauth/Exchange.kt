@@ -9,6 +9,8 @@ import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import com.basecamp.sdk.BasecampException
 import com.basecamp.sdk.requireSecureEndpoint
 import com.basecamp.sdk.redactTransportError
@@ -51,6 +53,44 @@ internal data class OAuthErrorResponse(
 )
 
 private val tokenJson = Json { ignoreUnknownKeys = true }
+
+/**
+ * The OAuth error codes a caller resolves by signing in again: the grant is
+ * invalid, expired or revoked (`invalid_grant`), the client failed to
+ * authenticate (`invalid_client`) or may not use this grant
+ * (`unauthorized_client`), or the resource owner refused (`access_denied`).
+ * Classified by code, not status: RFC 6749 §5.2 answers `invalid_client` with a
+ * 400 unless the client authenticated through the Authorization header, so a
+ * 401 cannot be the only signal. Matches every other SDK's token endpoint
+ * (conformance/oauth-token).
+ */
+private val AUTH_ERROR_CODES = setOf("invalid_grant", "invalid_client", "unauthorized_client", "access_denied")
+
+/**
+ * Classifies a non-2xx token endpoint response: [BasecampException.Auth] for an
+ * error code in [AUTH_ERROR_CODES] on any status, or for any 401 whatever its
+ * body (Launchpad and other servers refuse with a bare status);
+ * [BasecampException.Api] carrying the status for everything else. The body is
+ * read only for the RFC 6749 `error` and `error_description` string members and
+ * is never echoed — a body that is not an OAuth error object contributes nothing.
+ */
+internal fun tokenEndpointError(status: Int, body: String): BasecampException {
+    val fields = runCatching { tokenJson.parseToJsonElement(body) as? JsonObject }.getOrNull()
+    fun string(key: String) = (fields?.get(key) as? JsonPrimitive)?.takeIf { it.isString }?.content
+    val error = string("error")
+    val message = BasecampException.truncateMessage(
+        string("error_description")?.ifEmpty { null } ?: error?.ifEmpty { null } ?: "Token request failed: HTTP $status",
+    )
+    return if (status == 401 || error in AUTH_ERROR_CODES) {
+        BasecampException.Auth(
+            message = message,
+            hint = "The authorization server refused this grant or client: authorize again, or check the client credentials",
+            httpStatus = status,
+        )
+    } else {
+        BasecampException.Api(message, httpStatus = status)
+    }
+}
 private const val MAX_RESPONSE_SIZE = 1_048_576L // 1 MB
 
 /** Bounded per-request timeout for every token-endpoint POST — the 30 s credential-POST default shared across the SDKs (SPEC §16). */
@@ -246,13 +286,7 @@ private suspend fun postTokenRequest(
         }
 
         if (!response.status.isSuccess()) {
-            val errorResp = runCatching { tokenJson.decodeFromString<OAuthErrorResponse>(body) }.getOrNull()
-            val message = errorResp?.errorDescription
-                ?: errorResp?.error
-                ?: "Token request failed: HTTP $status"
-            throw BasecampException.Auth(
-                message = BasecampException.truncateMessage(message),
-            )
+            throw tokenEndpointError(status, body)
         }
 
         // A token response that fails to decode may still contain credential
