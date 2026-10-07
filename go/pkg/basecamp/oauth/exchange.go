@@ -202,28 +202,52 @@ func isRedirectStatus(status int) bool {
 
 // tokenEndpointError classifies a non-200 token response as a typed
 // *basecamp.Error: auth_required for an OAuth error code the caller resolves by
-// signing in again, or for any 401 whatever its body; api_error otherwise
-// (oautherror.AuthRequired). The message is the RFC 6749 error and description
-// when the body carries them, else the status alone: no other part of the body
-// is rendered (SPEC §9 — a token endpoint's error body can echo what was sent).
-func tokenEndpointError(status int, body []byte) *basecamp.Error {
+// signing in again, or for any 401 whatever its body (oautherror.AuthRequired);
+// rate_limit for a 429; api_error otherwise. Every class carries the RFC 6749
+// error code (OAuthError) and the wait a Retry-After names (RetryAfter): an
+// abuse block answers every request for hours with a 429, and a caller that
+// cannot read how long only resends into it. The message is the RFC 6749 error
+// and description when the body carries them, else the status alone: no other
+// part of the body is rendered (SPEC §9 — a token endpoint's error body can
+// echo what was sent).
+func tokenEndpointError(status int, header http.Header, body []byte) *basecamp.Error {
 	code, desc := oautherror.Parse(body)
+	code, desc = boundServerText(code), boundServerText(desc)
 	var message string
 	if code != "" {
-		if len(desc) > maxErrorMessageLen {
-			desc = desc[:maxErrorMessageLen-3] + "..."
-		}
 		message = "token error: " + code
 		if desc != "" {
 			message += " - " + desc
 		}
+		message = boundServerText(message)
 	} else {
 		message = fmt.Sprintf("token request failed with status %d", status)
 	}
-	if oautherror.AuthRequired(status, code) {
-		return &basecamp.Error{Code: basecamp.CodeAuth, Message: message, HTTPStatus: status}
+	wait := basecamp.ParseRetryAfter(header.Get("Retry-After"))
+	var refusal *basecamp.Error
+	switch {
+	case oautherror.AuthRequired(status, code):
+		refusal = &basecamp.Error{Code: basecamp.CodeAuth, Message: message, HTTPStatus: status}
+	case status == http.StatusTooManyRequests:
+		refusal = basecamp.ErrRateLimit(wait)
+		refusal.Message = message
+	default:
+		refusal = basecamp.ErrAPI(status, message)
 	}
-	return basecamp.ErrAPI(status, message)
+	refusal.OAuthError = code
+	refusal.OAuthErrorDescription = desc
+	refusal.RetryAfter = wait
+	return refusal
+}
+
+// boundServerText bounds an error or error_description a server sent to
+// maxErrorMessageLen, so neither a message nor the typed fields beside it
+// carry an unbounded string.
+func boundServerText(s string) string {
+	if len(s) > maxErrorMessageLen {
+		return s[:maxErrorMessageLen-3] + "..."
+	}
+	return s
 }
 
 func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, data url.Values) (*Token, error) {
@@ -280,15 +304,27 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	// Bounded read to prevent OOM from malicious/corrupted responses
 	lr := io.LimitReader(resp.Body, maxTokenResponseBytes+1)
 	body, err := io.ReadAll(lr)
+	oversized := err == nil && int64(len(body)) > maxTokenResponseBytes
+	if (err != nil || oversized) && resp.StatusCode != http.StatusOK {
+		// The caller's own cancellation is theirs to see as such, not a
+		// refusal.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, fmt.Errorf("reading token response: %w", ctxErr)
+		}
+		// A refusal is classified by its status and Retry-After whatever
+		// its body: the body only adds the OAuth error to it. A 429 whose
+		// body could not be read is still a rate limit with a wait.
+		return nil, tokenEndpointError(resp.StatusCode, resp.Header, nil)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("reading token response: %w", err)
 	}
-	if int64(len(body)) > maxTokenResponseBytes {
+	if oversized {
 		return nil, fmt.Errorf("token response body exceeds %d byte limit", maxTokenResponseBytes)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, tokenEndpointError(resp.StatusCode, body)
+		return nil, tokenEndpointError(resp.StatusCode, resp.Header, body)
 	}
 
 	var token Token

@@ -385,15 +385,23 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	if resp.StatusCode != http.StatusOK {
 		body, err := limitedReadAll(resp.Body, MaxErrorBodyBytes)
 		if err != nil {
-			// An unreadable or oversized refusal is refused before it is
-			// classified, like every other size-capped read.
-			return ErrAPI(resp.StatusCode, fmt.Sprintf("token refresh failed with status %d: unreadable response body", resp.StatusCode))
+			// The caller's own cancellation is theirs to see as such.
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return fmt.Errorf("reading token refresh response: %w", ctxErr)
+			}
+			// An unreadable or oversized refusal names no OAuth error, but
+			// its status and Retry-After still classify it: a 429 whose
+			// body could not be read is still a rate limit with a wait.
+			body = nil
 		}
 		// Only RFC 6749's error and error_description are rendered, never the
 		// rest of the body (SPEC §9: a token endpoint's error body can echo
 		// the refresh token it was sent).
 		code, desc := oautherror.Parse(body)
 		message := fmt.Sprintf("token refresh failed with status %d", resp.StatusCode)
+		if body == nil {
+			message += ": unreadable response body"
+		}
 		if code != "" {
 			message = "token refresh failed: " + code
 			if desc != "" {
@@ -403,11 +411,24 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		}
 		// Same classification as the oauth package's Exchanger: a refused
 		// grant or client (by OAuth error code, on any status) or any 401 is
-		// auth_required; everything else is api_error.
-		if oautherror.AuthRequired(resp.StatusCode, code) {
-			return &Error{Code: CodeAuth, Message: message, HTTPStatus: resp.StatusCode}
+		// auth_required; a 429 is rate_limit; everything else is api_error.
+		// Each carries the code and the Retry-After wait, whatever its class.
+		wait := parseRetryAfter(resp.Header.Get("Retry-After"))
+		var refusal *Error
+		switch {
+		case oautherror.AuthRequired(resp.StatusCode, code):
+			refusal = &Error{Code: CodeAuth, Message: message, HTTPStatus: resp.StatusCode}
+		case resp.StatusCode == http.StatusTooManyRequests:
+			refusal = ErrRateLimit(wait)
+			refusal.Message = message
+		default:
+			refusal = ErrAPI(resp.StatusCode, message)
 		}
-		return ErrAPI(resp.StatusCode, message)
+		// Both are server text, bounded as the message is.
+		refusal.OAuthError = truncateString(code, MaxErrorMessageBytes)
+		refusal.OAuthErrorDescription = truncateString(desc, MaxErrorMessageBytes)
+		refusal.RetryAfter = wait
+		return refusal
 	}
 
 	var tokenResp struct {

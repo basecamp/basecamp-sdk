@@ -1214,6 +1214,17 @@ func exceedsRetryAfterCeiling(digits string) bool {
 	return err == nil && seconds > maxRetryAfterSeconds
 }
 
+// ParseRetryAfter is the delay a Retry-After header value names, in whole
+// seconds, read exactly as the client reads its own responses' (SPEC §6
+// "Retry-After Parsing Algorithm"): delta-seconds or an HTTP-date, 0 when the
+// value names no delay, never past the portable ceiling. It is for a response
+// the client did not make — the oauth package's token and device
+// authorization requests — so every Retry-After the SDK reports was parsed
+// one way.
+func ParseRetryAfter(header string) int {
+	return parseRetryAfter(header)
+}
+
 // parseRetryAfter parses the Retry-After header value.
 // It handles both seconds (integer) and HTTP-date formats.
 // Returns 0 if the header is empty or cannot be parsed, and clamps a parsed

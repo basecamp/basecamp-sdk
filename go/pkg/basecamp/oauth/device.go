@@ -16,6 +16,7 @@ import (
 	surfguard "github.com/basecamp/surfguard/go"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp/internal/oautherror"
 )
 
 // DeviceCodeGrantType is the RFC 8628 URN grant type for the device
@@ -350,13 +351,17 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
 	}
 
-	// A non-2xx is a hard failure whose body is unused — surface it by status
-	// BEFORE reading the body. Otherwise a slow/never-ending error body could hit
-	// the request timeout mid-read and be misclassified as a retryable transport
-	// failure instead of the api_error it is.
+	// A non-2xx is a hard failure, typed from its status and, on a 4xx, the
+	// OAuth error its body names (deviceAuthorizationRefusal). No failure to
+	// read that body can turn it into a retryable transport failure: a slow or
+	// never-ending one is classified by status alone. Cancellation still wins
+	// over the completed response.
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, basecamp.ErrAPI(resp.StatusCode,
-			fmt.Sprintf("device authorization failed with status %d", resp.StatusCode))
+		refusal := deviceAuthorizationRefusal(resp)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
+		}
+		return nil, refusal
 	}
 
 	body, err := readBoundedBody(resp.Body, maxTokenResponseBytes)
@@ -402,6 +407,53 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
 	}
 	return validateDeviceAuthorization(raw, resp.StatusCode)
+}
+
+// deviceAuthorizationRefusal types a non-2xx device authorization response
+// the way the token endpoint's refusals are typed (tokenEndpointError): a 429
+// is rate_limit, anything else api_error with its status, and each carries the
+// RFC 6749 error code (OAuthError) and the wait a Retry-After names
+// (RetryAfter). An abuse block refuses device authorization along with every
+// other OAuth endpoint, for hours, and before this a person locked out was
+// told only "status 429" — not why, and not for how long.
+//
+// Nothing here is auth_required: the refusal is of the login being started,
+// so "sign in again" is not its remedy.
+//
+// Only a 4xx body is read, as the token poll reads only a 4xx's (RFC 8628 §3.5
+// errors are 400-class); a 3xx or 5xx is classified before any read. A body
+// that cannot be read, or reads over the cap, leaves the status to classify
+// alone. Only error and error_description are rendered (SPEC §9).
+func deviceAuthorizationRefusal(resp *http.Response) *basecamp.Error {
+	status := resp.StatusCode
+	message := fmt.Sprintf("device authorization failed with status %d", status)
+	var code, desc string
+	if status >= 400 && status < 500 {
+		if body, err := readBoundedBody(resp.Body, maxTokenResponseBytes); err == nil {
+			code, desc = oautherror.Parse(body)
+			code, desc = boundServerText(code), boundServerText(desc)
+			if code != "" {
+				message += ": " + code
+				if desc != "" {
+					message += " - " + desc
+				}
+				message = boundServerText(message)
+			}
+		}
+	}
+
+	wait := basecamp.ParseRetryAfter(resp.Header.Get("Retry-After"))
+	var refusal *basecamp.Error
+	if status == http.StatusTooManyRequests {
+		refusal = basecamp.ErrRateLimit(wait)
+		refusal.Message = message
+	} else {
+		refusal = basecamp.ErrAPI(status, message)
+	}
+	refusal.OAuthError = code
+	refusal.OAuthErrorDescription = desc
+	refusal.RetryAfter = wait
+	return refusal
 }
 
 func validateDeviceAuthorization(raw rawDeviceAuthorization, status int) (*DeviceAuthorization, error) {

@@ -1,0 +1,255 @@
+package oauth
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+)
+
+// A token-endpoint refusal carries what the server said, typed: the RFC 6749
+// error code, the HTTP status, and the wait a Retry-After names. A 429 is
+// rate_limit — an abuse block's Retry-After can run to hours, and a caller
+// that cannot read it resends into the block (SPEC §16).
+func TestExchanger_Refresh_CarriesOAuthErrorAndRetryAfter(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		status     int
+		retryAfter string
+		body       string
+		wantCode   string
+		wantOAuth  string
+		wantWait   int
+	}{
+		{"429 abuse block", 429, "14400", `{"error":"too_many_requests","error_description":"Temporarily blocked due to repeated failures. Try again later."}`, basecamp.CodeRateLimit, "too_many_requests", 14400},
+		{"429 bare", 429, "", ``, basecamp.CodeRateLimit, "", 0},
+		{"429 HTTP-date", 429, time.Now().Add(2 * time.Hour).UTC().Format(http.TimeFormat), `{"error":"too_many_requests"}`, basecamp.CodeRateLimit, "too_many_requests", 7200},
+		{"400 invalid_grant", 400, "", `{"error":"invalid_grant","error_description":"Token has been revoked"}`, basecamp.CodeAuth, "invalid_grant", 0},
+		{"400 invalid_request", 400, "", `{"error":"invalid_request"}`, basecamp.CodeAPI, "invalid_request", 0},
+		{"503 with Retry-After", 503, "30", ``, basecamp.CodeAPI, "", 30},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tc.retryAfter != "" {
+					w.Header().Set("Retry-After", tc.retryAfter)
+				}
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer server.Close()
+
+			_, err := NewExchanger(server.Client()).Refresh(context.Background(), RefreshRequest{
+				TokenEndpoint: server.URL,
+				RefreshToken:  "refresh123",
+				ClientID:      "basecamp-cli",
+			})
+			var bcErr *basecamp.Error
+			if !errors.As(err, &bcErr) {
+				t.Fatalf("error = %T %v, want *basecamp.Error", err, err)
+			}
+			if bcErr.Code != tc.wantCode || bcErr.HTTPStatus != tc.status {
+				t.Errorf("error = %s/%d, want %s/%d", bcErr.Code, bcErr.HTTPStatus, tc.wantCode, tc.status)
+			}
+			if bcErr.OAuthError != tc.wantOAuth {
+				t.Errorf("OAuthError = %q, want %q", bcErr.OAuthError, tc.wantOAuth)
+			}
+			if want := oauthDescription(tc.body); bcErr.OAuthErrorDescription != want {
+				t.Errorf("OAuthErrorDescription = %q, want %q", bcErr.OAuthErrorDescription, want)
+			}
+			// An HTTP-date is resolved against the clock, so allow a second's
+			// drift between the header being written and being read.
+			drifted := strings.Contains(tc.retryAfter, "GMT") && bcErr.RetryAfter == tc.wantWait-1
+			if bcErr.RetryAfter != tc.wantWait && !drifted {
+				t.Errorf("RetryAfter = %d, want %d", bcErr.RetryAfter, tc.wantWait)
+			}
+		})
+	}
+}
+
+// The device authorization endpoint is refused the same way: a 4xx's OAuth
+// error code and description are read and typed, and a 429 is rate_limit
+// carrying its Retry-After. Before, every non-2xx was a bare "status 429"
+// api_error, so a person locked out by an abuse block was never told how
+// long to wait. A refusal other than 429 stays api_error: it is a failure
+// of the login being attempted, not a stale login to sign in again over.
+func TestRequestDeviceAuthorization_CarriesOAuthErrorAndRetryAfter(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		status      int
+		retryAfter  string
+		body        string
+		wantCode    string
+		wantOAuth   string
+		wantWait    int
+		wantMessage string
+	}{
+		{"429 abuse block", 429, "14400", `{"error":"too_many_requests","error_description":"Temporarily blocked due to repeated failures. Try again later."}`, basecamp.CodeRateLimit, "too_many_requests", 14400,
+			"device authorization failed with status 429: too_many_requests - Temporarily blocked due to repeated failures. Try again later."},
+		{"429 bare", 429, "60", ``, basecamp.CodeRateLimit, "", 60, "device authorization failed with status 429"},
+		{"400 unauthorized_client", 400, "", `{"error":"unauthorized_client","error_description":"Client not authorized for device_code grant"}`, basecamp.CodeAPI, "unauthorized_client", 0,
+			"device authorization failed with status 400: unauthorized_client - Client not authorized for device_code grant"},
+		{"400 non-JSON", 400, "", `client_id=secret-thing`, basecamp.CodeAPI, "", 0, "device authorization failed with status 400"},
+		{"503 dark launch", 503, "", ``, basecamp.CodeAPI, "", 0, "device authorization failed with status 503"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				if tc.retryAfter != "" {
+					w.Header().Set("Retry-After", tc.retryAfter)
+				}
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer srv.Close()
+
+			_, err := RequestDeviceAuthorization(context.Background(), srv.URL, "basecamp-cli",
+				WithDeviceHTTPClient(tlsClient(srv)))
+			var bcErr *basecamp.Error
+			if !errors.As(err, &bcErr) {
+				t.Fatalf("error = %T %v, want *basecamp.Error", err, err)
+			}
+			if bcErr.Code != tc.wantCode || bcErr.HTTPStatus != tc.status {
+				t.Errorf("error = %s/%d, want %s/%d", bcErr.Code, bcErr.HTTPStatus, tc.wantCode, tc.status)
+			}
+			if bcErr.OAuthError != tc.wantOAuth {
+				t.Errorf("OAuthError = %q, want %q", bcErr.OAuthError, tc.wantOAuth)
+			}
+			if bcErr.RetryAfter != tc.wantWait {
+				t.Errorf("RetryAfter = %d, want %d", bcErr.RetryAfter, tc.wantWait)
+			}
+			if want := oauthDescription(tc.body); bcErr.OAuthErrorDescription != want {
+				t.Errorf("OAuthErrorDescription = %q, want %q", bcErr.OAuthErrorDescription, want)
+			}
+			if bcErr.Message != tc.wantMessage {
+				t.Errorf("Message = %q, want %q", bcErr.Message, tc.wantMessage)
+			}
+			// SPEC §9: only error and error_description are rendered.
+			if strings.Contains(bcErr.Error(), "secret-thing") {
+				t.Errorf("error = %q renders the response body", bcErr.Error())
+			}
+		})
+	}
+}
+
+// oauthDescription is the error_description a test body carries, or "".
+func oauthDescription(body string) string {
+	var fields struct {
+		Description string `json:"error_description"`
+	}
+	_ = json.Unmarshal([]byte(body), &fields)
+	return fields.Description
+}
+
+// Server text is bounded in the typed fields as it is in the message, so an
+// endpoint answering with an enormous error code or description cannot hand a
+// caller an unbounded string to log or render.
+func TestExchanger_Refresh_BoundsOAuthErrorFields(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error":             strings.Repeat("e", 10000),
+			"error_description": strings.Repeat("d", 10000),
+		})
+	}))
+	defer server.Close()
+
+	_, err := NewExchanger(server.Client()).Refresh(context.Background(), RefreshRequest{
+		TokenEndpoint: server.URL,
+		RefreshToken:  "refresh123",
+	})
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error = %T %v, want *basecamp.Error", err, err)
+	}
+	if len(bcErr.OAuthError) > maxErrorMessageLen || len(bcErr.OAuthErrorDescription) > maxErrorMessageLen {
+		t.Errorf("OAuthError/Description lengths = %d/%d, want ≤ %d", len(bcErr.OAuthError), len(bcErr.OAuthErrorDescription), maxErrorMessageLen)
+	}
+}
+
+// A refusal whose body cannot be read is still classified by its status and
+// Retry-After: an oversized 429 is a rate limit with its wait, not an untyped
+// read error a caller would retry straight into the block.
+func TestExchanger_Refresh_OversizedRefusalKeepsStatusAndRetryAfter(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "600")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(strings.Repeat("x", int(maxTokenResponseBytes)+10)))
+	}))
+	defer server.Close()
+
+	_, err := NewExchanger(server.Client()).Refresh(context.Background(), RefreshRequest{
+		TokenEndpoint: server.URL,
+		RefreshToken:  "refresh123",
+	})
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error = %T %v, want *basecamp.Error", err, err)
+	}
+	if bcErr.Code != basecamp.CodeRateLimit || bcErr.RetryAfter != 600 || bcErr.OAuthError != "" {
+		t.Errorf("error = %s RetryAfter=%d OAuthError=%q, want rate_limit 600 \"\"", bcErr.Code, bcErr.RetryAfter, bcErr.OAuthError)
+	}
+}
+
+// The composed message is bounded too, not just its parts: a code and a
+// description each near the cap must not make a message twice its size.
+func TestRequestDeviceAuthorization_BoundsTheComposedMessage(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error":             strings.Repeat("e", 490),
+			"error_description": strings.Repeat("d", 490),
+		})
+	}))
+	defer srv.Close()
+
+	_, err := RequestDeviceAuthorization(context.Background(), srv.URL, "basecamp-cli", WithDeviceHTTPClient(tlsClient(srv)))
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error = %T %v, want *basecamp.Error", err, err)
+	}
+	if len(bcErr.Message) > maxErrorMessageLen {
+		t.Errorf("len(Message) = %d, want ≤ %d", len(bcErr.Message), maxErrorMessageLen)
+	}
+}
+
+// A caller that cancels while a refusal's body is still arriving sees its
+// cancellation, not a refusal classified from the status alone.
+func TestExchanger_Refresh_CancelledDuringRefusalBodyIsCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusTooManyRequests,
+			Header:     http.Header{"Retry-After": []string{"600"}},
+			Body:       cancellingBody{cancel: cancel, ctx: req.Context()},
+			Request:    req,
+		}, nil
+	})
+
+	_, err := NewExchanger(&http.Client{Transport: transport}).Refresh(ctx, RefreshRequest{
+		TokenEndpoint: "https://issuer.example/oauth/tokens",
+		RefreshToken:  "refresh123",
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %T %v, want context.Canceled", err, err)
+	}
+}
+
+// cancellingBody cancels the caller's context on its first read and fails
+// that read the way a cancelled transport does.
+type cancellingBody struct {
+	cancel context.CancelFunc
+	ctx    context.Context
+}
+
+func (b cancellingBody) Read([]byte) (int, error) {
+	b.cancel()
+	<-b.ctx.Done()
+	return 0, b.ctx.Err()
+}
+
+func (cancellingBody) Close() error { return nil }
