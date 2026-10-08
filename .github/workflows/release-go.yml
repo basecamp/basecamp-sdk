@@ -115,6 +115,8 @@ jobs:
     name: Create Go module tag
     needs: [smithy, test]
     if: github.event_name == 'push'
+    # The go/ module tag is a publish: it waits for a reviewer like the others.
+    environment: release-go
     runs-on: ubuntu-latest
     permissions:
       contents: write
