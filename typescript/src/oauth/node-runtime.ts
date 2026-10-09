@@ -4,16 +4,18 @@
  * `performInteractiveLogin` and `startCallbackServer` listen on a local HTTP
  * server (`node:http`), and `FileTokenStore` writes to disk (`node:fs`).
  * React Native and browsers have neither. Their bundlers either refuse the
- * import or substitute an empty module, and the helper then fails much later
- * with an error that names a missing function or a network fetch instead of
- * the cause. Checking up front turns that into one clear `usage` error.
+ * import, so the app fails while loading and this guard never runs, or
+ * substitute an empty module, and the helper then fails much later with an
+ * error that names a missing function or a network fetch instead of the
+ * cause. Checking up front turns that second case into one clear `usage` error.
  */
 
 import { BasecampError } from "../errors.js";
 
 const NON_NODE_HINT =
-  "In React Native or a browser, open the authorization URL in the platform's auth session, " +
-  "exchange the code on your server, and keep tokens in the platform's secure storage. " +
+  "Exchange and refresh the code on your server. In React Native, open the authorization URL " +
+  "in the platform's auth session and keep tokens in the platform's secure storage; in a " +
+  "browser app, redirect to an https callback on your server and keep tokens there. " +
   'See "React Native and browsers" in the SDK README.';
 
 /**

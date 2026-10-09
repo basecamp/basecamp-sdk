@@ -60,9 +60,10 @@ function expandHome(filePath: string): string {
  * Tokens are stored as JSON with 0o600 permissions (owner read/write only).
  * Writes are atomic: data is written to a temporary file then renamed.
  *
- * Node.js only: it reads and writes with `node:fs`, and the constructor throws
- * a `usage` BasecampError elsewhere. In React Native or a browser, implement
- * {@link TokenStore} over the platform's secure storage (Keychain/Keystore).
+ * Node.js only: it reads and writes with `node:fs`, and outside Node the
+ * constructor throws a `usage` BasecampError. In React Native, implement
+ * {@link TokenStore} over the platform's secure storage (Keychain/Keystore);
+ * a browser app keeps tokens on its server.
  *
  * @example
  * ```ts

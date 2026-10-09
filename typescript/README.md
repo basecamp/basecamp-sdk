@@ -36,7 +36,7 @@ Every Basecamp API request carries an OAuth 2.0 access token. There is no API ke
 | Your integration | Grant | Who refreshes the token |
 |---|---|---|
 | already holds a token you obtained elsewhere | **static token** — [`Token Providers`](#token-providers) | you do |
-| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [`Manual Authorization Flow`](#manual-authorization-flow), or [`Interactive Login`](#interactive-login-cli--desktop) for a Node.js CLI, or [`React Native and browsers`](#react-native-and-browsers) for a mobile or browser app | your `accessToken` function, which the SDK re-invokes per request |
+| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [`Manual Authorization Flow`](#manual-authorization-flow), or [`Interactive Login`](#interactive-login-cli--desktop) for a Node.js CLI, or [`React Native and browsers`](#react-native-and-browsers) for a mobile or browser app (Launchpad has no PKCE, so a server holds the client secret) | your `accessToken` function, which the SDK re-invokes per request |
 | has no browser, but a person can approve on another device (CLI, headless server, TV) | **device flow** — [`Device flow`](#device-flow-rfc-8628) | your `accessToken` function, which the SDK re-invokes per request |
 
 The one-line rule: **a redirect URI you control → authorization code; no browser but someone to approve → device flow; a token already in hand → static token.** An unattended daemon or CI job fits none of the three on its own — the device flow needs a person to enter the user code at the verification URI — so provision a token out of band and hand it to the process as a static or refresh token.
@@ -157,8 +157,9 @@ callback server, browser launch, code exchange, and token storage.
 
 **Node.js only.** It receives the redirect on a local HTTP server (`node:http`), and
 `FileTokenStore` writes to disk (`node:fs`). Outside Node both throw a `usage` error
-straight away. For a mobile or browser app, see
-[React Native and browsers](#react-native-and-browsers).
+straight away, provided the bundle loads at all (see the bundler note under
+[React Native and browsers](#react-native-and-browsers), which covers mobile and
+browser apps).
 
 ```ts
 import { performInteractiveLogin } from "@37signals/basecamp";
@@ -233,11 +234,15 @@ if (isTokenExpired(token)) {
 
 `performInteractiveLogin`, `startCallbackServer` and `FileTokenStore` need Node.js,
 so a React Native or browser app splits the authorization-code flow between the app
-and a server you control:
+and a server you control. Launchpad has no PKCE and requires the client secret for
+both the code exchange and token refresh, so both run on that server.
+
+**React Native (native iOS/Android):**
 
 1. **Register a redirect URI the app owns** on your Launchpad integration: a custom
    scheme such as `myapp://oauth/callback`, or an https universal link / app link.
-   Launchpad requires an exact match.
+   Launchpad requires an exact match, so use the same URI in the integration, the
+   authorization URL and the code exchange. An integration has one redirect URI.
 2. **Sign in through the system auth session** (`ASWebAuthenticationSession` on iOS,
    Custom Tabs on Android), not an embedded web view. With Expo:
 
@@ -268,7 +273,6 @@ and a server you control:
      redirectUri: "myapp://oauth/callback",
      clientId: CLIENT_ID,
      clientSecret: CLIENT_SECRET,
-     useLegacyFormat: true,
    });
 
    // Later, when the access token expires:
@@ -277,21 +281,30 @@ and a server you control:
      refreshToken: token.refreshToken!,
      clientId: CLIENT_ID,
      clientSecret: CLIENT_SECRET,
-     useLegacyFormat: true,
    });
+
+   // Launchpad's refresh returns a new access token but no new refresh token.
+   // Keep the original one; it stays valid for reuse.
+   const updated = { ...refreshed, refreshToken: refreshed.refreshToken ?? token.refreshToken };
    ```
 
 4. **Keep tokens in secure storage** on the device: Keychain or Keystore, for example
    `expo-secure-store`. To plug that into code that expects a `TokenStore`, implement
    its three methods (`load`, `save`, `clear`) over that storage.
 
-In a browser the server has to make the Launchpad requests as well: Launchpad's
-discovery and token endpoints send no CORS headers, so a direct fetch from a page fails.
+**Browser apps:** register an https redirect URI that your server handles, exchange
+and refresh there as in step 3, and keep the tokens on the server behind the user's
+session rather than in the page. The page can't call Launchpad itself: its discovery
+and token endpoints send no CORS headers, so a direct fetch from a page fails.
 
-Both package entry points still import Node built-ins when they load (webhook signing,
-the callback server, the file token store). A React Native or browser bundler may
-refuse those imports or replace them with empty modules, so check your bundler's
-handling before you import the SDK in app code.
+**Bundling.** The package entry points import Node built-ins when they load: the main
+entry `node:crypto` (webhook signing) and `node:http` (the callback server), and
+`@37signals/basecamp/oauth` `node:http` plus `node:fs`, `node:path` and `node:os` (the
+file token store). A React
+Native or browser bundler may refuse those imports, and then the app fails while
+loading, before any of the helpers' checks can run. Or it may replace them with empty
+modules, and then the three helpers throw the `usage` error above when called. Check
+your bundler's handling before you import the SDK in app code.
 
 ### Resource-first discovery (BC5)
 

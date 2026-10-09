@@ -4,9 +4,10 @@
  * Orchestrates the full OAuth 2.0 authorization code flow:
  * discovery, PKCE, local callback server, browser launch, code exchange.
  *
- * Node.js only: the local callback server uses `node:http`. React Native and
- * browser apps use the platform's auth session and exchange the code on a
- * server instead (see "React Native and browsers" in the README).
+ * Node.js only: the local callback server uses `node:http`. React Native apps
+ * use the platform's auth session and browser apps an https callback, and both
+ * exchange the code on a server instead (see "React Native and browsers" in
+ * the README).
  */
 
 import {
