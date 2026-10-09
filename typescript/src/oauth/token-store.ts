@@ -9,6 +9,7 @@ import { dirname } from "node:path";
 import { homedir } from "node:os";
 import type { OAuthToken } from "./types.js";
 import { BasecampError } from "../errors.js";
+import { requireNodeRuntime } from "./node-runtime.js";
 
 /**
  * Interface for persisting OAuth tokens.
@@ -59,6 +60,10 @@ function expandHome(filePath: string): string {
  * Tokens are stored as JSON with 0o600 permissions (owner read/write only).
  * Writes are atomic: data is written to a temporary file then renamed.
  *
+ * Node.js only: it reads and writes with `node:fs`, and the constructor throws
+ * a `usage` BasecampError elsewhere. In React Native or a browser, implement
+ * {@link TokenStore} over the platform's secure storage (Keychain/Keystore).
+ *
  * @example
  * ```ts
  * const store = new FileTokenStore("~/.config/basecamp/tokens.json");
@@ -77,6 +82,7 @@ export class FileTokenStore implements TokenStore {
   private readonly filePath: string;
 
   constructor(filePath: string) {
+    requireNodeRuntime("FileTokenStore (file-based token storage)");
     this.filePath = expandHome(filePath);
   }
 

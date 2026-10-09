@@ -3,6 +3,10 @@
  *
  * Orchestrates the full OAuth 2.0 authorization code flow:
  * discovery, PKCE, local callback server, browser launch, code exchange.
+ *
+ * Node.js only: the local callback server uses `node:http`. React Native and
+ * browser apps use the platform's auth session and exchange the code on a
+ * server instead (see "React Native and browsers" in the README).
  */
 
 import {
@@ -19,6 +23,7 @@ import { exchangeCode } from "./exchange.js";
 import type { TokenStore } from "./token-store.js";
 import type { OAuthToken } from "./types.js";
 import { BasecampError } from "../errors.js";
+import { requireNodeRuntime } from "./node-runtime.js";
 
 /**
  * Options for the interactive login flow.
@@ -65,6 +70,9 @@ export interface InteractiveLoginOptions {
 /**
  * Performs the full interactive OAuth login flow.
  *
+ * Node.js only. Outside Node it throws a `usage` BasecampError before any
+ * network request, rather than failing partway through the flow.
+ *
  * Steps:
  * 1. Discover OAuth endpoints
  * 2. Generate PKCE and state parameters
@@ -80,6 +88,7 @@ export interface InteractiveLoginOptions {
  *
  * @example
  * ```ts
+ * // Node.js only: `open` and FileTokenStore use Node built-ins too.
  * import open from "open"; // or use child_process
  *
  * const token = await performInteractiveLogin({
@@ -107,6 +116,8 @@ export async function performInteractiveLogin(
     promptForManualVisit,
     onStatus,
   } = options;
+
+  requireNodeRuntime("performInteractiveLogin (local HTTP callback server)");
 
   // Presence, not truthiness: an explicitly-supplied empty string is "provided"
   // (and invalid) — it must trip this guard, then reach origin validation below,

@@ -25,7 +25,7 @@ Official TypeScript SDK for the [Basecamp API](https://github.com/basecamp/bc3-a
 npm install @37signals/basecamp
 ```
 
-Requires Node.js 22.12+ and TypeScript 5.0+.
+Requires Node.js 22.12+ and TypeScript 5.0+. `performInteractiveLogin`, `startCallbackServer` and `FileTokenStore` use Node built-ins and do not run in React Native or browsers; see [React Native and browsers](#react-native-and-browsers).
 
 ## Getting a token
 
@@ -36,7 +36,7 @@ Every Basecamp API request carries an OAuth 2.0 access token. There is no API ke
 | Your integration | Grant | Who refreshes the token |
 |---|---|---|
 | already holds a token you obtained elsewhere | **static token** — [`Token Providers`](#token-providers) | you do |
-| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [`Manual Authorization Flow`](#manual-authorization-flow), or [`Interactive Login`](#interactive-login-cli--desktop) for a CLI | your `accessToken` function, which the SDK re-invokes per request |
+| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [`Manual Authorization Flow`](#manual-authorization-flow), or [`Interactive Login`](#interactive-login-cli--desktop) for a Node.js CLI, or [`React Native and browsers`](#react-native-and-browsers) for a mobile or browser app | your `accessToken` function, which the SDK re-invokes per request |
 | has no browser, but a person can approve on another device (CLI, headless server, TV) | **device flow** — [`Device flow`](#device-flow-rfc-8628) | your `accessToken` function, which the SDK re-invokes per request |
 
 The one-line rule: **a redirect URI you control → authorization code; no browser but someone to approve → device flow; a token already in hand → static token.** An unattended daemon or CI job fits none of the three on its own — the device flow needs a person to enter the user code at the verification URI — so provision a token out of band and hand it to the process as a static or refresh token.
@@ -153,11 +153,16 @@ and [RFC 7636](https://www.rfc-editor.org/rfc/rfc7636)).
 ### Interactive Login (CLI / Desktop)
 
 `performInteractiveLogin` handles the full flow — discovery, PKCE negotiation, local
-callback server, browser launch, code exchange, and token storage:
+callback server, browser launch, code exchange, and token storage.
+
+**Node.js only.** It receives the redirect on a local HTTP server (`node:http`), and
+`FileTokenStore` writes to disk (`node:fs`). Outside Node both throw a `usage` error
+straight away. For a mobile or browser app, see
+[React Native and browsers](#react-native-and-browsers).
 
 ```ts
 import { performInteractiveLogin } from "@37signals/basecamp";
-import open from "open";
+import open from "open"; // Node.js only
 
 const token = await performInteractiveLogin({
   clientId: CLIENT_ID,
@@ -223,6 +228,70 @@ if (isTokenExpired(token)) {
   });
 }
 ```
+
+### React Native and browsers
+
+`performInteractiveLogin`, `startCallbackServer` and `FileTokenStore` need Node.js,
+so a React Native or browser app splits the authorization-code flow between the app
+and a server you control:
+
+1. **Register a redirect URI the app owns** on your Launchpad integration: a custom
+   scheme such as `myapp://oauth/callback`, or an https universal link / app link.
+   Launchpad requires an exact match.
+2. **Sign in through the system auth session** (`ASWebAuthenticationSession` on iOS,
+   Custom Tabs on Android), not an embedded web view. With Expo:
+
+   ```ts
+   import * as WebBrowser from "expo-web-browser";
+
+   const redirectUri = "myapp://oauth/callback";
+   const authUrl =
+     "https://launchpad.37signals.com/authorization/new?response_type=code" +
+     `&client_id=${encodeURIComponent(CLIENT_ID)}` +
+     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+     `&state=${encodeURIComponent(state)}`; // a random value you keep to check on return
+
+   const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+   // On result.type === "success", read code and state from result.url,
+   // reject a state mismatch, and send the code to your server.
+   ```
+
+3. **Exchange and refresh on your server.** Launchpad requires the client secret for
+   both, and a secret shipped inside an app is readable by anyone who has it:
+
+   ```ts
+   import { exchangeCode, refreshToken } from "@37signals/basecamp";
+
+   const token = await exchangeCode({
+     tokenEndpoint: "https://launchpad.37signals.com/authorization/token",
+     code,
+     redirectUri: "myapp://oauth/callback",
+     clientId: CLIENT_ID,
+     clientSecret: CLIENT_SECRET,
+     useLegacyFormat: true,
+   });
+
+   // Later, when the access token expires:
+   const refreshed = await refreshToken({
+     tokenEndpoint: "https://launchpad.37signals.com/authorization/token",
+     refreshToken: token.refreshToken!,
+     clientId: CLIENT_ID,
+     clientSecret: CLIENT_SECRET,
+     useLegacyFormat: true,
+   });
+   ```
+
+4. **Keep tokens in secure storage** on the device: Keychain or Keystore, for example
+   `expo-secure-store`. To plug that into code that expects a `TokenStore`, implement
+   its three methods (`load`, `save`, `clear`) over that storage.
+
+In a browser the server has to make the Launchpad requests as well: Launchpad's
+discovery and token endpoints send no CORS headers, so a direct fetch from a page fails.
+
+Both package entry points still import Node built-ins when they load (webhook signing,
+the callback server, the file token store). A React Native or browser bundler may
+refuse those imports or replace them with empty modules, so check your bundler's
+handling before you import the SDK in app code.
 
 ### Resource-first discovery (BC5)
 
