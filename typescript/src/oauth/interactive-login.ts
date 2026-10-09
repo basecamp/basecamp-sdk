@@ -72,7 +72,9 @@ export interface InteractiveLoginOptions {
  * Performs the full interactive OAuth login flow.
  *
  * Node.js only. Outside Node it throws a `usage` BasecampError before any
- * network request, rather than failing partway through the flow.
+ * network request, rather than failing partway through the flow, provided
+ * this module loaded at all: it imports the callback server, so a bundler that
+ * refuses `node:http` fails at import instead.
  *
  * Steps:
  * 1. Discover OAuth endpoints

@@ -217,14 +217,16 @@ const token = await exchangeCode({
   clientId: CLIENT_ID,
   clientSecret: CLIENT_SECRET,
   codeVerifier: pkce?.verifier,
-  useLegacyFormat: true, // Required for Basecamp Launchpad
+  useLegacyFormat: true, // Launchpad's legacy params; it accepts the standard ones too
 });
 
-// 5. Refresh when expired
+// 5. Refresh when expired (Launchpad requires the client ID and secret here too)
 if (isTokenExpired(token)) {
   const newToken = await refreshToken({
     tokenEndpoint: config.tokenEndpoint,
     refreshToken: token.refreshToken!,
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
     useLegacyFormat: true,
   });
 }
@@ -243,6 +245,9 @@ both the code exchange and token refresh, so both run on that server.
    scheme such as `myapp://oauth/callback`, or an https universal link / app link.
    Launchpad requires an exact match, so use the same URI in the integration, the
    authorization URL and the code exchange. An integration has one redirect URI.
+   Prefer a universal link / app link: another app can claim the same custom scheme,
+   and Launchpad has no PKCE to bind the code to your app. An intercepted code still
+   can't be redeemed without the client secret your server holds.
 2. **Sign in through the system auth session** (`ASWebAuthenticationSession` on iOS,
    Custom Tabs on Android), not an embedded web view. With Expo:
 

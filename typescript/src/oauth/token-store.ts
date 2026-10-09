@@ -61,7 +61,9 @@ function expandHome(filePath: string): string {
  * Writes are atomic: data is written to a temporary file then renamed.
  *
  * Node.js only: it reads and writes with `node:fs`, and outside Node the
- * constructor throws a `usage` BasecampError. In React Native, implement
+ * constructor throws a `usage` BasecampError, provided this module loaded at
+ * all: a bundler that refuses `node:fs`, `node:path` or `node:os` fails at
+ * import instead. In React Native, implement
  * {@link TokenStore} over the platform's secure storage (Keychain/Keystore);
  * a browser app keeps tokens on its server.
  *

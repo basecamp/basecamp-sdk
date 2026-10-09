@@ -13,7 +13,7 @@
 import { BasecampError } from "../errors.js";
 
 const NON_NODE_HINT =
-  "Exchange and refresh the code on your server. In React Native, open the authorization URL " +
+  "Exchange the code and refresh tokens on your server. In React Native, open the authorization URL " +
   "in the platform's auth session and keep tokens in the platform's secure storage; in a " +
   "browser app, redirect to an https callback on your server and keep tokens there. " +
   'See "React Native and browsers" in the SDK README.';

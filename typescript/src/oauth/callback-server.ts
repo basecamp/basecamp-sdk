@@ -51,7 +51,8 @@ const ERROR_HTML = `<!DOCTYPE html>
  * Starts a local HTTP server to receive the OAuth callback.
  *
  * Node.js only: it listens with `node:http`. Outside Node it throws a `usage`
- * BasecampError before doing anything else.
+ * BasecampError before doing anything else, provided this module loaded at
+ * all: a bundler that refuses the `node:http` import fails at import instead.
  *
  * The server listens for a single GET /callback request, validates
  * the state parameter, and extracts the authorization code.
