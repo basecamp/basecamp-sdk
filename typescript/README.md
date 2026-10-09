@@ -229,6 +229,8 @@ if (isTokenExpired(token)) {
     clientSecret: CLIENT_SECRET,
     useLegacyFormat: true,
   });
+  // Launchpad returns no new refresh token on refresh; keep the original.
+  const updated = { ...newToken, refreshToken: newToken.refreshToken ?? token.refreshToken };
 }
 ```
 
