@@ -79,7 +79,7 @@ impl<'a> MyNotificationsService<'a> {
         self.client.send_unit(operation).await
     }
 
-    /// Get the current user's notification inbox (the "Hey!" menu).
+    /// Get the current user's notifications (the "Hey!" menu in Basecamp 4).
     /// Notifications are grouped into unreads, reads, bubble-ups, and
     /// scheduled bubble-ups (`memories` remains as an always-empty
     /// placeholder on BC5). Reads are paginated (50 per page). Unreads are

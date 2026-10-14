@@ -60,7 +60,7 @@ At most 500 per request. */
 export class MyNotificationsService extends BaseService {
 
   /**
-   * Get the current user's notification inbox (the "Hey!" menu).
+   * Get the current user's notifications (the "Hey!" menu in Basecamp 4).
    * @param options - Optional query parameters
    * @returns The my_notification
    *

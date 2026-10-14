@@ -7,7 +7,7 @@ module Basecamp
     # @generated from OpenAPI spec
     class MyNotificationsService < BaseService
 
-      # Get the current user's notification inbox (the "Hey!" menu).
+      # Get the current user's notifications (the "Hey!" menu in Basecamp 4).
       # @param page [Integer, nil] Page number for paginating through read items. Defaults to 1. This
       #   operation is not auto-paginated in any SDK, so a page is returned as
       #   asked for and later pages are not followed.
