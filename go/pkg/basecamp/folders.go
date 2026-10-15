@@ -117,7 +117,7 @@ func (s *FoldersService) List(ctx context.Context) (result []Folder, err error) 
 		return nil, err
 	}
 
-	var folders []Folder
+	folders := []Folder{}
 	if resp.JSON200 != nil {
 		for _, gf := range *resp.JSON200 {
 			folders = append(folders, folderFromGenerated(gf))

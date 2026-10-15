@@ -184,7 +184,7 @@ func (s *MessagesService) List(ctx context.Context, boardID int64, opts *Message
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var messages []Message
+	messages := []Message{}
 	if resp.JSON200 != nil {
 		for _, gm := range *resp.JSON200 {
 			messages = append(messages, messageFromGenerated(gm))

@@ -253,7 +253,7 @@ func (s *EverythingService) finishRecordingsPage(ctx context.Context, httpResp *
 	if err := checkResponse(httpResp, body); err != nil {
 		return nil, err
 	}
-	var recordings []Recording
+	recordings := []Recording{}
 	if json200 != nil {
 		for _, gr := range *json200 {
 			recordings = append(recordings, recordingFromGenerated(gr))
@@ -368,7 +368,7 @@ func (s *EverythingService) OverdueTodos(ctx context.Context, filters *Everythin
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
-	var todos []Todo
+	todos := []Todo{}
 	if resp.JSON200 != nil {
 		for _, gt := range *resp.JSON200 {
 			todos = append(todos, todoFromGenerated(gt))
@@ -398,7 +398,7 @@ func (s *EverythingService) OverdueCards(ctx context.Context, filters *Everythin
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
-	var cards []Card
+	cards := []Card{}
 	if resp.JSON200 != nil {
 		for _, gc := range *resp.JSON200 {
 			cards = append(cards, cardFromGenerated(gc))
@@ -654,7 +654,7 @@ func (s *EverythingService) finishTodoGroupsPage(ctx context.Context, httpResp *
 	if err := checkResponse(httpResp, body); err != nil {
 		return nil, err
 	}
-	var groups []BucketTodosGroup
+	groups := []BucketTodosGroup{}
 	if json200 != nil {
 		for _, g := range *json200 {
 			groups = append(groups, bucketTodosGroupFromGenerated(g))
@@ -682,7 +682,7 @@ func (s *EverythingService) finishCardGroupsPage(ctx context.Context, httpResp *
 	if err := checkResponse(httpResp, body); err != nil {
 		return nil, err
 	}
-	var groups []BucketCardsGroup
+	groups := []BucketCardsGroup{}
 	if json200 != nil {
 		for _, g := range *json200 {
 			groups = append(groups, bucketCardsGroupFromGenerated(g))

@@ -134,7 +134,7 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64, opts *Webhoo
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var webhooks []Webhook
+	webhooks := []Webhook{}
 	if resp.JSON200 != nil {
 		for _, gw := range *resp.JSON200 {
 			webhooks = append(webhooks, webhookFromGenerated(gw))

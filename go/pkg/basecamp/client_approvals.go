@@ -149,7 +149,7 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64, opts 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var approvals []ClientApproval
+	approvals := []ClientApproval{}
 	if resp.JSON200 != nil {
 		for _, ga := range *resp.JSON200 {
 			approvals = append(approvals, clientApprovalFromGenerated(ga))

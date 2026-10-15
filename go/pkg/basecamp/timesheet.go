@@ -191,7 +191,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var entries []TimesheetEntry
+	entries := []TimesheetEntry{}
 	if resp.JSON200 != nil {
 		for _, ge := range *resp.JSON200 {
 			entries = append(entries, timesheetEntryFromGenerated(ge))
@@ -285,7 +285,7 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, recordingID int6
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var entries []TimesheetEntry
+	entries := []TimesheetEntry{}
 	if resp.JSON200 != nil {
 		for _, ge := range *resp.JSON200 {
 			entries = append(entries, timesheetEntryFromGenerated(ge))

@@ -425,7 +425,7 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var todos []Todo
+	todos := []Todo{}
 	if resp.JSON200 != nil {
 		for _, gt := range *resp.JSON200 {
 			todos = append(todos, todoFromGenerated(gt))

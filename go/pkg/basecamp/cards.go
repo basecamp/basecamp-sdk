@@ -390,7 +390,7 @@ func (s *CardsService) List(ctx context.Context, columnID int64, opts *CardListO
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var cards []Card
+	cards := []Card{}
 	if resp.JSON200 != nil {
 		for _, gc := range *resp.JSON200 {
 			cards = append(cards, cardFromGenerated(gc))

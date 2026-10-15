@@ -128,7 +128,7 @@ func (s *SubtasksService) List(ctx context.Context, recordingID int64, opts *Sub
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	var subtasks []Subtask
+	subtasks := []Subtask{}
 	if resp.JSON200 != nil {
 		for _, gs := range *resp.JSON200 {
 			subtasks = append(subtasks, subtaskFromGenerated(gs))

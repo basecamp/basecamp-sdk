@@ -309,7 +309,7 @@ func (s *TodolistsService) List(ctx context.Context, todosetID int64, opts *Todo
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var todolists []Todolist
+	todolists := []Todolist{}
 	if resp.JSON200 != nil {
 		for _, gtl := range *resp.JSON200 {
 			todolists = append(todolists, todolistFromGenerated(gtl))

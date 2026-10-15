@@ -339,7 +339,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var questions []Question
+	questions := []Question{}
 	if resp.JSON200 != nil {
 		for _, gq := range *resp.JSON200 {
 			questions = append(questions, questionFromGenerated(gq))
@@ -661,7 +661,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var answers []QuestionAnswer
+	answers := []QuestionAnswer{}
 	if resp.JSON200 != nil {
 		for _, ga := range *resp.JSON200 {
 			answers = append(answers, questionAnswerFromGenerated(ga))
@@ -745,7 +745,7 @@ func (s *CheckinsService) ListAnswersByPerson(ctx context.Context, questionID, p
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	var answers []QuestionAnswer
+	answers := []QuestionAnswer{}
 	if resp.JSON200 != nil {
 		for _, ga := range *resp.JSON200 {
 			answers = append(answers, questionAnswerFromGenerated(ga))
@@ -819,7 +819,7 @@ func (s *CheckinsService) ListAnswerers(ctx context.Context, questionID int64, o
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	var people []Person
+	people := []Person{}
 	if resp.JSON200 != nil {
 		for _, gp := range *resp.JSON200 {
 			people = append(people, personFromGenerated(gp))
@@ -1038,7 +1038,7 @@ func (s *CheckinsService) ListQuestionReminders(ctx context.Context, opts *Quest
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	var reminders []QuestionReminder
+	reminders := []QuestionReminder{}
 	if resp.JSON200 != nil {
 		for _, gr := range *resp.JSON200 {
 			reminders = append(reminders, questionReminderFromGenerated(gr))

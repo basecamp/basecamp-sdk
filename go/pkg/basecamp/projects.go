@@ -178,7 +178,7 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var projects []Project
+	projects := []Project{}
 	if resp.JSON200 != nil {
 		for _, gp := range *resp.JSON200 {
 			projects = append(projects, projectFromGenerated(gp))
@@ -246,7 +246,7 @@ func (s *ProjectsService) ListRecent(ctx context.Context) (result []Project, err
 		return nil, err
 	}
 
-	var projects []Project
+	projects := []Project{}
 	if resp.JSON200 != nil {
 		for _, gp := range *resp.JSON200 {
 			projects = append(projects, projectFromGenerated(gp))

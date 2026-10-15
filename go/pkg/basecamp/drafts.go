@@ -90,7 +90,7 @@ func (s *DraftsService) List(ctx context.Context, page int32) (result *DraftList
 		return nil, err
 	}
 
-	var drafts []Draft
+	drafts := []Draft{}
 	if resp.JSON200 != nil {
 		for _, gd := range *resp.JSON200 {
 			drafts = append(drafts, draftFromGenerated(gd))

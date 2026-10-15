@@ -256,7 +256,7 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var recordings []Recording
+	recordings := []Recording{}
 	if resp.JSON200 != nil {
 		for _, gr := range *resp.JSON200 {
 			recordings = append(recordings, recordingFromGenerated(gr))

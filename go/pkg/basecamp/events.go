@@ -118,7 +118,7 @@ func (s *EventsService) List(ctx context.Context, recordingID int64, opts *Event
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var events []Event
+	events := []Event{}
 	if resp.JSON200 != nil {
 		for _, ge := range *resp.JSON200 {
 			events = append(events, eventFromGenerated(ge))

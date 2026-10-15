@@ -109,7 +109,7 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var replies []ClientReply
+	replies := []ClientReply{}
 	if resp.JSON200 != nil {
 		for _, gr := range *resp.JSON200 {
 			replies = append(replies, clientReplyFromGenerated(gr))

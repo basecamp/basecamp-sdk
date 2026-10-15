@@ -64,7 +64,7 @@ func (s *BookmarksService) List(ctx context.Context, page int32) (result *Bookma
 		return nil, err
 	}
 
-	var bookmarks []Bookmark
+	bookmarks := []Bookmark{}
 	if resp.JSON200 != nil {
 		for _, gb := range *resp.JSON200 {
 			bookmarks = append(bookmarks, bookmarkFromGenerated(gb))

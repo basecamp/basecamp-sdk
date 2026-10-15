@@ -232,7 +232,7 @@ func (s *ForwardsService) List(ctx context.Context, inboxID int64, opts *Forward
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var forwards []Forward
+	forwards := []Forward{}
 	if resp.JSON200 != nil {
 		for _, gf := range *resp.JSON200 {
 			forwards = append(forwards, forwardFromGenerated(gf))
@@ -353,7 +353,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, forwardID int64, opts
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var replies []ForwardReply
+	replies := []ForwardReply{}
 	if resp.JSON200 != nil {
 		for _, gr := range *resp.JSON200 {
 			replies = append(replies, forwardReplyFromGenerated(gr))
