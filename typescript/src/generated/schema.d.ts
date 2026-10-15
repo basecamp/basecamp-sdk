@@ -2372,10 +2372,7 @@ export interface paths {
         };
         /** @description Get a single question by id */
         get: operations["GetQuestion"];
-        /**
-         * @description Update an existing question's title, schedule or both. Pausing and
-         *     resuming are PauseQuestion and ResumeQuestion.
-         */
+        /** @description Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion. */
         put: operations["UpdateQuestion"];
         post?: never;
         delete?: never;
@@ -2652,23 +2649,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description List boosts on a specific event within a recording. Only boostable
-         *     events carry boosts: those whose action is completed, adopted,
-         *     column_changed or moved_in (their JSON includes boosts_count and
-         *     boosts_url). Any other event answers 403 Forbidden; an event on a
-         *     recording the person cannot see answers 404.
-         */
+        /** @description List boosts on a specific event within a recording. Only boostable events carry boosts: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden; an event on a recording the person cannot see answers 404. */
         get: operations["ListEventBoosts"];
         put?: never;
-        /**
-         * @description Create a boost on a specific event within a recording. Only boostable
-         *     events accept one: those whose action is completed, adopted,
-         *     column_changed or moved_in (their JSON includes boosts_count and
-         *     boosts_url). Any other event answers 403 Forbidden, as does an event on a
-         *     recording whose comments are closed; an event on a recording the person
-         *     cannot see answers 404.
-         */
+        /** @description Create a boost on a specific event within a recording. Only boostable events accept one: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden, as does an event on a recording whose comments are closed; an event on a recording the person cannot see answers 404. */
         post: operations["CreateEventBoost"];
         delete?: never;
         options?: never;

@@ -359,7 +359,7 @@ export class CheckinsService extends BaseService {
   }
 
   /**
-   * Update an existing question's title, schedule or both. Pausing and
+   * Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.
    * @param questionId - The question ID
    * @param req - Question update parameters
    * @returns The Question

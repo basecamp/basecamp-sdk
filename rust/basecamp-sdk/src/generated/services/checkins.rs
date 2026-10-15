@@ -260,8 +260,7 @@ impl<'a> CheckinsService<'a> {
         self.client.send(operation).await
     }
 
-    /// Update an existing question's title, schedule or both. Pausing and
-    /// resuming are PauseQuestion and ResumeQuestion.
+    /// Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.
     ///
     /// `PUT /questions/{questionId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn update_question(

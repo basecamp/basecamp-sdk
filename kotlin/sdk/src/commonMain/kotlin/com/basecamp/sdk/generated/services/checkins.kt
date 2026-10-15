@@ -193,7 +193,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Update an existing question's title, schedule or both. Pausing and
+     * Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.
      * @param questionId The question ID
      * @param body Request body
      */

@@ -81,7 +81,7 @@ module Basecamp
         end
       end
 
-      # Update an existing question's title, schedule or both. Pausing and
+      # Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.
       # @param question_id [Integer] question id ID
       # @param title [String, nil] The question text. An update carries a title, a schedule or both.
       # @param schedule [Hash, nil] schedule

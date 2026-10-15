@@ -8484,8 +8484,7 @@ structure CreateQuestionOutput {
   question: Question
 }
 
-/// Update an existing question's title, schedule or both. Pausing and
-/// resuming are PauseQuestion and ResumeQuestion.
+/// Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -10991,11 +10990,7 @@ structure ListRecordingBoostsOutput {
   boosts: BoostList
 }
 
-/// List boosts on a specific event within a recording. Only boostable
-/// events carry boosts: those whose action is completed, adopted,
-/// column_changed or moved_in (their JSON includes boosts_count and
-/// boosts_url). Any other event answers 403 Forbidden; an event on a
-/// recording the person cannot see answers 404.
+/// List boosts on a specific event within a recording. Only boostable events carry boosts: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden; an event on a recording the person cannot see answers 404.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
@@ -11079,12 +11074,7 @@ structure CreateRecordingBoostOutput {
   boost: Boost
 }
 
-/// Create a boost on a specific event within a recording. Only boostable
-/// events accept one: those whose action is completed, adopted,
-/// column_changed or moved_in (their JSON includes boosts_count and
-/// boosts_url). Any other event answers 403 Forbidden, as does an event on a
-/// recording whose comments are closed; an event on a recording the person
-/// cannot see answers 404.
+/// Create a boost on a specific event within a recording. Only boostable events accept one: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden, as does an event on a recording whose comments are closed; an event on a recording the person cannot see answers 404.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json", code: 201)
 operation CreateEventBoost {

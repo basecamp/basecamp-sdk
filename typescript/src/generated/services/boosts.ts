@@ -190,7 +190,7 @@ export class BoostsService extends BaseService {
   }
 
   /**
-   * List boosts on a specific event within a recording. Only boostable
+   * List boosts on a specific event within a recording. Only boostable events carry boosts: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden; an event on a recording the person cannot see answers 404.
    * @param recordingId - The recording ID
    * @param eventId - The event ID
    * @param options - Optional query parameters
@@ -225,7 +225,7 @@ export class BoostsService extends BaseService {
   }
 
   /**
-   * Create a boost on a specific event within a recording. Only boostable
+   * Create a boost on a specific event within a recording. Only boostable events accept one: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden, as does an event on a recording whose comments are closed; an event on a recording the person cannot see answers 404.
    * @param recordingId - The recording ID
    * @param eventId - The event ID
    * @param req - Event_boost creation parameters

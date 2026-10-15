@@ -16921,7 +16921,7 @@
         }
       },
       "put": {
-        "description": "Update an existing question's title, schedule or both. Pausing and\nresuming are PauseQuestion and ResumeQuestion.",
+        "description": "Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.",
         "operationId": "UpdateQuestion",
         "requestBody": {
           "content": {
@@ -19136,7 +19136,7 @@
     },
     "/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json": {
       "get": {
-        "description": "List boosts on a specific event within a recording. Only boostable\nevents carry boosts: those whose action is completed, adopted,\ncolumn_changed or moved_in (their JSON includes boosts_count and\nboosts_url). Any other event answers 403 Forbidden; an event on a\nrecording the person cannot see answers 404.",
+        "description": "List boosts on a specific event within a recording. Only boostable events carry boosts: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden; an event on a recording the person cannot see answers 404.",
         "operationId": "ListEventBoosts",
         "parameters": [
           {
@@ -19250,7 +19250,7 @@
         }
       },
       "post": {
-        "description": "Create a boost on a specific event within a recording. Only boostable\nevents accept one: those whose action is completed, adopted,\ncolumn_changed or moved_in (their JSON includes boosts_count and\nboosts_url). Any other event answers 403 Forbidden, as does an event on a\nrecording whose comments are closed; an event on a recording the person\ncannot see answers 404.",
+        "description": "Create a boost on a specific event within a recording. Only boostable events accept one: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden, as does an event on a recording whose comments are closed; an event on a recording the person cannot see answers 404.",
         "operationId": "CreateEventBoost",
         "requestBody": {
           "content": {

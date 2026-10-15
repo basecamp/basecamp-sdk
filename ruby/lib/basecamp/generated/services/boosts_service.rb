@@ -48,7 +48,7 @@ module Basecamp
         end
       end
 
-      # List boosts on a specific event within a recording. Only boostable
+      # List boosts on a specific event within a recording. Only boostable events carry boosts: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden; an event on a recording the person cannot see answers 404.
       # @param recording_id [Integer] recording id ID
       # @param event_id [Integer] event id ID
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
@@ -61,7 +61,7 @@ module Basecamp
         end
       end
 
-      # Create a boost on a specific event within a recording. Only boostable
+      # Create a boost on a specific event within a recording. Only boostable events accept one: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden, as does an event on a recording whose comments are closed; an event on a recording the person cannot see answers 404.
       # @param recording_id [Integer] recording id ID
       # @param event_id [Integer] event id ID
       # @param content [String] content
