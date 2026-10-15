@@ -235,7 +235,7 @@ func (s *CampfiresService) List(ctx context.Context, opts *CampfireListOptions) 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var campfires []Campfire
+	campfires := []Campfire{}
 	if resp.JSON200 != nil {
 		for _, gc := range *resp.JSON200 {
 			campfires = append(campfires, campfireFromGenerated(gc))
@@ -365,7 +365,7 @@ func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64, opts
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var lines []CampfireLine
+	lines := []CampfireLine{}
 	if resp.JSON200 != nil {
 		for _, gl := range *resp.JSON200 {
 			lines = append(lines, campfireLineFromGenerated(gl))
@@ -612,7 +612,7 @@ func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64, op
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var lines []CampfireLine
+	lines := []CampfireLine{}
 	if resp.JSON200 != nil {
 		for _, gl := range *resp.JSON200 {
 			lines = append(lines, campfireLineFromGenerated(gl))
@@ -781,7 +781,7 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireI
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var chatbots []Chatbot
+	chatbots := []Chatbot{}
 	if resp.JSON200 != nil {
 		for _, gc := range *resp.JSON200 {
 			chatbots = append(chatbots, chatbotFromGenerated(gc))

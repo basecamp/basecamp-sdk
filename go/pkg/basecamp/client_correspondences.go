@@ -123,7 +123,7 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64,
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var correspondences []ClientCorrespondence
+	correspondences := []ClientCorrespondence{}
 	if resp.JSON200 != nil {
 		for _, gc := range *resp.JSON200 {
 			correspondences = append(correspondences, clientCorrespondenceFromGenerated(gc))

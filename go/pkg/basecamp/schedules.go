@@ -728,7 +728,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, scheduleID int64, op
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var entries []ScheduleEntry
+	entries := []ScheduleEntry{}
 	if resp.JSON200 != nil {
 		for _, ge := range *resp.JSON200 {
 			entries = append(entries, scheduleEntryFromGenerated(ge))

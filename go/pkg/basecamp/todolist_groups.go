@@ -127,7 +127,7 @@ func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64, opts
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var groups []TodolistGroup
+	groups := []TodolistGroup{}
 	if resp.JSON200 != nil {
 		for _, gg := range *resp.JSON200 {
 			groups = append(groups, todolistFromGenerated(gg))

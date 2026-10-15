@@ -167,7 +167,7 @@ func (s *LineupService) ListMarkers(ctx context.Context) (result *ListMarkersRes
 		return nil, err
 	}
 
-	var markers []LineupMarker
+	markers := []LineupMarker{}
 	if resp.JSON200 != nil {
 		for _, gm := range *resp.JSON200 {
 			markers = append(markers, LineupMarker{

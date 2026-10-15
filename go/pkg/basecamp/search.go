@@ -381,7 +381,7 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var searchResults []SearchResult
+	searchResults := []SearchResult{}
 	if resp.JSON200 != nil {
 		for _, gsr := range *resp.JSON200 {
 			searchResults = append(searchResults, searchResultFromGenerated(gsr))

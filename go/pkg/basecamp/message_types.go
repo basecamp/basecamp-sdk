@@ -101,7 +101,7 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64, opts *Me
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var types []MessageType
+	types := []MessageType{}
 	if resp.JSON200 != nil {
 		for _, gt := range *resp.JSON200 {
 			types = append(types, messageTypeFromGenerated(gt))

@@ -336,7 +336,7 @@ func (s *VaultsService) List(ctx context.Context, vaultID int64, opts *VaultList
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var vaults []Vault
+	vaults := []Vault{}
 	if resp.JSON200 != nil {
 		for _, gv := range *resp.JSON200 {
 			vaults = append(vaults, vaultFromGenerated(gv))
@@ -577,7 +577,7 @@ func (s *DocumentsService) List(ctx context.Context, vaultID int64, opts *Docume
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var documents []Document
+	documents := []Document{}
 	if resp.JSON200 != nil {
 		for _, gd := range *resp.JSON200 {
 			documents = append(documents, documentFromGenerated(gd))
@@ -781,7 +781,7 @@ func (s *UploadsService) List(ctx context.Context, vaultID int64, opts *UploadLi
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var uploads []Upload
+	uploads := []Upload{}
 	if resp.JSON200 != nil {
 		for _, gu := range *resp.JSON200 {
 			uploads = append(uploads, uploadFromGenerated(gu))
@@ -1172,7 +1172,7 @@ func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64, opts 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var versions []UploadVersion
+	versions := []UploadVersion{}
 	if resp.JSON200 != nil {
 		for _, gv := range *resp.JSON200 {
 			versions = append(versions, uploadVersionFromGenerated(gv))

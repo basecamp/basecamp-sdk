@@ -204,7 +204,7 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	var events []TimelineEvent
+	events := []TimelineEvent{}
 	if resp.JSON200 != nil {
 		for _, ge := range *resp.JSON200 {
 			events = append(events, timelineEventFromGenerated(ge))
@@ -288,7 +288,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	var events []TimelineEvent
+	events := []TimelineEvent{}
 	if resp.JSON200 != nil {
 		for _, ge := range *resp.JSON200 {
 			events = append(events, timelineEventFromGenerated(ge))
@@ -386,7 +386,7 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 	person := &p
 
 	// Parse events from first page
-	var events []TimelineEvent
+	events := []TimelineEvent{}
 	for _, ge := range resp.JSON200.Events {
 		events = append(events, timelineEventFromGenerated(ge))
 	}

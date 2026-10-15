@@ -220,7 +220,7 @@ func (s *TemplatesService) List(ctx context.Context, opts *TemplateListOptions) 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var templates []Template
+	templates := []Template{}
 	if resp.JSON200 != nil {
 		for _, gt := range *resp.JSON200 {
 			templates = append(templates, templateFromGenerated(gt))

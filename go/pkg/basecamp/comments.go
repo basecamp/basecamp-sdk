@@ -131,7 +131,7 @@ func (s *CommentsService) List(ctx context.Context, recordingID int64, opts *Com
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var comments []Comment
+	comments := []Comment{}
 	if resp.JSON200 != nil {
 		for _, gc := range *resp.JSON200 {
 			comments = append(comments, commentFromGenerated(gc))

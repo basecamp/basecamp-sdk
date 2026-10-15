@@ -101,7 +101,7 @@ func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64, op
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var boosts []Boost
+	boosts := []Boost{}
 	if resp.JSON200 != nil {
 		for _, gb := range *resp.JSON200 {
 			boosts = append(boosts, boostFromGenerated(gb))
@@ -192,7 +192,7 @@ func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int6
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var boosts []Boost
+	boosts := []Boost{}
 	if resp.JSON200 != nil {
 		for _, gb := range *resp.JSON200 {
 			boosts = append(boosts, boostFromGenerated(gb))

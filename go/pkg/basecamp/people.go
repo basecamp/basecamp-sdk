@@ -182,7 +182,7 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var people []Person
+	people := []Person{}
 	if resp.JSON200 != nil {
 		for _, gp := range *resp.JSON200 {
 			people = append(people, personFromGenerated(gp))
@@ -373,7 +373,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var people []Person
+	people := []Person{}
 	if resp.JSON200 != nil {
 		for _, gp := range *resp.JSON200 {
 			people = append(people, personFromGenerated(gp))
@@ -452,7 +452,7 @@ func (s *PeopleService) Pingable(ctx context.Context, opts *PeopleListOptions) (
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var people []Person
+	people := []Person{}
 	if resp.JSON200 != nil {
 		for _, gp := range *resp.JSON200 {
 			people = append(people, personFromGenerated(gp))
