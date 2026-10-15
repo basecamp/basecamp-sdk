@@ -5653,7 +5653,7 @@ structure UpdateCardColumnOutput {
   column: CardColumn
 }
 
-/// Move a column to a slot within its card table
+/// Move a column to a slot within its card table. target_id is the card table's own id (the same as cardTableId), not a column; position is the 1-based slot among the columns, not counting Triage, Not Now or Done.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/card_tables/{cardTableId}/moves.json", code: 204)
 operation MoveCardColumn {
@@ -5681,8 +5681,8 @@ structure MoveCardColumnInput {
   target_id: CardTableId
 
   /// 1-based slot among the card table's columns, not counting Triage,
-  /// Not Now or Done. 1 (or less) puts the column first; a slot past the
-  /// last puts it last. Default: 1.
+  /// Not Now or Done. 1 puts the column first; a slot past the last puts it
+  /// last. Default: 1.
   position: Integer
 }
 
@@ -8484,7 +8484,7 @@ structure CreateQuestionOutput {
   question: Question
 }
 
-/// Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.
+/// Update an existing question's title, schedule or both. A schedule replaces the whole schedule, so send every part of it: one without frequency or time_of_day is refused, and one without start_date re-anchors the recurrence on today. Pausing and resuming are PauseQuestion and ResumeQuestion.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)

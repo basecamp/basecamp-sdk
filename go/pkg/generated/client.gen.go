@@ -2415,8 +2415,8 @@ type MessageType struct {
 // MoveCardColumnRequestContent defines model for MoveCardColumnRequestContent.
 type MoveCardColumnRequestContent struct {
 	// Position 1-based slot among the card table's columns, not counting Triage,
-	// Not Now or Done. 1 (or less) puts the column first; a slot past the
-	// last puts it last. Default: 1.
+	// Not Now or Done. 1 puts the column first; a slot past the last puts it
+	// last. Default: 1.
 	Position *int32 `json:"position,omitempty"`
 
 	// SourceId The column to move.

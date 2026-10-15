@@ -359,7 +359,7 @@ export class CheckinsService extends BaseService {
   }
 
   /**
-   * Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.
+   * Update an existing question's title, schedule or both. A schedule replaces the whole schedule, so send every part of it: one without frequency or time_of_day is refused, and one without start_date re-anchors the recurrence on today. Pausing and resuming are PauseQuestion and ResumeQuestion.
    * @param questionId - The question ID
    * @param req - Question update parameters
    * @returns The Question

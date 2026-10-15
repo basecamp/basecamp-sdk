@@ -183,7 +183,7 @@ class CardColumnsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Move a column to a slot within its card table
+     * Move a column to a slot within its card table. target_id is the card table's own id (the same as cardTableId), not a column; position is the 1-based slot among the columns, not counting Triage, Not Now or Done.
      * @param cardTableId The card table ID
      * @param body Request body
      */

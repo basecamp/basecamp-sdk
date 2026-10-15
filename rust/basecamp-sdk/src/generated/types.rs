@@ -3546,8 +3546,8 @@ pub struct MoveCardColumnRequestContent {
     /// Basecamp refuses any other destination, a column included, with 422.
     pub target_id: i64,
     /// 1-based slot among the card table's columns, not counting Triage,
-    /// Not Now or Done. 1 (or less) puts the column first; a slot past the
-    /// last puts it last. Default: 1.
+    /// Not Now or Done. 1 puts the column first; a slot past the last puts it
+    /// last. Default: 1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
 }

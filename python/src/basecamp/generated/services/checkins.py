@@ -136,7 +136,7 @@ class CheckinsService(BaseService):
     def update_question(
         self, *, question_id: int, title: str | None = None, schedule: dict | None = None
     ) -> dict[str, Any]:
-        """Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.
+        """Update an existing question's title, schedule or both. A schedule replaces the whole schedule, so send every part of it: one without frequency or time_of_day is refused, and one without start_date re-anchors the recurrence on today. Pausing and resuming are PauseQuestion and ResumeQuestion.
 
         Args:
             question_id: The question id.
@@ -401,7 +401,7 @@ class AsyncCheckinsService(AsyncBaseService):
     async def update_question(
         self, *, question_id: int, title: str | None = None, schedule: dict | None = None
     ) -> dict[str, Any]:
-        """Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.
+        """Update an existing question's title, schedule or both. A schedule replaces the whole schedule, so send every part of it: one without frequency or time_of_day is refused, and one without start_date re-anchors the recurrence on today. Pausing and resuming are PauseQuestion and ResumeQuestion.
 
         Args:
             question_id: The question id.

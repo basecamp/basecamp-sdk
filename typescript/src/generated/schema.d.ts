@@ -712,7 +712,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Move a column to a slot within its card table */
+        /** @description Move a column to a slot within its card table. target_id is the card table's own id (the same as cardTableId), not a column; position is the 1-based slot among the columns, not counting Triage, Not Now or Done. */
         post: operations["MoveCardColumn"];
         delete?: never;
         options?: never;
@@ -2372,7 +2372,7 @@ export interface paths {
         };
         /** @description Get a single question by id */
         get: operations["GetQuestion"];
-        /** @description Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion. */
+        /** @description Update an existing question's title, schedule or both. A schedule replaces the whole schedule, so send every part of it: one without frequency or time_of_day is refused, and one without start_date re-anchors the recurrence on today. Pausing and resuming are PauseQuestion and ResumeQuestion. */
         put: operations["UpdateQuestion"];
         post?: never;
         delete?: never;
@@ -5876,8 +5876,8 @@ export interface components {
             /**
              * Format: int32
              * @description 1-based slot among the card table's columns, not counting Triage,
-             *     Not Now or Done. 1 (or less) puts the column first; a slot past the
-             *     last puts it last. Default: 1.
+             *     Not Now or Done. 1 puts the column first; a slot past the last puts it
+             *     last. Default: 1.
              */
             position?: number;
         };

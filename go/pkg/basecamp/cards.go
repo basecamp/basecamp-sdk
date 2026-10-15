@@ -251,8 +251,9 @@ type MoveColumnRequest struct {
 	// destination, a column included, with 422. Zero means the card table.
 	TargetID int64 `json:"target_id"`
 	// Position is the 1-based slot among the card table's columns, not
-	// counting Triage, Not Now or Done. 1 (or less, 0 included) puts the column
-	// first; a slot past the last puts it last. Always transmitted.
+	// counting Triage, Not Now or Done. 1 puts the column first, and so does 0,
+	// which Basecamp reads as 1; a slot past the last puts it last. Negative
+	// values are refused. Always transmitted.
 	Position int `json:"position"`
 }
 

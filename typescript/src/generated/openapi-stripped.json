@@ -5198,7 +5198,7 @@
     },
     "/card_tables/{cardTableId}/moves.json": {
       "post": {
-        "description": "Move a column to a slot within its card table",
+        "description": "Move a column to a slot within its card table. target_id is the card table's own id (the same as cardTableId), not a column; position is the 1-based slot among the columns, not counting Triage, Not Now or Done.",
         "operationId": "MoveCardColumn",
         "requestBody": {
           "content": {
@@ -15127,7 +15127,7 @@
         }
       },
       "put": {
-        "description": "Update an existing question's title, schedule or both. Pausing and resuming are PauseQuestion and ResumeQuestion.",
+        "description": "Update an existing question's title, schedule or both. A schedule replaces the whole schedule, so send every part of it: one without frequency or time_of_day is refused, and one without start_date re-anchors the recurrence on today. Pausing and resuming are PauseQuestion and ResumeQuestion.",
         "operationId": "UpdateQuestion",
         "requestBody": {
           "content": {
@@ -32141,7 +32141,7 @@
           },
           "position": {
             "type": "integer",
-            "description": "1-based slot among the card table's columns, not counting Triage,\nNot Now or Done. 1 (or less) puts the column first; a slot past the\nlast puts it last. Default: 1.",
+            "description": "1-based slot among the card table's columns, not counting Triage,\nNot Now or Done. 1 puts the column first; a slot past the last puts it\nlast. Default: 1.",
             "format": "int32"
           }
         },

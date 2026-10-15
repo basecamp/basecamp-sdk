@@ -150,7 +150,7 @@ class CardColumnsService(BaseService):
         )
 
     def move(self, *, card_table_id: int, source_id: int, target_id: int, position: int | None = None) -> None:
-        """Move a column to a slot within its card table.
+        """Move a column to a slot within its card table. target_id is the card table's own id (the same as cardTableId), not a column; position is the 1-based slot among the columns, not counting Triage, Not Now or Done.
 
         Args:
             card_table_id: The card table id.
@@ -158,8 +158,7 @@ class CardColumnsService(BaseService):
             target_id: The card table the column moves within: the same id as `cardTableId`.
                 Basecamp refuses any other destination, a column included, with 422.
             position: 1-based slot among the card table's columns, not counting Triage, Not Now or
-                Done. 1 (or less) puts the column first; a slot past the last puts it last. Default:
-                1.
+                Done. 1 puts the column first; a slot past the last puts it last. Default: 1.
         """
         self._request_void(
             OperationInfo(service="cardcolumns", operation="move", is_mutation=True, resource_id=card_table_id),
@@ -312,7 +311,7 @@ class AsyncCardColumnsService(AsyncBaseService):
         )
 
     async def move(self, *, card_table_id: int, source_id: int, target_id: int, position: int | None = None) -> None:
-        """Move a column to a slot within its card table.
+        """Move a column to a slot within its card table. target_id is the card table's own id (the same as cardTableId), not a column; position is the 1-based slot among the columns, not counting Triage, Not Now or Done.
 
         Args:
             card_table_id: The card table id.
@@ -320,8 +319,7 @@ class AsyncCardColumnsService(AsyncBaseService):
             target_id: The card table the column moves within: the same id as `cardTableId`.
                 Basecamp refuses any other destination, a column included, with 422.
             position: 1-based slot among the card table's columns, not counting Triage, Not Now or
-                Done. 1 (or less) puts the column first; a slot past the last puts it last. Default:
-                1.
+                Done. 1 puts the column first; a slot past the last puts it last. Default: 1.
         """
         await self._request_void(
             OperationInfo(service="cardcolumns", operation="move", is_mutation=True, resource_id=card_table_id),
