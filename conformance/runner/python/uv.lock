@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 
 [[package]]
@@ -40,7 +40,7 @@ dev = [{ name = "pytest", specifier = ">=8" }]
 
 [[package]]
 name = "basecamp-sdk"
-version = "0.24.0"
+version = "0.25.0"
 source = { editable = "../../../python" }
 dependencies = [
     { name = "httpx" },
