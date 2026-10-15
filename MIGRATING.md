@@ -11,6 +11,41 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# v0.25.0
+
+### Check-in questions: update no longer takes `paused`
+
+`UpdateQuestion` accepted a `paused` flag that Basecamp never reads on update:
+bc3 permits only `title` and `schedule` there. A paused-only update was
+refused with `400`, and `paused` sent alongside a title was dropped while the
+call reported success, so the question stayed unpaused. Pause and resume a
+question with `PauseQuestion` and `ResumeQuestion`.
+
+`paused` is gone from every SDK's update request type, which breaks source
+where it was set: Go's `UpdateQuestionRequest.Paused` is removed. Go's
+`UpdateQuestion` also refuses, before the wire, an update carrying neither a
+title nor a schedule, which Basecamp would refuse with `400`. Nothing that
+worked stops working.
+
+### Lineup markers: create and update return the marker
+
+Basecamp answers a marker create (`201`) and update (`200`) with the saved
+marker; the SDKs discarded it. They now return it. Go's
+`LineupService.CreateMarker` and `UpdateMarker` return
+`(*LineupMarker, error)` instead of `error`, which breaks source; the other
+SDKs return the marker where they returned nothing.
+
+### Card columns: a column move targets the card table
+
+`MoveCardColumn`'s `target_id` is the card table the column moves within, the
+same id as the path's card table; Basecamp refuses any other destination, a
+column included, with `422`. The spec typed and documented it as a column "to
+move relative to", so a caller following the docs got `422` every time. The
+type is now `CardTableId`, and `position` is documented as the 1-based slot
+among the columns, not counting Triage, Not Now or Done. Go's `Move` fills an
+unset (zero) `TargetID` with the card table it is called with. No signature
+changes.
+
 # v0.23.0
 
 ### Check-in questions: create and update take the time of day as `time_of_day`
