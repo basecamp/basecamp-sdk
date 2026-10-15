@@ -246,11 +246,14 @@ type UpdateColumnRequest struct {
 type MoveColumnRequest struct {
 	// SourceID is the column ID to move (required).
 	SourceID int64 `json:"source_id"`
-	// TargetID is the column ID to move relative to (required).
+	// TargetID is the card table the column moves within: the same ID as
+	// the cardTableID Move is called with. Basecamp refuses any other
+	// destination, a column included, with 422. Zero means the card table.
 	TargetID int64 `json:"target_id"`
-	// Position is the zero-indexed position within the destination column.
-	// BC3 documents it as a required parameter and its own example sends 0,
-	// so it is always transmitted — including the zero value.
+	// Position is the 1-based slot among the card table's columns, not
+	// counting Triage, Not Now or Done. 1 puts the column first, and so does 0,
+	// which Basecamp reads as 1; a slot past the last puts it last. Negative
+	// values are refused. Always transmitted.
 	Position int `json:"position"`
 }
 
@@ -824,7 +827,8 @@ func (s *CardColumnsService) Update(ctx context.Context, columnID int64, req *Up
 	return &column, nil
 }
 
-// Move moves a column within a card table.
+// Move moves a column to a slot within its card table: req.Position is the
+// 1-based slot among the columns, not counting Triage, Not Now or Done.
 func (s *CardColumnsService) Move(ctx context.Context, cardTableID int64, req *MoveColumnRequest) (err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "Move",
@@ -852,10 +856,15 @@ func (s *CardColumnsService) Move(ctx context.Context, cardTableID int64, req *M
 		return err
 	}
 
+	targetID := req.TargetID
+	if targetID == 0 {
+		targetID = cardTableID
+	}
+
 	body := generated.MoveCardColumnJSONRequestBody{
 		SourceId: req.SourceID,
-		TargetId: req.TargetID,
-		// Always sent: position 0 is the documented first slot, not "unset".
+		TargetId: targetID,
+		// Always sent: Basecamp reads 0 like 1, the first slot.
 		Position: ptr(int32(req.Position)),
 	}
 

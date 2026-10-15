@@ -2,8 +2,8 @@
 import Foundation
 
 public final class LineupService: BaseService, @unchecked Sendable {
-    public func create(req: CreateLineupMarkerRequest) async throws {
-        try await requestVoid(
+    public func create(req: CreateLineupMarkerRequest) async throws -> LineupMarker {
+        return try await request(
             OperationInfo(service: "Lineup", operation: "CreateLineupMarker", resourceType: "lineup_marker", isMutation: true),
             method: "POST",
             path: "/lineup/markers.json",
@@ -30,8 +30,8 @@ public final class LineupService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func update(markerId: Int, req: UpdateLineupMarkerRequest) async throws {
-        try await requestVoid(
+    public func update(markerId: Int, req: UpdateLineupMarkerRequest) async throws -> LineupMarker {
+        return try await request(
             OperationInfo(service: "Lineup", operation: "UpdateLineupMarker", resourceType: "lineup_marker", isMutation: true, resourceId: markerId),
             method: "PUT",
             path: "/lineup/markers/\(markerId)",

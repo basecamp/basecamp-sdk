@@ -25,6 +25,7 @@ data class Project(
     @SerialName("start_date") val startDate: String? = null,
     @SerialName("end_date") val endDate: String? = null,
     @SerialName("clients_enabled") val clientsEnabled: Boolean? = null,
+    @SerialName("timesheet_enabled") val timesheetEnabled: Boolean? = null,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("star_url") val starUrl: String? = null,
     val dock: List<DockItem>? = null,

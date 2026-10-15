@@ -189,10 +189,11 @@ type CreateQuestionRequest struct {
 type UpdateQuestionRequest struct {
 	// Title is the question text.
 	Title string `json:"title,omitempty"`
-	// Schedule is the question schedule configuration.
+	// Schedule is the question schedule configuration. It replaces the whole
+	// schedule.
 	Schedule *QuestionScheduleInput `json:"schedule,omitempty"`
-	// Paused indicates whether the question is paused.
-	Paused *bool `json:"paused,omitempty"`
+	// An update carries a title, a schedule or both. Basecamp ignores a
+	// paused flag here: pause and resume with PauseQuestion and ResumeQuestion.
 }
 
 // CreateAnswerRequest specifies the parameters for creating an answer.
@@ -501,8 +502,9 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, 
 			return nil, err
 		}
 	}
-	if req.Paused != nil {
-		body.Paused = req.Paused
+	if body.Title == nil && body.Schedule == nil {
+		err = ErrUsage("update a question's title or schedule; pause or resume it with PauseQuestion or ResumeQuestion")
+		return nil, err
 	}
 
 	resp, err := s.client.parent.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, questionID, body)

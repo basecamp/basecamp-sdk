@@ -234,8 +234,7 @@ data class CreateQuestionBody(
 /** Request body for UpdateQuestion. */
 data class UpdateQuestionBody(
     val title: String? = null,
-    val schedule: JsonObject? = null,
-    val paused: Boolean? = null
+    val schedule: JsonObject? = null
 )
 
 /** Options for ListAnswers. */

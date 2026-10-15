@@ -1305,6 +1305,9 @@ pub struct CreateLineupMarkerRequestContent {
     pub date: String,
 }
 
+/// `CreateLineupMarkerResponseContent`.
+pub type CreateLineupMarkerResponseContent = LineupMarker;
+
 /// The `CreateMessageRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateMessageRequestContent {
@@ -2001,10 +2004,12 @@ pub struct Event {
     /// `performed_by`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub performed_by: Option<Person>,
-    /// `boosts_count`.
+    /// Present only on boostable events (action completed, adopted,
+    /// column_changed or moved_in); the event boost operations refuse any
+    /// other event with 403.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boosts_count: Option<i32>,
-    /// `boosts_url`.
+    /// Present only on boostable events; see boosts_count.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boosts_url: Option<String>,
 }
@@ -3535,11 +3540,14 @@ pub struct MessageType {
 /// The `MoveCardColumnRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MoveCardColumnRequestContent {
-    /// `source_id`.
+    /// The column to move.
     pub source_id: i64,
-    /// `target_id`.
+    /// The card table the column moves within: the same id as `cardTableId`.
+    /// Basecamp refuses any other destination, a column included, with 422.
     pub target_id: i64,
-    /// `position`.
+    /// 1-based slot among the card table's columns, not counting Triage,
+    /// Not Now or Done. 1 puts the column first; a slot past the last puts it
+    /// last. Default: 1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
 }
@@ -4082,6 +4090,10 @@ pub struct Project {
     /// `clients_enabled`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub clients_enabled: Option<bool>,
+    /// True when the project's timesheet is turned on. The project timesheet
+    /// report (GET /projects/{projectId}/timesheet.json) answers 404 until it is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timesheet_enabled: Option<bool>,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bookmark_url: Option<String>,
@@ -6665,6 +6677,9 @@ pub struct UpdateLineupMarkerRequestContent {
     pub date: Option<String>,
 }
 
+/// `UpdateLineupMarkerResponseContent`.
+pub type UpdateLineupMarkerResponseContent = LineupMarker;
+
 /// The `UpdateMessageRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateMessageRequestContent {
@@ -6828,15 +6843,12 @@ pub struct UpdateQuestionNotificationSettingsResponseContent {
 /// The `UpdateQuestionRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateQuestionRequestContent {
-    /// `title`.
+    /// The question text. An update carries a title, a schedule or both.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     /// `schedule`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub schedule: Option<QuestionScheduleInput>,
-    /// `paused`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub paused: Option<bool>,
 }
 
 /// `UpdateQuestionResponseContent`.

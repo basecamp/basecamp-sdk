@@ -53,24 +53,30 @@ class LineupServiceTest < Minitest::Test
     assert_equal 0, result.length
   end
 
+  def sample_marker(id: 1, name: "Launch Day", date: "2024-03-01")
+    { id: id, name: name, date: date, created_at: "2024-02-15T10:30:00.000Z", updated_at: "2024-02-16T10:30:00.000Z" }
+  end
+
   def test_create
-    stub_post("/12345/lineup/markers.json", response_body: "", status: 201)
+    stub_post("/12345/lineup/markers.json", response_body: sample_marker, status: 201)
 
     result = @account.lineup.create(
       name: "Launch Day",
       date: "2024-03-01"
     )
 
-    assert_nil result
+    assert_equal 1, result["id"]
+    assert_equal "Launch Day", result["name"]
   end
 
   def test_update
     stub_request(:put, "https://3.basecampapi.com/12345/lineup/markers/1")
-      .to_return(status: 204, body: "")
+      .to_return(status: 200, body: sample_marker(name: "Updated Launch").to_json, headers: { "Content-Type" => "application/json" })
 
     result = @account.lineup.update(marker_id: 1, name: "Updated Launch")
 
-    assert_nil result
+    assert_equal 1, result["id"]
+    assert_equal "Updated Launch", result["name"]
   end
 
   def test_delete

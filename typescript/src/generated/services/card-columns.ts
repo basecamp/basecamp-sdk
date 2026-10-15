@@ -47,11 +47,14 @@ export interface CreateCardColumnRequest {
  * Request parameters for move.
  */
 export interface MoveCardColumnRequest {
-  /** Source id */
+  /** The column to move. */
   sourceId: number;
-  /** Target id */
+  /** The card table the column moves within: the same id as `cardTableId`.
+Basecamp refuses any other destination, a column included, with 422. */
   targetId: number;
-  /** Position for ordering (1-based) */
+  /** 1-based slot among the card table's columns, not counting Triage,
+Not Now or Done. 1 puts the column first; a slot past the last puts it
+last. Default: 1. */
   position?: number;
 }
 
@@ -330,7 +333,7 @@ export class CardColumnsService extends BaseService {
   }
 
   /**
-   * Move a column within a card table
+   * Move a column to a slot within its card table. target_id is the card table's own id (the same as cardTableId), not a column; position is the 1-based slot among the columns, not counting Triage, Not Now or Done.
    * @param cardTableId - The card table ID
    * @param req - Card_column request parameters
    * @returns void

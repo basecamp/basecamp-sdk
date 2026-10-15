@@ -1,7 +1,10 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -147,5 +150,46 @@ func TestUpdateMarkerRequest_MarshalPartial(t *testing.T) {
 	// Optional fields should be omitted
 	if _, ok := data["date"]; ok {
 		t.Error("expected date to be omitted")
+	}
+}
+
+// TestLineupService_MarkerWritesReturnTheMarker: bc3's Lineup::MarkersController
+// renders the saved marker on create (201) and update (200), so both return it.
+func TestLineupService_MarkerWritesReturnTheMarker(t *testing.T) {
+	const marker = `{"id":39446,"name":"Launch","date":"2026-11-20","created_at":"2026-10-15T08:00:00.000Z","updated_at":"2026-10-15T09:00:00.000Z"}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/99999/lineup/markers.json":
+			w.WriteHeader(http.StatusCreated)
+		case r.Method == http.MethodPut && r.URL.Path == "/99999/lineup/markers/39446":
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte(marker))
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").Lineup()
+
+	created, err := svc.CreateMarker(context.Background(), &CreateMarkerRequest{Name: "Launch", Date: "2026-11-20"})
+	if err != nil {
+		t.Fatalf("CreateMarker failed: %v", err)
+	}
+	if created == nil || created.ID != 39446 || created.Name != "Launch" || created.Date != "2026-11-20" || created.CreatedAt.IsZero() {
+		t.Errorf("unexpected created marker: %+v", created)
+	}
+
+	updated, err := svc.UpdateMarker(context.Background(), 39446, &UpdateMarkerRequest{Name: "Launch"})
+	if err != nil {
+		t.Fatalf("UpdateMarker failed: %v", err)
+	}
+	if updated == nil || updated.ID != 39446 || updated.UpdatedAt.IsZero() {
+		t.Errorf("unexpected updated marker: %+v", updated)
 	}
 }

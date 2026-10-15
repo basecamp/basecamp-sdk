@@ -260,7 +260,7 @@ impl<'a> CheckinsService<'a> {
         self.client.send(operation).await
     }
 
-    /// Update an existing question
+    /// Update an existing question's title, schedule or both. A schedule replaces the whole schedule, so send every part of it: one without frequency or time_of_day is refused, and one without start_date re-anchors the recurrence on today. Pausing and resuming are PauseQuestion and ResumeQuestion.
     ///
     /// `PUT /questions/{questionId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn update_question(

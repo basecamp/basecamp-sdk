@@ -1397,3 +1397,48 @@ func TestCardColumnsService_SubscribeError(t *testing.T) {
 		t.Fatalf("expected not-found error, got %v", err)
 	}
 }
+
+// TestCardColumnsService_MoveTargetsTheCardTable: bc3's column move takes the
+// card table itself as target_id (Kanban::Moves::ColumnMove refuses any other
+// destination with 422), so an unset TargetID defaults to the card table the
+// move is posted to, and position is the 1-based slot among the columns.
+func TestCardColumnsService_MoveTargetsTheCardTable(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		req  *MoveColumnRequest
+		want map[string]int64
+	}{
+		{"target defaults to the card table", &MoveColumnRequest{SourceID: 3, Position: 2}, map[string]int64{"source_id": 3, "target_id": 777, "position": 2}},
+		{"explicit target is sent as given", &MoveColumnRequest{SourceID: 3, TargetID: 777, Position: 1}, map[string]int64{"source_id": 3, "target_id": 777, "position": 1}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got map[string]any
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost || r.URL.Path != "/99999/card_tables/777/moves.json" {
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+				}
+				dec := json.NewDecoder(r.Body)
+				dec.UseNumber()
+				_ = dec.Decode(&got)
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			t.Cleanup(server.Close)
+
+			cfg := DefaultConfig()
+			cfg.BaseURL = server.URL
+			client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+			if err := client.ForAccount("99999").CardColumns().Move(context.Background(), 777, tc.req); err != nil {
+				t.Fatalf("Move failed: %v", err)
+			}
+			for key, want := range tc.want {
+				n, ok := got[key].(json.Number)
+				if !ok {
+					t.Fatalf("%s missing from body %v", key, got)
+				}
+				if v, _ := n.Int64(); v != want {
+					t.Errorf("%s = %d, want %d", key, v, want)
+				}
+			}
+		})
+	}
+}

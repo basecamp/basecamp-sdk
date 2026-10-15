@@ -80,7 +80,7 @@ class BoostsService(BaseService):
     def list_event_boosts(
         self, *, recording_id: int, event_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
-        """List boosts on a specific event within a recording.
+        """List boosts on a specific event within a recording. Only boostable events carry boosts: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden; an event on a recording the person cannot see answers 404.
 
         Args:
             recording_id: The recording id.
@@ -100,7 +100,7 @@ class BoostsService(BaseService):
         )
 
     def create_event_boost(self, *, recording_id: int, event_id: int, content: str) -> dict[str, Any]:
-        """Create a boost on a specific event within a recording.
+        """Create a boost on a specific event within a recording. Only boostable events accept one: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden, as does an event on a recording whose comments are closed; an event on a recording the person cannot see answers 404.
 
         Args:
             recording_id: The recording id.
@@ -186,7 +186,7 @@ class AsyncBoostsService(AsyncBaseService):
     async def list_event_boosts(
         self, *, recording_id: int, event_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
-        """List boosts on a specific event within a recording.
+        """List boosts on a specific event within a recording. Only boostable events carry boosts: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden; an event on a recording the person cannot see answers 404.
 
         Args:
             recording_id: The recording id.
@@ -206,7 +206,7 @@ class AsyncBoostsService(AsyncBaseService):
         )
 
     async def create_event_boost(self, *, recording_id: int, event_id: int, content: str) -> dict[str, Any]:
-        """Create a boost on a specific event within a recording.
+        """Create a boost on a specific event within a recording. Only boostable events accept one: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden, as does an event on a recording whose comments are closed; an event on a recording the person cannot see answers 404.
 
         Args:
             recording_id: The recording id.

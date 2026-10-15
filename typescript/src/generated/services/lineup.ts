@@ -70,24 +70,24 @@ export class LineupService extends BaseService {
   }
 
   /**
-   * Create a new lineup marker
+   * Create a new lineup marker. Returns the created marker.
    * @param req - Lineup_marker creation parameters
-   * @returns void
+   * @returns The LineupMarker
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * await client.lineup.create({ name: "My example", date: "example" });
+   * const result = await client.lineup.create({ name: "My example", date: "example" });
    * ```
    */
-  async create(req: CreateLineupRequest): Promise<void> {
+  async create(req: CreateLineupRequest): Promise<LineupMarker> {
     if (!req.name) {
       throw Errors.validation("Name is required");
     }
     if (!req.date) {
       throw Errors.validation("Date is required");
     }
-    await this.request(
+    const response = await this.request(
       {
         service: "Lineup",
         operation: "CreateLineupMarker",
@@ -102,22 +102,23 @@ export class LineupService extends BaseService {
           },
         })
     );
+    return response;
   }
 
   /**
-   * Update an existing lineup marker
+   * Update an existing lineup marker. Returns the updated marker.
    * @param markerId - The marker ID
    * @param req - Lineup_marker update parameters
-   * @returns void
+   * @returns The LineupMarker
    * @throws {BasecampError} If the resource is not found or fields are invalid
    *
    * @example
    * ```ts
-   * await client.lineup.update(123, { });
+   * const result = await client.lineup.update(123, { });
    * ```
    */
-  async update(markerId: number, req: UpdateLineupRequest): Promise<void> {
-    await this.request(
+  async update(markerId: number, req: UpdateLineupRequest): Promise<LineupMarker> {
+    const response = await this.request(
       {
         service: "Lineup",
         operation: "UpdateLineupMarker",
@@ -136,6 +137,7 @@ export class LineupService extends BaseService {
           },
         })
     );
+    return response;
   }
 
   /**

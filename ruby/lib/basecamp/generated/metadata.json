@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-10-14T22:22:30Z",
+  "generated": "2026-10-15T16:04:42Z",
   "operations": {
     "GetAccount": {
       "retry": {

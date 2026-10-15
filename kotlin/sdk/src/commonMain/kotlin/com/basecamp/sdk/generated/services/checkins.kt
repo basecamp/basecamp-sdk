@@ -193,7 +193,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Update an existing question
+     * Update an existing question's title, schedule or both. A schedule replaces the whole schedule, so send every part of it: one without frequency or time_of_day is refused, and one without start_date re-anchors the recurrence on today. Pausing and resuming are PauseQuestion and ResumeQuestion.
      * @param questionId The question ID
      * @param body Request body
      */
@@ -210,7 +210,6 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             httpPut("/questions/${questionId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 body.title?.let { put("title", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.schedule?.let { put("schedule", it) }
-                body.paused?.let { put("paused", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Question>(body)

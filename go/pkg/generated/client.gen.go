@@ -784,6 +784,9 @@ type CreateLineupMarkerRequestContent struct {
 	Name string `json:"name"`
 }
 
+// CreateLineupMarkerResponseContent defines model for CreateLineupMarkerResponseContent.
+type CreateLineupMarkerResponseContent = LineupMarker
+
 // CreateMessageRequestContent defines model for CreateMessageRequestContent.
 type CreateMessageRequestContent struct {
 	CategoryId *int64  `json:"category_id,omitempty"`
@@ -1331,8 +1334,14 @@ type EnableProjectClientsResponseContent = ProjectClientEnablement
 
 // Event defines model for Event.
 type Event struct {
-	Action      string        `json:"action"`
-	BoostsCount *int32        `json:"boosts_count,omitempty"`
+	Action string `json:"action"`
+
+	// BoostsCount Present only on boostable events (action completed, adopted,
+	// column_changed or moved_in); the event boost operations refuse any
+	// other event with 403.
+	BoostsCount *int32 `json:"boosts_count,omitempty"`
+
+	// BoostsUrl Present only on boostable events; see boosts_count.
 	BoostsUrl   *string       `json:"boosts_url,omitempty"`
 	CreatedAt   time.Time     `json:"created_at"`
 	Creator     Person        `json:"creator"`
@@ -2405,9 +2414,17 @@ type MessageType struct {
 
 // MoveCardColumnRequestContent defines model for MoveCardColumnRequestContent.
 type MoveCardColumnRequestContent struct {
+	// Position 1-based slot among the card table's columns, not counting Triage,
+	// Not Now or Done. 1 puts the column first; a slot past the last puts it
+	// last. Default: 1.
 	Position *int32 `json:"position,omitempty"`
-	SourceId int64  `json:"source_id"`
-	TargetId int64  `json:"target_id"`
+
+	// SourceId The column to move.
+	SourceId int64 `json:"source_id"`
+
+	// TargetId The card table the column moves within: the same id as `cardTableId`.
+	// Basecamp refuses any other destination, a column included, with 422.
+	TargetId int64 `json:"target_id"`
 }
 
 // MoveCardRequestContent defines model for MoveCardRequestContent.
@@ -2741,9 +2758,13 @@ type Project struct {
 	StartDate *string `json:"start_date,omitempty"`
 
 	// Status active|archived|trashed
-	Status    string    `json:"status"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Url       string    `json:"url"`
+	Status string `json:"status"`
+
+	// TimesheetEnabled True when the project's timesheet is turned on. The project timesheet
+	// report (GET /projects/{projectId}/timesheet.json) answers 404 until it is.
+	TimesheetEnabled *bool     `json:"timesheet_enabled,omitempty"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Url              string    `json:"url"`
 }
 
 // ProjectAccessResult defines model for ProjectAccessResult.
@@ -4584,6 +4605,9 @@ type UpdateLineupMarkerRequestContent struct {
 	Name *string `json:"name,omitempty"`
 }
 
+// UpdateLineupMarkerResponseContent defines model for UpdateLineupMarkerResponseContent.
+type UpdateLineupMarkerResponseContent = LineupMarker
+
 // UpdateMessageRequestContent defines model for UpdateMessageRequestContent.
 type UpdateMessageRequestContent struct {
 	CategoryId *int64  `json:"category_id,omitempty"`
@@ -4693,12 +4717,12 @@ type UpdateQuestionNotificationSettingsResponseContent struct {
 
 // UpdateQuestionRequestContent defines model for UpdateQuestionRequestContent.
 type UpdateQuestionRequestContent struct {
-	Paused *bool `json:"paused,omitempty"`
-
 	// Schedule The schedule a question is created or updated with. BC3 reads the time of
 	// day as a string ("5:00pm"); hour and minute appear only in responses.
 	Schedule *QuestionScheduleInput `json:"schedule,omitempty"`
-	Title    *string                `json:"title,omitempty"`
+
+	// Title The question text. An update carries a title, a schedule or both.
+	Title *string `json:"title,omitempty"`
 }
 
 // UpdateQuestionResponseContent defines model for UpdateQuestionResponseContent.
@@ -33293,6 +33317,7 @@ func (r ListLineupMarkersResponse) ContentType() string {
 type CreateLineupMarkerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON201      *CreateLineupMarkerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *BareFieldValidationErrorResponseContent
@@ -33360,6 +33385,7 @@ func (r DeleteLineupMarkerResponse) ContentType() string {
 type UpdateLineupMarkerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *UpdateLineupMarkerResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -47976,8 +48002,12 @@ func ParseCreateLineupMarkerResponse(rsp *http.Response) (*CreateLineupMarkerRes
 	}
 
 	switch {
-	case rsp.StatusCode == 201:
-		break // No content-type
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateLineupMarkerResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -48074,8 +48104,12 @@ func ParseUpdateLineupMarkerResponse(rsp *http.Response) (*UpdateLineupMarkerRes
 	}
 
 	switch {
-	case rsp.StatusCode == 200:
-		break // No content-type
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateLineupMarkerResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent

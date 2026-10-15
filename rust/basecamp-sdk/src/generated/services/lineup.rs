@@ -30,13 +30,16 @@ impl<'a> LineupService<'a> {
         self.client
     }
 
-    /// Create a new lineup marker
+    /// Create a new lineup marker. Returns the created marker.
     ///
     /// `POST /lineup/markers.json` — not idempotent, sent exactly once.
-    pub async fn create(&self, body: &CreateLineupMarkerRequestContent) -> Result<(), Error> {
+    pub async fn create(
+        &self,
+        body: &CreateLineupMarkerRequestContent,
+    ) -> Result<CreateLineupMarkerResponseContent, Error> {
         let mut operation = self.client.operation(&routes::CREATE_LINEUP_MARKER, &[]);
         operation.json(body)?;
-        self.client.send_unit(operation).await
+        self.client.send(operation).await
     }
 
     /// Delete a lineup marker
@@ -57,18 +60,18 @@ impl<'a> LineupService<'a> {
         self.client.send(operation).await
     }
 
-    /// Update an existing lineup marker
+    /// Update an existing lineup marker. Returns the updated marker.
     ///
     /// `PUT /lineup/markers/{markerId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn update(
         &self,
         marker_id: i64,
         body: &UpdateLineupMarkerRequestContent,
-    ) -> Result<(), Error> {
+    ) -> Result<UpdateLineupMarkerResponseContent, Error> {
         let mut operation = self
             .client
             .operation(&routes::UPDATE_LINEUP_MARKER, &[&marker_id]);
         operation.json(body)?;
-        self.client.send_unit(operation).await
+        self.client.send(operation).await
     }
 }

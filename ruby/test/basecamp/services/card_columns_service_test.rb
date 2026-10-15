@@ -68,7 +68,7 @@ class CardColumnsServiceTest < Minitest::Test
     result = @account.card_columns.move(
       card_table_id: 200,
       source_id: 300,
-      target_id: 400,
+      target_id: 200,
       position: 1
     )
 

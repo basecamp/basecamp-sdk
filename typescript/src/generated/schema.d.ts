@@ -712,7 +712,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Move a column within a card table */
+        /** @description Move a column to a slot within its card table. target_id is the card table's own id (the same as cardTableId), not a column; position is the 1-based slot among the columns, not counting Triage, Not Now or Done. */
         post: operations["MoveCardColumn"];
         delete?: never;
         options?: never;
@@ -1464,7 +1464,7 @@ export interface paths {
         /** @description List all lineup markers for the account */
         get: operations["ListLineupMarkers"];
         put?: never;
-        /** @description Create a new lineup marker */
+        /** @description Create a new lineup marker. Returns the created marker. */
         post: operations["CreateLineupMarker"];
         delete?: never;
         options?: never;
@@ -1480,7 +1480,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description Update an existing lineup marker */
+        /** @description Update an existing lineup marker. Returns the updated marker. */
         put: operations["UpdateLineupMarker"];
         post?: never;
         /** @description Delete a lineup marker */
@@ -2372,7 +2372,7 @@ export interface paths {
         };
         /** @description Get a single question by id */
         get: operations["GetQuestion"];
-        /** @description Update an existing question */
+        /** @description Update an existing question's title, schedule or both. A schedule replaces the whole schedule, so send every part of it: one without frequency or time_of_day is refused, and one without start_date re-anchors the recurrence on today. Pausing and resuming are PauseQuestion and ResumeQuestion. */
         put: operations["UpdateQuestion"];
         post?: never;
         delete?: never;
@@ -2649,10 +2649,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description List boosts on a specific event within a recording */
+        /** @description List boosts on a specific event within a recording. Only boostable events carry boosts: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden; an event on a recording the person cannot see answers 404. */
         get: operations["ListEventBoosts"];
         put?: never;
-        /** @description Create a boost on a specific event within a recording */
+        /** @description Create a boost on a specific event within a recording. Only boostable events accept one: those whose action is completed, adopted, column_changed or moved_in (their JSON includes boosts_count and boosts_url). Any other event answers 403 Forbidden, as does an event on a recording whose comments are closed; an event on a recording the person cannot see answers 404. */
         post: operations["CreateEventBoost"];
         delete?: never;
         options?: never;
@@ -4633,6 +4633,7 @@ export interface components {
             name: string;
             date: string;
         };
+        CreateLineupMarkerResponseContent: components["schemas"]["LineupMarker"];
         CreateMessageRequestContent: {
             subject: string;
             content?: string;
@@ -5038,8 +5039,14 @@ export interface components {
             created_at: string;
             creator: components["schemas"]["Person"];
             performed_by?: components["schemas"]["Person"];
-            /** Format: int32 */
+            /**
+             * Format: int32
+             * @description Present only on boostable events (action completed, adopted,
+             *     column_changed or moved_in); the event boost operations refuse any
+             *     other event with 403.
+             */
             boosts_count?: number;
+            /** @description Present only on boostable events; see boosts_count. */
             boosts_url?: string;
         };
         EventDetails: {
@@ -5855,11 +5862,23 @@ export interface components {
             updated_at: string;
         };
         MoveCardColumnRequestContent: {
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description The column to move.
+             */
             source_id: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description The card table the column moves within: the same id as `cardTableId`.
+             *     Basecamp refuses any other destination, a column included, with 422.
+             */
             target_id: number;
-            /** Format: int32 */
+            /**
+             * Format: int32
+             * @description 1-based slot among the card table's columns, not counting Triage,
+             *     Not Now or Done. 1 puts the column first; a slot past the last puts it
+             *     last. Default: 1.
+             */
             position?: number;
         };
         MoveCardRequestContent: {
@@ -6194,6 +6213,11 @@ export interface components {
             start_date?: string;
             end_date?: string;
             clients_enabled?: boolean;
+            /**
+             * @description True when the project's timesheet is turned on. The project timesheet
+             *     report (GET /projects/{projectId}/timesheet.json) answers 404 until it is.
+             */
+            timesheet_enabled?: boolean;
             bookmark_url?: string;
             /** @description Bucket stars collection for this project (`/buckets/{id}/stars.json`). */
             star_url?: string;
@@ -7947,6 +7971,7 @@ export interface components {
             name?: string;
             date?: string;
         };
+        UpdateLineupMarkerResponseContent: components["schemas"]["LineupMarker"];
         UpdateMessageRequestContent: {
             subject?: string;
             content?: string;
@@ -8021,9 +8046,9 @@ export interface components {
             subscribed?: boolean;
         };
         UpdateQuestionRequestContent: {
+            /** @description The question text. An update carries a title, a schedule or both. */
             title?: string;
             schedule?: components["schemas"]["QuestionScheduleInput"];
-            paused?: boolean;
         };
         UpdateQuestionResponseContent: components["schemas"]["Question"];
         UpdateScheduleSettingsRequestContent: {
@@ -14884,7 +14909,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CreateLineupMarkerResponseContent"];
+                };
             };
             /** @description UnauthorizedError 401 response */
             401: {
@@ -14953,7 +14980,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["UpdateLineupMarkerResponseContent"];
+                };
             };
             /** @description UnauthorizedError 401 response */
             401: {

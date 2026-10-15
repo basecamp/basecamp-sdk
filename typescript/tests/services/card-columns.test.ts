@@ -91,13 +91,14 @@ describe("CardColumnsService", () => {
         http.post(`${BASE_URL}/card_tables/${cardTableId}/moves.json`, async ({ request }) => {
           const body = (await request.json()) as Record<string, unknown>;
           expect(body.source_id).toBe(10);
-          expect(body.target_id).toBe(20);
+          expect(body.target_id).toBe(cardTableId);
+          expect(body.position).toBe(2);
           return new HttpResponse(null, { status: 204 });
         })
       );
 
       await expect(
-        client.cardColumns.move(cardTableId, { sourceId: 10, targetId: 20 })
+        client.cardColumns.move(cardTableId, { sourceId: 10, targetId: cardTableId, position: 2 })
       ).resolves.toBeUndefined();
     });
   });
