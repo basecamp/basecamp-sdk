@@ -13,7 +13,7 @@ import kotlinx.serialization.json.JsonElement
 class MyNotificationsService(client: AccountClient) : BaseService(client) {
 
     /**
-     * Get the current user's notification inbox (the "Hey!" menu).
+     * Get the current user's notifications (the "Hey!" menu in Basecamp 4).
      * @param options Optional query parameters and pagination control
      */
     suspend fun myNotifications(options: GetMyNotificationsOptions? = null): JsonElement {

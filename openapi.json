@@ -13047,7 +13047,7 @@
     },
     "/{accountId}/my/readings.json": {
       "get": {
-        "description": "Get the current user's notification inbox (the \"Hey!\" menu).\nNotifications are grouped into unreads, reads, bubble-ups, and\nscheduled bubble-ups (`memories` remains as an always-empty\nplaceholder on BC5). Reads are paginated (50 per page). Unreads are\ncapped at 100. Bubble-ups are capped per `limit_bubble_ups`.",
+        "description": "Get the current user's notifications (the \"Hey!\" menu in Basecamp 4).\nNotifications are grouped into unreads, reads, bubble-ups, and\nscheduled bubble-ups (`memories` remains as an always-empty\nplaceholder on BC5). Reads are paginated (50 per page). Unreads are\ncapped at 100. Bubble-ups are capped per `limit_bubble_ups`.",
         "operationId": "GetMyNotifications",
         "parameters": [
           {

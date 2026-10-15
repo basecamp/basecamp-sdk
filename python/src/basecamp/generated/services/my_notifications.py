@@ -12,7 +12,7 @@ from basecamp.hooks import OperationInfo
 
 class MyNotificationsService(BaseService):
     def get_my_notifications(self, *, page: int | None = None, limit_bubble_ups: bool | None = None) -> dict[str, Any]:
-        """Get the current user's notification inbox (the "Hey!" menu).
+        """Get the current user's notifications (the "Hey!" menu in Basecamp 4).
         Notifications are grouped into unreads, reads, bubble-ups, and
         scheduled bubble-ups (`memories` remains as an always-empty
         placeholder on BC5). Reads are paginated (50 per page). Unreads are
@@ -78,7 +78,7 @@ class AsyncMyNotificationsService(AsyncBaseService):
     async def get_my_notifications(
         self, *, page: int | None = None, limit_bubble_ups: bool | None = None
     ) -> dict[str, Any]:
-        """Get the current user's notification inbox (the "Hey!" menu).
+        """Get the current user's notifications (the "Hey!" menu in Basecamp 4).
         Notifications are grouped into unreads, reads, bubble-ups, and
         scheduled bubble-ups (`memories` remains as an always-empty
         placeholder on BC5). Reads are paginated (50 per page). Unreads are
