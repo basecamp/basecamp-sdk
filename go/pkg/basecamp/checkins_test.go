@@ -472,7 +472,6 @@ func TestCreateQuestionRequest_Marshal(t *testing.T) {
 }
 
 func TestUpdateQuestionRequest_Marshal(t *testing.T) {
-	paused := true
 	req := UpdateQuestionRequest{
 		Title: "Updated question text",
 		Schedule: &QuestionScheduleInput{
@@ -480,7 +479,6 @@ func TestUpdateQuestionRequest_Marshal(t *testing.T) {
 			Days:      []int{5},
 			TimeOfDay: "4:30pm",
 		},
-		Paused: &paused,
 	}
 
 	out, err := json.Marshal(req)
@@ -496,8 +494,8 @@ func TestUpdateQuestionRequest_Marshal(t *testing.T) {
 	if data["title"] != "Updated question text" {
 		t.Errorf("unexpected title: %v", data["title"])
 	}
-	if data["paused"] != true {
-		t.Errorf("unexpected paused: %v", data["paused"])
+	if _, ok := data["paused"]; ok {
+		t.Errorf("paused must not be sent on update; bc3 ignores it: %v", data["paused"])
 	}
 
 	schedule, ok := data["schedule"].(map[string]any)
@@ -834,16 +832,6 @@ func TestCheckinsService_QuestionBodyBytes(t *testing.T) {
 				return err
 			},
 			want: `{"title":"New question title"}`,
-		},
-		{
-			name: "update paused only",
-			call: func(svc *CheckinsService) error {
-				_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
-					Paused: boolp(true),
-				})
-				return err
-			},
-			want: `{"paused":true}`,
 		},
 		{
 			name: "update partial schedule",
@@ -1690,5 +1678,27 @@ func TestCheckinsService_QuestionScheduleSendsTimeOfDay(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestCheckinsService_UpdateQuestionRequiresTitleOrSchedule: bc3 requires the
+// question object to carry a title, a schedule or both (QuestionsController
+// permits only those), and answers 400 otherwise. An update naming neither is
+// refused before the wire; pausing goes through PauseQuestion/ResumeQuestion.
+func TestCheckinsService_UpdateQuestionRequiresTitleOrSchedule(t *testing.T) {
+	requests := 0
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusBadRequest)
+	})
+	for _, req := range []*UpdateQuestionRequest{{}, {Schedule: &QuestionScheduleInput{}}} {
+		_, err := svc.UpdateQuestion(context.Background(), 12345, req)
+		apiErr, ok := err.(*Error)
+		if !ok || apiErr.Code != CodeUsage {
+			t.Fatalf("expected usage error for %+v, got %v", req, err)
+		}
+	}
+	if requests != 0 {
+		t.Fatalf("expected 0 requests, got %d", requests)
 	}
 }

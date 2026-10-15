@@ -19,14 +19,14 @@ class LineupService(BaseService):
             operation="ListLineupMarkers",
         )
 
-    def create(self, *, name: str, date: str) -> None:
-        """Create a new lineup marker.
+    def create(self, *, name: str, date: str) -> dict[str, Any]:
+        """Create a new lineup marker. Returns the created marker.
 
         Args:
             name: The name.
             date: The date.
         """
-        self._request_void(
+        return self._request(
             OperationInfo(service="lineup", operation="create", is_mutation=True),
             "POST",
             "/lineup/markers.json",
@@ -34,15 +34,15 @@ class LineupService(BaseService):
             operation="CreateLineupMarker",
         )
 
-    def update(self, *, marker_id: int, name: str | None = None, date: str | None = None) -> None:
-        """Update an existing lineup marker.
+    def update(self, *, marker_id: int, name: str | None = None, date: str | None = None) -> dict[str, Any]:
+        """Update an existing lineup marker. Returns the updated marker.
 
         Args:
             marker_id: The marker id.
             name: The name.
             date: The date.
         """
-        self._request_void(
+        return self._request(
             OperationInfo(service="lineup", operation="update", is_mutation=True, resource_id=marker_id),
             "PUT",
             f"/lineup/markers/{marker_id}",
@@ -73,14 +73,14 @@ class AsyncLineupService(AsyncBaseService):
             operation="ListLineupMarkers",
         )
 
-    async def create(self, *, name: str, date: str) -> None:
-        """Create a new lineup marker.
+    async def create(self, *, name: str, date: str) -> dict[str, Any]:
+        """Create a new lineup marker. Returns the created marker.
 
         Args:
             name: The name.
             date: The date.
         """
-        await self._request_void(
+        return await self._request(
             OperationInfo(service="lineup", operation="create", is_mutation=True),
             "POST",
             "/lineup/markers.json",
@@ -88,15 +88,15 @@ class AsyncLineupService(AsyncBaseService):
             operation="CreateLineupMarker",
         )
 
-    async def update(self, *, marker_id: int, name: str | None = None, date: str | None = None) -> None:
-        """Update an existing lineup marker.
+    async def update(self, *, marker_id: int, name: str | None = None, date: str | None = None) -> dict[str, Any]:
+        """Update an existing lineup marker. Returns the updated marker.
 
         Args:
             marker_id: The marker id.
             name: The name.
             date: The date.
         """
-        await self._request_void(
+        return await self._request(
             OperationInfo(service="lineup", operation="update", is_mutation=True, resource_id=marker_id),
             "PUT",
             f"/lineup/markers/{marker_id}",

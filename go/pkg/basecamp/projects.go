@@ -11,25 +11,28 @@ import (
 
 // Project represents a Basecamp project.
 type Project struct {
-	ID             int64          `json:"id"`
-	Status         string         `json:"status"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
-	Name           string         `json:"name"`
-	Description    string         `json:"description"`
-	Purpose        string         `json:"purpose"`
-	StartDate      string         `json:"start_date,omitempty"`
-	EndDate        string         `json:"end_date,omitempty"`
-	ClientsEnabled bool           `json:"clients_enabled"`
-	BookmarkURL    string         `json:"bookmark_url"`
-	StarURL        string         `json:"star_url"`
-	URL            string         `json:"url"`
-	AppURL         string         `json:"app_url"`
-	Dock           []DockItem     `json:"dock,omitempty"`
-	Bookmarked     bool           `json:"bookmarked"`
-	Starred        bool           `json:"starred"`
-	ClientCompany  *ClientCompany `json:"client_company,omitempty"`
-	Clientside     *Clientside    `json:"clientside,omitempty"`
+	ID             int64     `json:"id"`
+	Status         string    `json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	Name           string    `json:"name"`
+	Description    string    `json:"description"`
+	Purpose        string    `json:"purpose"`
+	StartDate      string    `json:"start_date,omitempty"`
+	EndDate        string    `json:"end_date,omitempty"`
+	ClientsEnabled bool      `json:"clients_enabled"`
+	// TimesheetEnabled is true when the project's timesheet is turned on.
+	// Timesheet().ProjectReport answers 404 until it is.
+	TimesheetEnabled bool           `json:"timesheet_enabled"`
+	BookmarkURL      string         `json:"bookmark_url"`
+	StarURL          string         `json:"star_url"`
+	URL              string         `json:"url"`
+	AppURL           string         `json:"app_url"`
+	Dock             []DockItem     `json:"dock,omitempty"`
+	Bookmarked       bool           `json:"bookmarked"`
+	Starred          bool           `json:"starred"`
+	ClientCompany    *ClientCompany `json:"client_company,omitempty"`
+	Clientside       *Clientside    `json:"clientside,omitempty"`
 }
 
 // DockItem represents a tool in a project's dock.
@@ -493,21 +496,22 @@ func (s *ProjectsService) Unarchive(ctx context.Context, id int64) (err error) {
 // projectFromGenerated converts a generated Project to our clean Project type.
 func projectFromGenerated(gp generated.Project) Project {
 	p := Project{
-		Status:         gp.Status,
-		Name:           gp.Name,
-		Description:    deref(gp.Description),
-		Purpose:        deref(gp.Purpose),
-		StartDate:      deref(gp.StartDate),
-		EndDate:        deref(gp.EndDate),
-		ClientsEnabled: deref(gp.ClientsEnabled),
-		BookmarkURL:    deref(gp.BookmarkUrl),
-		StarURL:        deref(gp.StarUrl),
-		URL:            gp.Url,
-		AppURL:         gp.AppUrl,
-		Bookmarked:     deref(gp.Bookmarked),
-		Starred:        deref(gp.Starred),
-		CreatedAt:      gp.CreatedAt,
-		UpdatedAt:      gp.UpdatedAt,
+		Status:           gp.Status,
+		Name:             gp.Name,
+		Description:      deref(gp.Description),
+		Purpose:          deref(gp.Purpose),
+		StartDate:        deref(gp.StartDate),
+		EndDate:          deref(gp.EndDate),
+		ClientsEnabled:   deref(gp.ClientsEnabled),
+		TimesheetEnabled: deref(gp.TimesheetEnabled),
+		BookmarkURL:      deref(gp.BookmarkUrl),
+		StarURL:          deref(gp.StarUrl),
+		URL:              gp.Url,
+		AppURL:           gp.AppUrl,
+		Bookmarked:       deref(gp.Bookmarked),
+		Starred:          deref(gp.Starred),
+		CreatedAt:        gp.CreatedAt,
+		UpdatedAt:        gp.UpdatedAt,
 	}
 
 	if gp.Id != 0 {

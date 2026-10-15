@@ -2,6 +2,7 @@ package basecamp
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -48,7 +49,8 @@ func NewLineupService(client *AccountClient) *LineupService {
 }
 
 // CreateMarker creates a new marker on the lineup.
-func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerRequest) (err error) {
+// Returns the created marker.
+func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerRequest) (result *LineupMarker, err error) {
 	op := OperationInfo{
 		Service: "Lineup", Operation: "CreateMarker",
 		ResourceType: "lineup_marker", IsMutation: true,
@@ -64,11 +66,11 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 
 	if req == nil || req.Name == "" {
 		err = ErrUsage("marker name is required")
-		return err
+		return nil, err
 	}
 	if req.Date == "" {
 		err = ErrUsage("marker date is required")
-		return err
+		return nil, err
 	}
 
 	body := generated.CreateLineupMarkerJSONRequestBody{
@@ -78,14 +80,23 @@ func (s *LineupService) CreateMarker(ctx context.Context, req *CreateMarkerReque
 
 	resp, err := s.client.parent.gen.CreateLineupMarkerWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return checkResponse(resp.HTTPResponse, resp.Body)
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	marker := lineupMarkerFromGenerated(*resp.JSON201)
+	return &marker, nil
 }
 
 // UpdateMarker updates an existing marker.
-// markerID is the marker ID.
-func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *UpdateMarkerRequest) (err error) {
+// markerID is the marker ID. Returns the updated marker.
+func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *UpdateMarkerRequest) (result *LineupMarker, err error) {
 	op := OperationInfo{
 		Service: "Lineup", Operation: "UpdateMarker",
 		ResourceType: "lineup_marker", IsMutation: true,
@@ -102,7 +113,7 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 
 	if req == nil {
 		err = ErrUsage("update request is required")
-		return err
+		return nil, err
 	}
 
 	body := generated.UpdateLineupMarkerJSONRequestBody{}
@@ -115,9 +126,18 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 
 	resp, err := s.client.parent.gen.UpdateLineupMarkerWithResponse(ctx, s.client.accountID, markerID, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return checkResponse(resp.HTTPResponse, resp.Body)
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	marker := lineupMarkerFromGenerated(*resp.JSON200)
+	return &marker, nil
 }
 
 // DeleteMarker deletes a marker.
@@ -170,15 +190,20 @@ func (s *LineupService) ListMarkers(ctx context.Context) (result *ListMarkersRes
 	markers := []LineupMarker{}
 	if resp.JSON200 != nil {
 		for _, gm := range *resp.JSON200 {
-			markers = append(markers, LineupMarker{
-				ID:        gm.Id,
-				Name:      gm.Name,
-				Date:      gm.Date,
-				CreatedAt: gm.CreatedAt,
-				UpdatedAt: gm.UpdatedAt,
-			})
+			markers = append(markers, lineupMarkerFromGenerated(gm))
 		}
 	}
 
 	return &ListMarkersResult{Markers: markers}, nil
+}
+
+// lineupMarkerFromGenerated converts a generated LineupMarker to our clean type.
+func lineupMarkerFromGenerated(gm generated.LineupMarker) LineupMarker {
+	return LineupMarker{
+		ID:        gm.Id,
+		Name:      gm.Name,
+		Date:      gm.Date,
+		CreatedAt: gm.CreatedAt,
+		UpdatedAt: gm.UpdatedAt,
+	}
 }

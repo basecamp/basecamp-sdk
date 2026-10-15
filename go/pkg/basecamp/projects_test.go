@@ -119,6 +119,9 @@ func TestProject_UnmarshalGet(t *testing.T) {
 	if project.StarURL != "https://3.basecampapi.com/195539477/buckets/2085958499/stars.json" {
 		t.Errorf("unexpected star_url %q", project.StarURL)
 	}
+	if !project.TimesheetEnabled {
+		t.Error("expected timesheet_enabled=true")
+	}
 	if !project.Bookmarked || !project.Starred {
 		t.Errorf("expected bookmarked=true starred=true, got bookmarked=%v starred=%v", project.Bookmarked, project.Starred)
 	}
@@ -719,3 +722,11 @@ var (
 	_ = (*generated.ProjectsService).Unarchive
 	_ = (*generated.ProjectsService).Trash
 )
+
+func TestProjectFromGenerated_TimesheetEnabled(t *testing.T) {
+	enabled := true
+	p := projectFromGenerated(generated.Project{Id: 1, Status: "active", Name: "Timesheet", TimesheetEnabled: &enabled})
+	if !p.TimesheetEnabled {
+		t.Error("expected TimesheetEnabled to carry through from the generated project")
+	}
+}

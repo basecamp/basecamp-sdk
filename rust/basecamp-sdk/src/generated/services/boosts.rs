@@ -45,7 +45,12 @@ impl<'a> BoostsService<'a> {
         self.client
     }
 
-    /// Create a boost on a specific event within a recording
+    /// Create a boost on a specific event within a recording. Only boostable
+    /// events accept one: those whose action is completed, adopted,
+    /// column_changed or moved_in (their JSON includes boosts_count and
+    /// boosts_url). Any other event answers 403 Forbidden, as does an event on a
+    /// recording whose comments are closed; an event on a recording the person
+    /// cannot see answers 404.
     ///
     /// `POST /recordings/{recordingId}/events/{eventId}/boosts.json` — not idempotent, sent exactly once.
     pub async fn create_for_event(
@@ -92,7 +97,11 @@ impl<'a> BoostsService<'a> {
         self.client.send(operation).await
     }
 
-    /// List boosts on a specific event within a recording
+    /// List boosts on a specific event within a recording. Only boostable
+    /// events carry boosts: those whose action is completed, adopted,
+    /// column_changed or moved_in (their JSON includes boosts_count and
+    /// boosts_url). Any other event answers 403 Forbidden; an event on a
+    /// recording the person cannot see answers 404.
     ///
     /// `GET /recordings/{recordingId}/events/{eventId}/boosts.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn list_for_event(

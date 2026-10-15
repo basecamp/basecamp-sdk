@@ -32,10 +32,10 @@ class LineupService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Create a new lineup marker
+     * Create a new lineup marker. Returns the created marker.
      * @param body Request body
      */
-    suspend fun create(body: CreateLineupMarkerBody): Unit {
+    suspend fun create(body: CreateLineupMarkerBody): LineupMarker {
         val info = OperationInfo(
             service = "Lineup",
             operation = "CreateLineupMarker",
@@ -44,20 +44,22 @@ class LineupService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = null,
         )
-        request(info, {
+        return request(info, {
             httpPost("/lineup/markers.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
                 put("date", kotlinx.serialization.json.JsonPrimitive(body.date))
             }), operationName = info.operation)
-        }) { Unit }
+        }) { body ->
+            json.decodeFromString<LineupMarker>(body)
+        }
     }
 
     /**
-     * Update an existing lineup marker
+     * Update an existing lineup marker. Returns the updated marker.
      * @param markerId The marker ID
      * @param body Request body
      */
-    suspend fun update(markerId: Long, body: UpdateLineupMarkerBody): Unit {
+    suspend fun update(markerId: Long, body: UpdateLineupMarkerBody): LineupMarker {
         val info = OperationInfo(
             service = "Lineup",
             operation = "UpdateLineupMarker",
@@ -66,12 +68,14 @@ class LineupService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = markerId,
         )
-        request(info, {
+        return request(info, {
             httpPut("/lineup/markers/${markerId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 body.name?.let { put("name", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.date?.let { put("date", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
-        }) { Unit }
+        }) { body ->
+            json.decodeFromString<LineupMarker>(body)
+        }
     }
 
     /**

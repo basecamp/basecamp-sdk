@@ -249,10 +249,10 @@ describe("CheckinsService", () => {
       );
 
       const question = await client.checkins.updateQuestion(1, {
-        paused: true,
+        title: "What did you work on today?",
       });
 
-      expect(question.paused).toBe(true);
+      expect(question.title).toBe("What did you work on today?");
     });
   });
 

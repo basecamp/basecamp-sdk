@@ -85,7 +85,7 @@ impl<'a> CardColumnsService<'a> {
         self.client.send(operation).await
     }
 
-    /// Move a column within a card table
+    /// Move a column to a slot within its card table
     ///
     /// `POST /card_tables/{cardTableId}/moves.json` — not idempotent, sent exactly once.
     pub async fn move_column(

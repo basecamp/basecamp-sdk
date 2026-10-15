@@ -134,22 +134,22 @@ class CheckinsService(BaseService):
         )
 
     def update_question(
-        self, *, question_id: int, title: str | None = None, schedule: dict | None = None, paused: bool | None = None
+        self, *, question_id: int, title: str | None = None, schedule: dict | None = None
     ) -> dict[str, Any]:
-        """Update an existing question.
+        """Update an existing question's title, schedule or both. Pausing and
+        resuming are PauseQuestion and ResumeQuestion.
 
         Args:
             question_id: The question id.
-            title: The title.
+            title: The question text. An update carries a title, a schedule or both.
             schedule: The schedule a question is created or updated with. BC3 reads the time of day
                 as a string ("5:00pm"); hour and minute appear only in responses.
-            paused: The paused.
         """
         return self._request(
             OperationInfo(service="checkins", operation="update_question", is_mutation=True, resource_id=question_id),
             "PUT",
             f"/questions/{question_id}",
-            json_body=self._compact(title=title, schedule=schedule, paused=paused),
+            json_body=self._compact(title=title, schedule=schedule),
             operation="UpdateQuestion",
         )
 
@@ -400,22 +400,22 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def update_question(
-        self, *, question_id: int, title: str | None = None, schedule: dict | None = None, paused: bool | None = None
+        self, *, question_id: int, title: str | None = None, schedule: dict | None = None
     ) -> dict[str, Any]:
-        """Update an existing question.
+        """Update an existing question's title, schedule or both. Pausing and
+        resuming are PauseQuestion and ResumeQuestion.
 
         Args:
             question_id: The question id.
-            title: The title.
+            title: The question text. An update carries a title, a schedule or both.
             schedule: The schedule a question is created or updated with. BC3 reads the time of day
                 as a string ("5:00pm"); hour and minute appear only in responses.
-            paused: The paused.
         """
         return await self._request(
             OperationInfo(service="checkins", operation="update_question", is_mutation=True, resource_id=question_id),
             "PUT",
             f"/questions/{question_id}",
-            json_body=self._compact(title=title, schedule=schedule, paused=paused),
+            json_body=self._compact(title=title, schedule=schedule),
             operation="UpdateQuestion",
         )
 

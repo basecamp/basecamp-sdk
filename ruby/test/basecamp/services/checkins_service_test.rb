@@ -88,8 +88,7 @@ class CheckinsServiceTest < Minitest::Test
 
     question = @account.checkins.update_question(
       question_id: 200,
-      title: "Updated question",
-      paused: false
+      title: "Updated question"
     )
 
     assert_equal "Updated question", question["title"]

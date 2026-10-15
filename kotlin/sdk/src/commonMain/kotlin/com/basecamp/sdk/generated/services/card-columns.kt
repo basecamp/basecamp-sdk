@@ -183,7 +183,7 @@ class CardColumnsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Move a column within a card table
+     * Move a column to a slot within its card table
      * @param cardTableId The card table ID
      * @param body Request body
      */

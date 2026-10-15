@@ -35,16 +35,16 @@ describe("LineupService", () => {
           };
           expect(body.name).toBe("Product Launch");
           expect(body.date).toBe("2024-03-01");
-          return new HttpResponse(null, { status: 204 });
+          return HttpResponse.json({ id: 123, name: "Product Launch", date: "2024-03-01", created_at: "2024-02-15T10:30:00.000Z", updated_at: "2024-02-16T10:30:00.000Z" }, { status: 201 });
         })
       );
 
-      await expect(
-        client.lineup.create({
-          name: "Product Launch",
-          date: "2024-03-01",
-        })
-      ).resolves.toBeUndefined();
+      const marker = await client.lineup.create({
+        name: "Product Launch",
+        date: "2024-03-01",
+      });
+      expect(marker.id).toBe(123);
+      expect(marker.name).toBe("Product Launch");
     });
   });
 
@@ -57,16 +57,16 @@ describe("LineupService", () => {
           const body = (await request.json()) as { name?: string; date?: string };
           expect(body.name).toBe("Updated Launch");
           expect(body.date).toBe("2024-03-20");
-          return new HttpResponse(null, { status: 204 });
+          return HttpResponse.json({ id: 123, name: "Updated Launch", date: "2024-03-20", created_at: "2024-02-15T10:30:00.000Z", updated_at: "2024-02-16T10:30:00.000Z" });
         })
       );
 
-      await expect(
-        client.lineup.update(markerId, {
-          name: "Updated Launch",
-          date: "2024-03-20",
-        })
-      ).resolves.toBeUndefined();
+      const marker = await client.lineup.update(markerId, {
+        name: "Updated Launch",
+        date: "2024-03-20",
+      });
+      expect(marker.id).toBe(markerId);
+      expect(marker.date).toBe("2024-03-20");
     });
 
     it("should allow partial updates", async () => {
@@ -76,15 +76,14 @@ describe("LineupService", () => {
         http.put(`${BASE_URL}/lineup/markers/${markerId}`, async ({ request }) => {
           const body = (await request.json()) as { name?: string };
           expect(body.name).toBe("New Name");
-          return new HttpResponse(null, { status: 204 });
+          return HttpResponse.json({ id: 123, name: "New Name", date: "2024-03-01", created_at: "2024-02-15T10:30:00.000Z", updated_at: "2024-02-16T10:30:00.000Z" });
         })
       );
 
-      await expect(
-        client.lineup.update(markerId, {
-          name: "New Name",
-        })
-      ).resolves.toBeUndefined();
+      const marker = await client.lineup.update(markerId, {
+        name: "New Name",
+      });
+      expect(marker.name).toBe("New Name");
     });
   });
 

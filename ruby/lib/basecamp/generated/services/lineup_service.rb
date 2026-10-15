@@ -15,26 +15,24 @@ module Basecamp
         end
       end
 
-      # Create a new lineup marker
+      # Create a new lineup marker. Returns the created marker.
       # @param name [String] name
       # @param date [String] date
-      # @return [void]
+      # @return [Hash] response data
       def create(name:, date:)
         with_operation(service: "lineup", operation: "create", is_mutation: true) do
-          http_post("/lineup/markers.json", body: compact_params(name: name, date: date))
-          nil
+          http_post("/lineup/markers.json", body: compact_params(name: name, date: date)).json(operation: "CreateLineupMarker")
         end
       end
 
-      # Update an existing lineup marker
+      # Update an existing lineup marker. Returns the updated marker.
       # @param marker_id [Integer] marker id ID
       # @param name [String, nil] name
       # @param date [String, nil] date
-      # @return [void]
+      # @return [Hash] response data
       def update(marker_id:, name: nil, date: nil)
         with_operation(service: "lineup", operation: "update", is_mutation: true, resource_id: marker_id) do
-          http_put("/lineup/markers/#{marker_id}", body: compact_params(name: name, date: date))
-          nil
+          http_put("/lineup/markers/#{marker_id}", body: compact_params(name: name, date: date)).json(operation: "UpdateLineupMarker")
         end
       end
 

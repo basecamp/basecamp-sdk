@@ -5198,7 +5198,7 @@
     },
     "/card_tables/{cardTableId}/moves.json": {
       "post": {
-        "description": "Move a column within a card table",
+        "description": "Move a column to a slot within its card table",
         "operationId": "MoveCardColumn",
         "requestBody": {
           "content": {
@@ -9663,7 +9663,7 @@
         }
       },
       "post": {
-        "description": "Create a new lineup marker",
+        "description": "Create a new lineup marker. Returns the created marker.",
         "operationId": "CreateLineupMarker",
         "requestBody": {
           "content": {
@@ -9678,7 +9678,14 @@
         "parameters": [],
         "responses": {
           "201": {
-            "description": "CreateLineupMarker 201 response"
+            "description": "CreateLineupMarker 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateLineupMarkerResponseContent"
+                }
+              }
+            }
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -9822,7 +9829,7 @@
         }
       },
       "put": {
-        "description": "Update an existing lineup marker",
+        "description": "Update an existing lineup marker. Returns the updated marker.",
         "operationId": "UpdateLineupMarker",
         "requestBody": {
           "content": {
@@ -9846,7 +9853,14 @@
         ],
         "responses": {
           "200": {
-            "description": "UpdateLineupMarker 200 response"
+            "description": "UpdateLineupMarker 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateLineupMarkerResponseContent"
+                }
+              }
+            }
           },
           "401": {
             "description": "UnauthorizedError 401 response",
@@ -15113,7 +15127,7 @@
         }
       },
       "put": {
-        "description": "Update an existing question",
+        "description": "Update an existing question's title, schedule or both. Pausing and\nresuming are PauseQuestion and ResumeQuestion.",
         "operationId": "UpdateQuestion",
         "requestBody": {
           "content": {
@@ -17097,7 +17111,7 @@
     },
     "/recordings/{recordingId}/events/{eventId}/boosts.json": {
       "get": {
-        "description": "List boosts on a specific event within a recording",
+        "description": "List boosts on a specific event within a recording. Only boostable\nevents carry boosts: those whose action is completed, adopted,\ncolumn_changed or moved_in (their JSON includes boosts_count and\nboosts_url). Any other event answers 403 Forbidden; an event on a\nrecording the person cannot see answers 404.",
         "operationId": "ListEventBoosts",
         "parameters": [
           {
@@ -17200,7 +17214,7 @@
         }
       },
       "post": {
-        "description": "Create a boost on a specific event within a recording",
+        "description": "Create a boost on a specific event within a recording. Only boostable\nevents accept one: those whose action is completed, adopted,\ncolumn_changed or moved_in (their JSON includes boosts_count and\nboosts_url). Any other event answers 403 Forbidden, as does an event on a\nrecording whose comments are closed; an event on a recording the person\ncannot see answers 404.",
         "operationId": "CreateEventBoost",
         "requestBody": {
           "content": {
@@ -28791,6 +28805,9 @@
           "name"
         ]
       },
+      "CreateLineupMarkerResponseContent": {
+        "$ref": "#/components/schemas/LineupMarker"
+      },
       "CreateMessageRequestContent": {
         "type": "object",
         "properties": {
@@ -29796,10 +29813,12 @@
           },
           "boosts_count": {
             "type": "integer",
+            "description": "Present only on boostable events (action completed, adopted,\ncolumn_changed or moved_in); the event boost operations refuse any\nother event with 403.",
             "format": "int32"
           },
           "boosts_url": {
-            "type": "string"
+            "type": "string",
+            "description": "Present only on boostable events; see boosts_count."
           }
         },
         "required": [
@@ -32112,14 +32131,17 @@
         "properties": {
           "source_id": {
             "type": "integer",
+            "description": "The column to move.",
             "format": "int64"
           },
           "target_id": {
             "type": "integer",
+            "description": "The card table the column moves within: the same id as `cardTableId`.\nBasecamp refuses any other destination, a column included, with 422.",
             "format": "int64"
           },
           "position": {
             "type": "integer",
+            "description": "1-based slot among the card table's columns, not counting Triage,\nNot Now or Done. 1 (or less) puts the column first; a slot past the\nlast puts it last. Default: 1.",
             "format": "int32"
           }
         },
@@ -32933,6 +32955,10 @@
           },
           "clients_enabled": {
             "type": "boolean"
+          },
+          "timesheet_enabled": {
+            "type": "boolean",
+            "description": "True when the project's timesheet is turned on. The project timesheet\nreport (GET /projects/{projectId}/timesheet.json) answers 404 until it is."
           },
           "bookmark_url": {
             "type": "string"
@@ -36513,6 +36539,9 @@
           }
         }
       },
+      "UpdateLineupMarkerResponseContent": {
+        "$ref": "#/components/schemas/LineupMarker"
+      },
       "UpdateMessageRequestContent": {
         "type": "object",
         "properties": {
@@ -36722,13 +36751,11 @@
         "type": "object",
         "properties": {
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "The question text. An update carries a title, a schedule or both."
           },
           "schedule": {
             "$ref": "#/components/schemas/QuestionScheduleInput"
-          },
-          "paused": {
-            "type": "boolean"
           }
         }
       },

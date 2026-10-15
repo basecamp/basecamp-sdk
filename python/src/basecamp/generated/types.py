@@ -1400,6 +1400,7 @@ class Project(TypedDict):
     starred: NotRequired[bool]
     start_date: NotRequired[str]
     status: str
+    timesheet_enabled: NotRequired[bool]
     updated_at: str
     url: str
 
@@ -2335,7 +2336,6 @@ class UpdateQuestionNotificationSettingsResponseContent(TypedDict):
 
 
 class UpdateQuestionRequestContent(TypedDict):
-    paused: NotRequired[bool]
     schedule: NotRequired[QuestionScheduleInput]
     title: NotRequired[str]
 

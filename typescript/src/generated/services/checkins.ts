@@ -65,12 +65,10 @@ export interface CreateQuestionCheckinRequest {
  * Request parameters for updateQuestion.
  */
 export interface UpdateQuestionCheckinRequest {
-  /** Title */
+  /** The question text. An update carries a title, a schedule or both. */
   title?: string;
   /** Schedule */
   schedule?: components["schemas"]["QuestionScheduleInput"];
-  /** Paused */
-  paused?: boolean;
 }
 
 /**
@@ -361,7 +359,7 @@ export class CheckinsService extends BaseService {
   }
 
   /**
-   * Update an existing question
+   * Update an existing question's title, schedule or both. Pausing and
    * @param questionId - The question ID
    * @param req - Question update parameters
    * @returns The Question
@@ -389,7 +387,6 @@ export class CheckinsService extends BaseService {
           body: {
             title: req.title,
             schedule: req.schedule,
-            paused: req.paused,
           },
         })
     );

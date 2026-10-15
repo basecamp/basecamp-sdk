@@ -111,7 +111,7 @@ class BoostsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * List boosts on a specific event within a recording
+     * List boosts on a specific event within a recording. Only boostable
      * @param recordingId The recording ID
      * @param eventId The event ID
      * @param options Optional query parameters and pagination control
@@ -149,7 +149,7 @@ class BoostsService(client: AccountClient) : BaseService(client) {
         listForEvent(recordingId, eventId, ListEventBoostsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
-     * Create a boost on a specific event within a recording
+     * Create a boost on a specific event within a recording. Only boostable
      * @param recordingId The recording ID
      * @param eventId The event ID
      * @param body Request body

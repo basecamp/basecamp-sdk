@@ -81,15 +81,14 @@ module Basecamp
         end
       end
 
-      # Update an existing question
+      # Update an existing question's title, schedule or both. Pausing and
       # @param question_id [Integer] question id ID
-      # @param title [String, nil] title
+      # @param title [String, nil] The question text. An update carries a title, a schedule or both.
       # @param schedule [Hash, nil] schedule
-      # @param paused [Boolean, nil] paused
       # @return [Hash] response data
-      def update_question(question_id:, title: nil, schedule: nil, paused: nil)
+      def update_question(question_id:, title: nil, schedule: nil)
         with_operation(service: "checkins", operation: "update_question", is_mutation: true, resource_id: question_id) do
-          http_put("/questions/#{question_id}", body: compact_params(title: title, schedule: schedule, paused: paused)).json(operation: "UpdateQuestion")
+          http_put("/questions/#{question_id}", body: compact_params(title: title, schedule: schedule)).json(operation: "UpdateQuestion")
         end
       end
 

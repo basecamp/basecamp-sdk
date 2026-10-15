@@ -48,7 +48,7 @@ module Basecamp
         end
       end
 
-      # List boosts on a specific event within a recording
+      # List boosts on a specific event within a recording. Only boostable
       # @param recording_id [Integer] recording id ID
       # @param event_id [Integer] event id ID
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
@@ -61,7 +61,7 @@ module Basecamp
         end
       end
 
-      # Create a boost on a specific event within a recording
+      # Create a boost on a specific event within a recording. Only boostable
       # @param recording_id [Integer] recording id ID
       # @param event_id [Integer] event id ID
       # @param content [String] content

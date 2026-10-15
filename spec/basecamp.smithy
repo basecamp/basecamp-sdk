@@ -950,6 +950,9 @@ structure Project {
   start_date: ISO8601Date
   end_date: ISO8601Date
   clients_enabled: Boolean
+  /// True when the project's timesheet is turned on. The project timesheet
+  /// report (GET /projects/{projectId}/timesheet.json) answers 404 until it is.
+  timesheet_enabled: Boolean
   bookmark_url: String
   /// Bucket stars collection for this project (`/buckets/{id}/stars.json`).
   star_url: String
@@ -5650,7 +5653,7 @@ structure UpdateCardColumnOutput {
   column: CardColumn
 }
 
-/// Move a column within a card table
+/// Move a column to a slot within its card table
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/card_tables/{cardTableId}/moves.json", code: 204)
 operation MoveCardColumn {
@@ -5668,12 +5671,18 @@ structure MoveCardColumnInput {
   @httpLabel
   cardTableId: CardTableId
 
+  /// The column to move.
   @required
   source_id: CardColumnId
 
+  /// The card table the column moves within: the same id as `cardTableId`.
+  /// Basecamp refuses any other destination, a column included, with 422.
   @required
-  target_id: CardColumnId
+  target_id: CardTableId
 
+  /// 1-based slot among the card table's columns, not counting Triage,
+  /// Not Now or Done. 1 (or less) puts the column first; a slot past the
+  /// last puts it last. Default: 1.
   position: Integer
 }
 
@@ -8120,7 +8129,11 @@ structure Event {
   /// acted. Documented in bc3 doc/api/sections/events.md ("Delegated events").
   performed_by: Person
 
+  /// Present only on boostable events (action completed, adopted,
+  /// column_changed or moved_in); the event boost operations refuse any
+  /// other event with 403.
   boosts_count: Integer
+  /// Present only on boostable events; see boosts_count.
   boosts_url: String
 }
 
@@ -8471,7 +8484,8 @@ structure CreateQuestionOutput {
   question: Question
 }
 
-/// Update an existing question
+/// Update an existing question's title, schedule or both. Pausing and
+/// resuming are PauseQuestion and ResumeQuestion.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -8491,9 +8505,10 @@ structure UpdateQuestionInput {
   @httpLabel
   questionId: QuestionId
 
+  /// The question text. An update carries a title, a schedule or both.
   title: String
+  /// Replaces the whole schedule.
   schedule: QuestionScheduleInput
-  paused: Boolean
 }
 
 structure UpdateQuestionOutput {
@@ -9718,7 +9733,7 @@ structure ListLineupMarkersOutput {
   markers: LineupMarkerList
 }
 
-/// Create a new lineup marker
+/// Create a new lineup marker. Returns the created marker.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/lineup/markers.json", code: 201)
 operation CreateLineupMarker {
@@ -9739,9 +9754,11 @@ structure CreateLineupMarkerInput {
   date: ISO8601Date
 }
 
-structure CreateLineupMarkerOutput {}
+structure CreateLineupMarkerOutput {
+  marker: LineupMarker
+}
 
-/// Update an existing lineup marker
+/// Update an existing lineup marker. Returns the updated marker.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -9765,7 +9782,9 @@ structure UpdateLineupMarkerInput {
   date: ISO8601Date
 }
 
-structure UpdateLineupMarkerOutput {}
+structure UpdateLineupMarkerOutput {
+  marker: LineupMarker
+}
 
 /// Delete a lineup marker
 @idempotent
@@ -10972,7 +10991,11 @@ structure ListRecordingBoostsOutput {
   boosts: BoostList
 }
 
-/// List boosts on a specific event within a recording
+/// List boosts on a specific event within a recording. Only boostable
+/// events carry boosts: those whose action is completed, adopted,
+/// column_changed or moved_in (their JSON includes boosts_count and
+/// boosts_url). Any other event answers 403 Forbidden; an event on a
+/// recording the person cannot see answers 404.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
@@ -11056,7 +11079,12 @@ structure CreateRecordingBoostOutput {
   boost: Boost
 }
 
-/// Create a boost on a specific event within a recording
+/// Create a boost on a specific event within a recording. Only boostable
+/// events accept one: those whose action is completed, adopted,
+/// column_changed or moved_in (their JSON includes boosts_count and
+/// boosts_url). Any other event answers 403 Forbidden, as does an event on a
+/// recording whose comments are closed; an event on a recording the person
+/// cannot see answers 404.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json", code: 201)
 operation CreateEventBoost {

@@ -89,11 +89,14 @@ module Basecamp
         end
       end
 
-      # Move a column within a card table
+      # Move a column to a slot within its card table
       # @param card_table_id [Integer] card table id ID
-      # @param source_id [Integer] source id
-      # @param target_id [Integer] target id
-      # @param position [Integer, nil] position
+      # @param source_id [Integer] The column to move.
+      # @param target_id [Integer] The card table the column moves within: the same id as `cardTableId`.
+      #   Basecamp refuses any other destination, a column included, with 422.
+      # @param position [Integer, nil] 1-based slot among the card table's columns, not counting Triage,
+      #   Not Now or Done. 1 (or less) puts the column first; a slot past the
+      #   last puts it last. Default: 1.
       # @return [void]
       def move(card_table_id:, source_id:, target_id:, position: nil)
         with_operation(service: "cardcolumns", operation: "move", is_mutation: true, resource_id: card_table_id) do

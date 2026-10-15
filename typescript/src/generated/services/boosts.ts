@@ -190,7 +190,7 @@ export class BoostsService extends BaseService {
   }
 
   /**
-   * List boosts on a specific event within a recording
+   * List boosts on a specific event within a recording. Only boostable
    * @param recordingId - The recording ID
    * @param eventId - The event ID
    * @param options - Optional query parameters
@@ -225,7 +225,7 @@ export class BoostsService extends BaseService {
   }
 
   /**
-   * Create a boost on a specific event within a recording
+   * Create a boost on a specific event within a recording. Only boostable
    * @param recordingId - The recording ID
    * @param eventId - The event ID
    * @param req - Event_boost creation parameters
