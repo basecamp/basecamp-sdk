@@ -10239,7 +10239,7 @@
       "tag": "Card Tables",
       "method": "POST",
       "path": "/{accountId}/card_tables/cards/{cardId}/moves.json",
-      "doc": "Move a card to any column in its project, including on another card table there, or through a wormhole to another project (queued: the card gets a new id and position doesn't apply).\n\n`column_id` may be any column in the card's project, including a column on\nanother card table in the same project; the card moves there directly, with\nno wormhole needed. To send the card to another project, pass the id of a\nwormhole the card table already has (listed in GetCardTable's `wormholes`).\nA move through a wormhole is queued: the card arrives under a new id, its old\nid then returns not found, and `position` does not apply.",
+      "doc": "Move a card to any column in its project, including on another card table there, or through a linked wormhole to another project (queued: the card gets a new id, and position, if sent, must still be positive but doesn't set placement).\n\n`column_id` may be any column in the card's project, including a column on\nanother card table in the same project; the card moves there directly, with\nno wormhole needed. To send the card to another project, pass the id of a\nlinked wormhole (`linked: true`) the card table already has, listed in\nGetCardTable's `wormholes`; an unlinked or unreachable one returns not found.\nA move through a wormhole is queued: the card arrives under a new id and its\nold id then returns not found. `position` does not control where it lands,\nbut if supplied it must still be a positive integer.",
       "readonly": false,
       "idempotent": false,
       "retry": {

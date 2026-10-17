@@ -647,10 +647,11 @@ type MoveCardOptions struct {
 // columnID may be any column in the card's project, including a column on
 // another card table in the same project; the card moves there directly, with
 // no wormhole needed. To send the card to another project, pass the id of a
-// wormhole the card table already has (listed by CardTables().Get). A move
-// through a wormhole is queued: the card arrives under a new id, its old id then
-// returns not found, and opts.Position does not apply. Manage wormholes with
-// Wormholes().
+// linked wormhole (Linked true) the card table already has, listed by
+// CardTables().Get; an unlinked or unreachable one returns not found. A move
+// through a wormhole is queued: the card arrives under a new id and its old id
+// then returns not found. opts.Position does not control where it lands, but if
+// set it must still be positive. Manage wormholes with Wormholes().
 func (s *CardsService) Move(ctx context.Context, cardID, columnID int64, opts *MoveCardOptions) (err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Move",
