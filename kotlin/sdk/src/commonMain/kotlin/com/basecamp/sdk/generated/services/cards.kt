@@ -59,7 +59,7 @@ open class CardsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Move a card to a different column
+     * Move a card to any column in its project, including on another card table there, or through a linked wormhole to another project (queued: the card gets a new id, and position, if sent, must still be positive but doesn't set placement).
      * @param cardId The card ID
      * @param body Request body
      */

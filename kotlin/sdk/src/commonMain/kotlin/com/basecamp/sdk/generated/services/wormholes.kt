@@ -13,7 +13,7 @@ import kotlinx.serialization.json.JsonElement
 class WormholesService(client: AccountClient) : BaseService(client) {
 
     /**
-     * Update a wormhole's destination column
+     * Point a card table's wormhole, its shortcut for sending cards to another card table, at a different destination column
      * @param bucketId The bucket ID
      * @param wormholeId The wormhole ID
      * @param body Request body
@@ -37,7 +37,7 @@ class WormholesService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Delete a wormhole
+     * Permanently delete a card table's wormhole, the shortcut that sends cards to another card table.
      * @param bucketId The bucket ID
      * @param wormholeId The wormhole ID
      */
@@ -56,7 +56,7 @@ class WormholesService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Create a wormhole linking this card table to a column on another card table.
+     * Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.
      * @param bucketId The bucket ID
      * @param cardTableId The card table ID
      * @param body Request body

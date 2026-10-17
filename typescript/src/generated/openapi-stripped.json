@@ -928,7 +928,7 @@
     },
     "/buckets/{bucketId}/card_tables/wormholes/{wormholeId}": {
       "delete": {
-        "description": "Delete a wormhole",
+        "description": "Permanently delete a card table's wormhole, the shortcut that sends cards to another card table.\n\nIt does not go to the trash and cannot be restored.",
         "operationId": "DeleteWormhole",
         "parameters": [
           {
@@ -1022,7 +1022,7 @@
         }
       },
       "put": {
-        "description": "Update a wormhole's destination column",
+        "description": "Point a card table's wormhole, its shortcut for sending cards to another card table, at a different destination column",
         "operationId": "UpdateWormhole",
         "requestBody": {
           "content": {
@@ -1125,7 +1125,7 @@
     },
     "/buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json": {
       "post": {
-        "description": "Create a wormhole linking this card table to a column on another card table.\n\nA wormhole is the only mechanism for moving a card to a different project: its\nid is a valid `column_id` for MoveCard, teleporting the card across projects.\n`destinationRecordingId` is the id of a column on another accessible card table.",
+        "description": "Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.\n\nA wormhole is the only mechanism for moving a card to a different project: its\nid is a valid `column_id` for MoveCard, teleporting the card there. It is not\nneeded for a one-off move within a project; MoveCard goes to any column there\ndirectly. A card table holds at most four wormholes.\n`destinationRecordingId` is the id of a column on another accessible card table.",
         "operationId": "CreateWormhole",
         "requestBody": {
           "content": {
@@ -3902,7 +3902,7 @@
     },
     "/card_tables/cards/{cardId}/moves.json": {
       "post": {
-        "description": "Move a card to a different column",
+        "description": "Move a card to any column in its project, including on another card table there, or through a linked wormhole to another project (queued: the card gets a new id, and position, if sent, must still be positive but doesn't set placement).\n\n`column_id` may be any column in the card's project, including a column on\nanother card table in the same project; the card moves there directly, with\nno wormhole needed. To send the card to another project, pass the id of a\nlinked wormhole (`linked: true`) the card table already has, listed in\nGetCardTable's `wormholes`; an unlinked or unreachable one returns not found.\nA move through a wormhole is queued: the card arrives under a new id and its\nold id then returns not found. `position` does not control where it lands,\nbut if supplied it must still be a positive integer.",
         "operationId": "MoveCard",
         "requestBody": {
           "content": {
@@ -27727,6 +27727,7 @@
             "items": {
               "$ref": "#/components/schemas/Wormhole"
             },
+            "description": "The card table's wormholes: shortcuts for sending cards to other card\ntables, usually in other projects. Only wormholes whose destination the\nrequester can reach are listed; the rest are omitted, not shown unlinked.\nNot needed to move a card within its project; MoveCard reaches any column\nthere directly.",
             "x-go-type-skip-optional-pointer": true
           }
         },
@@ -32155,6 +32156,7 @@
         "properties": {
           "column_id": {
             "type": "integer",
+            "description": "Any column in the card's project, on this or another card table, or a\nwormhole id to send the card to another project.",
             "format": "int64"
           },
           "position": {
@@ -37466,7 +37468,7 @@
       },
       "Wormhole": {
         "type": "object",
-        "description": "A wormhole links this card table to a column on another card table, enabling\ncards to move across projects. It carries the full recording representation\nplus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`\npoint at the *source* board; `destination_url` is the only field identifying\nthe destination column.",
+        "description": "A wormhole is a standing shortcut from this card table to a column on another\ncard table, usually in another project, and the only way to move a card across\nprojects. It carries the full recording representation\nplus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`\npoint at the *source* board; `destination_url` is the only field identifying\nthe destination column.",
         "properties": {
           "id": {
             "type": "integer",

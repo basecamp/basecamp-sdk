@@ -35,7 +35,8 @@ export interface UpdateVerbatimCardRequest {
  * Request parameters for move.
  */
 export interface MoveCardRequest {
-  /** Column id */
+  /** Any column in the card's project, on this or another card table, or a
+wormhole id to send the card to another project. */
   columnId: number;
   /** 1-indexed position within the destination column. Defaults to 1 (top). */
   position?: number;
@@ -144,7 +145,7 @@ export class CardsService extends BaseService {
   }
 
   /**
-   * Move a card to a different column
+   * Move a card to any column in its project, including on another card table there, or through a linked wormhole to another project (queued: the card gets a new id, and position, if sent, must still be positive but doesn't set placement).
    * @param cardId - The card ID
    * @param req - Card request parameters
    * @returns void

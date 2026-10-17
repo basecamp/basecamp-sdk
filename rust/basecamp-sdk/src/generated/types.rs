@@ -606,7 +606,11 @@ pub struct CardTable {
     /// `lists`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lists: Option<Vec<CardColumn>>,
-    /// `wormholes`.
+    /// The card table's wormholes: shortcuts for sending cards to other card
+    /// tables, usually in other projects. Only wormholes whose destination the
+    /// requester can reach are listed; the rest are omitted, not shown unlinked.
+    /// Not needed to move a card within its project; MoveCard reaches any column
+    /// there directly.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wormholes: Option<Vec<Wormhole>>,
 }
@@ -3555,7 +3559,8 @@ pub struct MoveCardColumnRequestContent {
 /// The `MoveCardRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MoveCardRequestContent {
-    /// `column_id`.
+    /// Any column in the card's project, on this or another card table, or a
+    /// wormhole id to send the card to another project.
     pub column_id: i64,
     /// 1-indexed position within the destination column. Defaults to 1 (top).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7370,8 +7375,9 @@ pub struct WebhookLimitErrorResponseContent {
     pub message: Option<String>,
 }
 
-/// A wormhole links this card table to a column on another card table, enabling
-/// cards to move across projects. It carries the full recording representation
+/// A wormhole is a standing shortcut from this card table to a column on another
+/// card table, usually in another project, and the only way to move a card across
+/// projects. It carries the full recording representation
 /// plus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`
 /// point at the *source* board; `destination_url` is the only field identifying
 /// the destination column.

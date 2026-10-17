@@ -39,7 +39,12 @@ type CardTable struct {
 	Creator       *Person      `json:"creator,omitempty"`
 	Subscribers   []Person     `json:"subscribers,omitempty"`
 	Lists         []CardColumn `json:"lists,omitempty"`
-	Wormholes     []Wormhole   `json:"wormholes,omitempty"`
+	// Wormholes are the card table's shortcuts for sending cards to other card
+	// tables, usually in other projects. Only wormholes whose destination the
+	// requester can reach are listed; the rest are omitted, not shown unlinked.
+	// Not needed to move a card within its project; CardsService.Move reaches
+	// any column there directly.
+	Wormholes []Wormhole `json:"wormholes,omitempty"`
 }
 
 // CardColumn represents a column in a card table.
@@ -636,12 +641,17 @@ type MoveCardOptions struct {
 	Position int32 `json:"position,omitempty"`
 }
 
-// Move moves a card to a different column, optionally at a specific position.
+// Move moves a card to another column in its project, optionally at a specific
+// position.
 //
-// A wormhole id is a valid columnID: passing one teleports the card to the
-// destination column on another card table, the only way to move a card across
-// projects. Discover a card table's wormholes via CardTables().Get; manage them
-// with Wormholes().
+// columnID may be any column in the card's project, including a column on
+// another card table in the same project; the card moves there directly, with
+// no wormhole needed. To send the card to another project, pass the id of a
+// linked wormhole (Linked true) the card table already has, listed by
+// CardTables().Get; an unlinked or unreachable one returns not found. A move
+// through a wormhole is queued: the card arrives under a new id and its old id
+// then returns not found. opts.Position does not control where it lands, but if
+// set it must still be positive. Manage wormholes with Wormholes().
 func (s *CardsService) Move(ctx context.Context, cardID, columnID int64, opts *MoveCardOptions) (err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Move",

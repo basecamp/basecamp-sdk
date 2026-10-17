@@ -5539,7 +5539,16 @@ structure UpdateCardOutput {
   card: Card
 }
 
-/// Move a card to a different column
+/// Move a card to any column in its project, including on another card table there, or through a linked wormhole to another project (queued: the card gets a new id, and position, if sent, must still be positive but doesn't set placement).
+///
+/// `column_id` may be any column in the card's project, including a column on
+/// another card table in the same project; the card moves there directly, with
+/// no wormhole needed. To send the card to another project, pass the id of a
+/// linked wormhole (`linked: true`) the card table already has, listed in
+/// GetCardTable's `wormholes`; an unlinked or unreachable one returns not found.
+/// A move through a wormhole is queued: the card arrives under a new id and its
+/// old id then returns not found. `position` does not control where it lands,
+/// but if supplied it must still be a positive integer.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/card_tables/cards/{cardId}/moves.json", code: 204)
 operation MoveCard {
@@ -5557,6 +5566,8 @@ structure MoveCardInput {
   @httpLabel
   cardId: CardId
 
+  /// Any column in the card's project, on this or another card table, or a
+  /// wormhole id to send the card to another project.
   @required
   column_id: CardColumnId
 
@@ -5976,10 +5987,12 @@ structure RepositionCardStepOutput {}
 
 // ===== Wormhole Operations =====
 
-/// Create a wormhole linking this card table to a column on another card table.
+/// Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.
 ///
 /// A wormhole is the only mechanism for moving a card to a different project: its
-/// id is a valid `column_id` for MoveCard, teleporting the card across projects.
+/// id is a valid `column_id` for MoveCard, teleporting the card there. It is not
+/// needed for a one-off move within a project; MoveCard goes to any column there
+/// directly. A card table holds at most four wormholes.
 /// `destinationRecordingId` is the id of a column on another accessible card table.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json", code: 201)
@@ -6012,7 +6025,7 @@ structure CreateWormholeOutput {
   wormhole: Wormhole
 }
 
-/// Update a wormhole's destination column
+/// Point a card table's wormhole, its shortcut for sending cards to another card table, at a different destination column
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -6046,7 +6059,9 @@ structure UpdateWormholeOutput {
   wormhole: Wormhole
 }
 
-/// Delete a wormhole
+/// Permanently delete a card table's wormhole, the shortcut that sends cards to another card table.
+///
+/// It does not go to the trash and cannot be restored.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -6122,6 +6137,12 @@ structure CardTable {
   creator: Person
   subscribers: PersonList
   lists: CardColumnList
+
+  /// The card table's wormholes: shortcuts for sending cards to other card
+  /// tables, usually in other projects. Only wormholes whose destination the
+  /// requester can reach are listed; the rest are omitted, not shown unlinked.
+  /// Not needed to move a card within its project; MoveCard reaches any column
+  /// there directly.
   wormholes: WormholeList
 }
 
@@ -6133,8 +6154,9 @@ list WormholeList {
   member: Wormhole
 }
 
-/// A wormhole links this card table to a column on another card table, enabling
-/// cards to move across projects. It carries the full recording representation
+/// A wormhole is a standing shortcut from this card table to a column on another
+/// card table, usually in another project, and the only way to move a card across
+/// projects. It carries the full recording representation
 /// plus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`
 /// point at the *source* board; `destination_url` is the only field identifying
 /// the destination column.
