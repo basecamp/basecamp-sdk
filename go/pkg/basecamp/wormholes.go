@@ -8,10 +8,11 @@ import (
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
-// Wormhole links a card table to a column on another card table, enabling cards
-// to move across projects. A wormhole's id is a valid columnID for
-// CardsService.Move: moving a card onto a wormhole teleports it to the
-// destination column.
+// Wormhole is a standing shortcut from a card table to a column on another card
+// table, usually in another project, and the only way to move a card across
+// projects. A wormhole's id is a valid columnID for CardsService.Move: moving a
+// card onto a wormhole teleports it to the destination column. Within a project,
+// CardsService.Move reaches any column directly, so no wormhole is needed.
 //
 // The wormhole carries the full recording representation of its source board, so
 // URL, AppURL, and Parent point at the source. DestinationURL is the only field
@@ -52,7 +53,10 @@ func NewWormholesService(client *AccountClient) *WormholesService {
 	return &WormholesService{client: client}
 }
 
-// Create links a card table to a column on another accessible card table.
+// Create adds a wormhole to a card table: a standing shortcut that sends cards
+// to a column on another accessible card table, usually in another project. It
+// is not needed for a one-off move within a project; CardsService.Move goes to
+// any column there directly.
 //
 // destinationRecordingID is the id of a column on the destination card table.
 // A card table may hold at most four wormholes; exceeding that limit returns a
@@ -107,7 +111,8 @@ func (s *WormholesService) Create(ctx context.Context, bucketID, cardTableID, de
 	return &wormhole, nil
 }
 
-// Update points an existing wormhole at a new destination column.
+// Update points a card table's wormhole, its shortcut for sending cards to
+// another card table, at a different destination column.
 //
 // destinationRecordingID is the id of a column on another accessible card table.
 // Returns the updated wormhole.
@@ -160,7 +165,9 @@ func (s *WormholesService) Update(ctx context.Context, bucketID, wormholeID, des
 	return &wormhole, nil
 }
 
-// Delete removes a wormhole from a card table.
+// Delete permanently removes a card table's wormhole, the shortcut that sends
+// cards to another card table. It does not go to the trash and cannot be
+// restored.
 func (s *WormholesService) Delete(ctx context.Context, bucketID, wormholeID int64) (err error) {
 	op := OperationInfo{
 		Service: "Wormholes", Operation: "Delete",

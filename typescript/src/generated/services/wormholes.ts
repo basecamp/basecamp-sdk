@@ -41,7 +41,7 @@ export interface CreateWormholeRequest {
 export class WormholesService extends BaseService {
 
   /**
-   * Update a wormhole's destination column
+   * Point a card table's wormhole, its shortcut for sending cards to another card table, at a different destination column
    * @param bucketId - The bucket ID
    * @param wormholeId - The wormhole ID
    * @param req - Wormhole update parameters
@@ -77,7 +77,7 @@ export class WormholesService extends BaseService {
   }
 
   /**
-   * Delete a wormhole
+   * Permanently delete a card table's wormhole, the shortcut that sends cards to another card table.
    * @param bucketId - The bucket ID
    * @param wormholeId - The wormhole ID
    * @returns void
@@ -108,7 +108,7 @@ export class WormholesService extends BaseService {
   }
 
   /**
-   * Create a wormhole linking this card table to a column on another card table.
+   * Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.
    * @param bucketId - The bucket ID
    * @param cardTableId - The card table ID
    * @param req - Wormhole creation parameters

@@ -7,7 +7,7 @@ module Basecamp
     # @generated from OpenAPI spec
     class WormholesService < BaseService
 
-      # Update a wormhole's destination column
+      # Point a card table's wormhole, its shortcut for sending cards to another card table, at a different destination column
       # @param bucket_id [Integer] bucket id ID
       # @param wormhole_id [Integer] wormhole id ID
       # @param destination_recording_id [Integer] Id of the new destination column (on another accessible card table).
@@ -18,7 +18,7 @@ module Basecamp
         end
       end
 
-      # Delete a wormhole
+      # Permanently delete a card table's wormhole, the shortcut that sends cards to another card table.
       # @param bucket_id [Integer] bucket id ID
       # @param wormhole_id [Integer] wormhole id ID
       # @return [void]
@@ -29,7 +29,7 @@ module Basecamp
         end
       end
 
-      # Create a wormhole linking this card table to a column on another card table.
+      # Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.
       # @param bucket_id [Integer] bucket id ID
       # @param card_table_id [Integer] card table id ID
       # @param destination_recording_id [Integer] Id of the destination column (on another accessible card table) to link to.

@@ -12,7 +12,7 @@ from basecamp.hooks import OperationInfo
 
 class WormholesService(BaseService):
     def update(self, *, bucket_id: int, wormhole_id: int, destination_recording_id: int) -> dict[str, Any]:
-        """Update a wormhole's destination column.
+        """Point a card table's wormhole, its shortcut for sending cards to another card table, at a different destination column.
 
         Args:
             bucket_id: The bucket id.
@@ -31,7 +31,9 @@ class WormholesService(BaseService):
         )
 
     def delete(self, *, bucket_id: int, wormhole_id: int) -> None:
-        """Delete a wormhole.
+        """Permanently delete a card table's wormhole, the shortcut that sends cards to another card table.
+
+        It does not go to the trash and cannot be restored.
 
         Args:
             bucket_id: The bucket id.
@@ -47,10 +49,12 @@ class WormholesService(BaseService):
         )
 
     def create(self, *, bucket_id: int, card_table_id: int, destination_recording_id: int) -> dict[str, Any]:
-        """Create a wormhole linking this card table to a column on another card table.
+        """Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.
 
         A wormhole is the only mechanism for moving a card to a different project: its
-        id is a valid `column_id` for MoveCard, teleporting the card across projects.
+        id is a valid `column_id` for MoveCard, teleporting the card there. It is not
+        needed for a one-off move within a project; MoveCard goes to any column there
+        directly. A card table holds at most four wormholes.
         `destinationRecordingId` is the id of a column on another accessible card table.
 
         Args:
@@ -76,7 +80,7 @@ class WormholesService(BaseService):
 
 class AsyncWormholesService(AsyncBaseService):
     async def update(self, *, bucket_id: int, wormhole_id: int, destination_recording_id: int) -> dict[str, Any]:
-        """Update a wormhole's destination column.
+        """Point a card table's wormhole, its shortcut for sending cards to another card table, at a different destination column.
 
         Args:
             bucket_id: The bucket id.
@@ -95,7 +99,9 @@ class AsyncWormholesService(AsyncBaseService):
         )
 
     async def delete(self, *, bucket_id: int, wormhole_id: int) -> None:
-        """Delete a wormhole.
+        """Permanently delete a card table's wormhole, the shortcut that sends cards to another card table.
+
+        It does not go to the trash and cannot be restored.
 
         Args:
             bucket_id: The bucket id.
@@ -111,10 +117,12 @@ class AsyncWormholesService(AsyncBaseService):
         )
 
     async def create(self, *, bucket_id: int, card_table_id: int, destination_recording_id: int) -> dict[str, Any]:
-        """Create a wormhole linking this card table to a column on another card table.
+        """Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.
 
         A wormhole is the only mechanism for moving a card to a different project: its
-        id is a valid `column_id` for MoveCard, teleporting the card across projects.
+        id is a valid `column_id` for MoveCard, teleporting the card there. It is not
+        needed for a one-off move within a project; MoveCard goes to any column there
+        directly. A card table holds at most four wormholes.
         `destinationRecordingId` is the id of a column on another accessible card table.
 
         Args:

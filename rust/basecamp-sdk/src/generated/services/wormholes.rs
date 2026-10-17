@@ -30,10 +30,12 @@ impl<'a> WormholesService<'a> {
         self.client
     }
 
-    /// Create a wormhole linking this card table to a column on another card table.
+    /// Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.
     ///
     /// A wormhole is the only mechanism for moving a card to a different project: its
-    /// id is a valid `column_id` for MoveCard, teleporting the card across projects.
+    /// id is a valid `column_id` for MoveCard, teleporting the card there. It is not
+    /// needed for a one-off move within a project; MoveCard goes to any column there
+    /// directly. A card table holds at most four wormholes.
     /// `destinationRecordingId` is the id of a column on another accessible card table.
     ///
     /// `POST /buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json` — not idempotent, sent exactly once.
@@ -50,7 +52,9 @@ impl<'a> WormholesService<'a> {
         self.client.send(operation).await
     }
 
-    /// Delete a wormhole
+    /// Permanently delete a card table's wormhole, the shortcut that sends cards to another card table.
+    ///
+    /// It does not go to the trash and cannot be restored.
     ///
     /// `DELETE /buckets/{bucketId}/card_tables/wormholes/{wormholeId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn delete(&self, bucket_id: i64, wormhole_id: i64) -> Result<(), Error> {
@@ -60,7 +64,7 @@ impl<'a> WormholesService<'a> {
         self.client.send_unit(operation).await
     }
 
-    /// Update a wormhole's destination column
+    /// Point a card table's wormhole, its shortcut for sending cards to another card table, at a different destination column
     ///
     /// `PUT /buckets/{bucketId}/card_tables/wormholes/{wormholeId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn update(

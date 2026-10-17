@@ -59,7 +59,7 @@ open class CardsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Move a card to a different column
+     * Move a card to another column in its project.
      * @param cardId The card ID
      * @param body Request body
      */

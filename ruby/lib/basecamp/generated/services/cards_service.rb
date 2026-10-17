@@ -29,9 +29,10 @@ module Basecamp
         end
       end
 
-      # Move a card to a different column
+      # Move a card to another column in its project.
       # @param card_id [Integer] card id ID
-      # @param column_id [Integer] column id
+      # @param column_id [Integer] Any column in the card's project, on this or another card table, or a
+      #   wormhole id to send the card to another project.
       # @param position [Integer, nil] 1-indexed position within the destination column. Defaults to 1 (top).
       # @return [void]
       def move(card_id:, column_id:, position: nil)

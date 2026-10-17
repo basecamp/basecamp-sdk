@@ -51,11 +51,19 @@ class CardsService(BaseService):
         )
 
     def move(self, *, card_id: int, column_id: int, position: int | None = None) -> None:
-        """Move a card to a different column.
+        """Move a card to another column in its project.
+
+        `column_id` may be any column in the card's project, including a column on
+        another card table in the same project; the card moves there directly, with
+        no wormhole needed. To send the card to another project, pass the id of a
+        wormhole the card table already has (listed in GetCardTable's `wormholes`).
+        A move through a wormhole is queued: the card arrives under a new id, its old
+        id then returns not found, and `position` does not apply.
 
         Args:
             card_id: The card id.
-            column_id: The column id.
+            column_id: Any column in the card's project, on this or another card table, or a
+                wormhole id to send the card to another project.
             position: 1-indexed position within the destination column. Defaults to 1 (top).
         """
         self._request_void(
@@ -153,11 +161,19 @@ class AsyncCardsService(AsyncBaseService):
         )
 
     async def move(self, *, card_id: int, column_id: int, position: int | None = None) -> None:
-        """Move a card to a different column.
+        """Move a card to another column in its project.
+
+        `column_id` may be any column in the card's project, including a column on
+        another card table in the same project; the card moves there directly, with
+        no wormhole needed. To send the card to another project, pass the id of a
+        wormhole the card table already has (listed in GetCardTable's `wormholes`).
+        A move through a wormhole is queued: the card arrives under a new id, its old
+        id then returns not found, and `position` does not apply.
 
         Args:
             card_id: The card id.
-            column_id: The column id.
+            column_id: Any column in the card's project, on this or another card table, or a
+                wormhole id to send the card to another project.
             position: 1-indexed position within the destination column. Defaults to 1 (top).
         """
         await self._request_void(

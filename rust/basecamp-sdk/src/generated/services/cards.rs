@@ -75,7 +75,14 @@ impl<'a> CardsService<'a> {
         self.client.send_page(operation).await
     }
 
-    /// Move a card to a different column
+    /// Move a card to another column in its project.
+    ///
+    /// `column_id` may be any column in the card's project, including a column on
+    /// another card table in the same project; the card moves there directly, with
+    /// no wormhole needed. To send the card to another project, pass the id of a
+    /// wormhole the card table already has (listed in GetCardTable's `wormholes`).
+    /// A move through a wormhole is queued: the card arrives under a new id, its old
+    /// id then returns not found, and `position` does not apply.
     ///
     /// `POST /card_tables/cards/{cardId}/moves.json` — not idempotent, sent exactly once.
     pub async fn move_card(

@@ -339,16 +339,20 @@ type CardTable struct {
 
 	// PublicLinkUrl Public sharing URL. Absent for callers who may not share publicly, so the
 	// same card table can carry it for one person and not another.
-	PublicLinkUrl    *string    `json:"public_link_url,omitempty"`
-	Status           string     `json:"status"`
-	Subscribers      []Person   `json:"subscribers,omitempty"`
-	SubscriptionUrl  *string    `json:"subscription_url,omitempty"`
-	Title            string     `json:"title"`
-	Type             string     `json:"type"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Url              string     `json:"url"`
-	VisibleToClients bool       `json:"visible_to_clients"`
-	Wormholes        []Wormhole `json:"wormholes,omitempty"`
+	PublicLinkUrl    *string   `json:"public_link_url,omitempty"`
+	Status           string    `json:"status"`
+	Subscribers      []Person  `json:"subscribers,omitempty"`
+	SubscriptionUrl  *string   `json:"subscription_url,omitempty"`
+	Title            string    `json:"title"`
+	Type             string    `json:"type"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Url              string    `json:"url"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+
+	// Wormholes The card table's wormholes: shortcuts for sending cards to other card
+	// tables, usually in other projects. Not needed to move a card within its
+	// project; MoveCard reaches any column there directly.
+	Wormholes []Wormhole `json:"wormholes,omitempty"`
 }
 
 // Chatbot defines model for Chatbot.
@@ -1215,8 +1219,9 @@ type CreateWormholeRequestContent struct {
 	DestinationRecordingId int64 `json:"destination_recording_id"`
 }
 
-// CreateWormholeResponseContent A wormhole links this card table to a column on another card table, enabling
-// cards to move across projects. It carries the full recording representation
+// CreateWormholeResponseContent A wormhole is a standing shortcut from this card table to a column on another
+// card table, usually in another project, and the only way to move a card across
+// projects. It carries the full recording representation
 // plus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`
 // point at the *source* board; `destination_url` is the only field identifying
 // the destination column.
@@ -2429,6 +2434,8 @@ type MoveCardColumnRequestContent struct {
 
 // MoveCardRequestContent defines model for MoveCardRequestContent.
 type MoveCardRequestContent struct {
+	// ColumnId Any column in the card's project, on this or another card table, or a
+	// wormhole id to send the card to another project.
 	ColumnId int64 `json:"column_id"`
 
 	// Position 1-indexed position within the destination column. Defaults to 1 (top).
@@ -4847,8 +4854,9 @@ type UpdateWormholeRequestContent struct {
 	DestinationRecordingId int64 `json:"destination_recording_id"`
 }
 
-// UpdateWormholeResponseContent A wormhole links this card table to a column on another card table, enabling
-// cards to move across projects. It carries the full recording representation
+// UpdateWormholeResponseContent A wormhole is a standing shortcut from this card table to a column on another
+// card table, usually in another project, and the only way to move a card across
+// projects. It carries the full recording representation
 // plus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`
 // point at the *source* board; `destination_url` is the only field identifying
 // the destination column.
@@ -5043,8 +5051,9 @@ type WebhookLimitErrorResponseContent struct {
 	Message *string `json:"message,omitempty"`
 }
 
-// Wormhole A wormhole links this card table to a column on another card table, enabling
-// cards to move across projects. It carries the full recording representation
+// Wormhole A wormhole is a standing shortcut from this card table to a column on another
+// card table, usually in another project, and the only way to move a card across
+// projects. It carries the full recording representation
 // plus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`
 // point at the *source* board; `destination_url` is the only field identifying
 // the destination column.

@@ -2725,7 +2725,7 @@
       "tag": "Card Tables",
       "method": "POST",
       "path": "/{accountId}/buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json",
-      "doc": "Create a wormhole linking this card table to a column on another card table.\n\nA wormhole is the only mechanism for moving a card to a different project: its\nid is a valid `column_id` for MoveCard, teleporting the card across projects.\n`destinationRecordingId` is the id of a column on another accessible card table.",
+      "doc": "Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.\n\nA wormhole is the only mechanism for moving a card to a different project: its\nid is a valid `column_id` for MoveCard, teleporting the card there. It is not\nneeded for a one-off move within a project; MoveCard goes to any column there\ndirectly. A card table holds at most four wormholes.\n`destinationRecordingId` is the id of a column on another accessible card table.",
       "readonly": false,
       "idempotent": false,
       "retry": {
@@ -3304,7 +3304,7 @@
       "tag": "Card Tables",
       "method": "DELETE",
       "path": "/{accountId}/buckets/{bucketId}/card_tables/wormholes/{wormholeId}",
-      "doc": "Delete a wormhole",
+      "doc": "Permanently delete a card table's wormhole, the shortcut that sends cards to another card table.\n\nIt does not go to the trash and cannot be restored.",
       "readonly": false,
       "idempotent": true,
       "retry": {
@@ -10239,7 +10239,7 @@
       "tag": "Card Tables",
       "method": "POST",
       "path": "/{accountId}/card_tables/cards/{cardId}/moves.json",
-      "doc": "Move a card to a different column",
+      "doc": "Move a card to another column in its project.\n\n`column_id` may be any column in the card's project, including a column on\nanother card table in the same project; the card moves there directly, with\nno wormhole needed. To send the card to another project, pass the id of a\nwormhole the card table already has (listed in GetCardTable's `wormholes`).\nA move through a wormhole is queued: the card arrives under a new id, its old\nid then returns not found, and `position` does not apply.",
       "readonly": false,
       "idempotent": false,
       "retry": {
@@ -10276,6 +10276,7 @@
       "body": {
         "properties": {
           "column_id": {
+            "description": "Any column in the card's project, on this or another card table, or a\nwormhole id to send the card to another project.",
             "format": "int64",
             "type": "integer"
           },
@@ -14514,7 +14515,7 @@
       "tag": "Card Tables",
       "method": "PUT",
       "path": "/{accountId}/buckets/{bucketId}/card_tables/wormholes/{wormholeId}",
-      "doc": "Update a wormhole's destination column",
+      "doc": "Point a card table's wormhole, its shortcut for sending cards to another card table, at a different destination column",
       "readonly": false,
       "idempotent": true,
       "retry": {
