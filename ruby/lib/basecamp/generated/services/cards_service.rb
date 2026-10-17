@@ -29,7 +29,7 @@ module Basecamp
         end
       end
 
-      # Move a card to another column in its project.
+      # Move a card to any column in its project, including on another card table there, or through a wormhole to another project (queued: the card gets a new id and position doesn't apply).
       # @param card_id [Integer] card id ID
       # @param column_id [Integer] Any column in the card's project, on this or another card table, or a
       #   wormhole id to send the card to another project.

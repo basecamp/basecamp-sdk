@@ -51,7 +51,7 @@ class CardsService(BaseService):
         )
 
     def move(self, *, card_id: int, column_id: int, position: int | None = None) -> None:
-        """Move a card to another column in its project.
+        """Move a card to any column in its project, including on another card table there, or through a wormhole to another project (queued: the card gets a new id and position doesn't apply).
 
         `column_id` may be any column in the card's project, including a column on
         another card table in the same project; the card moves there directly, with
@@ -161,7 +161,7 @@ class AsyncCardsService(AsyncBaseService):
         )
 
     async def move(self, *, card_id: int, column_id: int, position: int | None = None) -> None:
-        """Move a card to another column in its project.
+        """Move a card to any column in its project, including on another card table there, or through a wormhole to another project (queued: the card gets a new id and position doesn't apply).
 
         `column_id` may be any column in the card's project, including a column on
         another card table in the same project; the card moves there directly, with

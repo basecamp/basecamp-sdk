@@ -40,8 +40,10 @@ type CardTable struct {
 	Subscribers   []Person     `json:"subscribers,omitempty"`
 	Lists         []CardColumn `json:"lists,omitempty"`
 	// Wormholes are the card table's shortcuts for sending cards to other card
-	// tables, usually in other projects. Not needed to move a card within its
-	// project; CardsService.Move reaches any column there directly.
+	// tables, usually in other projects. Only wormholes whose destination the
+	// requester can reach are listed; the rest are omitted, not shown unlinked.
+	// Not needed to move a card within its project; CardsService.Move reaches
+	// any column there directly.
 	Wormholes []Wormhole `json:"wormholes,omitempty"`
 }
 

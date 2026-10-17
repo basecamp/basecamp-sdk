@@ -145,7 +145,7 @@ export class CardsService extends BaseService {
   }
 
   /**
-   * Move a card to another column in its project.
+   * Move a card to any column in its project, including on another card table there, or through a wormhole to another project (queued: the card gets a new id and position doesn't apply).
    * @param cardId - The card ID
    * @param req - Card request parameters
    * @returns void

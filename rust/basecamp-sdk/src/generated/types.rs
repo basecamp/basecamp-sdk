@@ -607,8 +607,10 @@ pub struct CardTable {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lists: Option<Vec<CardColumn>>,
     /// The card table's wormholes: shortcuts for sending cards to other card
-    /// tables, usually in other projects. Not needed to move a card within its
-    /// project; MoveCard reaches any column there directly.
+    /// tables, usually in other projects. Only wormholes whose destination the
+    /// requester can reach are listed; the rest are omitted, not shown unlinked.
+    /// Not needed to move a card within its project; MoveCard reaches any column
+    /// there directly.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wormholes: Option<Vec<Wormhole>>,
 }

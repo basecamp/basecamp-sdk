@@ -540,7 +540,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Move a card to another column in its project.
+         * @description Move a card to any column in its project, including on another card table there, or through a wormhole to another project (queued: the card gets a new id and position doesn't apply).
          *
          *     `column_id` may be any column in the card's project, including a column on
          *     another card table in the same project; the card moves there directly, with
@@ -4277,8 +4277,10 @@ export interface components {
             lists?: components["schemas"]["CardColumn"][];
             /**
              * @description The card table's wormholes: shortcuts for sending cards to other card
-             *     tables, usually in other projects. Not needed to move a card within its
-             *     project; MoveCard reaches any column there directly.
+             *     tables, usually in other projects. Only wormholes whose destination the
+             *     requester can reach are listed; the rest are omitted, not shown unlinked.
+             *     Not needed to move a card within its project; MoveCard reaches any column
+             *     there directly.
              */
             wormholes?: components["schemas"]["Wormhole"][];
         };
