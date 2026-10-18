@@ -39,7 +39,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
   smithy:
     uses: $/.github/workflows/smithy-verify.yml
@@ -536,7 +536,7 @@ jobs:
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
         # all seven manifests and fails if any is absent.
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: execution-manifest-go
           path: conformance/manifests/go.json
@@ -573,7 +573,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -649,7 +649,7 @@ jobs:
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
         # all seven manifests and fails if any is absent.
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: execution-manifest-typescript
           path: conformance/manifests/typescript.json
@@ -771,7 +771,7 @@ jobs:
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
         # all seven manifests and fails if any is absent.
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: execution-manifest-ruby
           path: conformance/manifests/ruby.json
@@ -898,7 +898,7 @@ jobs:
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
         # all seven manifests and fails if any is absent.
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: execution-manifest-python
           path: conformance/manifests/python.json
@@ -976,7 +976,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # upstream moves its only tag, v1
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # upstream moves its only tag, v1
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy, rustfmt
@@ -1017,7 +1017,7 @@ jobs:
       # --- stable lane: the {lang}-check contract ---
       - name: Install cargo-deny
         if: matrix.role == 'stable'
-        uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2.87.20
+        uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
         with:
           tool: cargo-deny@0.20.2
 
@@ -1064,7 +1064,7 @@ jobs:
         # because each one counted its own skip; the fan-in job below requires
         # all seven manifests and fails if any is absent.
         if: matrix.role == 'stable'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: execution-manifest-rust
           path: conformance/manifests/rust.json
@@ -1136,7 +1136,7 @@ jobs:
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
         # all seven manifests and fails if any is absent.
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: execution-manifest-swift
           path: conformance/manifests/swift.json
@@ -1178,7 +1178,7 @@ jobs:
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           cache-provider: basic
 
@@ -1239,7 +1239,7 @@ jobs:
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
         # all seven manifests and fails if any is absent.
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: execution-manifest-kotlin
           path: conformance/manifests/kotlin.json
@@ -1304,7 +1304,7 @@ jobs:
         # directory. Not `continue-on-error`: a download that silently produced
         # nothing would leave the gate reading an empty directory, and it fails
         # closed on that — but failing here names the real cause.
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: execution-manifest-*
           merge-multiple: true
