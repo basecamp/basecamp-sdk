@@ -81,6 +81,11 @@ updates:
       # publishes TS 6 support (openapi-ts/openapi-typescript#2723).
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # msw 3 intercepts Node at the socket level: reused connections can skip
+      # the mocks (mswjs/interceptors#862) and undici rejects the oauth tests'
+      # malformed Content-Length before the SDK's guard runs. See #998.
+      - dependency-name: "msw"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps(ts):"
     labels:
