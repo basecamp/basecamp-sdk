@@ -137,7 +137,7 @@ making the absorption journey publicly auditable.
 > instead that the web app limits boosts to 16 characters and that `422` means
 > a missing `content`. That supersedes the 191-character note recorded in the
 > range below. The SDK keeps the `@length(max: 16)` it already puts on both
-> create inputs and adds no length limit to `UpdateBoost`. The `README.md` change adds
+> create inputs and gives `UpdateBoost` the same annotation; no SDK enforces it client side. The `README.md` change adds
 > that an agent may update a boost it created.
 >
 > The `66d387b62fb..b1f18fd182b` range is **1634 commits** by `git log`, read
