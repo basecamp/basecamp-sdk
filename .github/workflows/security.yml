@@ -210,10 +210,15 @@ jobs:
       # go.mod extractor is enabled: the lockfiles of the other SDKs keep
       # their own gates above. It exits nonzero on any finding, and also if
       # it finds no go.mod or doesn't recognise the extractor name.
+      # Go call analysis is on by default and runs govulncheck in-process.
+      # A finding it marks uncalled doesn't fail the scan, which would bring
+      # back the blind spot this job exists to close. So it is switched off:
+      # every vulnerable version fails, reachable or not.
       - name: Scan every go.mod for known vulnerabilities
         run: |
           "$RUNNER_TEMP/osv-scanner" scan source --recursive \
-            --x-no-default-plugins --x-plugins go/gomod .
+            --x-no-default-plugins --x-plugins go/gomod \
+            --no-call-analysis=go .
 
       # Ground truth, and the authoritative check: the static parser predicts
       # that nothing writes a lockfile, this observes whether anything did. A CI
