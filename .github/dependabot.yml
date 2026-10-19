@@ -37,6 +37,67 @@ updates:
           - "version-update:semver-major"
           - "version-update:semver-minor"
           - "version-update:semver-patch"
+
+      # The other third-party direct requirements in go/go.mod are floors on the
+      # same terms as client_golang: raise one only when the SDK starts using a
+      # newer API or the floor has a known vulnerability, and leave `versions`
+      # off each entry so its security updates still come (see above). The
+      # "Go Tests (latest dependencies)" job tests their latest releases.
+      # Each entry notes what bounded its floor when this was written
+      # (2026-10, govulncheck v1.8.0's database).
+      #
+      # The four otel modules move together; otel/sdk requires the matching
+      # otel. Older releases build and pass the SDK's tests (v1.20.0 was the
+      # oldest tried), but otel/sdk has known vulnerabilities before v1.45.0
+      # (GO-2026-6505), so no floor below that is acceptable.
+      - dependency-name: "go.opentelemetry.io/otel"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      - dependency-name: "go.opentelemetry.io/otel/metric"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      - dependency-name: "go.opentelemetry.io/otel/sdk"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      - dependency-name: "go.opentelemetry.io/otel/trace"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      # v1.8.12 is the first release under the github.com/coder/websocket path;
+      # earlier tags declare nhooyr.io/websocket.
+      - dependency-name: "github.com/coder/websocket"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      # Used by the generated client. Every v1 release builds and passes the
+      # SDK's tests, and none has a known vulnerability of its own.
+      - dependency-name: "github.com/oapi-codegen/runtime"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      # Get, Set and Delete only, all present since v0.1.0. The SDK's tests run
+      # against the file store, not a real keyring, so they don't vouch for
+      # older releases. v0.1.0 also still uses godbus/dbus v4.
+      - dependency-name: "github.com/zalando/go-keyring"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      # github.com/basecamp/* (actioncable-go, surfguard) are deliberately not
+      # ignored. We publish them and Dependabot's PR is how we hear about
+      # their releases; a fix in either (surfguard is the OAuth endpoint
+      # guard) may never reach the Go vulnerability database, and the
+      # latest-dependencies job only runs the new release, it doesn't
+      # announce it.
     commit-message:
       prefix: "deps(go):"
     labels:
