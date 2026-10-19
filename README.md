@@ -245,7 +245,7 @@ All SDKs provide:
 | **Projects** | Projects, Templates, Tools, People |
 | **To-dos** | Todos, Todolists, Todosets, TodolistGroups, Subtasks |
 | **Messages** | Messages, MessageBoards, MessageTypes, Comments |
-| **Chat** | Campfires (lines, chatbots) |
+| **Chat** | Campfires (lines, chatbots), Pings |
 | **Scheduling** | Schedules, Timeline, Lineup, Checkins |
 | **Files** | Vaults, Documents, Uploads, Attachments |
 | **Card Tables** | CardTables, Cards, CardColumns, CardSteps, Subtasks, Wormholes |

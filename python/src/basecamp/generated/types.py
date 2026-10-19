@@ -540,6 +540,11 @@ class CreatePersonRequest(TypedDict):
     title: NotRequired[str]
 
 
+class CreatePingRequestContent(TypedDict):
+    new_group: NotRequired[bool]
+    user_ids: list[int]
+
+
 class CreateProjectFromTemplateRequestContent(TypedDict):
     project: ProjectConstructionAttributes
 
@@ -1338,6 +1343,28 @@ class Person(TypedDict):
 class PersonCompany(TypedDict):
     id: int
     name: str
+
+
+class Ping(TypedDict):
+    app_url: str
+    avatar_url: str
+    bookmark_url: str
+    created_at: str
+    edit_title_url: NotRequired[str]
+    id: int
+    image_url: NotRequired[str]
+    links: PingLinks
+    named: bool
+    people: list[Person]
+    room_url: str
+    title: str
+    updated_at: str
+    url: str
+
+
+class PingLinks(TypedDict):
+    files: str
+    lines: str
 
 
 class PollEventsResponseContent(TypedDict):

@@ -977,6 +977,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/circles.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get Pings: the caller's active Pings that have a line in them, most
+         *     recently updated first, in one unpaginated response. Archived Pings, and
+         *     Pings no one has posted in yet, are not listed; GetPing reads either by id.
+         *
+         *     Answers `403 Forbidden` (`{"error": "Pings have been disabled"}`) when the
+         *     caller cannot ping.
+         */
+        get: operations["ListPings"];
+        put?: never;
+        /**
+         * @description Create a Ping with people, or return the one that already holds exactly
+         *     them.
+         *
+         *     The caller is always included. Without `new_group`, an existing active
+         *     Ping with exactly these people (the oldest, if several) is returned rather
+         *     than a second one created; with `new_group: true` and more than one other
+         *     person, a new group is created every time. Either way the answer is
+         *     `201 Created` with the Ping.
+         *
+         *     Answers `403 Forbidden` (`{"error": "Pings have been disabled"}`) when the
+         *     caller cannot ping, and a bodiless `422` when nobody in the Ping would be a
+         *     person who can ping.
+         */
+        post: operations["CreatePing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/circles/people.json": {
         parameters: {
             query?: never;
@@ -991,6 +1029,29 @@ export interface paths {
          *     to fetch additional pages. X-Total-Count header provides total count.
          */
         get: operations["ListPingablePeople"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/circles/{pingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get a Ping by its id, which is its bucket's id.
+         *
+         *     Answers `403 Forbidden` (`{"error": "Pings have been disabled"}`) when the
+         *     caller cannot ping, and `404 Not Found` for a bucket that is not a Ping the
+         *     caller is in.
+         */
+        get: operations["GetPing"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4684,6 +4745,16 @@ export interface components {
             /** Format: password */
             company_name?: string;
         };
+        CreatePingRequestContent: {
+            /**
+             * @description Person ids of the people to ping. People the caller cannot reach are
+             *     dropped.
+             */
+            user_ids: number[];
+            /** @description Create a new group even when a Ping with exactly these people exists. */
+            new_group?: boolean;
+        };
+        CreatePingResponseContent: components["schemas"]["Ping"];
         CreateProjectFromTemplateRequestContent: {
             project: components["schemas"]["ProjectConstructionAttributes"];
         };
@@ -5609,6 +5680,7 @@ export interface components {
             events: components["schemas"]["TimelineEvent"][];
         };
         GetPersonResponseContent: components["schemas"]["Person"];
+        GetPingResponseContent: components["schemas"]["Ping"];
         GetProgressReportResponseContent: components["schemas"]["TimelineEvent"][];
         GetProjectConstructionResponseContent: components["schemas"]["ProjectConstruction"];
         GetProjectResponseContent: components["schemas"]["Project"];
@@ -5803,6 +5875,7 @@ export interface components {
         ListMyDraftsResponseContent: components["schemas"]["Draft"][];
         ListPeopleResponseContent: components["schemas"]["Person"][];
         ListPingablePeopleResponseContent: components["schemas"]["Person"][];
+        ListPingsResponseContent: components["schemas"]["Ping"][];
         ListProjectPeopleResponseContent: components["schemas"]["Person"][];
         ListProjectsResponseContent: components["schemas"]["Project"][];
         ListQuestionAnswerersResponseContent: components["schemas"]["Person"][];
@@ -6149,6 +6222,59 @@ export interface components {
             id: number;
             /** Format: password */
             name: string;
+        };
+        /**
+         * @description A Ping: a private conversation between people, held in its own bucket with
+         *     one Campfire. The Campfire's lines are read and written through the
+         *     Campfires service; `room_url` and `links.lines` name it.
+         */
+        Ping: {
+            /**
+             * Format: int64
+             * @description The Ping's id, which is also its bucket's id.
+             */
+            id: number;
+            created_at: string;
+            updated_at: string;
+            /**
+             * @description The Ping's name for the caller: its given name when `named`, else the
+             *     names of the other people in it.
+             */
+            title: string;
+            /** @description Whether someone gave the Ping a name. */
+            named: boolean;
+            /** @description The Ping's own image, present only when one was uploaded. */
+            image_url?: string;
+            /** Format: password */
+            avatar_url: string;
+            url: string;
+            app_url: string;
+            bookmark_url: string;
+            /** @description The Ping's Campfire (`/buckets/{bucketId}/chats/{campfireId}.json`). */
+            room_url: string;
+            /**
+             * @description Present only when the Ping can be renamed: one with more than one other
+             *     person in it.
+             */
+            edit_title_url?: string;
+            links: components["schemas"]["PingLinks"];
+            /**
+             * @description The people in the Ping other than the caller; the caller alone when
+             *     nobody else is in it.
+             */
+            people: components["schemas"]["Person"][];
+        };
+        /**
+         * @description The Ping's Campfire endpoints, so a client need not derive them from
+         *     `room_url`. The wire object also repeats `url`, `app_url`, `bookmark_url`
+         *     and `edit_title_url` as `self`, `app`, `bookmark` and `edit_title`; those
+         *     are read from the Ping's own fields.
+         */
+        PingLinks: {
+            /** @description The Campfire's lines (`/buckets/{bucketId}/chats/{campfireId}/lines.json`). */
+            lines: string;
+            /** @description The Campfire's uploads. */
+            files: string;
         };
         /**
          * @description The poll envelope. Every 200 carries `events` and `position`; `next` only
@@ -13034,6 +13160,129 @@ export interface operations {
             };
         };
     };
+    ListPings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListPings 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListPingsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreatePing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePingRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreatePing 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatePingResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description BareValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     ListPingablePeople: {
         parameters: {
             query?: never;
@@ -13068,6 +13317,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetPing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description A Ping's id is the id of the bucket that holds it (the bucket type is
+                 *     "Circle", which is also the wire path), so the `bucket.id` a Ping's
+                 *     recordings carry is the id GetPing takes.
+                 */
+                pingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetPing 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetPingResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

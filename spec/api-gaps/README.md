@@ -86,6 +86,7 @@ making the absorption journey publicly auditable.
 | [recording-show-unscoped](recording-show-unscoped.md) | addressed-in-bc3-pr-10158 | master | medium |
 | [recording-backlinks](recording-backlinks.md) | addressed-in-bc3-pr-13121 | master | medium |
 | [account-people-enrollment](account-people-enrollment.md) | addressed-in-bc3-pr-9962 | master | medium |
+| [pings](pings.md) | absorbed-in-sdk | master | high |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the

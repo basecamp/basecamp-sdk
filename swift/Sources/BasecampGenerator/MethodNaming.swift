@@ -190,6 +190,7 @@ private let simpleResources: Set<String> = [
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
     "subtask", "subtasks",
+    "ping", "pings",
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
 ]

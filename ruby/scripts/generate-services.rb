@@ -83,6 +83,7 @@ class ServiceGenerator
     'ClientFeatures' => 'ClientFeatures',
     'Boosts' => 'Boosts',
     'Subtasks' => 'Subtasks',
+    'Pings' => 'Pings',
     'Untagged' => 'Miscellaneous'
   }.freeze
 
@@ -363,7 +364,7 @@ class ServiceGenerator
     lineupmarker clientapproval clientapprovals clientcorrespondence
     clientcorrespondences clientreply clientreplies forwardreply
     forwardreplies campfireline campfirelines todolistgroup todolistgroups
-    todolistorgroup uploadversions hillchart hillcharts subtask subtasks
+    todolistorgroup uploadversions hillchart hillcharts subtask subtasks ping pings
     wormhole wormholes
   ].freeze
 

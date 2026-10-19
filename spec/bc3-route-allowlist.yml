@@ -202,6 +202,38 @@ sdk_routes_absent_from_bc3_docs:
       view is needed; test/api/recordings/filings_controller_api_test.rb calls
       the flat route on the API host. Delete at the next repin.
 
+  # Pings (wire path and bucket type "Circle"). bc3 #13943 documents all three in a new
+  # doc/api/sections/pings.md and adds the missing API index template; it is
+  # open, so no pin can carry it yet. Delete all three at the first repin past
+  # its merge, when the routes land in spec/bc3-routes.json and the gate reports
+  # them stale.
+  - method: GET
+    path: /circles
+    reason: >-
+      ListPings. Drawn at config/routes.rb:905 (`resources :circles`, bc3
+      master 18f6553e0b); CirclesController#index is `allow_agent_principal`.
+      On master the API host has no app/views/api/circles/index.json.jbuilder,
+      so it answers 204 with no body (the SDK reads that as an empty list);
+      bc3 #13943 adds the template and its API test
+      (test/api/circles_controller_api_test.rb), unpaginated by design.
+
+  - method: GET
+    path: /circles/:id
+    reason: >-
+      GetPing. Same draw; CirclesController#show renders
+      app/views/api/circles/show.json.jbuilder (the _circle partial with
+      room_url and links) on master. Verified 200 against production
+      2026-10-19 with a Ping's bucket id. Documented by bc3 #13943 ("Get a Ping").
+
+  - method: POST
+    path: /circles
+    reason: >-
+      CreatePing. Same draw; CirclesController#create renders
+      app/views/api/circles/create.json.jbuilder with 201 (bc3 #9949), and
+      test/integration/oauth/agent_principal_pings_test.rb drives it on master
+      for agents, with the 403 for a company with Pings off. Documented by
+      bc3 #13943.
+
 # ---------------------------------------------------------------------------
 # Known-defective SDK routes — bc3 does NOT serve these, and we know it.
 #

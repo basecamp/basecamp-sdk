@@ -56,6 +56,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "CreateMessage": [
     "creator"
   ],
+  "CreatePing": [
+    "people.[]"
+  ],
   "CreateQuestion": [
     "creator"
   ],
@@ -403,6 +406,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
     "events.[].creator",
     "person"
   ],
+  "GetPing": [
+    "people.[]"
+  ],
   "GetProgressReport": [
     "[].attachments.[].creator",
     "[].creator"
@@ -576,6 +582,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   ],
   "ListPingablePeople": [
     "[]"
+  ],
+  "ListPings": [
+    "[].people.[]"
   ],
   "ListProjectPeople": [
     "[]"

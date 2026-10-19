@@ -38,6 +38,7 @@ extension AccountClient {
     public var myNotes: MyNotesService { service("myNotes") { MyNotesService(accountClient: self) } }
     public var myNotifications: MyNotificationsService { service("myNotifications") { MyNotificationsService(accountClient: self) } }
     public var people: PeopleService { service("people") { PeopleService(accountClient: self) } }
+    public var pings: PingsService { service("pings") { PingsService(accountClient: self) } }
     public var projects: ProjectsService { service("projects") { ProjectsService(accountClient: self) } }
     public var recordings: RecordingsService { service("recordings") { RecordingsService(accountClient: self) } }
     public var reports: ReportsService { service("reports") { ReportsService(accountClient: self) } }

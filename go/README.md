@@ -542,6 +542,7 @@ for both.
 | `MessageTypes()` | List, Get, Create, Update, Destroy |
 | `Comments()` | List, Get, Create, Update, Trash, ExpandMentions, CreateWithMentions |
 | `Campfires()` | List, Get, ListLines, GetLine, CreateLine, UpdateLine, DeleteLine, Chatbot CRUD |
+| `Pings()` | List, Get, Create |
 | `Forwards()` | List, Get |
 
 ### Scheduling

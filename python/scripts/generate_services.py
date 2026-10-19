@@ -45,6 +45,7 @@ TAG_TO_SERVICE = {
     "ClientFeatures": "ClientFeatures",
     "Boosts": "Boosts",
     "Subtasks": "Subtasks",
+    "Pings": "Pings",
     "Untagged": "Miscellaneous",
 }
 
@@ -308,7 +309,7 @@ SIMPLE_RESOURCES = {
     "clientapprovals", "clientcorrespondence", "clientcorrespondences", "clientreply",
     "clientreplies", "forwardreply", "forwardreplies", "campfireline", "campfirelines",
     "todolistgroup", "todolistgroups", "todolistorgroup", "uploadversions",
-    "wormhole", "wormholes", "subtask", "subtasks",
+    "wormhole", "wormholes", "subtask", "subtasks", "ping", "pings",
 }
 
 

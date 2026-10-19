@@ -424,3 +424,8 @@ apply CompleteSubtask @tags(["Subtasks"])
 apply UncompleteSubtask @tags(["Subtasks"])
 apply RepositionSubtask @tags(["Subtasks"])
 apply DeleteSubtask @tags(["Subtasks"])
+
+// Pings (wire path and bucket type "Circle")
+apply ListPings @tags(["Pings"])
+apply GetPing @tags(["Pings"])
+apply CreatePing @tags(["Pings"])

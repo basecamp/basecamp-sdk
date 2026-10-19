@@ -37,6 +37,7 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     "CreateGaugeNeedle": (("creator",),),
     "CreateGoogleDocument": (("creator",),),
     "CreateMessage": (("creator",),),
+    "CreatePing": (("people", "[]"),),
     "CreateQuestion": (("creator",),),
     "CreateRecordingBoost": (("booster",),),
     "CreateScheduleEntry": (
@@ -316,6 +317,7 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
         ("events", "[]", "creator"),
         ("person",),
     ),
+    "GetPing": (("people", "[]"),),
     "GetProgressReport": (
         ("[]", "attachments", "[]", "creator"),
         ("[]", "creator"),
@@ -430,6 +432,7 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     "ListMyBookmarks": (("[]", "recording", "creator"),),
     "ListPeople": (("[]",),),
     "ListPingablePeople": (("[]",),),
+    "ListPings": (("[]", "people", "[]"),),
     "ListProjectPeople": (("[]",),),
     "ListQuestionAnswerers": (("[]",),),
     "ListQuestions": (("[]", "creator"),),

@@ -336,6 +336,24 @@ async fn checkins_reminders_reaches_the_wire() {
 }
 
 #[tokio::test]
+async fn pings_list_reaches_the_wire() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/circles.json"))
+        .and(header("Authorization", "Bearer test-token"))
+        .and(header("Accept", "application/json"))
+        .and(header(
+            "User-Agent",
+            basecamp_sdk::version::default_user_agent().as_str(),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+        .expect(1)
+        .mount(&server)
+        .await;
+    account(&server).pings().list().await.unwrap();
+}
+
+#[tokio::test]
 async fn client_approvals_list_reaches_the_wire() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
@@ -1418,6 +1436,11 @@ error_case!(
     |account: basecamp_sdk::AccountClient| async move {
         account.checkins().reminders(&Default::default()).await
     }
+);
+
+error_case!(
+    pings_list_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.pings().list().await }
 );
 
 error_case!(

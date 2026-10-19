@@ -77,6 +77,9 @@ pub static CREATE_MESSAGE: OperationMetadata = OperationMetadata { operation: "C
 /// `CreateMessageType`.
 #[rustfmt::skip]
 pub static CREATE_MESSAGE_TYPE: OperationMetadata = OperationMetadata { operation: "CreateMessageType", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `CreatePing`.
+#[rustfmt::skip]
+pub static CREATE_PING: OperationMetadata = OperationMetadata { operation: "CreatePing", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `CreateProject`.
 #[rustfmt::skip]
 pub static CREATE_PROJECT: OperationMetadata = OperationMetadata { operation: "CreateProject", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -392,6 +395,9 @@ pub static GET_PERSON: OperationMetadata = OperationMetadata { operation: "GetPe
 /// `GetPersonProgress`.
 #[rustfmt::skip]
 pub static GET_PERSON_PROGRESS: OperationMetadata = OperationMetadata { operation: "GetPersonProgress", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `GetPing`.
+#[rustfmt::skip]
+pub static GET_PING: OperationMetadata = OperationMetadata { operation: "GetPing", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `GetProgressReport`.
 #[rustfmt::skip]
 pub static GET_PROGRESS_REPORT: OperationMetadata = OperationMetadata { operation: "GetProgressReport", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -560,6 +566,9 @@ pub static LIST_PEOPLE: OperationMetadata = OperationMetadata { operation: "List
 /// `ListPingablePeople`.
 #[rustfmt::skip]
 pub static LIST_PINGABLE_PEOPLE: OperationMetadata = OperationMetadata { operation: "ListPingablePeople", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `ListPings`.
+#[rustfmt::skip]
+pub static LIST_PINGS: OperationMetadata = OperationMetadata { operation: "ListPings", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `ListProjectPeople`.
 #[rustfmt::skip]
 pub static LIST_PROJECT_PEOPLE: OperationMetadata = OperationMetadata { operation: "ListProjectPeople", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -869,6 +878,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &CREATE_LINEUP_MARKER,
     &CREATE_MESSAGE,
     &CREATE_MESSAGE_TYPE,
+    &CREATE_PING,
     &CREATE_PROJECT,
     &CREATE_PROJECT_FROM_TEMPLATE,
     &CREATE_QUESTION,
@@ -974,6 +984,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &GET_OVERDUE_TODOS,
     &GET_PERSON,
     &GET_PERSON_PROGRESS,
+    &GET_PING,
     &GET_PROGRESS_REPORT,
     &GET_PROJECT,
     &GET_PROJECT_CONSTRUCTION,
@@ -1030,6 +1041,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &LIST_MY_DRAFTS,
     &LIST_PEOPLE,
     &LIST_PINGABLE_PEOPLE,
+    &LIST_PINGS,
     &LIST_PROJECT_PEOPLE,
     &LIST_PROJECTS,
     &LIST_QUESTION_ANSWERERS,

@@ -269,6 +269,17 @@
       ]
     }
   },
+  "CreatePing": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "CreateProject": {
     "retry": {
       "backoff": "exponential",
@@ -1447,6 +1458,17 @@
       ]
     }
   },
+  "GetPing": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "GetProgressReport": {
     "retry": {
       "backoff": "exponential",
@@ -2053,6 +2075,17 @@
     }
   },
   "ListPingablePeople": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "ListPings": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,

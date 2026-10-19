@@ -504,6 +504,23 @@ pub static CREATE_MESSAGE_TYPE: Route = Route {
     metadata: &metadata::CREATE_MESSAGE_TYPE,
 };
 
+/// `POST /circles.json`.
+pub static CREATE_PING: Route = Route {
+    id: "CreatePing",
+    service: "Pings",
+    method: Method::POST,
+    path: "/circles.json",
+    pattern: "/circles",
+    resource_type: "ping",
+    params: &[],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::CREATE_PING,
+};
+
 /// `POST /projects.json`.
 pub static CREATE_PROJECT: Route = Route {
     id: "CreateProject",
@@ -2661,6 +2678,26 @@ pub static GET_PERSON_PROGRESS: Route = Route {
     metadata: &metadata::GET_PERSON_PROGRESS,
 };
 
+/// `GET /circles/{pingId}`.
+pub static GET_PING: Route = Route {
+    id: "GetPing",
+    service: "Pings",
+    method: Method::GET,
+    path: "/circles/{pingId}",
+    pattern: "/circles/{pingId}",
+    resource_type: "ping",
+    params: &[RouteParam {
+        name: "pingId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::GET_PING,
+};
+
 /// `GET /reports/progress.json`.
 pub static GET_PROGRESS_REPORT: Route = Route {
     id: "GetProgressReport",
@@ -3855,6 +3892,23 @@ pub static LIST_PINGABLE_PEOPLE: Route = Route {
     write: None,
     deprecated: false,
     metadata: &metadata::LIST_PINGABLE_PEOPLE,
+};
+
+/// `GET /circles.json`.
+pub static LIST_PINGS: Route = Route {
+    id: "ListPings",
+    service: "Pings",
+    method: Method::GET,
+    path: "/circles.json",
+    pattern: "/circles",
+    resource_type: "ping",
+    params: &[],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::LIST_PINGS,
 };
 
 /// `GET /projects/{projectId}/people.json`.
@@ -5820,6 +5874,7 @@ pub static ROUTES: &[&Route] = &[
     &CREATE_LINEUP_MARKER,
     &CREATE_MESSAGE,
     &CREATE_MESSAGE_TYPE,
+    &CREATE_PING,
     &CREATE_PROJECT,
     &CREATE_PROJECT_FROM_TEMPLATE,
     &CREATE_QUESTION,
@@ -5925,6 +5980,7 @@ pub static ROUTES: &[&Route] = &[
     &GET_OVERDUE_TODOS,
     &GET_PERSON,
     &GET_PERSON_PROGRESS,
+    &GET_PING,
     &GET_PROGRESS_REPORT,
     &GET_PROJECT,
     &GET_PROJECT_CONSTRUCTION,
@@ -5981,6 +6037,7 @@ pub static ROUTES: &[&Route] = &[
     &LIST_MY_DRAFTS,
     &LIST_PEOPLE,
     &LIST_PINGABLE_PEOPLE,
+    &LIST_PINGS,
     &LIST_PROJECT_PEOPLE,
     &LIST_PROJECTS,
     &LIST_QUESTION_ANSWERERS,

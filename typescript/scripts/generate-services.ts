@@ -177,6 +177,7 @@ const TAG_TO_SERVICE: Record<string, string> = {
   ClientFeatures: "ClientFeatures",
   Boosts: "Boosts",
   Subtasks: "Subtasks",
+  Pings: "Pings",
   Untagged: "Miscellaneous",
 };
 
@@ -755,6 +756,7 @@ function isSimpleResource(resource: string): boolean {
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
     "subtask", "subtasks",
+    "ping", "pings",
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
   ];

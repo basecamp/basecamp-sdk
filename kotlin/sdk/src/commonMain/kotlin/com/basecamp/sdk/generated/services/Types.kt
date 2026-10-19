@@ -859,6 +859,12 @@ data class UpdateProjectAccessBody(
     val create: List<JsonObject>? = null
 )
 
+/** Request body for CreatePing. */
+data class CreatePingBody(
+    val userIds: List<Long>,
+    val newGroup: Boolean? = null
+)
+
 /** Options for ListProjects. */
 data class ListProjectsOptions(
     /** active|archived|trashed */

@@ -825,6 +825,21 @@ type CreatePersonRequest struct {
 	Title        *string `json:"title,omitempty"`
 }
 
+// CreatePingRequestContent defines model for CreatePingRequestContent.
+type CreatePingRequestContent struct {
+	// NewGroup Create a new group even when a Ping with exactly these people exists.
+	NewGroup *bool `json:"new_group,omitempty"`
+
+	// UserIds Person ids of the people to ping. People the caller cannot reach are
+	// dropped.
+	UserIds []int64 `json:"user_ids"`
+}
+
+// CreatePingResponseContent A Ping: a private conversation between people, held in its own bucket with
+// one Campfire. The Campfire's lines are read and written through the
+// Campfires service; `room_url` and `links.lines` name it.
+type CreatePingResponseContent = Ping
+
 // CreateProjectFromTemplateRequestContent defines model for CreateProjectFromTemplateRequestContent.
 type CreateProjectFromTemplateRequestContent struct {
 	Project ProjectConstructionAttributes `json:"project"`
@@ -1978,6 +1993,11 @@ type GetPersonProgressResponseContent struct {
 // GetPersonResponseContent defines model for GetPersonResponseContent.
 type GetPersonResponseContent = Person
 
+// GetPingResponseContent A Ping: a private conversation between people, held in its own bucket with
+// one Campfire. The Campfire's lines are read and written through the
+// Campfires service; `room_url` and `links.lines` name it.
+type GetPingResponseContent = Ping
+
 // GetProgressReportResponseContent defines model for GetProgressReportResponseContent.
 type GetProgressReportResponseContent = []TimelineEvent
 
@@ -2303,6 +2323,9 @@ type ListPeopleResponseContent = []Person
 
 // ListPingablePeopleResponseContent defines model for ListPingablePeopleResponseContent.
 type ListPingablePeopleResponseContent = []Person
+
+// ListPingsResponseContent defines model for ListPingsResponseContent.
+type ListPingsResponseContent = []Ping
 
 // ListProjectPeopleResponseContent defines model for ListProjectPeopleResponseContent.
 type ListProjectPeopleResponseContent = []Person
@@ -2660,6 +2683,60 @@ type Person struct {
 type PersonCompany struct {
 	Id   int64  `json:"id"`
 	Name string `json:"name"`
+}
+
+// Ping A Ping: a private conversation between people, held in its own bucket with
+// one Campfire. The Campfire's lines are read and written through the
+// Campfires service; `room_url` and `links.lines` name it.
+type Ping struct {
+	AppUrl      string    `json:"app_url"`
+	AvatarUrl   string    `json:"avatar_url"`
+	BookmarkUrl string    `json:"bookmark_url"`
+	CreatedAt   time.Time `json:"created_at"`
+
+	// EditTitleUrl Present only when the Ping can be renamed: one with more than one other
+	// person in it.
+	EditTitleUrl *string `json:"edit_title_url,omitempty"`
+
+	// Id The Ping's id, which is also its bucket's id.
+	Id int64 `json:"id"`
+
+	// ImageUrl The Ping's own image, present only when one was uploaded.
+	ImageUrl *string `json:"image_url,omitempty"`
+
+	// Links The Ping's Campfire endpoints, so a client need not derive them from
+	// `room_url`. The wire object also repeats `url`, `app_url`, `bookmark_url`
+	// and `edit_title_url` as `self`, `app`, `bookmark` and `edit_title`; those
+	// are read from the Ping's own fields.
+	Links PingLinks `json:"links"`
+
+	// Named Whether someone gave the Ping a name.
+	Named bool `json:"named"`
+
+	// People The people in the Ping other than the caller; the caller alone when
+	// nobody else is in it.
+	People []Person `json:"people"`
+
+	// RoomUrl The Ping's Campfire (`/buckets/{bucketId}/chats/{campfireId}.json`).
+	RoomUrl string `json:"room_url"`
+
+	// Title The Ping's name for the caller: its given name when `named`, else the
+	// names of the other people in it.
+	Title     string    `json:"title"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Url       string    `json:"url"`
+}
+
+// PingLinks The Ping's Campfire endpoints, so a client need not derive them from
+// `room_url`. The wire object also repeats `url`, `app_url`, `bookmark_url`
+// and `edit_title_url` as `self`, `app`, `bookmark` and `edit_title`; those
+// are read from the Ping's own fields.
+type PingLinks struct {
+	// Files The Campfire's uploads.
+	Files string `json:"files"`
+
+	// Lines The Campfire's lines (`/buckets/{bucketId}/chats/{campfireId}/lines.json`).
+	Lines string `json:"lines"`
 }
 
 // PollEventsResponseContent The poll envelope. Every 200 carries `events` and `position`; `next` only
@@ -5857,6 +5934,9 @@ type CreateCampfireLineJSONRequestBody = CreateCampfireLineRequestContent
 // UpdateCampfireLineJSONRequestBody defines body for UpdateCampfireLine for application/json ContentType.
 type UpdateCampfireLineJSONRequestBody = UpdateCampfireLineRequestContent
 
+// CreatePingJSONRequestBody defines body for CreatePing for application/json ContentType.
+type CreatePingJSONRequestBody = CreatePingRequestContent
+
 // UpdateCloudFileJSONRequestBody defines body for UpdateCloudFile for application/json ContentType.
 type UpdateCloudFileJSONRequestBody = UpdateCloudFileRequestContent
 
@@ -6882,8 +6962,19 @@ type ClientInterface interface {
 	// GetEverythingCheckins request
 	GetEverythingCheckins(ctx context.Context, accountId string, params *GetEverythingCheckinsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListPings request
+	ListPings(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePingWithBody request with any body
+	CreatePingWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreatePing(ctx context.Context, accountId string, body CreatePingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListPingablePeople request
 	ListPingablePeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPing request
+	GetPing(ctx context.Context, accountId string, pingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClientApproval request
 	GetClientApproval(ctx context.Context, accountId string, approvalId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8766,6 +8857,46 @@ func (c *Client) GetEverythingCheckins(ctx context.Context, accountId string, pa
 
 }
 
+// ListPings is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListPings(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListPingsRequest(c.Server, accountId)
+	}, true, "ListPings", reqEditors...)
+
+}
+
+// CreatePingWithBody executes the CreatePing operation.
+
+func (c *Client) CreatePingWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreatePingRequestWithBody(c.Server, accountId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreatePing(ctx context.Context, accountId string, body CreatePingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreatePingRequest(c.Server, accountId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
 // ListPingablePeople is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListPingablePeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -8773,6 +8904,16 @@ func (c *Client) ListPingablePeople(ctx context.Context, accountId string, reqEd
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListPingablePeopleRequest(c.Server, accountId)
 	}, true, "ListPingablePeople", reqEditors...)
+
+}
+
+// GetPing is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetPing(ctx context.Context, accountId string, pingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetPingRequest(c.Server, accountId, pingId)
+	}, true, "GetPing", reqEditors...)
 
 }
 
@@ -15735,6 +15876,87 @@ func NewGetEverythingCheckinsRequest(server string, accountId string, params *Ge
 	return req, nil
 }
 
+// NewListPingsRequest generates requests for ListPings
+func NewListPingsRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/circles.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreatePingRequest calls the generic CreatePing builder with application/json body
+func NewCreatePingRequest(server string, accountId string, body CreatePingJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreatePingRequestWithBody(server, accountId, "application/json", bodyReader)
+}
+
+// NewCreatePingRequestWithBody generates requests for CreatePing with any type of body
+func NewCreatePingRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/circles.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListPingablePeopleRequest generates requests for ListPingablePeople
 func NewListPingablePeopleRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -15752,6 +15974,47 @@ func NewListPingablePeopleRequest(server string, accountId string) (*http.Reques
 	}
 
 	operationPath := fmt.Sprintf("/%s/circles/people.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetPingRequest generates requests for GetPing
+func NewGetPingRequest(server string, accountId string, pingId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pingId", runtime.ParamLocationPath, pingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/circles/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -26998,7 +27261,10 @@ var operationMetadata = map[string]OperationMetadata{
 	"ListCampfireUploads":                {Idempotent: true, HasSensitiveParams: false},
 	"CreateCampfireUpload":               {Idempotent: false, HasSensitiveParams: false},
 	"GetEverythingCheckins":              {Idempotent: true, HasSensitiveParams: false},
+	"ListPings":                          {Idempotent: true, HasSensitiveParams: false},
+	"CreatePing":                         {Idempotent: false, HasSensitiveParams: false},
 	"ListPingablePeople":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetPing":                            {Idempotent: true, HasSensitiveParams: false},
 	"GetClientApproval":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetClientCorrespondence":            {Idempotent: true, HasSensitiveParams: false},
 	"GetCloudFile":                       {Idempotent: true, HasSensitiveParams: false},
@@ -27286,7 +27552,10 @@ var operationRetryMax = map[string]int{
 	"ListCampfireUploads":                3,
 	"CreateCampfireUpload":               3,
 	"GetEverythingCheckins":              3,
+	"ListPings":                          3,
+	"CreatePing":                         2,
 	"ListPingablePeople":                 3,
+	"GetPing":                            3,
 	"GetClientApproval":                  3,
 	"GetClientCorrespondence":            3,
 	"GetCloudFile":                       3,
@@ -27572,7 +27841,10 @@ var operationRetryOn = map[string][]int{
 	"ListCampfireUploads":                {429, 503},
 	"CreateCampfireUpload":               {429, 503},
 	"GetEverythingCheckins":              {429, 503},
+	"ListPings":                          {429, 503},
+	"CreatePing":                         {429, 503},
 	"ListPingablePeople":                 {429, 503},
+	"GetPing":                            {429, 503},
 	"GetClientApproval":                  {429, 503},
 	"GetClientCorrespondence":            {429, 503},
 	"GetCloudFile":                       {429, 503},
@@ -29155,8 +29427,19 @@ type ClientWithResponsesInterface interface {
 	// GetEverythingCheckinsWithResponse request
 	GetEverythingCheckinsWithResponse(ctx context.Context, accountId string, params *GetEverythingCheckinsParams, reqEditors ...RequestEditorFn) (*GetEverythingCheckinsResponse, error)
 
+	// ListPingsWithResponse request
+	ListPingsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingsResponse, error)
+
+	// CreatePingWithBodyWithResponse request with any body
+	CreatePingWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePingResponse, error)
+
+	CreatePingWithResponse(ctx context.Context, accountId string, body CreatePingJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePingResponse, error)
+
 	// ListPingablePeopleWithResponse request
 	ListPingablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error)
+
+	// GetPingWithResponse request
+	GetPingWithResponse(ctx context.Context, accountId string, pingId int64, reqEditors ...RequestEditorFn) (*GetPingResponse, error)
 
 	// GetClientApprovalWithResponse request
 	GetClientApprovalWithResponse(ctx context.Context, accountId string, approvalId int64, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error)
@@ -32328,6 +32611,74 @@ func (r GetEverythingCheckinsResponse) ContentType() string {
 	return ""
 }
 
+type ListPingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListPingsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreatePingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreatePingResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreatePingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreatePingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreatePingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListPingablePeopleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -32356,6 +32707,41 @@ func (r ListPingablePeopleResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListPingablePeopleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetPingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetPingResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPingResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -40351,6 +40737,32 @@ func (c *ClientWithResponses) GetEverythingCheckinsWithResponse(ctx context.Cont
 	return ParseGetEverythingCheckinsResponse(rsp)
 }
 
+// ListPingsWithResponse request returning *ListPingsResponse
+func (c *ClientWithResponses) ListPingsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingsResponse, error) {
+	rsp, err := c.ListPings(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPingsResponse(rsp)
+}
+
+// CreatePingWithBodyWithResponse request with arbitrary body returning *CreatePingResponse
+func (c *ClientWithResponses) CreatePingWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePingResponse, error) {
+	rsp, err := c.CreatePingWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePingResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreatePingWithResponse(ctx context.Context, accountId string, body CreatePingJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePingResponse, error) {
+	rsp, err := c.CreatePing(ctx, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePingResponse(rsp)
+}
+
 // ListPingablePeopleWithResponse request returning *ListPingablePeopleResponse
 func (c *ClientWithResponses) ListPingablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error) {
 	rsp, err := c.ListPingablePeople(ctx, accountId, reqEditors...)
@@ -40358,6 +40770,15 @@ func (c *ClientWithResponses) ListPingablePeopleWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseListPingablePeopleResponse(rsp)
+}
+
+// GetPingWithResponse request returning *GetPingResponse
+func (c *ClientWithResponses) GetPingWithResponse(ctx context.Context, accountId string, pingId int64, reqEditors ...RequestEditorFn) (*GetPingResponse, error) {
+	rsp, err := c.GetPing(ctx, accountId, pingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPingResponse(rsp)
 }
 
 // GetClientApprovalWithResponse request returning *GetClientApprovalResponse
@@ -46476,6 +46897,109 @@ func ParseGetEverythingCheckinsResponse(rsp *http.Response) (*GetEverythingCheck
 	return response, nil
 }
 
+// ParseListPingsResponse parses an HTTP response from a ListPingsWithResponse call
+func ParseListPingsResponse(rsp *http.Response) (*ListPingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListPingsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreatePingResponse parses an HTTP response from a CreatePingWithResponse call
+func ParseCreatePingResponse(rsp *http.Response) (*CreatePingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreatePingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreatePingResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case rsp.StatusCode == 422:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseListPingablePeopleResponse parses an HTTP response from a ListPingablePeopleWithResponse call
 func ParseListPingablePeopleResponse(rsp *http.Response) (*ListPingablePeopleResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -46507,6 +47031,62 @@ func ParseListPingablePeopleResponse(rsp *http.Response) (*ListPingablePeopleRes
 		var dest ForbiddenErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPingResponse parses an HTTP response from a GetPingWithResponse call
+func ParseGetPingResponse(rsp *http.Response) (*GetPingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetPingResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:

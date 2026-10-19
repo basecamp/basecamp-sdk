@@ -155,6 +155,10 @@ val AccountClient.myNotifications: MyNotificationsService
 val AccountClient.people: PeopleService
     get() = service("People") { PeopleService(this) }
 
+/** Pings operations. */
+val AccountClient.pings: PingsService
+    get() = service("Pings") { PingsService(this) }
+
 /** Projects operations. */
 val AccountClient.projects: ProjectsService
     get() = service("Projects") { ProjectsService(this) }
