@@ -2232,6 +2232,10 @@ class UpdateAccountNameRequestContent(TypedDict):
     name: str
 
 
+class UpdateBoostRequestContent(TypedDict):
+    content: str
+
+
 class UpdateCalendarRequestContent(TypedDict):
     calendar: CalendarAttributes
 

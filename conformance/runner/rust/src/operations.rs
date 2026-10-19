@@ -807,6 +807,12 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             unit(account.my_assignments().reorder_up_next(&request).await)
         }
         "GetCalendar" => unit(account.calendars().get_calendar(id("calendarId")).await),
+        "UpdateBoost" => {
+            let request = UpdateBoostRequestContent {
+                content: string_param(body, "content"),
+            };
+            unit(account.boosts().update(id("boostId"), &request).await)
+        }
         "UpdateCalendar" => {
             let color = body
                 .get("calendar")

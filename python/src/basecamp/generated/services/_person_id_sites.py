@@ -494,6 +494,7 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     "SetClientVisibility": (("creator",),),
     "SpotlightRecording": (("creator",),),
     "Subscribe": (("subscribers", "[]"),),
+    "UpdateBoost": (("booster",),),
     "UpdateCard": (
         ("assignees", "[]"),
         ("completer",),

@@ -24,6 +24,25 @@ class BoostsService(BaseService):
             operation="GetBoost",
         )
 
+    def update_boost(self, *, boost_id: int, content: str) -> dict[str, Any]:
+        """Replace the content of a boost. Only the boost's creator may update it: an
+        admin updating someone else's boost gets 403 Forbidden, as does any caller
+        when comments are closed on the boosted recording. A boost on a deleted
+        recording, or in another account, answers 404. A missing or invalid
+        `content` answers a bodiless 422. There is no bucket-scoped route.
+
+        Args:
+            boost_id: The boost id.
+            content: The content.
+        """
+        return self._request(
+            OperationInfo(service="boosts", operation="update_boost", is_mutation=True, resource_id=boost_id),
+            "PUT",
+            f"/boosts/{boost_id}",
+            json_body=self._compact(content=content),
+            operation="UpdateBoost",
+        )
+
     def delete_boost(self, *, boost_id: int) -> None:
         """Delete a boost.
 
@@ -128,6 +147,25 @@ class AsyncBoostsService(AsyncBaseService):
             "GET",
             f"/boosts/{boost_id}",
             operation="GetBoost",
+        )
+
+    async def update_boost(self, *, boost_id: int, content: str) -> dict[str, Any]:
+        """Replace the content of a boost. Only the boost's creator may update it: an
+        admin updating someone else's boost gets 403 Forbidden, as does any caller
+        when comments are closed on the boosted recording. A boost on a deleted
+        recording, or in another account, answers 404. A missing or invalid
+        `content` answers a bodiless 422. There is no bucket-scoped route.
+
+        Args:
+            boost_id: The boost id.
+            content: The content.
+        """
+        return await self._request(
+            OperationInfo(service="boosts", operation="update_boost", is_mutation=True, resource_id=boost_id),
+            "PUT",
+            f"/boosts/{boost_id}",
+            json_body=self._compact(content=content),
+            operation="UpdateBoost",
         )
 
     async def delete_boost(self, *, boost_id: int) -> None:

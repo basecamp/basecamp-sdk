@@ -1188,6 +1188,11 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Calendars().Get(ctx, calendarID)
 		return operationResult{err: err}
 
+	case "UpdateBoost":
+		boostID := getInt64Param(tc.PathParams, "boostId")
+		_, err := account.Boosts().Update(ctx, boostID, getStringParam(tc.RequestBody, "content"))
+		return operationResult{err: err}
+
 	case "UpdateCalendar":
 		calendarID := getInt64Param(tc.PathParams, "calendarId")
 		color := ""

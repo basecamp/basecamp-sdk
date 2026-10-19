@@ -500,6 +500,81 @@ func TestBoostsService_CreateEvent(t *testing.T) {
 	}
 }
 
+func TestUpdateBoost_EmptyContent(t *testing.T) {
+	svc := newTestBoostsService()
+	_, err := svc.Update(context.Background(), 2, "")
+	if err == nil {
+		t.Fatal("expected error for empty content")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
+func TestBoostsService_Update(t *testing.T) {
+	var receivedBody map[string]string
+	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/boosts/500" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(loadBoostsFixture(t, "get.json"))
+	})
+
+	boost, err := svc.Update(context.Background(), 500, "Done!")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if boost.ID != 1069479500 {
+		t.Errorf("expected ID 1069479500, got %d", boost.ID)
+	}
+	if receivedBody["content"] != "Done!" {
+		t.Errorf("expected request body content 'Done!', got %q", receivedBody["content"])
+	}
+	if len(receivedBody) != 1 {
+		t.Errorf("expected only content in the request body, got %v", receivedBody)
+	}
+}
+
+func TestBoostsService_Update_Errors(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		code   string
+	}{
+		{"forbidden", 403, CodeForbidden},
+		{"not found", 404, CodeNotFound},
+		{"unprocessable", 422, CodeValidation},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.status)
+			})
+
+			boost, err := svc.Update(context.Background(), 500, "Done!")
+			if err == nil {
+				t.Fatalf("expected error for %d", tt.status)
+			}
+			if boost != nil {
+				t.Errorf("expected nil boost, got %+v", boost)
+			}
+			apiErr, ok := errors.AsType[*Error](err)
+			if !ok || apiErr.Code != tt.code {
+				t.Errorf("expected %s error, got: %v", tt.code, err)
+			}
+		})
+	}
+}
+
 func TestBoostsService_Delete(t *testing.T) {
 	svc := testBoostsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "DELETE" {

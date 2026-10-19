@@ -24,6 +24,11 @@ data class ListMyBookmarksOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
+/** Request body for UpdateBoost. */
+data class UpdateBoostBody(
+    val content: String
+)
+
 /** Options for ListRecordingBoosts. */
 data class ListRecordingBoostsOptions(
     /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */

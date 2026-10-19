@@ -117,12 +117,28 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `b1f18fd182b` (2026-10-19). <!-- @bc3-pin -->
+> The provenance pin is `4958288166a` (2026-10-19). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
+>
+> The `b1f18fd182b..4958288166a` range is two files under `doc/api` and one new
+> route. BC3 **#13945** documents `PUT /boosts/:id.json` in
+> `boosts.md` ("Update a boost"), replacing a boost's `content`: creator only
+> (admins included get `403`, as does a boosted recording with comments
+> closed), `404` for a deleted recording or another account, a bodiless `422`
+> for missing, blank or invalid `content`, and `200` with the boost. The flat
+> route only; the legacy bucket-scoped boost routes get no update. **Absorbed**
+> in the same change as this repin, as `UpdateBoost` on the `Boosts` service, so
+> there is nothing to register. The same range rewords `CreateBoost`: the docs
+> no longer state the 191-character limit and the `422` for too long, and say
+> instead that the web app limits boosts to 16 characters and that `422` means
+> a missing `content`. That supersedes the 191-character note recorded in the
+> range below. The SDK keeps the `@length(max: 16)` it already puts on both
+> create inputs and adds no length limit to `UpdateBoost`. The `README.md` change adds
+> that an agent may update a boost it created.
 >
 > The `66d387b62fb..b1f18fd182b` range is **1634 commits** by `git log`, read
 > from a local bc3 checkout. Twenty-five files under `doc/api` change, and the

@@ -18,6 +18,14 @@ import { Errors } from "../../errors.js";
 export type Boost = components["schemas"]["Boost"];
 
 /**
+ * Request parameters for update.
+ */
+export interface UpdateBoostRequest {
+  /** Text content */
+  content: string;
+}
+
+/**
  * Options for listForRecording.
  */
 export interface ListForRecordingBoostOptions extends PaginationOptions {
@@ -83,6 +91,43 @@ export class BoostsService extends BaseService {
         this.client.GET("/boosts/{boostId}", {
           params: {
             path: { boostId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Replace the content of a boost. Only the boost's creator may update it: an
+   * @param boostId - The boost ID
+   * @param req - Boost update parameters
+   * @returns The Boost
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.boosts.update(123, { content: "Hello world" });
+   * ```
+   */
+  async update(boostId: number, req: UpdateBoostRequest): Promise<Boost> {
+    if (!req.content) {
+      throw Errors.validation("Content is required");
+    }
+    const response = await this.request(
+      {
+        service: "Boosts",
+        operation: "UpdateBoost",
+        resourceType: "boost",
+        isMutation: true,
+        resourceId: boostId,
+      },
+      () =>
+        this.client.PUT("/boosts/{boostId}", {
+          params: {
+            path: { boostId },
+          },
+          body: {
+            content: req.content,
           },
         })
     );

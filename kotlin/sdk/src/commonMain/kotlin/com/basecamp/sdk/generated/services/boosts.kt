@@ -33,6 +33,29 @@ class BoostsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Replace the content of a boost. Only the boost's creator may update it: an
+     * @param boostId The boost ID
+     * @param body Request body
+     */
+    suspend fun update(boostId: Long, body: UpdateBoostBody): Boost {
+        val info = OperationInfo(
+            service = "Boosts",
+            operation = "UpdateBoost",
+            resourceType = "boost",
+            isMutation = true,
+            projectId = null,
+            resourceId = boostId,
+        )
+        return request(info, {
+            httpPut("/boosts/${boostId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("content", kotlinx.serialization.json.JsonPrimitive(body.content))
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Boost>(body)
+        }
+    }
+
+    /**
      * Delete a boost
      * @param boostId The boost ID
      */

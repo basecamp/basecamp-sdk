@@ -675,6 +675,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "Subscribe": [
     "subscribers.[]"
   ],
+  "UpdateBoost": [
+    "booster"
+  ],
   "UpdateCard": [
     "assignees.[]",
     "completer",

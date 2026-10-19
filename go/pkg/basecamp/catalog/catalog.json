@@ -12617,6 +12617,58 @@
       "bodyRequired": true
     },
     {
+      "operationId": "UpdateBoost",
+      "tag": "Boosts",
+      "method": "PUT",
+      "path": "/{accountId}/boosts/{boostId}",
+      "doc": "Replace the content of a boost. Only the boost's creator may update it: an\nadmin updating someone else's boost gets 403 Forbidden, as does any caller\nwhen comments are closed on the boosted recording. A boost on a deleted\nrecording, or in another account, answers 404. A missing or invalid\n`content` answers a bodiless 422. There is no bucket-scoped route.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "boostId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "type": "object"
+      },
+      "bodyRequired": true
+    },
+    {
       "operationId": "UpdateCalendar",
       "tag": "Calendars",
       "method": "PUT",

@@ -987,6 +987,10 @@ async function executeOperation(
         await client.calendars.getCalendar(Number(params.calendarId));
         break;
 
+      case "UpdateBoost":
+        await client.boosts.update(Number(params.boostId), { content: body.content as string });
+        break;
+
       case "UpdateCalendar":
         await client.calendars.updateCalendar(Number(params.calendarId), {
           calendar: body.calendar as { color: string },

@@ -910,6 +910,12 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         _ = try await account.calendars.getCalendar(calendarId: pathParams.longParam("calendarId"))
         return DispatchResult()
 
+    case "UpdateBoost":
+        _ = try await account.boosts.update(
+            boostId: pathParams.longParam("boostId"),
+            req: UpdateBoostRequest(content: rb.stringParam("content")))
+        return DispatchResult()
+
     case "UpdateCalendar":
         let calendar = rb?["calendar"]?.objectValue
         _ = try await account.calendars.updateCalendar(

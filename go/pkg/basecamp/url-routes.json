@@ -61,7 +61,8 @@
       "resource": "Boosts",
       "operations": {
         "DELETE": "DeleteBoost",
-        "GET": "GetBoost"
+        "GET": "GetBoost",
+        "PUT": "UpdateBoost"
       },
       "params": {
         "accountId": {

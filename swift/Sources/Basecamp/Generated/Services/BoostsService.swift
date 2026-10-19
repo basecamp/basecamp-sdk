@@ -90,4 +90,14 @@ public final class BoostsService: BaseService, @unchecked Sendable {
             retryConfig: Metadata.retryConfig(for: "ListRecordingBoosts")
         )
     }
+
+    public func update(boostId: Int, req: UpdateBoostRequest) async throws -> Boost {
+        return try await request(
+            OperationInfo(service: "Boosts", operation: "UpdateBoost", resourceType: "boost", isMutation: true, resourceId: boostId),
+            method: "PUT",
+            path: "/boosts/\(boostId)",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "UpdateBoost")
+        )
+    }
 }

@@ -548,6 +548,8 @@ class OperationMapper
       @account.my_assignments.reorder_up_next(source_id: body["source_id"], position: body["position"])
     when "GetCalendar"
       @account.calendars.get_calendar(calendar_id: path_params["calendarId"])
+    when "UpdateBoost"
+      @account.boosts.update_boost(boost_id: path_params["boostId"], content: body["content"])
     when "UpdateCalendar"
       @account.calendars.update_calendar(calendar_id: path_params["calendarId"], calendar: body["calendar"])
     when "UpdateMyNote"

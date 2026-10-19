@@ -291,6 +291,7 @@ service Basecamp {
     GetBoost,
     CreateRecordingBoost,
     CreateEventBoost,
+    UpdateBoost,
     DeleteBoost,
 
     // Batch 13 - Account
@@ -11134,6 +11135,38 @@ structure CreateEventBoostInput {
 }
 
 structure CreateEventBoostOutput {
+  boost: Boost
+}
+
+/// Replace the content of a boost. Only the boost's creator may update it: an
+/// admin updating someone else's boost gets 403 Forbidden, as does any caller
+/// when comments are closed on the boosted recording. A boost on a deleted
+/// recording, or in another account, answers 404. A missing or invalid
+/// `content` answers a bodiless 422. There is no bucket-scoped route.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/boosts/{boostId}")
+operation UpdateBoost {
+  input: UpdateBoostInput
+  output: UpdateBoostOutput
+  errors: [NotFoundError, BareValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UpdateBoostInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  boostId: BoostId
+
+  @required
+  content: String
+}
+
+structure UpdateBoostOutput {
   boost: Boost
 }
 
