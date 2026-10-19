@@ -12,7 +12,7 @@ smithy_refs:
   - PingLinks
   - BareValidationError
 bc3_refs:
-  introduced_in: "Circle creation over JSON (BC3 #9949, 74320ef45b3) with app/views/api/circles/ show and create partials; the index template and doc/api/sections/pings.md arrive in BC3 #13943, open at absorption"
+  introduced_in: "Circle creation over JSON (BC3 #9949, 74320ef45b3) with app/views/api/circles/ show and create partials; the index template and doc/api/sections/pings.md arrive in BC3 #13943, merged 2026-10-19"
   routes:
     - GET /:account_id/circles.json
     - GET /:account_id/circles/:id.json
@@ -75,19 +75,20 @@ cannot ping.
 
 ## Implementation notes for BC3
 
-The routes are drawn and served on BC3 master (`resources :circles`,
+The routes were drawn and served on BC3 master (`resources :circles`,
 `CirclesController`, `allow_agent_principal` on index, show and create), and
-`GetPing` was verified against production on 2026-10-19. BC3 #13943 adds the
-API index template and `doc/api/sections/pings.md`. A Ping payload carries no
+`GetPing` was verified against production on 2026-10-19. BC3 #13943 (merged
+2026-10-19) added the API index template and `doc/api/sections/pings.md`, so
+all three routes are now documented upstream. A Ping payload carries no
 Campfire id of its own, so clients read it from `room_url`; a `room_id` member
 would spare that, and is not required.
 
 ## SDK absorption plan when this lands
 
-Absorbed ahead of BC3 #13943's merge. Until a repin past that merge,
-`spec/bc3-route-allowlist.yml` carries the three routes under
-`sdk_routes_absent_from_bc3_docs`; the repin deletes them, and the route-parity
-gate reports them stale if it does not.
+Absorbed ahead of BC3 #13943's merge, then repinned past it. The three routes
+now come from the documented route table (`spec/bc3-routes.json`), and the
+temporary `sdk_routes_absent_from_bc3_docs` entries that carried them in
+`spec/bc3-route-allowlist.yml` are deleted.
 
 Discovery now reads the bucket's own Campfire: the dock for a project, and for
 a bucket whose project read 404s, the Ping read, cached per bucket under the
