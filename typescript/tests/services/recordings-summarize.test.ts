@@ -1495,6 +1495,30 @@ describe("recordings.summarize", () => {
       }
     });
 
+    it("refuses a Ping whose room_url is not text, rather than caching it as no Campfire", async () => {
+      for (const bad of [42, {}, false, ["x"]]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        let listings = 0;
+        server.use(
+          http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+          http.get(`${BASE_URL}/circles/${BUCKET}`, () => HttpResponse.json({ ...ping(BUCKET, ""), room_url: bad })),
+          http.get(`${BASE_URL}/chats.json`, () => {
+            listings++;
+            return HttpResponse.json([]);
+          }),
+        );
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+          .catch((e: unknown) => e);
+        const label = JSON.stringify(bad);
+        expect(err, label).toBeInstanceOf(BasecampError);
+        expect(err, label).not.toBeInstanceOf(UnresolvedRecordingError);
+        expect((err as BasecampError).message, label).toContain("room_url");
+        expect((err as BasecampError).hint, label).toContain("Campfire");
+        expect(listings, label).toBe(0);
+      }
+    });
+
     it("reads the Ping's Campfire id from either room_url spelling", async () => {
       for (const url of [roomUrl(BUCKET, 88), `${BASE_URL}/chats/88.json`, `${BASE_URL}/buckets/${BUCKET}/chats/88`]) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });

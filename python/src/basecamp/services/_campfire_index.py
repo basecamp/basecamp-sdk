@@ -671,7 +671,13 @@ def _ping_campfire_ids(ping: Any) -> list[int]:
     optional ``.json``) yields no candidates; a lines or todos URL never does.
     """
     room_url = decoded_string(decoded_object(ping, "the ping").get("room_url"), "a ping room_url")
-    match = _CAMPFIRE_ROOM_PATH.fullmatch(urlsplit(room_url).path)
+    try:
+        path = urlsplit(room_url).path
+    except ValueError:
+        # Go's route table answers an unparseable URL with no match, so it names
+        # no Campfire here either, rather than leaking the parser's exception.
+        return []
+    match = _CAMPFIRE_ROOM_PATH.fullmatch(path)
     if match is None:
         return []
     campfire_id = int(match.group(1))

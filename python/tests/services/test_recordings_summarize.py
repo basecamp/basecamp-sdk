@@ -845,6 +845,21 @@ class TestChatLineDiscovery:
         assert not wrong.called
 
     @respx.mock
+    def test_a_room_url_the_parser_rejects_falls_through_to_the_listing(self):
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/circles/{BUCKET}").mock(
+            return_value=httpx.Response(200, json={**_ping(None), "room_url": "https://[broken"})
+        )
+        respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(200, json=[_campfire(5)]))
+        respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 5
+
+    @respx.mock
     def test_more_candidates_than_the_budget_is_incomplete_never_unresolved(self):
         # Nothing left unsearched is ever reported absent.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
@@ -1470,6 +1485,22 @@ class TestAsync:
 
         with pytest.raises(ForbiddenError):
             await account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+
+    @respx.mock
+    async def test_a_room_url_the_parser_rejects_falls_through_to_the_listing(self):
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/circles/{BUCKET}").mock(
+            return_value=httpx.Response(200, json={**_ping(None), "room_url": "https://[broken"})
+        )
+        respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(200, json=[_campfire(5)]))
+        respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
+        account = AsyncClient(access_token="test-token").for_account(ACCOUNT)
+
+        summary = await account.recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 5
 
     @respx.mock
     async def test_unresolved_is_its_own_identity(self):

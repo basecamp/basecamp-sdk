@@ -81,6 +81,23 @@ func TestPingsService_List_NoContent(t *testing.T) {
 	}
 }
 
+func TestPingsService_List_PingsDisabled(t *testing.T) {
+	svc := testPingsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"Pings have been disabled"}`))
+	})
+
+	pings, err := svc.List(context.Background())
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeForbidden {
+		t.Errorf("expected %s, got: %v", CodeForbidden, err)
+	}
+	if pings != nil {
+		t.Errorf("expected no pings with the error, got %#v", pings)
+	}
+}
+
 func TestPingsService_Get(t *testing.T) {
 	svc := testPingsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" || r.URL.Path != "/99999/circles/2085958600" {

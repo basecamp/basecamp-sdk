@@ -844,7 +844,8 @@ async function pingCampfires(sources: RecordingReadSources, bucketId: number): P
     if (isNotFound(err)) return [];
     throw err;
   }
-  const id = campfireIdFromRoomUrl(sourceObject(ping, "the Ping read").room_url);
+  const roomUrl = recordingText(sourceObject(ping, "the Ping read").room_url, "a Ping room_url", DISCOVERY_HINT);
+  const id = campfireIdFromRoomUrl(roomUrl);
   return id === undefined ? [] : [id];
 }
 
@@ -854,8 +855,7 @@ async function pingCampfires(sources: RecordingReadSources, bucketId: number): P
  * names no Campfire. An id that cannot be held exactly is refused rather than
  * rounded into another Campfire's.
  */
-function campfireIdFromRoomUrl(roomUrl: unknown): number | undefined {
-  if (typeof roomUrl !== "string") return undefined;
+function campfireIdFromRoomUrl(roomUrl: string): number | undefined {
   let pathname: string;
   try {
     pathname = new URL(roomUrl).pathname;

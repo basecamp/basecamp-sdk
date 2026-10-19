@@ -1091,6 +1091,12 @@ class TestPingCampfireId:
 
         assert _ping_campfire_ids({"room_url": room_url}) == expected
 
+    @pytest.mark.parametrize("room_url", ["https://[broken", "http://[::1/chats/3.json", "https://[/chats/3"])
+    def test_a_room_url_the_parser_rejects_names_no_campfire(self, room_url):
+        from basecamp.services._campfire_index import _ping_campfire_ids
+
+        assert _ping_campfire_ids({"room_url": room_url}) == []
+
     @pytest.mark.parametrize("ping", [None, {}, {"room_url": None}])
     def test_a_null_or_absent_room_url_names_no_campfire(self, ping):
         from basecamp.services._campfire_index import _ping_campfire_ids

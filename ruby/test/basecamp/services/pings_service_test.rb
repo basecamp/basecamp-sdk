@@ -35,6 +35,12 @@ class PingsServiceTest < Minitest::Test
     assert_equal [], @account.pings.list
   end
 
+  def test_list_forbidden_when_pings_are_disabled
+    stub_get("/12345/circles.json", status: 403, response_body: { "error" => "Pings have been disabled" })
+
+    assert_raises(Basecamp::ForbiddenError) { @account.pings.list }
+  end
+
   def test_get
     stub_get("/12345/circles/2085958600", response_body: load_fixture("pings/get.json"))
 
