@@ -19,6 +19,23 @@ updates:
         exclude-patterns:
           - "github.com/basecamp/*"
           - "go.opentelemetry.io/*"
+    ignore:
+      # client_golang's requirement in go/go.mod is a floor, not a pin: as a
+      # library, whatever we require is forced on every downstream app by MVS
+      # (1.25.0 changed api/prometheus/v1 signatures, #997). Raise it only when
+      # the SDK starts using a newer API or the floor has a known vulnerability.
+      # Compatibility with the latest release is tested instead by the "Go Tests
+      # (latest dependencies)" job in .github/workflows/test.yml.
+      #
+      # Security updates still come: for them dependabot-core honours only an
+      # ignore's `versions` list and skips update-types (IgnoreCondition#
+      # ignored_versions, `return versions if security_updates_only`), so leave
+      # `versions` off this entry or a vulnerable floor loses its security PR.
+      - dependency-name: "github.com/prometheus/client_golang"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
     commit-message:
       prefix: "deps(go):"
     labels:

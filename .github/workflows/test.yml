@@ -559,6 +559,71 @@ jobs:
         working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
+  # go/go.mod states floors, not pins. As a library, every version it requires
+  # is forced on downstream apps by MVS, so it should require no more than the
+  # SDK's own use of each dependency needs (prometheus/client_golang: #997), and
+  # the "Go Tests" job above tests exactly those versions. This job tests the other end: the
+  # same module with every dependency upgraded to its latest release, so an
+  # upstream release that breaks the SDK fails here before a consumer finds it.
+  # Dependabot no longer proposes client_golang floor raises; this job is how we
+  # learn about new releases instead.
+  #
+  # It upgrades in the runner's checkout and commits nothing. It is not a
+  # required check: an upstream release can turn it red with no change in the
+  # PR under test, and whether that should block merges is a separate call.
+  test-go-latest:
+    name: Go Tests (latest dependencies)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: go
+    env:
+      # The module alone, as a consumer resolves it. In workspace mode `go get`
+      # would also have to reconcile go.work.sum and the sibling modules, which
+      # downstream apps never see.
+      GOWORK: "off"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go/go.mod'
+          # The cache key hashes the committed go.sum, which the upgrade below
+          # makes stale; saving the latest-versions module cache under the floor
+          # job's key would only waste it.
+          cache: false
+
+      - name: Upgrade dependencies to latest
+        # -u ./... raises every module the SDK's packages import, directly or
+        # not, to its latest minor or patch release; client_golang is named
+        # again so the job keeps testing it should it ever stop being imported
+        # from a package -u reaches. Tools (oapi-codegen) stay at their pins:
+        # they generate code here and never reach a consumer.
+        run: |
+          go get -u ./...
+          go get github.com/prometheus/client_golang@latest
+          go mod tidy
+          echo "Upgraded from the committed floors:"
+          git diff --unified=0 -- go.mod | grep '^[-+]	' || echo "(nothing newer than the floors)"
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      # No "Dependency manifests unchanged by this job" step, unlike every other
+      # job: rewriting go.mod and go.sum is this job's purpose, and the runner's
+      # checkout is discarded with them. The floor job above keeps that guard.
+
   test-typescript:
     name: TypeScript Tests
     runs-on: ubuntu-latest
