@@ -5,7 +5,7 @@
   "source": {
     "repo": "basecamp/bc3",
     "branch": "master",
-    "revision": "b1f18fd182bd37c752881b98468dfb66c10b0ee9",
+    "revision": "4958288166a19b98894fce8d7deb5edbdd34424b",
     "date": "2026-10-19",
     "extracted_from": [
       "doc/api/sections/*.md"
@@ -3799,6 +3799,17 @@
       "evidence": [
         "bullet",
         "example-marker"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/boosts/:id",
+      "raw": "/boosts/2.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet"
       ]
     },
     {

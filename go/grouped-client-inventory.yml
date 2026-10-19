@@ -384,6 +384,7 @@ not_grouped:
   - UnsubscribeFromCardColumn
   - UpdateAccountLogo
   - UpdateAccountName
+  - UpdateBoost
   - UpdateAnswer
   - UpdateCalendar
   - UpdateCampfireLine

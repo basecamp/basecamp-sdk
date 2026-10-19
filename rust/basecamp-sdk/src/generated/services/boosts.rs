@@ -122,4 +122,21 @@ impl<'a> BoostsService<'a> {
         operation.query_optional("page", params.page.as_ref());
         self.client.send_page(operation).await
     }
+
+    /// Replace the content of a boost. Only the boost's creator may update it: an
+    /// admin updating someone else's boost gets 403 Forbidden, as does any caller
+    /// when comments are closed on the boosted recording. A boost on a deleted
+    /// recording, or in another account, answers 404. A missing or invalid
+    /// `content` answers a bodiless 422. There is no bucket-scoped route.
+    ///
+    /// `PUT /boosts/{boostId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn update(
+        &self,
+        boost_id: i64,
+        body: &UpdateBoostRequestContent,
+    ) -> Result<UpdateBoostResponseContent, Error> {
+        let mut operation = self.client.operation(&routes::UPDATE_BOOST, &[&boost_id]);
+        operation.json(body)?;
+        self.client.send(operation).await
+    }
 }

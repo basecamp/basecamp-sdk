@@ -60,6 +60,54 @@ describe("BoostsService", () => {
     });
   });
 
+  describe("update", () => {
+    it("should replace the content of a boost", async () => {
+      let received: Record<string, unknown> | undefined;
+      server.use(
+        http.put(`${BASE_URL}/boosts/42`, async ({ request }) => {
+          received = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ ...sampleBoost(42), content: "Done!" });
+        })
+      );
+
+      const boost = await client.boosts.update(42, { content: "Done!" });
+      expect(boost.id).toBe(42);
+      expect(boost.content).toBe("Done!");
+      expect(received).toEqual({ content: "Done!" });
+    });
+
+    it("should reject missing content before any request", async () => {
+      let reached = false;
+      server.use(
+        http.put(`${BASE_URL}/boosts/42`, () => {
+          reached = true;
+          return HttpResponse.json(sampleBoost(42));
+        })
+      );
+
+      const err = await client.boosts
+        .update(42, {} as { content: string })
+        .catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe("validation");
+      expect(reached).toBe(false);
+    });
+
+    it.each([
+      [403, "forbidden"],
+      [404, "not_found"],
+      [422, "validation"],
+    ])("should throw %i as %s", async (status, code) => {
+      server.use(
+        http.put(`${BASE_URL}/boosts/42`, () => new HttpResponse(null, { status }))
+      );
+
+      const err = await client.boosts.update(42, { content: "Done!" }).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe(code);
+    });
+  });
+
   describe("deleteBoost", () => {
     it("should delete a boost", async () => {
       server.use(

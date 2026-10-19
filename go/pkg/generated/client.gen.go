@@ -4556,6 +4556,14 @@ type UpdateAccountNameRequestContent struct {
 // UpdateAccountNameResponseContent defines model for UpdateAccountNameResponseContent.
 type UpdateAccountNameResponseContent = Account
 
+// UpdateBoostRequestContent defines model for UpdateBoostRequestContent.
+type UpdateBoostRequestContent struct {
+	Content string `json:"content"`
+}
+
+// UpdateBoostResponseContent defines model for UpdateBoostResponseContent.
+type UpdateBoostResponseContent = Boost
+
 // UpdateCalendarRequestContent defines model for UpdateCalendarRequestContent.
 type UpdateCalendarRequestContent struct {
 	// Calendar The writable calendar payload — the wire body is the nested
@@ -5856,6 +5864,9 @@ type UpdateAccountLogoMultipartRequestBody UpdateAccountLogoMultipartBody
 // UpdateAccountNameJSONRequestBody defines body for UpdateAccountName for application/json ContentType.
 type UpdateAccountNameJSONRequestBody = UpdateAccountNameRequestContent
 
+// UpdateBoostJSONRequestBody defines body for UpdateBoost for application/json ContentType.
+type UpdateBoostJSONRequestBody = UpdateBoostRequestContent
+
 // SetCardColumnColorJSONRequestBody defines body for SetCardColumnColor for application/json ContentType.
 type SetCardColumnColorJSONRequestBody = SetCardColumnColorRequestContent
 
@@ -6720,6 +6731,11 @@ type ClientInterface interface {
 
 	// GetBoost request
 	GetBoost(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateBoostWithBody request with any body
+	UpdateBoostWithBody(ctx context.Context, accountId string, boostId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateBoost(ctx context.Context, accountId string, boostId int64, body UpdateBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetCardColumnColorWithBody request with any body
 	SetCardColumnColorWithBody(ctx context.Context, accountId string, bucketId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -7818,6 +7834,24 @@ func (c *Client) GetBoost(ctx context.Context, accountId string, boostId int64, 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetBoostRequest(c.Server, accountId, boostId)
 	}, true, "GetBoost", reqEditors...)
+
+}
+
+// UpdateBoostWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateBoostWithBody(ctx context.Context, accountId string, boostId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateBoostRequestWithBody(c.Server, accountId, boostId, contentType, body)
+	}, true, "UpdateBoost", reqEditors...)
+
+}
+
+func (c *Client) UpdateBoost(ctx context.Context, accountId string, boostId int64, body UpdateBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateBoostRequest(c.Server, accountId, boostId, body)
+	}, true, "UpdateBoost", reqEditors...)
 
 }
 
@@ -12172,6 +12206,60 @@ func NewGetBoostRequest(server string, accountId string, boostId int64) (*http.R
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewUpdateBoostRequest calls the generic UpdateBoost builder with application/json body
+func NewUpdateBoostRequest(server string, accountId string, boostId int64, body UpdateBoostJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateBoostRequestWithBody(server, accountId, boostId, "application/json", bodyReader)
+}
+
+// NewUpdateBoostRequestWithBody generates requests for UpdateBoost with any type of body
+func NewUpdateBoostRequestWithBody(server string, accountId string, boostId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "boostId", runtime.ParamLocationPath, boostId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/boosts/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -27198,6 +27286,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateAttachment":                   {Idempotent: false, HasSensitiveParams: false},
 	"DeleteBoost":                        {Idempotent: true, HasSensitiveParams: false},
 	"GetBoost":                           {Idempotent: true, HasSensitiveParams: false},
+	"UpdateBoost":                        {Idempotent: true, HasSensitiveParams: false},
 	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
 	"DisableCardColumnOnHold":            {Idempotent: true, HasSensitiveParams: false},
 	"EnableCardColumnOnHold":             {Idempotent: true, HasSensitiveParams: false},
@@ -27489,6 +27578,7 @@ var operationRetryMax = map[string]int{
 	"CreateAttachment":                   3,
 	"DeleteBoost":                        3,
 	"GetBoost":                           3,
+	"UpdateBoost":                        3,
 	"SetCardColumnColor":                 3,
 	"DisableCardColumnOnHold":            3,
 	"EnableCardColumnOnHold":             2,
@@ -27778,6 +27868,7 @@ var operationRetryOn = map[string][]int{
 	"CreateAttachment":                   {429, 503},
 	"DeleteBoost":                        {429, 503},
 	"GetBoost":                           {429, 503},
+	"UpdateBoost":                        {429, 503},
 	"SetCardColumnColor":                 {429, 503},
 	"DisableCardColumnOnHold":            {429, 503},
 	"EnableCardColumnOnHold":             {429, 503},
@@ -29186,6 +29277,11 @@ type ClientWithResponsesInterface interface {
 	// GetBoostWithResponse request
 	GetBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*GetBoostResponse, error)
 
+	// UpdateBoostWithBodyWithResponse request with any body
+	UpdateBoostWithBodyWithResponse(ctx context.Context, accountId string, boostId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateBoostResponse, error)
+
+	UpdateBoostWithResponse(ctx context.Context, accountId string, boostId int64, body UpdateBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateBoostResponse, error)
+
 	// SetCardColumnColorWithBodyWithResponse request with any body
 	SetCardColumnColorWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
 
@@ -30434,6 +30530,40 @@ func (r GetBoostResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetBoostResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateBoostResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateBoostResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateBoostResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateBoostResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateBoostResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -39962,6 +40092,23 @@ func (c *ClientWithResponses) GetBoostWithResponse(ctx context.Context, accountI
 	return ParseGetBoostResponse(rsp)
 }
 
+// UpdateBoostWithBodyWithResponse request with arbitrary body returning *UpdateBoostResponse
+func (c *ClientWithResponses) UpdateBoostWithBodyWithResponse(ctx context.Context, accountId string, boostId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateBoostResponse, error) {
+	rsp, err := c.UpdateBoostWithBody(ctx, accountId, boostId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateBoostResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateBoostWithResponse(ctx context.Context, accountId string, boostId int64, body UpdateBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateBoostResponse, error) {
+	rsp, err := c.UpdateBoost(ctx, accountId, boostId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateBoostResponse(rsp)
+}
+
 // SetCardColumnColorWithBodyWithResponse request with arbitrary body returning *SetCardColumnColorResponse
 func (c *ClientWithResponses) SetCardColumnColorWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
 	rsp, err := c.SetCardColumnColorWithBody(ctx, accountId, bucketId, columnId, contentType, body, reqEditors...)
@@ -43541,6 +43688,59 @@ func ParseGetBoostResponse(rsp *http.Response) (*GetBoostResponse, error) {
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON404 = &dest
 		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateBoostResponse parses an HTTP response from a UpdateBoostWithResponse call
+func ParseUpdateBoostResponse(rsp *http.Response) (*UpdateBoostResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateBoostResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateBoostResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case rsp.StatusCode == 422:
+		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

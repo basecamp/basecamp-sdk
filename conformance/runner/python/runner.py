@@ -961,6 +961,8 @@ class OperationMapper:
                 )
             case "GetCalendar":
                 return self._account.calendars.get_calendar(calendar_id=path_params["calendarId"])
+            case "UpdateBoost":
+                return self._account.boosts.update_boost(boost_id=path_params["boostId"], content=body["content"])
             case "UpdateCalendar":
                 return self._account.calendars.update_calendar(
                     calendar_id=path_params["calendarId"], calendar=body["calendar"]

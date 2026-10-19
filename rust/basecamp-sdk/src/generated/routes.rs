@@ -5140,6 +5140,26 @@ pub static UPDATE_ANSWER: Route = Route {
     metadata: &metadata::UPDATE_ANSWER,
 };
 
+/// `PUT /boosts/{boostId}`.
+pub static UPDATE_BOOST: Route = Route {
+    id: "UpdateBoost",
+    service: "Boosts",
+    method: Method::PUT,
+    path: "/boosts/{boostId}",
+    pattern: "/boosts/{boostId}",
+    resource_type: "boost",
+    params: &[RouteParam {
+        name: "boostId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::UPDATE_BOOST,
+};
+
 /// `PUT /calendars/{calendarId}`.
 pub static UPDATE_CALENDAR: Route = Route {
     id: "UpdateCalendar",
@@ -6098,6 +6118,7 @@ pub static ROUTES: &[&Route] = &[
     &UPDATE_ACCOUNT_LOGO,
     &UPDATE_ACCOUNT_NAME,
     &UPDATE_ANSWER,
+    &UPDATE_BOOST,
     &UPDATE_CALENDAR,
     &UPDATE_CAMPFIRE_LINE,
     &UPDATE_CARD,

@@ -31,6 +31,35 @@ class BoostsServiceTest < Minitest::Test
     assert_equal "Jane Doe", boost["booster"]["name"]
   end
 
+  def test_update_boost
+    stub = stub_put("/12345/boosts/42", response_body: sample_boost(id: 42).merge("content" => "Done!"))
+           .with(body: { content: "Done!" }.to_json)
+
+    boost = @account.boosts.update_boost(boost_id: 42, content: "Done!")
+
+    assert_equal 42, boost["id"]
+    assert_equal "Done!", boost["content"]
+    assert_requested(stub)
+  end
+
+  def test_update_boost_forbidden
+    stub_request(:put, "#{BASE_URL}/12345/boosts/42").to_return(status: 403, body: "")
+
+    assert_raises(Basecamp::ForbiddenError) { @account.boosts.update_boost(boost_id: 42, content: "Done!") }
+  end
+
+  def test_update_boost_not_found
+    stub_request(:put, "#{BASE_URL}/12345/boosts/42").to_return(status: 404, body: "")
+
+    assert_raises(Basecamp::NotFoundError) { @account.boosts.update_boost(boost_id: 42, content: "Done!") }
+  end
+
+  def test_update_boost_unprocessable
+    stub_request(:put, "#{BASE_URL}/12345/boosts/42").to_return(status: 422, body: "")
+
+    assert_raises(Basecamp::ValidationError) { @account.boosts.update_boost(boost_id: 42, content: "Done!") }
+  end
+
   def test_delete_boost
     stub_delete("/12345/boosts/42")
 

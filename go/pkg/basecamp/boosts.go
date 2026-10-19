@@ -356,6 +356,51 @@ func (s *BoostsService) CreateEvent(ctx context.Context, recordingID, eventID in
 	return &boost, nil
 }
 
+// Update replaces the content of a boost and returns the updated boost.
+// Only the boost's creator may update it: anyone else, admins included, gets a
+// forbidden error, as does the creator when comments are closed on the boosted
+// recording. content is the new body of the boost; the server rejects a blank
+// one with a validation error.
+func (s *BoostsService) Update(ctx context.Context, boostID int64, content string) (result *Boost, err error) {
+	op := OperationInfo{
+		Service: "Boosts", Operation: "Update",
+		ResourceType: "boost", IsMutation: true,
+		ResourceID: boostID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if content == "" {
+		err = ErrUsage("boost content is required")
+		return nil, err
+	}
+
+	body := generated.UpdateBoostJSONRequestBody{
+		Content: content,
+	}
+
+	resp, err := s.client.parent.gen.UpdateBoostWithResponse(ctx, s.client.accountID, boostID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	boost := boostFromGenerated(*resp.JSON200)
+	return &boost, nil
+}
+
 // Delete deletes a boost.
 func (s *BoostsService) Delete(ctx context.Context, boostID int64) (err error) {
 	op := OperationInfo{

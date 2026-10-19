@@ -251,6 +251,7 @@ apply ListEventBoosts @tags(["Boosts"])
 apply GetBoost @tags(["Boosts"])
 apply CreateRecordingBoost @tags(["Boosts"])
 apply CreateEventBoost @tags(["Boosts"])
+apply UpdateBoost @tags(["Boosts"])
 apply DeleteBoost @tags(["Boosts"])
 
 // Checkins (questionnaires, questions, answers)

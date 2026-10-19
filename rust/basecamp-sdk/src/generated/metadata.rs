@@ -749,6 +749,9 @@ pub static UPDATE_ACCOUNT_NAME: OperationMetadata = OperationMetadata { operatio
 /// `UpdateAnswer`.
 #[rustfmt::skip]
 pub static UPDATE_ANSWER: OperationMetadata = OperationMetadata { operation: "UpdateAnswer", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `UpdateBoost`.
+#[rustfmt::skip]
+pub static UPDATE_BOOST: OperationMetadata = OperationMetadata { operation: "UpdateBoost", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `UpdateCalendar`.
 #[rustfmt::skip]
 pub static UPDATE_CALENDAR: OperationMetadata = OperationMetadata { operation: "UpdateCalendar", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -1102,6 +1105,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &UPDATE_ACCOUNT_LOGO,
     &UPDATE_ACCOUNT_NAME,
     &UPDATE_ANSWER,
+    &UPDATE_BOOST,
     &UPDATE_CALENDAR,
     &UPDATE_CAMPFIRE_LINE,
     &UPDATE_CARD,

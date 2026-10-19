@@ -153,8 +153,10 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # Pings (+3 ops): ListPings and GetPing are readonly (+2 union only);
 # CreatePing finds the Ping holding exactly the people unless new_group is
 # set, which creates one per call, so it is not naturally idempotent.
-expected_idempotent=97
-expected_union=233
+# UpdateBoost (+1 op): a PUT that replaces the boost's content, so a replay
+# re-asks the same question and lands in both counts (+1 each).
+expected_idempotent=98
+expected_union=234
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"

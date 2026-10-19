@@ -1732,6 +1732,11 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "UpdateBoost" -> {
+            account.boosts.update(tc.pathParams.longParam("boostId"), UpdateBoostBody(content = tc.requestBody.stringParam("content")))
+            DispatchResult()
+        }
+
         "UpdateCalendar" -> {
             val cal = tc.requestBody?.get("calendar")?.jsonObject ?: JsonObject(emptyMap())
             account.calendars.updateCalendar(tc.pathParams.longParam("calendarId"), UpdateCalendarBody(calendar = cal))

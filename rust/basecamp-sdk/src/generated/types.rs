@@ -6570,6 +6570,16 @@ pub struct UpdateAccountNameRequestContent {
 /// `UpdateAccountNameResponseContent`.
 pub type UpdateAccountNameResponseContent = Account;
 
+/// The `UpdateBoostRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct UpdateBoostRequestContent {
+    /// `content`.
+    pub content: String,
+}
+
+/// `UpdateBoostResponseContent`.
+pub type UpdateBoostResponseContent = Boost;
+
 /// The `UpdateCalendarRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateCalendarRequestContent {

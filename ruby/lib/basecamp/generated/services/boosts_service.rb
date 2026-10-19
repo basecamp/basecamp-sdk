@@ -16,6 +16,16 @@ module Basecamp
         end
       end
 
+      # Replace the content of a boost. Only the boost's creator may update it: an
+      # @param boost_id [Integer] boost id ID
+      # @param content [String] content
+      # @return [Hash] response data
+      def update_boost(boost_id:, content:)
+        with_operation(service: "boosts", operation: "update_boost", is_mutation: true, resource_id: boost_id) do
+          http_put("/boosts/#{boost_id}", body: compact_params(content: content)).json(operation: "UpdateBoost")
+        end
+      end
+
       # Delete a boost
       # @param boost_id [Integer] boost id ID
       # @return [void]

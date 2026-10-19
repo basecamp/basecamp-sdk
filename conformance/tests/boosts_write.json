@@ -1,0 +1,169 @@
+[
+  {
+    "name": "UpdateBoost replaces the content through the flat route",
+    "description": "BC3 serves boost update only on the flat PUT /boosts/{id} route (the legacy bucket-scoped boost routes have no update). The body carries content and nothing else, and the 200 answers with the boost.",
+    "operation": "UpdateBoost",
+    "method": "PUT",
+    "path": "/boosts/{boostId}",
+    "pathParams": {
+      "boostId": 1069479500
+    },
+    "requestBody": {
+      "content": "Done!"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479500,
+          "content": "Done!",
+          "created_at": "2022-11-01T10:00:00.000Z",
+          "booster": {
+            "id": 1049715914,
+            "name": "Victor Cooper"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/boosts/1069479500"
+      },
+      {
+        "type": "requestBody",
+        "path": "content",
+        "expected": "Done!"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "boosts",
+      "update",
+      "path"
+    ]
+  },
+  {
+    "name": "UpdateBoost 403 maps to forbidden",
+    "description": "Only a boost's creator may update it, admins included, and a boost on a recording whose comments are closed answers 403 too. BC3 renders both as a bodiless head :forbidden.",
+    "operation": "UpdateBoost",
+    "method": "PUT",
+    "path": "/boosts/{boostId}",
+    "pathParams": {
+      "boostId": 1069479500
+    },
+    "requestBody": {
+      "content": "Done!"
+    },
+    "mockResponses": [
+      {
+        "status": 403
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "forbidden"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 403
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "boosts",
+      "update",
+      "error-mapping"
+    ]
+  },
+  {
+    "name": "UpdateBoost 404 maps to not_found",
+    "description": "A boost on a deleted recording, or in another account, answers 404.",
+    "operation": "UpdateBoost",
+    "method": "PUT",
+    "path": "/boosts/{boostId}",
+    "pathParams": {
+      "boostId": 1069479500
+    },
+    "requestBody": {
+      "content": "Done!"
+    },
+    "mockResponses": [
+      {
+        "status": 404
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "not_found"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 404
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "boosts",
+      "update",
+      "error-mapping"
+    ]
+  },
+  {
+    "name": "UpdateBoost bodiless 422 maps to validation",
+    "description": "BC3 renders a rejected boost (missing, blank or over-long content) as a bodiless head :unprocessable_entity, so the validation code must not depend on a body.",
+    "operation": "UpdateBoost",
+    "method": "PUT",
+    "path": "/boosts/{boostId}",
+    "pathParams": {
+      "boostId": 1069479500
+    },
+    "requestBody": {
+      "content": "Done!"
+    },
+    "mockResponses": [
+      {
+        "status": 422
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 422
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "boosts",
+      "update",
+      "error-mapping"
+    ]
+  }
+]

@@ -13,6 +13,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/{accountId}/account/name.json": "UpdateAccountName",
   "DELETE:/{accountId}/boosts/{boostId}": "DeleteBoost",
   "GET:/{accountId}/boosts/{boostId}": "GetBoost",
+  "PUT:/{accountId}/boosts/{boostId}": "UpdateBoost",
   "POST:/{accountId}/buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json": "CreateWormhole",
   "PUT:/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/color.json": "SetCardColumnColor",
   "DELETE:/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/on_hold.json": "DisableCardColumnOnHold",

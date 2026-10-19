@@ -86,7 +86,14 @@ export interface paths {
         };
         /** @description Get a single boost */
         get: operations["GetBoost"];
-        put?: never;
+        /**
+         * @description Replace the content of a boost. Only the boost's creator may update it: an
+         *     admin updating someone else's boost gets 403 Forbidden, as does any caller
+         *     when comments are closed on the boosted recording. A boost on a deleted
+         *     recording, or in another account, answers 404. A missing or invalid
+         *     `content` answers a bodiless 422. There is no bucket-scoped route.
+         */
+        put: operations["UpdateBoost"];
         post?: never;
         /** @description Delete a boost */
         delete: operations["DeleteBoost"];
@@ -8040,6 +8047,10 @@ export interface components {
             name: string;
         };
         UpdateAccountNameResponseContent: components["schemas"]["Account"];
+        UpdateBoostRequestContent: {
+            content: string;
+        };
+        UpdateBoostResponseContent: components["schemas"]["Boost"];
         UpdateCalendarRequestContent: {
             calendar: components["schemas"]["CalendarAttributes"];
         };
@@ -8884,6 +8895,75 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateBoost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boostId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBoostRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateBoost 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateBoostResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description BareValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description InternalServerError 500 response */
             500: {

@@ -268,6 +268,7 @@ object Metadata {
         "UpdateAccountLogo" to OperationConfig(true, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "UpdateAccountName" to OperationConfig(true, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "UpdateAnswer" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "UpdateBoost" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateCalendar" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateCampfireLine" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateCard" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

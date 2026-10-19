@@ -551,6 +551,7 @@ export {
   type CreateForRecordingBoostRequest,
   type ListForEventBoostOptions,
   type CreateForEventBoostRequest,
+  type UpdateBoostRequest,
 } from "./generated/services/boosts.js";
 
 // Subtasks service - generated. Subtask is the one entity both services return

@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-10-19T18:18:48Z",
+  "generated": "2026-10-19T21:23:14Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -76,6 +76,20 @@
           429,
           503
         ]
+      }
+    },
+    "UpdateBoost": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "DeleteBoost": {
@@ -4381,6 +4395,9 @@
     ],
     "Subscribe": [
       "subscribers.[]"
+    ],
+    "UpdateBoost": [
+      "booster"
     ],
     "UpdateCard": [
       "assignees.[]",
