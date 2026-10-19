@@ -1,0 +1,576 @@
+[
+  {
+    "name": "ListPings reads the unpaginated array at /circles.json",
+    "description": "Verifies ListPings GETs /circles.json and decodes the caller's Pings from one unpaginated top-level array, in the order served, carrying each Ping's room_url (the Ping's Campfire; its bucket type and wire path are \"Circle\").",
+    "operation": "ListPings",
+    "method": "GET",
+    "path": "/circles.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": 2085958600,
+            "created_at": "2022-11-21T16:30:12.231Z",
+            "updated_at": "2022-11-22T09:12:44.118Z",
+            "title": "Launch crew",
+            "named": true,
+            "avatar_url": "https://3.basecamp-static.com/195539477/circles/2085958600/avatar",
+            "url": "https://3.basecampapi.com/195539477/circles/2085958600.json",
+            "app_url": "https://3.basecamp.com/195539477/circles/2085958600",
+            "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiKWdpZDovL2JjMy9CdWNrZXQv2085958600--ffeeddcc.json",
+            "room_url": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600.json",
+            "edit_title_url": "https://3.basecamp.com/195539477/buckets/2085958600/title/edit",
+            "links": {
+              "self": "https://3.basecampapi.com/195539477/circles/2085958600.json",
+              "app": "https://3.basecamp.com/195539477/circles/2085958600",
+              "bookmark": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiKWdpZDovL2JjMy9CdWNrZXQv2085958600--ffeeddcc.json",
+              "lines": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600/lines.json",
+              "files": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600/uploads.json",
+              "edit_title": "https://3.basecamp.com/195539477/buckets/2085958600/title/edit"
+            },
+            "people": [
+              {
+                "id": 1049715915,
+                "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1--aabbccdd",
+                "name": "Annie Bryan",
+                "email_address": "annie@honchodesign.com",
+                "personable_type": "User",
+                "title": "Central Markets Producer",
+                "bio": null,
+                "location": null,
+                "created_at": "2022-11-22T08:23:21.732Z",
+                "updated_at": "2022-11-22T08:23:21.732Z",
+                "admin": false,
+                "owner": false,
+                "client": false,
+                "employee": true,
+                "time_zone": "America/Chicago",
+                "avatar_url": "https://3.basecamp-static.com/195539477/people/1049715915/avatar",
+                "company": {
+                  "id": 1033447817,
+                  "name": "Honcho Design"
+                },
+                "can_ping": true,
+                "can_manage_projects": true,
+                "can_manage_people": false,
+                "can_access_timesheet": true,
+                "can_access_hill_charts": true
+              },
+              {
+                "id": 1049715916,
+                "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE2--aabbccdd",
+                "name": "Cheryl Walters",
+                "email_address": "cheryl@honchodesign.com",
+                "personable_type": "User",
+                "title": "Senior Data Analyst",
+                "bio": null,
+                "location": null,
+                "created_at": "2022-11-22T08:23:21.732Z",
+                "updated_at": "2022-11-22T08:23:21.732Z",
+                "admin": false,
+                "owner": false,
+                "client": false,
+                "employee": true,
+                "time_zone": "America/Chicago",
+                "avatar_url": "https://3.basecamp-static.com/195539477/people/1049715916/avatar",
+                "company": {
+                  "id": 1033447817,
+                  "name": "Honcho Design"
+                },
+                "can_ping": true,
+                "can_manage_projects": true,
+                "can_manage_people": false,
+                "can_access_timesheet": true,
+                "can_access_hill_charts": true
+              }
+            ],
+            "image_url": "https://3.basecamp-static.com/195539477/circles/2085958600/image"
+          },
+          {
+            "id": 2085958601,
+            "created_at": "2022-11-20T10:01:02.000Z",
+            "updated_at": "2022-11-21T08:00:00.000Z",
+            "title": "Annie Bryan",
+            "named": false,
+            "avatar_url": "https://3.basecamp-static.com/195539477/circles/2085958601/avatar",
+            "url": "https://3.basecampapi.com/195539477/circles/2085958601.json",
+            "app_url": "https://3.basecamp.com/195539477/circles/2085958601",
+            "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiKWdpZDovL2JjMy9CdWNrZXQv2085958601--ffeeddcc.json",
+            "room_url": "https://3.basecampapi.com/195539477/buckets/2085958601/chats/1069479601.json",
+            "links": {
+              "self": "https://3.basecampapi.com/195539477/circles/2085958601.json",
+              "app": "https://3.basecamp.com/195539477/circles/2085958601",
+              "bookmark": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiKWdpZDovL2JjMy9CdWNrZXQv2085958601--ffeeddcc.json",
+              "lines": "https://3.basecampapi.com/195539477/buckets/2085958601/chats/1069479601/lines.json",
+              "files": "https://3.basecampapi.com/195539477/buckets/2085958601/chats/1069479601/uploads.json"
+            },
+            "people": [
+              {
+                "id": 1049715915,
+                "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1--aabbccdd",
+                "name": "Annie Bryan",
+                "email_address": "annie@honchodesign.com",
+                "personable_type": "User",
+                "title": "Central Markets Producer",
+                "bio": null,
+                "location": null,
+                "created_at": "2022-11-22T08:23:21.732Z",
+                "updated_at": "2022-11-22T08:23:21.732Z",
+                "admin": false,
+                "owner": false,
+                "client": false,
+                "employee": true,
+                "time_zone": "America/Chicago",
+                "avatar_url": "https://3.basecamp-static.com/195539477/people/1049715915/avatar",
+                "company": {
+                  "id": 1033447817,
+                  "name": "Honcho Design"
+                },
+                "can_ping": true,
+                "can_manage_projects": true,
+                "can_manage_people": false,
+                "can_access_timesheet": true,
+                "can_access_hill_charts": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/circles.json"
+      },
+      {
+        "type": "responseBody",
+        "path": "ping_count",
+        "expected": 2
+      },
+      {
+        "type": "responseBody",
+        "path": "first_ping_id",
+        "expected": 2085958600
+      },
+      {
+        "type": "responseBody",
+        "path": "last_ping_id",
+        "expected": 2085958601
+      },
+      {
+        "type": "responseBody",
+        "path": "first_ping_room_url",
+        "expected": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600.json"
+      }
+    ],
+    "tags": [
+      "pings",
+      "path",
+      "decode"
+    ]
+  },
+  {
+    "name": "ListPings accepts an empty array",
+    "description": "A caller with no Pings gets 200 with an empty array, which decodes to an empty list rather than an error.",
+    "operation": "ListPings",
+    "method": "GET",
+    "path": "/circles.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "ping_count",
+        "expected": 0
+      }
+    ],
+    "tags": [
+      "pings",
+      "decode"
+    ]
+  },
+  {
+    "name": "ListPings surfaces disabled Pings as forbidden",
+    "description": "An account with Pings turned off answers the list with 403, which SPEC §6 maps to `forbidden` by status and must not be swallowed into an empty list.",
+    "operation": "ListPings",
+    "method": "GET",
+    "path": "/circles.json",
+    "mockResponses": [
+      {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Pings have been disabled"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "errorCode",
+        "expected": "forbidden"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 403
+      }
+    ],
+    "tags": [
+      "pings",
+      "error-mapping"
+    ]
+  },
+  {
+    "name": "CreatePing posts user_ids and new_group and accepts the 201",
+    "description": "Verifies CreatePing POSTs /circles.json with the people to ping and new_group, and decodes the Ping from a 201. BC3 answers 201 even when it returns the existing Ping that already holds exactly these people.",
+    "operation": "CreatePing",
+    "method": "POST",
+    "path": "/circles.json",
+    "requestBody": {
+      "user_ids": [
+        1049715915,
+        1049715916
+      ],
+      "new_group": true
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2085958600,
+          "created_at": "2022-11-21T16:30:12.231Z",
+          "updated_at": "2022-11-22T09:12:44.118Z",
+          "title": "Launch crew",
+          "named": true,
+          "avatar_url": "https://3.basecamp-static.com/195539477/circles/2085958600/avatar",
+          "url": "https://3.basecampapi.com/195539477/circles/2085958600.json",
+          "app_url": "https://3.basecamp.com/195539477/circles/2085958600",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiKWdpZDovL2JjMy9CdWNrZXQv2085958600--ffeeddcc.json",
+          "room_url": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600.json",
+          "edit_title_url": "https://3.basecamp.com/195539477/buckets/2085958600/title/edit",
+          "links": {
+            "self": "https://3.basecampapi.com/195539477/circles/2085958600.json",
+            "app": "https://3.basecamp.com/195539477/circles/2085958600",
+            "bookmark": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiKWdpZDovL2JjMy9CdWNrZXQv2085958600--ffeeddcc.json",
+            "lines": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600/lines.json",
+            "files": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600/uploads.json",
+            "edit_title": "https://3.basecamp.com/195539477/buckets/2085958600/title/edit"
+          },
+          "people": [
+            {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1--aabbccdd",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Central Markets Producer",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/1049715915/avatar",
+              "company": {
+                "id": 1033447817,
+                "name": "Honcho Design"
+              },
+              "can_ping": true,
+              "can_manage_projects": true,
+              "can_manage_people": false,
+              "can_access_timesheet": true,
+              "can_access_hill_charts": true
+            },
+            {
+              "id": 1049715916,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE2--aabbccdd",
+              "name": "Cheryl Walters",
+              "email_address": "cheryl@honchodesign.com",
+              "personable_type": "User",
+              "title": "Senior Data Analyst",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/1049715916/avatar",
+              "company": {
+                "id": 1033447817,
+                "name": "Honcho Design"
+              },
+              "can_ping": true,
+              "can_manage_projects": true,
+              "can_manage_people": false,
+              "can_access_timesheet": true,
+              "can_access_hill_charts": true
+            }
+          ],
+          "image_url": "https://3.basecamp-static.com/195539477/circles/2085958600/image"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/circles.json"
+      },
+      {
+        "type": "requestBody",
+        "path": "user_ids",
+        "expected": [
+          1049715915,
+          1049715916
+        ]
+      },
+      {
+        "type": "requestBody",
+        "path": "new_group",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 2085958600
+      },
+      {
+        "type": "responseBody",
+        "path": "named",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "room_url",
+        "expected": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600.json"
+      }
+    ],
+    "tags": [
+      "pings",
+      "path",
+      "decode",
+      "create"
+    ]
+  },
+  {
+    "name": "CreatePing omits new_group unless it is set",
+    "description": "new_group is optional: left unset it is absent from the request body, not sent as null or false, so BC3 applies its own default.",
+    "operation": "CreatePing",
+    "method": "POST",
+    "path": "/circles.json",
+    "requestBody": {
+      "user_ids": [
+        1049715915
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2085958600,
+          "created_at": "2022-11-21T16:30:12.231Z",
+          "updated_at": "2022-11-22T09:12:44.118Z",
+          "title": "Launch crew",
+          "named": true,
+          "avatar_url": "https://3.basecamp-static.com/195539477/circles/2085958600/avatar",
+          "url": "https://3.basecampapi.com/195539477/circles/2085958600.json",
+          "app_url": "https://3.basecamp.com/195539477/circles/2085958600",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiKWdpZDovL2JjMy9CdWNrZXQv2085958600--ffeeddcc.json",
+          "room_url": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600.json",
+          "edit_title_url": "https://3.basecamp.com/195539477/buckets/2085958600/title/edit",
+          "links": {
+            "self": "https://3.basecampapi.com/195539477/circles/2085958600.json",
+            "app": "https://3.basecamp.com/195539477/circles/2085958600",
+            "bookmark": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiKWdpZDovL2JjMy9CdWNrZXQv2085958600--ffeeddcc.json",
+            "lines": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600/lines.json",
+            "files": "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600/uploads.json",
+            "edit_title": "https://3.basecamp.com/195539477/buckets/2085958600/title/edit"
+          },
+          "people": [
+            {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1--aabbccdd",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Central Markets Producer",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/1049715915/avatar",
+              "company": {
+                "id": 1033447817,
+                "name": "Honcho Design"
+              },
+              "can_ping": true,
+              "can_manage_projects": true,
+              "can_manage_people": false,
+              "can_access_timesheet": true,
+              "can_access_hill_charts": true
+            },
+            {
+              "id": 1049715916,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE2--aabbccdd",
+              "name": "Cheryl Walters",
+              "email_address": "cheryl@honchodesign.com",
+              "personable_type": "User",
+              "title": "Senior Data Analyst",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/1049715916/avatar",
+              "company": {
+                "id": 1033447817,
+                "name": "Honcho Design"
+              },
+              "can_ping": true,
+              "can_manage_projects": true,
+              "can_manage_people": false,
+              "can_access_timesheet": true,
+              "can_access_hill_charts": true
+            }
+          ],
+          "image_url": "https://3.basecamp-static.com/195539477/circles/2085958600/image"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestBody",
+        "path": "user_ids",
+        "expected": [
+          1049715915
+        ]
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "new_group"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 2085958600
+      }
+    ],
+    "tags": [
+      "pings",
+      "create",
+      "presence"
+    ]
+  },
+  {
+    "name": "CreatePing maps a bodiless 422 to a validation error",
+    "description": "BC3 answers 422 with no body (BareValidationError — the spec advertises no decodable body) when the Ping would have no person in it who can use Pings, which only happens to an agent asking for only other agents. SPEC §6 maps it to `validation` by status.",
+    "operation": "CreatePing",
+    "method": "POST",
+    "path": "/circles.json",
+    "requestBody": {
+      "user_ids": [
+        1049715915
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 422
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 422
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": false
+      }
+    ],
+    "tags": [
+      "pings",
+      "create",
+      "error-mapping",
+      "validation"
+    ]
+  }
+]
