@@ -349,7 +349,7 @@ basecamp_retries_total{http_method="GET"} 1
 	// so the body does not depend on a default Accept or on OpenMetrics or
 	// compression support in the client_golang under test. No metric-name filter:
 	// an extra or missing family fails too.
-	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/metrics", nil)
 	req.Header.Set("Accept", "text/plain; version=0.0.4")
 	req.Header.Set("Accept-Encoding", "identity")
 	rec := httptest.NewRecorder()
