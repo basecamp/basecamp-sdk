@@ -14,4 +14,4 @@ paths:
       # calls use. actionlint 1.7.12 predates it and has no release that knows it
       # (rhysd/actionlint#711); drop this once one does. The ignore names the exact calls,
       # so a new `$/` call is a deliberate edit here rather than a silent pass.
-      - 'reusable workflow call "\$/\.github/workflows/(smithy-verify)\.yml" at "uses" is not following the format'
+      - 'reusable workflow call "\$/\.github/workflows/(smithy-verify|go-latest-deps)\.yml" at "uses" is not following the format'

@@ -25,7 +25,8 @@ updates:
       # (1.25.0 changed api/prometheus/v1 signatures, #997). Raise it only when
       # the SDK starts using a newer API or the floor has a known vulnerability.
       # Compatibility with the latest release is tested instead by the "Go Tests
-      # (latest dependencies)" job in .github/workflows/test.yml.
+      # (latest dependencies)" job in .github/workflows/go-latest-deps.yml, on
+      # every PR and weekly.
       #
       # Security updates still come: for them dependabot-core honours only an
       # ignore's `versions` list and skips update-types (IgnoreCondition#
