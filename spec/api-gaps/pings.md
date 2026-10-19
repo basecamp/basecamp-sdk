@@ -56,9 +56,9 @@ with "Get Pings", "Get a Ping" and "Create a Ping".
 - `ListPings` (Get Pings) — `GET /circles.json`, the caller's active Pings
   that have a line in them, newest first, unpaginated. On the API host before
   BC3 #13943 there is no index template and the answer is a bodiless 204. Go
-  reads that as an empty list; the generated list reads in the other SDKs
-  decode the body and fail on it, as every unpaginated array read there does.
-  The template ends that window.
+  and TypeScript read that as an empty list; the generated list reads in the
+  other five SDKs decode the body and fail on it, as every unpaginated array
+  read there does. The template ends that window.
 - `GetPing` (Get a Ping) — `GET /circles/{pingId}.json`. The id is the Ping's
   bucket id.
 - `CreatePing` (Create a Ping) — `POST /circles.json` with `user_ids` and an
