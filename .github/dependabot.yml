@@ -49,7 +49,10 @@ updates:
       # The four otel modules move together; otel/sdk requires the matching
       # otel. Older releases build and pass the SDK's tests (v1.20.0 was the
       # oldest tried), but otel/sdk has known vulnerabilities before v1.45.0
-      # (GO-2026-6505), so no floor below that is acceptable.
+      # (GO-2026-6505), so no floor below that is acceptable. otel/log is only
+      # an indirect requirement (otel itself requires it), but it is ignored
+      # as well: it requires the matching otel, otel/metric and otel/trace, so
+      # an update to it would raise all three.
       - dependency-name: "go.opentelemetry.io/otel"
         update-types:
           - "version-update:semver-major"
@@ -66,6 +69,11 @@ updates:
           - "version-update:semver-minor"
           - "version-update:semver-patch"
       - dependency-name: "go.opentelemetry.io/otel/trace"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      - dependency-name: "go.opentelemetry.io/otel/log"
         update-types:
           - "version-update:semver-major"
           - "version-update:semver-minor"
