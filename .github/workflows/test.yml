@@ -599,13 +599,15 @@ jobs:
           cache: false
 
       - name: Upgrade dependencies to latest
-        # -u ./... raises every module the SDK's packages import, directly or
-        # not, to its latest minor or patch release; client_golang is named
+        # -t -u ./... raises every module the SDK's packages and their tests
+        # import, directly or not, to its latest minor or patch release (-t
+        # covers test-only modules such as otel/sdk, which -u alone leaves at
+        # the committed floor); client_golang is named
         # again so the job keeps testing it should it ever stop being imported
         # from a package -u reaches. Tools (oapi-codegen) stay at their pins:
         # they generate code here and never reach a consumer.
         run: |
-          go get -u ./...
+          go get -t -u ./...
           go get github.com/prometheus/client_golang@latest
           go mod tidy
           echo "Upgraded from the committed floors:"
