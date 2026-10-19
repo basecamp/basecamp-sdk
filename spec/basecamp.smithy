@@ -11163,6 +11163,7 @@ structure UpdateBoostInput {
   boostId: BoostId
 
   @required
+  @length(max: 16)
   content: String
 }
 

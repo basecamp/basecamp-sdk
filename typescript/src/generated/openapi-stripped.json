@@ -36768,7 +36768,8 @@
         "type": "object",
         "properties": {
           "content": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 16
           }
         },
         "required": [

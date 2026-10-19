@@ -12658,6 +12658,7 @@
       "body": {
         "properties": {
           "content": {
+            "maxLength": 16,
             "type": "string"
           }
         },
