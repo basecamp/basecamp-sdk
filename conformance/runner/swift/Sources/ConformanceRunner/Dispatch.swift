@@ -401,6 +401,18 @@ private func summarizeProjects(_ projects: [Project]) -> JSON {
     ])
 }
 
+/// Flattens a Ping list into top-level scalars, for the reason summarizeProjects
+/// gives. The ids and the first room_url show the array was decoded in the
+/// order served, not merely received.
+private func summarizePings(_ pings: [Ping]) -> JSON {
+    .object([
+        "ping_count": .int(Int64(pings.count)),
+        "first_ping_id": .int(Int64(pings.first?.id ?? 0)),
+        "last_ping_id": .int(Int64(pings.last?.id ?? 0)),
+        "first_ping_room_url": .string(pings.first?.roomUrl ?? ""),
+    ])
+}
+
 /// Flattens the versions array into top-level scalars.
 ///
 /// GET /uploads/{id}/versions.json returns an ARRAY and a responseBody path
@@ -464,6 +476,17 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
     case "RecordProjectVisit":
         try await account.projects.recordProjectVisit(projectId: pathParams.longParam("projectId"))
         return DispatchResult()
+
+    case "ListPings":
+        let pings = try await account.pings.list()
+        return DispatchResult(resultJSON: summarizePings(pings))
+
+    case "CreatePing":
+        let ping = try await account.pings.create(
+            req: CreatePingRequest(
+                newGroup: rb.optBool("new_group"),
+                userIds: rb.intArray("user_ids") ?? []))
+        return DispatchResult(resultJSON: try resultJSON(ping))
 
     case "GetTemplateLibraryTodolists":
         let library = try await account.templates.getLibraryTodolists()

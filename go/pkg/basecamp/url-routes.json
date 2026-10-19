@@ -882,6 +882,20 @@
       }
     },
     {
+      "pattern": "/{accountId}/circles",
+      "resource": "Pings",
+      "operations": {
+        "GET": "ListPings",
+        "POST": "CreatePing"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/circles/people",
       "resource": "People",
       "operations": {
@@ -891,6 +905,23 @@
         "accountId": {
           "role": "account",
           "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/circles/{pingId}",
+      "resource": "Pings",
+      "operations": {
+        "GET": "GetPing"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "pingId": {
+          "role": "recording",
+          "type": "int64"
         }
       }
     },

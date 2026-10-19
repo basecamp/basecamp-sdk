@@ -593,6 +593,21 @@ function summarizeProjects(
   };
 }
 /**
+ * GET /circles.json returns an ARRAY, which a responseBody path cannot index.
+ * Flatten it to scalars the way summarizeProjects does; the ids and the first
+ * room_url show the array was decoded in the order served.
+ */
+function summarizePings(
+  pings: Awaited<ReturnType<BasecampClient["pings"]["list"]>>,
+): Record<string, unknown> {
+  return {
+    ping_count: pings.length,
+    first_ping_id: pings.length > 0 ? pings[0]!.id : 0,
+    last_ping_id: pings.length > 0 ? pings[pings.length - 1]!.id : 0,
+    first_ping_room_url: pings.length > 0 ? pings[0]!.room_url : "",
+  };
+}
+/**
  * GET /uploads/{id}/versions.json returns an ARRAY, and a responseBody path
  * resolves as a top-level key only. Flatten to the same shape summarizeUpcoming
  * uses so the fixture's assertions stay portable across all six runners.
@@ -760,6 +775,21 @@ async function executeOperation(
       case "RecordProjectVisit":
         await client.projects.recordProjectVisit(Number(params.projectId));
         break;
+
+      case "ListPings": {
+        const pings = await client.pings.list();
+        return { result: summarizePings(pings) };
+      }
+
+      case "CreatePing": {
+        const ping = await client.pings.create({
+          userIds: body.user_ids as number[],
+          ...(body.new_group !== undefined
+            ? { newGroup: body.new_group as boolean }
+            : {}),
+        });
+        return { result: ping };
+      }
 
       case "GetTemplateLibraryTodolists": {
         const library = await client.templates.getLibraryTodolists();

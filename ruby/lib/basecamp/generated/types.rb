@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-17T04:45:50Z
+# Generated: 2026-10-19T14:57:29Z
 
 require "json"
 require "time"
@@ -3200,6 +3200,84 @@ module Basecamp
         {
           "id" => @id,
           "name" => @name,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Ping
+    class Ping
+      include TypeHelpers
+      attr_accessor :app_url, :avatar_url, :bookmark_url, :created_at, :id, :links, :named, :people, :room_url, :title, :updated_at, :url, :edit_title_url, :image_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url avatar_url bookmark_url created_at id links named people room_url title updated_at url].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @avatar_url = data["avatar_url"]
+        @bookmark_url = data["bookmark_url"]
+        @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
+        @links = parse_type(data["links"], "PingLinks")
+        @named = parse_boolean(data["named"])
+        @people = parse_array(data["people"], "Person")
+        @room_url = data["room_url"]
+        @title = data["title"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @edit_title_url = data["edit_title_url"]
+        @image_url = data["image_url"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "avatar_url" => @avatar_url,
+          "bookmark_url" => @bookmark_url,
+          "created_at" => @created_at,
+          "id" => @id,
+          "links" => @links,
+          "named" => @named,
+          "people" => @people,
+          "room_url" => @room_url,
+          "title" => @title,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "edit_title_url" => @edit_title_url,
+          "image_url" => @image_url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # PingLinks
+    class PingLinks
+      include TypeHelpers
+      attr_accessor :files, :lines
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[files lines].freeze
+      end
+
+      def initialize(data = {})
+        @files = data["files"]
+        @lines = data["lines"]
+      end
+
+      def to_h
+        {
+          "files" => @files,
+          "lines" => @lines,
         }.compact
       end
 

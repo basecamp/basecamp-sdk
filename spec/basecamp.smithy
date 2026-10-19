@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-09-15"
+  version: "2026-10-19"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -381,7 +381,11 @@ service Basecamp {
     CompleteSubtask,
     UncompleteSubtask,
     RepositionSubtask,
-    DeleteSubtask
+    DeleteSubtask,
+    // Batch 22 - Pings (wire path and bucket type "Circle")
+    ListPings,
+    GetPing,
+    CreatePing
   ]
 }
 
@@ -409,6 +413,12 @@ structure ValidationError {
 @error("client")
 @httpError(404)
 structure BareNotFoundError {}
+
+/// 422 with no response body — the bare `head :unprocessable_entity`
+/// rendering, the treatment BareNotFoundError gets at 404.
+@error("client")
+@httpError(422)
+structure BareValidationError {}
 
 /// 422 whose body is keyed by field ({"errors": {"color": ["is not a valid
 /// color"]}}) — the Rails RecordInvalid rendering. Used by operations whose
@@ -13689,3 +13699,175 @@ structure DeleteSubtaskInput {
 }
 
 structure DeleteSubtaskOutput {}
+
+// ===== Pings =====
+
+/// A Ping's id is the id of the bucket that holds it (the bucket type is
+/// "Circle", which is also the wire path), so the `bucket.id` a Ping's
+/// recordings carry is the id GetPing takes.
+long PingId
+
+/// A Ping: a private conversation between people, held in its own bucket with
+/// one Campfire. The Campfire's lines are read and written through the
+/// Campfires service; `room_url` and `links.lines` name it.
+structure Ping {
+  /// The Ping's id, which is also its bucket's id.
+  @required
+  id: PingId
+
+  @required
+  created_at: ISO8601Timestamp
+
+  @required
+  updated_at: ISO8601Timestamp
+
+  /// The Ping's name for the caller: its given name when `named`, else the
+  /// names of the other people in it.
+  @required
+  title: String
+
+  /// Whether someone gave the Ping a name.
+  @required
+  named: Boolean
+
+  /// The Ping's own image, present only when one was uploaded.
+  image_url: String
+
+  @required
+  @basecampSensitive(category: "pii", redact: true)
+  avatar_url: AvatarUrl
+
+  @required
+  url: String
+
+  @required
+  app_url: String
+
+  @required
+  bookmark_url: String
+
+  /// The Ping's Campfire (`/buckets/{bucketId}/chats/{campfireId}.json`).
+  @required
+  room_url: String
+
+  /// Present only when the Ping can be renamed: one with more than one other
+  /// person in it.
+  edit_title_url: String
+
+  @required
+  links: PingLinks
+
+  /// The people in the Ping other than the caller; the caller alone when
+  /// nobody else is in it.
+  @required
+  people: PersonList
+}
+
+/// The Ping's Campfire endpoints, so a client need not derive them from
+/// `room_url`. The wire object also repeats `url`, `app_url`, `bookmark_url`
+/// and `edit_title_url` as `self`, `app`, `bookmark` and `edit_title`; those
+/// are read from the Ping's own fields.
+structure PingLinks {
+  /// The Campfire's lines (`/buckets/{bucketId}/chats/{campfireId}/lines.json`).
+  @required
+  lines: String
+
+  /// The Campfire's uploads.
+  @required
+  files: String
+}
+
+list PingList {
+  member: Ping
+}
+
+/// Get Pings: the caller's active Pings that have a line in them, most
+/// recently updated first, in one unpaginated response. Archived Pings, and
+/// Pings no one has posted in yet, are not listed; GetPing reads either by id.
+///
+/// Answers `403 Forbidden` (`{"error": "Pings have been disabled"}`) when the
+/// caller cannot ping.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/circles.json")
+operation ListPings {
+  input: ListPingsInput
+  output: ListPingsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListPingsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure ListPingsOutput {
+  pings: PingList
+}
+
+/// Get a Ping by its id, which is its bucket's id.
+///
+/// Answers `403 Forbidden` (`{"error": "Pings have been disabled"}`) when the
+/// caller cannot ping, and `404 Not Found` for a bucket that is not a Ping the
+/// caller is in.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/circles/{pingId}")
+operation GetPing {
+  input: GetPingInput
+  output: GetPingOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetPingInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  pingId: PingId
+}
+
+structure GetPingOutput {
+  ping: Ping
+}
+
+/// Create a Ping with people, or return the one that already holds exactly
+/// them.
+///
+/// The caller is always included. Without `new_group`, an existing active
+/// Ping with exactly these people (the oldest, if several) is returned rather
+/// than a second one created; with `new_group: true` and more than one other
+/// person, a new group is created every time. Either way the answer is
+/// `201 Created` with the Ping.
+///
+/// Answers `403 Forbidden` (`{"error": "Pings have been disabled"}`) when the
+/// caller cannot ping, and a bodiless `422` when nobody in the Ping would be a
+/// person who can ping.
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/circles.json", code: 201)
+operation CreatePing {
+  input: CreatePingInput
+  output: CreatePingOutput
+  errors: [BareValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreatePingInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Person ids of the people to ping. People the caller cannot reach are
+  /// dropped.
+  @required
+  user_ids: PersonIdList
+
+  /// Create a new group even when a Ping with exactly these people exists.
+  new_group: Boolean
+}
+
+structure CreatePingOutput {
+  ping: Ping
+}

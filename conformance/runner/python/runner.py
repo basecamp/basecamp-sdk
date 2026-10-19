@@ -669,6 +669,19 @@ def _summarize_todolist(todolist: dict[str, Any]) -> dict[str, Any]:
     return {"id": todolist["id"], "title": todolist["title"]}
 
 
+def _summarize_pings(result: Any) -> dict[str, Any]:
+    """Flatten a Ping list into top-level scalars, for the reason
+    `_summarize_projects` gives. The ids and the first room_url show the array
+    was decoded in the order served, not merely received."""
+    pings = list(result)
+    return {
+        "ping_count": len(pings),
+        "first_ping_id": pings[0]["id"] if pings else 0,
+        "last_ping_id": pings[-1]["id"] if pings else 0,
+        "first_ping_room_url": pings[0]["room_url"] if pings else "",
+    }
+
+
 def _summarize_projects(result: Any) -> dict[str, Any]:
     """Flatten an accumulated project list into top-level scalars.
 
@@ -840,6 +853,13 @@ class OperationMapper:
                 return self._account.projects.list_recent_projects()
             case "RecordProjectVisit":
                 return self._account.projects.record_project_visit(project_id=path_params["projectId"])
+            case "ListPings":
+                return _summarize_pings(self._account.pings.list())
+            case "CreatePing":
+                return self._account.pings.create(
+                    user_ids=body["user_ids"],
+                    new_group=body.get("new_group"),
+                )
             case "GetTemplateLibraryTodolists":
                 return _summarize_template_library_todolists(
                     self._account.templates.get_library_todolists()

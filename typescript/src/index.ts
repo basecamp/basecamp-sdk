@@ -565,6 +565,12 @@ export {
   type RepositionSubtaskRequest,
 } from "./generated/services/subtasks.js";
 
+// Pings service - generated. A Ping's id is its bucket's id.
+export {
+  PingsService,
+  type CreatePingRequest,
+} from "./generated/services/pings.js";
+
 // Account service - generated
 export {
   AccountService,

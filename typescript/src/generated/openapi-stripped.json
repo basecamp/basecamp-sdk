@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-09-15",
+    "version": "2026-10-19",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -6930,6 +6930,159 @@
         }
       }
     },
+    "/circles.json": {
+      "get": {
+        "description": "Get Pings: the caller's active Pings that have a line in them, most\nrecently updated first, in one unpaginated response. Archived Pings, and\nPings no one has posted in yet, are not listed; GetPing reads either by id.\n\nAnswers `403 Forbidden` (`{\"error\": \"Pings have been disabled\"}`) when the\ncaller cannot ping.",
+        "operationId": "ListPings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "ListPings 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPingsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pings"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "post": {
+        "description": "Create a Ping with people, or return the one that already holds exactly\nthem.\n\nThe caller is always included. Without `new_group`, an existing active\nPing with exactly these people (the oldest, if several) is returned rather\nthan a second one created; with `new_group: true` and more than one other\nperson, a new group is created every time. Either way the answer is\n`201 Created` with the Ping.\n\nAnswers `403 Forbidden` (`{\"error\": \"Pings have been disabled\"}`) when the\ncaller cannot ping, and a bodiless `422` when nobody in the Ping would be a\nperson who can ping.",
+        "operationId": "CreatePing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePingRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "CreatePing 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatePingResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "BareValidationError 422 response"
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pings"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/circles/people.json": {
       "get": {
         "description": "List all account users who can be pinged\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
@@ -6995,6 +7148,99 @@
           "totalCountHeader": "X-Total-Count",
           "maxPageSize": 50
         },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/circles/{pingId}": {
+      "get": {
+        "description": "Get a Ping by its id, which is its bucket's id.\n\nAnswers `403 Forbidden` (`{\"error\": \"Pings have been disabled\"}`) when the\ncaller cannot ping, and `404 Not Found` for a bucket that is not a Ping the\ncaller is in.",
+        "operationId": "GetPing",
+        "parameters": [
+          {
+            "name": "pingId",
+            "in": "path",
+            "description": "A Ping's id is the id of the bucket that holds it (the bucket type is\n\"Circle\", which is also the wire path), so the `bucket.id` a Ping's\nrecordings carry is the id GetPing takes.",
+            "schema": {
+              "type": "integer",
+              "description": "A Ping's id is the id of the bucket that holds it (the bucket type is\n\"Circle\", which is also the wire path), so the `bucket.id` a Ping's\nrecordings carry is the id GetPing takes.",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetPing 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPingResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pings"
+        ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -28887,6 +29133,29 @@
           "name"
         ]
       },
+      "CreatePingRequestContent": {
+        "type": "object",
+        "properties": {
+          "user_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Person ids of the people to ping. People the caller cannot reach are\ndropped."
+          },
+          "new_group": {
+            "type": "boolean",
+            "description": "Create a new group even when a Ping with exactly these people exists."
+          }
+        },
+        "required": [
+          "user_ids"
+        ]
+      },
+      "CreatePingResponseContent": {
+        "$ref": "#/components/schemas/Ping"
+      },
       "CreateProjectFromTemplateRequestContent": {
         "type": "object",
         "properties": {
@@ -31145,6 +31414,9 @@
       "GetPersonResponseContent": {
         "$ref": "#/components/schemas/Person"
       },
+      "GetPingResponseContent": {
+        "$ref": "#/components/schemas/Ping"
+      },
       "GetProgressReportResponseContent": {
         "type": "array",
         "items": {
@@ -31784,6 +32056,12 @@
         "type": "array",
         "items": {
           "$ref": "#/components/schemas/Person"
+        }
+      },
+      "ListPingsResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Ping"
         }
       },
       "ListProjectPeopleResponseContent": {
@@ -32780,6 +33058,110 @@
         "required": [
           "id",
           "name"
+        ]
+      },
+      "Ping": {
+        "type": "object",
+        "description": "A Ping: a private conversation between people, held in its own bucket with\none Campfire. The Campfire's lines are read and written through the\nCampfires service; `room_url` and `links.lines` name it.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The Ping's id, which is also its bucket's id.",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "title": {
+            "type": "string",
+            "description": "The Ping's name for the caller: its given name when `named`, else the\nnames of the other people in it."
+          },
+          "named": {
+            "type": "boolean",
+            "description": "Whether someone gave the Ping a name."
+          },
+          "image_url": {
+            "type": "string",
+            "description": "The Ping's own image, present only when one was uploaded."
+          },
+          "avatar_url": {
+            "type": "string",
+            "format": "password",
+            "x-basecamp-sensitive": {
+              "category": "pii",
+              "redact": true
+            }
+          },
+          "url": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "bookmark_url": {
+            "type": "string"
+          },
+          "room_url": {
+            "type": "string",
+            "description": "The Ping's Campfire (`/buckets/{bucketId}/chats/{campfireId}.json`)."
+          },
+          "edit_title_url": {
+            "type": "string",
+            "description": "Present only when the Ping can be renamed: one with more than one other\nperson in it."
+          },
+          "links": {
+            "$ref": "#/components/schemas/PingLinks"
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Person"
+            },
+            "description": "The people in the Ping other than the caller; the caller alone when\nnobody else is in it."
+          }
+        },
+        "required": [
+          "app_url",
+          "avatar_url",
+          "bookmark_url",
+          "created_at",
+          "id",
+          "links",
+          "named",
+          "people",
+          "room_url",
+          "title",
+          "updated_at",
+          "url"
+        ]
+      },
+      "PingLinks": {
+        "type": "object",
+        "description": "The Ping's Campfire endpoints, so a client need not derive them from\n`room_url`. The wire object also repeats `url`, `app_url`, `bookmark_url`\nand `edit_title_url` as `self`, `app`, `bookmark` and `edit_title`; those\nare read from the Ping's own fields.",
+        "properties": {
+          "lines": {
+            "type": "string",
+            "description": "The Campfire's lines (`/buckets/{bucketId}/chats/{campfireId}/lines.json`)."
+          },
+          "files": {
+            "type": "string",
+            "description": "The Campfire's uploads."
+          }
+        },
+        "required": [
+          "files",
+          "lines"
         ]
       },
       "PollEventsResponseContent": {

@@ -1358,6 +1358,58 @@
       "bodyRequired": true
     },
     {
+      "operationId": "CreatePing",
+      "tag": "Pings",
+      "method": "POST",
+      "path": "/{accountId}/circles.json",
+      "doc": "Create a Ping with people, or return the one that already holds exactly\nthem.\n\nThe caller is always included. Without `new_group`, an existing active\nPing with exactly these people (the oldest, if several) is returned rather\nthan a second one created; with `new_group: true` and more than one other\nperson, a new group is created every time. Either way the answer is\n`201 Created` with the Ping.\n\nAnswers `403 Forbidden` (`{\"error\": \"Pings have been disabled\"}`) when the\ncaller cannot ping, and a bodiless `422` when nobody in the Ping would be a\nperson who can ping.",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "new_group": {
+            "description": "Create a new group even when a Ping with exactly these people exists.",
+            "type": "boolean"
+          },
+          "user_ids": {
+            "description": "Person ids of the people to ping. People the caller cannot reach are\ndropped.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "user_ids"
+        ],
+        "type": "object"
+      },
+      "bodyRequired": true
+    },
+    {
       "operationId": "CreateProject",
       "tag": "Projects",
       "method": "POST",
@@ -6530,6 +6582,48 @@
       ]
     },
     {
+      "operationId": "GetPing",
+      "tag": "Pings",
+      "method": "GET",
+      "path": "/{accountId}/circles/{pingId}",
+      "doc": "Get a Ping by its id, which is its bucket's id.\n\nAnswers `403 Forbidden` (`{\"error\": \"Pings have been disabled\"}`) when the\ncaller cannot ping, and `404 Not Found` for a bucket that is not a Ping the\ncaller is in.",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "pingId",
+          "in": "path",
+          "required": true,
+          "description": "A Ping's id is the id of the bucket that holds it (the bucket type is\n\"Circle\", which is also the wire path), so the `bucket.id` a Ping's\nrecordings carry is the id GetPing takes.",
+          "schema": {
+            "description": "A Ping's id is the id of the bucket that holds it (the bucket type is\n\"Circle\", which is also the wire path), so the `bucket.id` a Ping's\nrecordings carry is the id GetPing takes.",
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "GetProgressReport",
       "tag": "Reports",
       "method": "GET",
@@ -9237,6 +9331,37 @@
       "pagination": {
         "style": "link",
         "maxPageSize": 50
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "operationId": "ListPings",
+      "tag": "Pings",
+      "method": "GET",
+      "path": "/{accountId}/circles.json",
+      "doc": "Get Pings: the caller's active Pings that have a line in them, most\nrecently updated first, in one unpaginated response. Archived Pings, and\nPings no one has posted in yet, are not listed; GetPing reads either by id.\n\nAnswers `403 Forbidden` (`{\"error\": \"Pings have been disabled\"}`) when the\ncaller cannot ping.",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
       },
       "params": [
         {

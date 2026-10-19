@@ -69,6 +69,7 @@ type RecordingBucket = components["schemas"]["RecordingBucket"];
 export type RecordingReadSources = Pick<
   BasecampClient,
   | "campfires"
+  | "pings"
   | "cardColumns"
   | "cards"
   | "cardSteps"
@@ -579,7 +580,7 @@ function routeRecording(ref: RecordingRef): SummaryKind {
 // =============================================================================
 
 /**
- * How long a cached discovery source — a bucket's project dock, the account's
+ * How long a cached discovery source — a bucket's own Campfire, the account's
  * Campfire listing — is reused before it is read again.
  */
 export const CAMPFIRE_INDEX_TTL_MS = 10 * 60 * 1000;
@@ -594,8 +595,8 @@ const CAMPFIRE_INDEX_MIN_REFRESH_MS = 30 * 1000;
 
 /**
  * Bounds how many Campfires one `summarize` call tries, across both sources and
- * the refresh. A project has one Campfire and a handful of pings; a bucket past
- * this bound is not a shape BC3 produces, and the call reports
+ * the refresh. A project or a Ping has one Campfire; a bucket past this bound
+ * is not a shape BC3 produces, and the call reports
  * `campfire_discovery_incomplete` rather than calling the rest absent.
  */
 export const MAX_CAMPFIRE_CANDIDATES = 50;
@@ -603,14 +604,15 @@ export const MAX_CAMPFIRE_CANDIDATES = 50;
 /**
  * Caps the account-wide Campfire listing the fallback source reads. A listing
  * that overflows it is not cached and the call reports
- * `campfire_discovery_incomplete`: the dock covers every project, so the
- * listing only ever serves the leftover, and an account with more Campfires
- * than this should not pay a full walk per ten minutes for it.
+ * `campfire_discovery_incomplete`: the bucket's own Campfire covers every
+ * project and every ping, so the listing only ever serves the leftover, and an
+ * account with more Campfires than this should not pay a full walk per ten
+ * minutes for it.
  */
 export const MAX_CAMPFIRE_LISTING = 1000;
 
 /**
- * Bounds each discovery cache's entry count. The dock cache holds one snapshot
+ * Bounds each discovery cache's entry count. The bucket cache holds one snapshot
  * per bucket consulted within the TTL: a connector listening across every
  * project an agent can see touches hundreds of buckets, not thousands, and a
  * snapshot is a handful of ids, so 1024 is generous headroom, and the bound
@@ -828,6 +830,44 @@ interface SourceRead {
   cached: boolean;
 }
 
+/**
+ * The Campfire a Ping's `room_url` names, as a candidate list. A Ping's bucket
+ * type (and wire path) is "Circle", and BC3's Campfire listing holds only
+ * dock-positioned Campfires, so this read is the only source that can name a
+ * Ping's.
+ */
+async function pingCampfires(sources: RecordingReadSources, bucketId: number): Promise<number[]> {
+  let ping;
+  try {
+    ping = await sources.pings.get(bucketId);
+  } catch (err) {
+    if (isNotFound(err)) return [];
+    throw err;
+  }
+  const roomUrl = recordingText(sourceObject(ping, "the Ping read").room_url, "a Ping room_url", DISCOVERY_HINT);
+  const id = campfireIdFromRoomUrl(roomUrl);
+  return id === undefined ? [] : [id];
+}
+
+/**
+ * The id in a Campfire URL: the path must end in `/chats/{digits}`, with an
+ * optional `.json`. A lines URL, another resource, or text that is not a URL
+ * names no Campfire. An id that cannot be held exactly is refused rather than
+ * rounded into another Campfire's.
+ */
+function campfireIdFromRoomUrl(roomUrl: string): number | undefined {
+  let pathname: string;
+  try {
+    pathname = new URL(roomUrl).pathname;
+  } catch {
+    return undefined;
+  }
+  const match = /\/chats\/(\d+)(?:\.json)?$/.exec(pathname);
+  if (match === null) return undefined;
+  const id = Number(match[1]);
+  return Number.isSafeInteger(id) && id !== 0 ? id : undefined;
+}
+
 /** The single key the account-wide listing cache is stored under. */
 const LISTING_KEY = "campfires";
 
@@ -861,9 +901,10 @@ class CampfireIndex {
   }
 
   /**
-   * The Campfire ids a bucket's project dock names. A bucket that is not a
-   * project (a 404 on the project read) has none; any other failure of the read
-   * is raised.
+   * The bucket's own Campfire ids: a project's dock `chat` tools or, for a
+   * bucket that is not a project (a 404 on the project read), its Ping's
+   * Campfire. A bucket that is neither (404 on both reads) has none; any other
+   * failure of either read is raised.
    */
   async dockCampfires(
     sources: RecordingReadSources,
@@ -875,8 +916,8 @@ class CampfireIndex {
       try {
         project = await sources.projects.get(bucketId);
       } catch (err) {
-        if (isNotFound(err)) return [];
-        throw err;
+        if (!isNotFound(err)) throw err;
+        return pingCampfires(sources, bucketId);
       }
       // Two layers, as Go has two: its decoder refuses a dock id that is not a
       // number and fails the whole project read, and only then does it skip a
@@ -1625,12 +1666,15 @@ export class RecordingsService extends GeneratedRecordingsService {
    * Candidates come from two sources, tried in order and each cached ten
    * minutes:
    *
-   * 1. The bucket's project dock, whose `chat` tool is the project's Campfire:
-   *    one project read per bucket, and the answer for every line posted in a
-   *    project. Cached per bucket.
+   * 1. The bucket's own Campfire. For a project, its dock's `chat` tool: one
+   *    project read per bucket, and the answer for every line posted in a
+   *    project. For a bucket that is not a project (the project read 404s), the
+   *    Ping read, since a Ping's bucket has one Campfire, named by its
+   *    `room_url`. Cached per bucket.
    * 2. The account-wide Campfire listing (BC3 has no per-bucket one), filtered
-   *    to the bucket, for buckets that are not projects or whose dock did not
-   *    hold the line. Cached per account, so a burst of lines costs one
+   *    to the bucket, for buckets that are neither or whose own Campfire did
+   *    not hold the line. BC3 lists only dock-positioned Campfires there, so a
+   *    ping's is never in it. Cached per account, so a burst of lines costs one
    *    listing.
    *
    * The loop tries the line under each candidate until one answers, within one

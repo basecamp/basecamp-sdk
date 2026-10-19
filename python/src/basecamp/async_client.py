@@ -480,6 +480,12 @@ class AsyncAccountClient:
         return self._service("subtasks", lambda: AsyncSubtasksService(self))
 
     @property
+    def pings(self):
+        from basecamp.generated.services.pings import AsyncPingsService
+
+        return self._service("pings", lambda: AsyncPingsService(self))
+
+    @property
     def client_approvals(self):
         from basecamp.generated.services.client_approvals import AsyncClientApprovalsService
 

@@ -38,6 +38,7 @@ pub mod my_assignments;
 pub mod my_notes;
 pub mod my_notifications;
 pub mod people;
+pub mod pings;
 pub mod projects;
 pub mod recordings;
 pub mod reports;

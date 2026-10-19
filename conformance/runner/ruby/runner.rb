@@ -456,6 +456,10 @@ class OperationMapper
       @account.projects.list_recent_projects
     when "RecordProjectVisit"
       @account.projects.record_project_visit(project_id: path_params["projectId"])
+    when "ListPings"
+      summarize_pings(@account.pings.list)
+    when "CreatePing"
+      @account.pings.create(user_ids: body["user_ids"], new_group: body["new_group"])
     when "GetTemplateLibraryTodolists"
       summarize_template_library_todolists(@account.templates.get_library_todolists)
     when "GetTemplateLibraryCardTables"
@@ -1173,6 +1177,18 @@ class OperationMapper
       "last_project_id" => project_id(items.last),
       "totalCount" => enum.meta.total_count,
       "truncated" => enum.meta.truncated
+    }
+  end
+
+  # GET /circles.json is an unpaginated ARRAY, which a responseBody path cannot
+  # index. Flat scalars, for the reason summarize_projects gives; the ids and the
+  # first room_url show the array was decoded in the order served.
+  def summarize_pings(pings)
+    {
+      "ping_count" => pings.length,
+      "first_ping_id" => project_id(pings.first),
+      "last_ping_id" => project_id(pings.last),
+      "first_ping_room_url" => pings.first&.fetch("room_url", "") || ""
     }
   end
 

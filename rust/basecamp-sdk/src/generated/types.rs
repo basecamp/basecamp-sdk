@@ -1364,6 +1364,20 @@ pub struct CreatePersonRequest {
     pub company_name: Option<String>,
 }
 
+/// The `CreatePingRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreatePingRequestContent {
+    /// Person ids of the people to ping. People the caller cannot reach are
+    /// dropped.
+    pub user_ids: Vec<i64>,
+    /// Create a new group even when a Ping with exactly these people exists.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub new_group: Option<bool>,
+}
+
+/// `CreatePingResponseContent`.
+pub type CreatePingResponseContent = Ping;
+
 /// The `CreateProjectFromTemplateRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateProjectFromTemplateRequestContent {
@@ -2970,6 +2984,9 @@ impl crate::pagination::PageItems for GetPersonProgressResponseContent {
 /// `GetPersonResponseContent`.
 pub type GetPersonResponseContent = Person;
 
+/// `GetPingResponseContent`.
+pub type GetPingResponseContent = Ping;
+
 /// `GetProgressReportResponseContent`.
 pub type GetProgressReportResponseContent = Vec<TimelineEvent>;
 
@@ -3361,6 +3378,9 @@ pub type ListPeopleResponseContent = Vec<Person>;
 
 /// `ListPingablePeopleResponseContent`.
 pub type ListPingablePeopleResponseContent = Vec<Person>;
+
+/// `ListPingsResponseContent`.
+pub type ListPingsResponseContent = Vec<Ping>;
 
 /// `ListProjectPeopleResponseContent`.
 pub type ListProjectPeopleResponseContent = Vec<Person>;
@@ -3956,6 +3976,61 @@ pub struct PersonCompany {
     pub id: i64,
     /// `name`.
     pub name: String,
+}
+
+/// A Ping: a private conversation between people, held in its own bucket with
+/// one Campfire. The Campfire's lines are read and written through the
+/// Campfires service; `room_url` and `links.lines` name it.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Ping {
+    /// The Ping's id, which is also its bucket's id.
+    pub id: i64,
+    /// `created_at`.
+    pub created_at: DateTime,
+    /// `updated_at`.
+    pub updated_at: DateTime,
+    /// The Ping's name for the caller: its given name when `named`, else the
+    /// names of the other people in it.
+    pub title: String,
+    /// Whether someone gave the Ping a name.
+    pub named: bool,
+    /// The Ping's own image, present only when one was uploaded.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_url: Option<String>,
+    /// `avatar_url`.
+    pub avatar_url: SensitiveString,
+    /// `url`.
+    pub url: String,
+    /// `app_url`.
+    pub app_url: String,
+    /// `bookmark_url`.
+    pub bookmark_url: String,
+    /// The Ping's Campfire (`/buckets/{bucketId}/chats/{campfireId}.json`).
+    pub room_url: String,
+    /// Present only when the Ping can be renamed: one with more than one other
+    /// person in it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edit_title_url: Option<String>,
+    /// `links`.
+    pub links: PingLinks,
+    /// The people in the Ping other than the caller; the caller alone when
+    /// nobody else is in it.
+    #[serde(deserialize_with = "crate::types::person_list::deserialize")]
+    pub people: Vec<Person>,
+}
+
+/// The Ping's Campfire endpoints, so a client need not derive them from
+/// `room_url`. The wire object also repeats `url`, `app_url`, `bookmark_url`
+/// and `edit_title_url` as `self`, `app`, `bookmark` and `edit_title`; those
+/// are read from the Ping's own fields.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct PingLinks {
+    /// The Campfire's lines (`/buckets/{bucketId}/chats/{campfireId}/lines.json`).
+    pub lines: String,
+    /// The Campfire's uploads.
+    pub files: String,
 }
 
 /// The poll envelope. Every 200 carries `events` and `position`; `next` only

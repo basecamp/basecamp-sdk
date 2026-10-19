@@ -16,6 +16,7 @@ let tagToService: [String: String] = [
     "ClientFeatures": "ClientFeatures",
     "Boosts": "Boosts",
     "Subtasks": "Subtasks",
+    "Pings": "Pings",
     "Untagged": "Miscellaneous",
 ]
 

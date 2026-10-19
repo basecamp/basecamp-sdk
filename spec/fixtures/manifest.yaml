@@ -114,6 +114,16 @@ targets:
   - id: subtask-list
     operation: ListSubtasks
     fixture: subtasks/list.json
+  # Pings: app/views/api/circles/_circle.json.jbuilder. get.json is a named
+  # group, so it carries the optional image_url and edit_title_url; list.json
+  # pairs it with a direct ping, which carries neither.
+  - id: ping-get
+    fixture: pings/get.json
+    pointer: ""
+    schema: Ping
+  - id: ping-list
+    operation: ListPings
+    fixture: pings/list.json
   - id: todolist-get
     fixture: todolists/get.json
     pointer: ""
@@ -422,6 +432,7 @@ covered_schemas:
   Document: [document-get]
   Card: [card-get]
   Subtask: [subtask-get]
+  Ping: [ping-get]
   Todolist: [todolist-get, todolist-group-get]
   Upload: [upload-get]
   UploadVersion: [upload-version-0, upload-version-recordable-gone]

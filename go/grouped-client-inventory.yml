@@ -222,6 +222,7 @@ not_grouped:
   - CreateGoogleDocument
   - CreateLineupMarker
   - CreateMessageType
+  - CreatePing
   - CreateProjectFromTemplate
   - CreateQuestion
   - CreateRecordingBoost
@@ -307,6 +308,7 @@ not_grouped:
   - GetOutOfOffice
   - GetOverdueTodos
   - GetPersonProgress
+  - GetPing
   - GetProgressReport
   - GetProjectConstruction
   - GetProjectTimeline
@@ -344,6 +346,7 @@ not_grouped:
   - ListMyBookmarks
   - ListMyDrafts
   - ListPingablePeople
+  - ListPings
   - ListProjectPeople
   - ListQuestionAnswerers
   - ListQuestions

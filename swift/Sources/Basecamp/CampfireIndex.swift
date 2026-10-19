@@ -7,12 +7,16 @@ import Foundation
 /// Candidates come from two sources, tried in order and each cached
 /// ``RecordingsService/campfireIndexTTL``:
 ///
-/// 1. The bucket's project dock, whose `chat` tool is the project's Campfire:
-///    one project read per bucket, and the answer for every line posted in a
-///    project. Cached per bucket.
+/// 1. The bucket's own Campfire. For a project, its dock's `chat` tool: one
+///    project read per bucket, and the answer for every line posted in a
+///    project. For a bucket that is not a project (the project read 404s), the
+///    Ping read, since a ping's bucket (its type and wire path are "Circle")
+///    has one Campfire, named by its `room_url`. Cached per bucket.
 /// 2. The account-wide Campfire listing (BC3 has no per-bucket one), filtered to
-///    the bucket, for buckets that are not projects or whose dock did not hold
-///    the line. Cached per account, so a burst of lines costs one listing.
+///    the bucket, for buckets that are neither or whose own Campfire did not
+///    hold the line. BC3 lists only dock-positioned Campfires there, so a
+///    ping's is never in it. Cached per account, so a burst of lines costs one
+///    listing.
 ///
 /// It lives on ``BasecampClient`` — shared by every ``AccountClient`` that
 /// client hands out. A client is bound to one credential, so entries are never
@@ -22,7 +26,7 @@ import Foundation
 /// most the buckets and accounts consulted within the last TTL, and never more
 /// than the bound, whatever the client has seen.
 final class CampfireIndex: Sendable {
-    /// Bounds each cache's entry count. The dock cache holds one snapshot per
+    /// Bounds each cache's entry count. The bucket cache holds one snapshot per
     /// bucket consulted within the TTL: a connector listening across every
     /// project an agent can see touches hundreds of buckets, not thousands, and
     /// a snapshot is a handful of ids, so 1024 is generous headroom at a few
@@ -31,7 +35,7 @@ final class CampfireIndex: Sendable {
     /// entries go first, deterministically.
     static let maxItems = 1024
 
-    /// A bucket's dock snapshot, keyed by the account it was read under.
+    /// A bucket's own-Campfire snapshot, keyed by the account it was read under.
     struct DockKey: Hashable, Sendable {
         let accountId: String
         let bucketId: Int
@@ -69,26 +73,48 @@ final class CampfireIndex: Sendable {
         var cached: Bool
     }
 
-    /// The Campfire ids a bucket's project dock names. A bucket that is not a
-    /// project (a 404 on the project read) has none; any other failure of the
-    /// read is thrown.
+    /// The bucket's own Campfire ids: a project's dock `chat` tools, or, for a
+    /// bucket that is not a project, its Ping's Campfire. A bucket that is
+    /// neither (a 404 on both reads) has none; any other failure of either read
+    /// is thrown, a 403 "Pings have been disabled" included.
     func dockCampfires(account: AccountClient, bucketId: Int, refresh: Bool) async throws
         -> SourceRead
     {
         let key = DockKey(accountId: account.accountId, bucketId: bucketId)
         let hit = try await docks.value(for: key, refresh: refresh) {
-            let project: Project
             do {
-                project = try await account.projects.get(projectId: bucketId)
+                let project = try await account.projects.get(projectId: bucketId)
+                return (project.dock ?? [])
+                    .filter { $0.name == "chat" && $0.id != 0 }
+                    .map(\.id)
+            } catch let error as BasecampError {
+                guard case .notFound = error else { throw error }
+            }
+            do {
+                let ping = try await account.pings.get(pingId: bucketId)
+                return Self.campfireId(fromRoomURL: ping.roomUrl).map { [$0] } ?? []
             } catch let error as BasecampError {
                 if case .notFound = error { return [] }
                 throw error
             }
-            return (project.dock ?? [])
-                .filter { $0.name == "chat" && $0.id != 0 }
-                .map(\.id)
         }
         return SourceRead(ids: hit.value, fetchedAt: hit.fetchedAt, cached: hit.cached)
+    }
+
+    /// The Campfire a Ping's `room_url` names: a path ending in
+    /// `/chats/{digits}`, with an optional `.json`. A URL that names anything
+    /// else (a lines listing, another tool, nothing) names no Campfire.
+    static func campfireId(fromRoomURL roomURL: String) -> Int? {
+        guard let path = URLComponents(string: roomURL)?.path else { return nil }
+        var segments = path.split(separator: "/", omittingEmptySubsequences: false)
+        guard segments.count >= 2, segments[segments.count - 2] == "chats",
+            var last = segments.popLast()
+        else { return nil }
+        if last.hasSuffix(".json") { last = last.dropLast(".json".count) }
+        guard !last.isEmpty, last.utf8.allSatisfy({ (0x30...0x39).contains($0) }),
+            let id = Int(last), id != 0
+        else { return nil }
+        return id
     }
 
     /// The Campfire ids the *cached* account-wide listing shows in a bucket,

@@ -680,6 +680,24 @@ func summarizeTodolist(todolist *basecamp.Todolist) map[string]interface{} {
 	return map[string]interface{}{"id": todolist.ID, "title": todolist.Title}
 }
 
+// summarizePings flattens a Ping list into top-level scalars, for the reason
+// summarizeProjects gives. The ids and the first room_url show the array was
+// decoded in the order served, not merely received.
+func summarizePings(pings []basecamp.Ping) map[string]interface{} {
+	summary := map[string]interface{}{
+		"ping_count":          len(pings),
+		"first_ping_id":       int64(0),
+		"last_ping_id":        int64(0),
+		"first_ping_room_url": "",
+	}
+	if len(pings) > 0 {
+		summary["first_ping_id"] = pings[0].ID
+		summary["last_ping_id"] = pings[len(pings)-1].ID
+		summary["first_ping_room_url"] = pings[0].RoomURL
+	}
+	return summary
+}
+
 // summarizeProjects flattens an accumulated project list into top-level
 // scalars.
 //
@@ -913,6 +931,21 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		projectID := getInt64Param(tc.PathParams, "projectId")
 		err := account.Projects().RecordVisit(ctx, projectID)
 		return operationResult{err: err}
+
+	case "ListPings":
+		pings, err := account.Pings().List(ctx)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizePings(pings)}
+
+	case "CreatePing":
+		userIDs, _ := getInt64SliceParam(tc.RequestBody, "user_ids")
+		ping, err := account.Pings().Create(ctx, &basecamp.CreatePingRequest{
+			UserIDs:  userIDs,
+			NewGroup: getBoolParam(tc.RequestBody, "new_group"),
+		})
+		return operationResult{err: err, result: ping}
 
 	case "GetTemplateLibraryTodolists":
 		library, err := account.Templates().GetLibraryTodolists(ctx)

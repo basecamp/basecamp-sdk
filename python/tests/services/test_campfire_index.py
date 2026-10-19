@@ -1067,3 +1067,38 @@ class TestListingIndex:
         )
 
         assert mapped == {7: [5]}, "a zero or absent bucket id is skipped, never indexed under 0"
+
+
+class TestPingCampfireId:
+    @pytest.mark.parametrize(
+        ("room_url", "expected"),
+        [
+            ("https://3.basecampapi.com/1/buckets/2/chats/3.json", [3]),
+            ("https://3.basecampapi.com/1/buckets/2/chats/3", [3]),
+            ("https://3.basecampapi.com/1/chats/3.json", [3]),
+            ("/buckets/2/chats/3.json", [3]),
+            ("https://3.basecampapi.com/1/buckets/2/chats/3.json?x=1", [3]),
+            ("https://3.basecampapi.com/1/buckets/2/chats/3/lines.json", []),
+            ("https://3.basecampapi.com/1/buckets/2/todolists/3.json", []),
+            ("https://3.basecampapi.com/1/buckets/2/chats/abc.json", []),
+            ("https://3.basecampapi.com/1/buckets/2/chats/0.json", []),
+            ("https://3.basecampapi.com/1/buckets/2/chats/9223372036854775808.json", []),
+            ("", []),
+        ],
+    )
+    def test_room_url_names_the_campfire_only_through_a_chats_route(self, room_url, expected):
+        from basecamp.services._campfire_index import _ping_campfire_ids
+
+        assert _ping_campfire_ids({"room_url": room_url}) == expected
+
+    @pytest.mark.parametrize("room_url", ["https://[broken", "http://[::1/chats/3.json", "https://[/chats/3"])
+    def test_a_room_url_the_parser_rejects_names_no_campfire(self, room_url):
+        from basecamp.services._campfire_index import _ping_campfire_ids
+
+        assert _ping_campfire_ids({"room_url": room_url}) == []
+
+    @pytest.mark.parametrize("ping", [None, {}, {"room_url": None}])
+    def test_a_null_or_absent_room_url_names_no_campfire(self, ping):
+        from basecamp.services._campfire_index import _ping_campfire_ids
+
+        assert _ping_campfire_ids(ping) == []

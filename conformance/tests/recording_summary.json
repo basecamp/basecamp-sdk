@@ -6002,7 +6002,7 @@
   },
   {
     "name": "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line",
-    "description": "A chat line by recording type — any Chat::Lines::* subtype — takes the same discovery path as chat.line.created: the bucket's project dock (404 here: not a project), then the account-wide listing filtered to the bucket, then the line under each candidate in listing order until one answers. The projection carries the line's type, id, status, title, app_url, content, mentions (none: a plain text line's content is not rich text), the nested identities by id, updated_at as an instant, and campfire_id — the Campfire it was found under, the reply destination. Part of the routing matrix a port must implement.",
+    "description": "A chat line by recording type — any Chat::Lines::* subtype — takes the same discovery path as chat.line.created: the bucket's project dock (404 here: not a project), its Ping (404 here: not a Ping), then the account-wide listing filtered to the bucket, then the line under each candidate in listing order until one answers. The projection carries the line's type, id, status, title, app_url, content, mentions (none: a plain text line's content is not rich text), the nested identities by id, updated_at as an instant, and campfire_id — the Campfire it was found under, the reply destination. Part of the routing matrix a port must implement.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/projects/2085958499",
@@ -6012,6 +6012,15 @@
       "recordingType": "Chat::Lines::Text"
     },
     "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
       {
         "status": 404,
         "headers": {
@@ -6163,7 +6172,7 @@
     "assertions": [
       {
         "type": "requestCount",
-        "expected": 4
+        "expected": 5
       },
       {
         "type": "noError"
@@ -6176,16 +6185,21 @@
       {
         "type": "requestPath",
         "index": 1,
-        "expected": "/999/chats.json"
+        "expected": "/999/circles/2085958499"
       },
       {
         "type": "requestPath",
         "index": 2,
-        "expected": "/999/chats/1069479340/lines/1069479350"
+        "expected": "/999/chats.json"
       },
       {
         "type": "requestPath",
         "index": 3,
+        "expected": "/999/chats/1069479340/lines/1069479350"
+      },
+      {
+        "type": "requestPath",
+        "index": 4,
         "expected": "/999/chats/1069479345/lines/1069479350"
       },
       {
@@ -6451,7 +6465,7 @@
   },
   {
     "name": "RecordingsSummarize finds a chat line under the second visible Campfire",
-    "description": "A chat line's read needs its Campfire, which the pointer does not carry. The bucket is not a project (its dock read 404s), so the candidates come from the account-wide Campfire listing filtered to the bucket; the line is tried under each in listing order until one answers, and the Campfire in the other bucket is never tried. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id. updated_at is pinned as an instant (RFC 3339 values compare by time, not by rendering).",
+    "description": "A chat line's read needs its Campfire, which the pointer does not carry. The bucket is neither a project nor a Ping (its dock read and its Ping read both 404), so the candidates come from the account-wide Campfire listing filtered to the bucket; the line is tried under each in listing order until one answers, and the Campfire in the other bucket is never tried. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id. updated_at is pinned as an instant (RFC 3339 values compare by time, not by rendering).",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/projects/2085958499",
@@ -6461,6 +6475,15 @@
       "eventType": "chat.line.created"
     },
     "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
       {
         "status": 404,
         "headers": {
@@ -6612,7 +6635,7 @@
     "assertions": [
       {
         "type": "requestCount",
-        "expected": 4
+        "expected": 5
       },
       {
         "type": "noError"
@@ -6625,16 +6648,21 @@
       {
         "type": "requestPath",
         "index": 1,
-        "expected": "/999/chats.json"
+        "expected": "/999/circles/2085958499"
       },
       {
         "type": "requestPath",
         "index": 2,
-        "expected": "/999/chats/1069479340/lines/1069479350"
+        "expected": "/999/chats.json"
       },
       {
         "type": "requestPath",
         "index": 3,
+        "expected": "/999/chats/1069479340/lines/1069479350"
+      },
+      {
+        "type": "requestPath",
+        "index": 4,
         "expected": "/999/chats/1069479345/lines/1069479350"
       },
       {
@@ -6674,6 +6702,211 @@
     ]
   },
   {
+    "name": "RecordingsSummarize finds a Ping's chat line under its Campfire",
+    "description": "A Ping's bucket is a Circle, not a project, and BC3's account-wide Campfire listing holds only dock-positioned Campfires, so a Ping's Campfire is never in it. When the dock read 404s, the Ping read (GET /circles/{id}.json) names the bucket's one Campfire through its room_url, and the line is read there: three requests, no listing. The Ping is the bucket's own source, cached per bucket like a dock.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/projects/2085958499",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479350,
+      "eventType": "chat.line.created"
+    },
+    "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2085958499,
+          "created_at": "2022-11-21T16:30:12.231Z",
+          "updated_at": "2022-11-22T09:12:44.118Z",
+          "title": "Launch crew",
+          "named": true,
+          "avatar_url": "https://3.basecamp-static.com/195539477/circles/2085958600/avatar",
+          "url": "https://3.basecampapi.com/195539477/circles/2085958499.json",
+          "app_url": "https://3.basecamp.com/195539477/circles/2085958499",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiKWdpZDovL2JjMy9CdWNrZXQv2085958600--ffeeddcc.json",
+          "room_url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345.json",
+          "edit_title_url": "https://3.basecamp.com/195539477/buckets/2085958499/title/edit",
+          "links": {
+            "self": "https://3.basecampapi.com/195539477/circles/2085958499.json",
+            "app": "https://3.basecamp.com/195539477/circles/2085958499",
+            "bookmark": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiKWdpZDovL2JjMy9CdWNrZXQv2085958499--ffeeddcc.json",
+            "lines": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/lines.json",
+            "files": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/uploads.json",
+            "edit_title": "https://3.basecamp.com/195539477/buckets/2085958499/title/edit"
+          },
+          "people": [
+            {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1--aabbccdd",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Central Markets Producer",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/1049715915/avatar",
+              "company": {
+                "id": 1033447817,
+                "name": "Honcho Design"
+              },
+              "can_ping": true,
+              "can_manage_projects": true,
+              "can_manage_people": false,
+              "can_access_timesheet": true,
+              "can_access_hill_charts": true
+            },
+            {
+              "id": 1049715916,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE2--aabbccdd",
+              "name": "Cheryl Walters",
+              "email_address": "cheryl@honchodesign.com",
+              "personable_type": "User",
+              "title": "Senior Data Analyst",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/1049715916/avatar",
+              "company": {
+                "id": 1033447817,
+                "name": "Honcho Design"
+              },
+              "can_ping": true,
+              "can_manage_projects": true,
+              "can_manage_people": false,
+              "can_access_timesheet": true,
+              "can_access_hill_charts": true
+            }
+          ],
+          "image_url": "https://3.basecamp-static.com/195539477/circles/2085958600/image"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479350,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-10-28T15:25:00.000Z",
+          "updated_at": "2022-10-28T15:25:00.000Z",
+          "title": "Hello everyone!",
+          "inherits_status": true,
+          "type": "Chat::Lines::Text",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/lines/1069479350.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345#__recording_1069479350",
+          "content": "Hello everyone!",
+          "parent": {
+            "id": 1069479345,
+            "title": "Campfire",
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.732Z",
+            "updated_at": "2022-11-22T08:23:21.732Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 3
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "index": 0,
+        "expected": "/999/projects/2085958499"
+      },
+      {
+        "type": "requestPath",
+        "index": 1,
+        "expected": "/999/circles/2085958499"
+      },
+      {
+        "type": "requestPath",
+        "index": 2,
+        "expected": "/999/chats/1069479345/lines/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "campfire_id",
+        "expected": 1069479345
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Chat::Lines::Text"
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "chat"
+    ]
+  },
+  {
     "name": "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read",
     "description": "Every candidate answered 404, so the line is under no Campfire the caller can see. That is its own error, distinct from a read that failed, so a consumer can block the record and retry later rather than treat it as an outage. errorType pins the identity: recording_unresolved, not a not_found or forbidden read and not campfire_discovery_incomplete.",
     "operation": "RecordingsSummarize",
@@ -6685,6 +6918,15 @@
       "eventType": "chat.line.created"
     },
     "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
       {
         "status": 404,
         "headers": {
@@ -6790,7 +7032,7 @@
     "assertions": [
       {
         "type": "requestCount",
-        "expected": 4
+        "expected": 5
       },
       {
         "type": "errorMessage",
@@ -6823,6 +7065,15 @@
       "eventType": "chat.line.created"
     },
     "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
       {
         "status": 404,
         "headers": {
@@ -6919,7 +7170,7 @@
     "assertions": [
       {
         "type": "requestCount",
-        "expected": 3
+        "expected": 4
       },
       {
         "type": "errorType",
@@ -6947,6 +7198,15 @@
       "eventType": "chat.line.created"
     },
     "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
       {
         "status": 404,
         "headers": {
@@ -7022,7 +7282,7 @@
     "assertions": [
       {
         "type": "requestCount",
-        "expected": 3
+        "expected": 4
       },
       {
         "type": "errorType",

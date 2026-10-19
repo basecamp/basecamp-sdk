@@ -74,12 +74,14 @@ class RecordingsSummarizeTest < Minitest::Test
   def test_every_chat_line_subtype_takes_the_discovery_path
     %w[Chat::Lines::Text Chat::Lines::RichText Chat::Lines::Code Chat::Lines::Upload
        Chat::Lines::Integration].each do |type|
-      stub_request(:get, "#{BASE_URL}/12345/projects/#{BUCKET}").to_return(status: 404, body: "{}")
+      stub_no_project
+      stub_no_ping
       stub_get("/12345/chats.json", response_body: [])
 
       error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(recording_type: type) }
 
       assert_empty error.campfire_ids
+      assert_requested(:get, "#{BASE_URL}/12345/circles/#{BUCKET}", times: 1)
       # A fresh client per iteration: the discovery caches live on the Client
       # and would otherwise answer the next subtype from the first one's reads.
       @account = create_account_client(account_id: "12345")
@@ -1124,6 +1126,24 @@ class RecordingsSummarizeTest < Minitest::Test
     WebMock.reset!
   end
 
+  def stub_no_project(bucket: BUCKET)
+    stub_get("/12345/projects/#{bucket}", status: 404, response_body: { "error" => "Record not found" })
+  end
+
+  def stub_no_ping(bucket: BUCKET)
+    stub_get("/12345/circles/#{bucket}", status: 404, response_body: { "error" => "Record not found" })
+  end
+
+  def stub_ping(room_url, bucket: BUCKET)
+    stub_get("/12345/circles/#{bucket}", response_body: {
+      "id" => bucket, "title" => "", "named" => false, "room_url" => room_url
+    })
+  end
+
+  def ping_room_url(campfire_id, bucket: BUCKET)
+    "https://3.basecampapi.com/12345/buckets/#{bucket}/chats/#{campfire_id}.json"
+  end
+
   def stub_dock(campfire_ids, bucket: BUCKET)
     stub_get("/12345/projects/#{bucket}", response_body: {
       "id" => bucket,
@@ -1149,6 +1169,102 @@ class RecordingsSummarizeTest < Minitest::Test
     index = Basecamp::CampfireIndex.new(clock: clock)
     account.define_singleton_method(:campfire_index) { index }
     account
+  end
+
+  def test_a_pings_line_is_found_under_its_pings_campfire_without_the_listing
+    stub_no_project
+    stub_ping(ping_room_url(1069479600))
+    stub_line(1069479600)
+
+    summary = summarize(event_type: "chat.line.created")
+
+    assert_equal 1069479600, summary["campfire_id"]
+    assert_requested(:get, "#{BASE_URL}/12345/projects/#{BUCKET}", times: 1)
+    assert_requested(:get, "#{BASE_URL}/12345/circles/#{BUCKET}", times: 1)
+    assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
+  end
+
+  def test_a_second_line_in_one_ping_costs_no_new_project_or_ping_read
+    stub_no_project
+    stub_ping(ping_room_url(1069479600))
+    stub_line(1069479600)
+
+    3.times { summarize(event_type: "chat.line.created") }
+
+    assert_requested(:get, "#{BASE_URL}/12345/projects/#{BUCKET}", times: 1)
+    assert_requested(:get, "#{BASE_URL}/12345/circles/#{BUCKET}", times: 1)
+  end
+
+  def test_a_project_never_pays_for_a_ping_read
+    stub_dock([ 500 ])
+    stub_line(500)
+
+    summarize(event_type: "chat.line.created")
+
+    assert_not_requested(:get, "#{BASE_URL}/12345/circles/#{BUCKET}")
+  end
+
+  def test_a_ping_the_caller_may_not_read_is_forbidden_not_unresolved
+    stub_no_project
+    stub_get("/12345/circles/#{BUCKET}", status: 403, response_body: { "error" => "Pings have been disabled" })
+    stub_get("/12345/chats.json", response_body: [])
+
+    assert_raises(Basecamp::ForbiddenError) { summarize(event_type: "chat.line.created") }
+    assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
+  end
+
+  def test_a_ping_with_a_flat_room_url_names_its_campfire
+    stub_no_project
+    stub_ping("https://3.basecampapi.com/12345/chats/1069479600.json")
+    stub_line(1069479600)
+
+    assert_equal 1069479600, summarize(event_type: "chat.line.created")["campfire_id"]
+  end
+
+  def test_a_room_url_that_names_no_campfire_gives_no_candidates
+    [ "", nil,
+      "https://3.basecampapi.com/12345/buckets/#{BUCKET}/chats/1069479600/lines.json",
+      "https://3.basecampapi.com/12345/buckets/#{BUCKET}/todos/1069479600.json",
+      "https://3.basecampapi.com/12345/buckets/#{BUCKET}/chats/abc.json" ].each do |room_url|
+      stub_no_project
+      stub_ping(room_url)
+      stub_get("/12345/chats.json", response_body: [])
+
+      error = assert_raises(Basecamp::UnresolvedRecordingError, "room_url #{room_url.inspect}") do
+        summarize(event_type: "chat.line.created")
+      end
+
+      assert_empty error.campfire_ids
+      assert_requested(:get, "#{BASE_URL}/12345/chats.json", times: 1)
+      @account = create_account_client(account_id: "12345")
+      WebMock.reset!
+    end
+  end
+
+  def test_a_room_url_that_is_not_a_string_fails_the_read
+    stub_no_project
+    stub_ping(12)
+
+    assert_raises(Basecamp::ApiError) { summarize(event_type: "chat.line.created") }
+  end
+
+  def test_a_bucket_that_is_neither_project_nor_ping_falls_through_to_the_listing
+    stub_no_project
+    stub_no_ping
+    stub_get("/12345/chats.json", response_body: [ { "id" => 500, "bucket" => { "id" => BUCKET } } ])
+    stub_line(500)
+
+    assert_equal 500, summarize(event_type: "chat.line.created")["campfire_id"]
+  end
+
+  def test_a_ping_campfire_that_does_not_hold_the_line_still_consults_the_listing
+    stub_no_project
+    stub_ping(ping_room_url(600))
+    stub_line(600, status: 404, body: { "error" => "Record not found" })
+    stub_get("/12345/chats.json", response_body: [ { "id" => 601, "bucket" => { "id" => BUCKET } } ])
+    stub_line(601)
+
+    assert_equal 601, summarize(event_type: "chat.line.created")["campfire_id"]
   end
 
   def test_the_dock_answers_without_the_listing_being_fetched

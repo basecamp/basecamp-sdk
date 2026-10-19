@@ -97,6 +97,24 @@ class RecordingsSummarizeTest {
     }]
     }"""
 
+    private fun pingJson(bucketId: Long, roomUrl: String) = """{
+        "id": $bucketId, "title": "Launch crew", "named": true,
+        "created_at": "2022-11-21T16:30:12.231Z", "updated_at": "2022-11-22T09:12:44.118Z",
+        "avatar_url": "https://3.basecamp-static.com/999/circles/$bucketId/avatar",
+        "url": "https://3.basecampapi.com/999/circles/$bucketId.json",
+        "app_url": "https://3.basecamp.com/999/circles/$bucketId",
+        "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/BAh7--ffeeddcc.json",
+        "room_url": "$roomUrl",
+        "links": {
+            "lines": "https://3.basecampapi.com/999/buckets/$bucketId/chats/1/lines.json",
+            "files": "https://3.basecampapi.com/999/buckets/$bucketId/chats/1/uploads.json"
+        },
+        "people": []
+    }"""
+
+    private fun roomUrl(bucketId: Long, campfireId: Long) =
+        "https://3.basecampapi.com/999/buckets/$bucketId/chats/$campfireId.json"
+
     private fun commentJson(bucketId: Long) = """{
         "id": 1069479361, "status": "active", "visible_to_clients": false,
         "created_at": "2022-10-30T01:01:58.169Z", "updated_at": "2022-10-30T01:01:58.169Z",
@@ -256,6 +274,7 @@ class RecordingsSummarizeTest {
         assertEquals(
             listOf(
                 "/999/projects/$BUCKET",
+                "/999/circles/$BUCKET",
                 "/999/chats.json",
                 "/999/chats/340/lines/$LINE",
                 "/999/chats/345/lines/$LINE",
@@ -263,6 +282,113 @@ class RecordingsSummarizeTest {
             recordedPaths,
             "the Campfire in the other bucket is never tried",
         )
+        client.close()
+    }
+
+    @Test
+    fun aPingsLineIsFoundUnderItsPingsCampfireWithoutTheListing() = runTest {
+        val client = client { path ->
+            when (path) {
+                "/999/circles/$BUCKET" -> ok(pingJson(BUCKET, roomUrl(BUCKET, 1069479600L)))
+                "/999/chats/1069479600/lines/$LINE" -> ok(lineJson())
+                else -> notFound()
+            }
+        }
+        val summary = client.forAccount("999").recordings.summarize(
+            RecordingRef(BUCKET, LINE, eventType = "chat.line.created"),
+        )
+        assertEquals(1069479600L, summary.campfireId)
+        assertEquals(
+            listOf("/999/projects/$BUCKET", "/999/circles/$BUCKET", "/999/chats/1069479600/lines/$LINE"),
+            recordedPaths,
+            "a ping is never in the account listing, so the Ping names its Campfire and the listing is not fetched",
+        )
+        client.close()
+    }
+
+    @Test
+    fun aSecondLineInTheSamePingCostsNoNewProjectOrPingRead() = runTest {
+        val client = client { path ->
+            when {
+                path == "/999/circles/$BUCKET" -> ok(pingJson(BUCKET, roomUrl(BUCKET, 1069479600L)))
+                path.startsWith("/999/chats/1069479600/lines/") -> ok(lineJson())
+                else -> notFound()
+            }
+        }
+        val account = client.forAccount("999")
+        repeat(3) {
+            account.recordings.summarize(RecordingRef(BUCKET, LINE, eventType = "chat.line.created"))
+        }
+        assertEquals(1, recordedPaths.count { it == "/999/projects/$BUCKET" }, "the project read is cached as a miss")
+        assertEquals(1, recordedPaths.count { it == "/999/circles/$BUCKET" }, "the Ping read is cached")
+        assertTrue(recordedPaths.none { it == "/999/chats.json" }, "no listing: $recordedPaths")
+        client.close()
+    }
+
+    @Test
+    fun aProjectNeverPaysForAPingRead() = runTest {
+        val client = client { path ->
+            when {
+                path == "/999/projects/$BUCKET" -> ok(projectJson(BUCKET, listOf(77L)))
+                path == "/999/chats/77/lines/$LINE" -> ok(lineJson())
+                else -> notFound()
+            }
+        }
+        client.forAccount("999").recordings.summarize(RecordingRef(BUCKET, LINE, eventType = "chat.line.created"))
+        assertTrue(recordedPaths.none { it.startsWith("/999/circles/") }, "no Ping read for a project: $recordedPaths")
+        client.close()
+    }
+
+    @Test
+    fun aPingForbiddenIsRaisedAsItselfNotReportedUnresolved() = runTest {
+        val client = client { path ->
+            when (path) {
+                "/999/circles/$BUCKET" -> HttpStatusCode.Forbidden to """{"error":"Pings have been disabled"}"""
+                else -> notFound()
+            }
+        }
+        assertFailsWith<BasecampException.Forbidden> {
+            client.forAccount("999").recordings.summarize(
+                RecordingRef(BUCKET, LINE, eventType = "chat.line.created"),
+            )
+        }
+        assertTrue(recordedPaths.none { it == "/999/chats.json" }, "a failed read does not fall through: $recordedPaths")
+        client.close()
+    }
+
+    @Test
+    fun aPingWhoseRoomUrlNamesNoCampfireFallsThroughToTheListing() = runTest {
+        val client = client { path ->
+            when (path) {
+                "/999/circles/$BUCKET" -> ok(pingJson(BUCKET, "https://3.basecampapi.com/999/buckets/$BUCKET/todolists/5.json"))
+                "/999/chats.json" -> ok("[${campfireJson(340, BUCKET)}]")
+                "/999/chats/340/lines/$LINE" -> ok(lineJson())
+                else -> notFound()
+            }
+        }
+        val summary = client.forAccount("999").recordings.summarize(
+            RecordingRef(BUCKET, LINE, eventType = "chat.line.created"),
+        )
+        assertEquals(340L, summary.campfireId)
+        client.close()
+    }
+
+    @Test
+    fun aPingWithNoRoomUrlIsAMalformedBodyNotAnAbsentCampfire() = runTest {
+        val client = client { path ->
+            when (path) {
+                "/999/circles/$BUCKET" -> ok(pingJson(BUCKET, "").lines().filterNot { "room_url" in it }.joinToString("\n"))
+                "/999/chats.json" -> ok("[${campfireJson(340, BUCKET)}]")
+                else -> notFound()
+            }
+        }
+        val failure = assertFailsWith<BasecampException.Api> {
+            client.forAccount("999").recordings.summarize(
+                RecordingRef(BUCKET, LINE, eventType = "chat.line.created"),
+            )
+        }
+        assertNotNull(failure.decodeFailure, "the Ping decode failure surfaces as itself")
+        assertTrue(recordedPaths.none { it == "/999/chats.json" }, "a failed read does not fall through: $recordedPaths")
         client.close()
     }
 
@@ -481,7 +607,7 @@ class RecordingsSummarizeTest {
         }
         val service = client.forAccount("999").recordings
         service.summarize(RecordingRef(BUCKET, LINE + 1, eventType = "chat.line.created"), index)
-        val before = recordedPaths.count { it == "/999/chats.json" || it == "/999/projects/$BUCKET" }
+        val before = recordedPaths.count { it == "/999/chats.json" || it == "/999/projects/$BUCKET" || it == "/999/circles/$BUCKET" }
 
         clock = CAMPFIRE_INDEX_MIN_REFRESH_MILLIS - 1
         val failure = assertFailsWith<BasecampException.RecordingSummaryFailure> {
@@ -491,7 +617,7 @@ class RecordingsSummarizeTest {
         assertTrue(!failure.refreshed, "the floor declined the re-read, and the verdict says so")
         assertEquals(
             before,
-            recordedPaths.count { it == "/999/chats.json" || it == "/999/projects/$BUCKET" },
+            recordedPaths.count { it == "/999/chats.json" || it == "/999/projects/$BUCKET" || it == "/999/circles/$BUCKET" },
             "a run of unresolvable lines cannot become a listing per line",
         )
         client.close()
@@ -638,7 +764,7 @@ class RecordingsSummarizeTest {
         var listingFetches = 0
         val client = client { path ->
             when {
-                path == "/999/projects/$BUCKET" -> notFound()
+                path == "/999/projects/$BUCKET" || path == "/999/circles/$BUCKET" -> notFound()
                 path == "/999/chats.json" -> { listingFetches++; ok(listing) }
                 path.startsWith("/999/chats/") -> notFound()
                 else -> error("unexpected request to $path")

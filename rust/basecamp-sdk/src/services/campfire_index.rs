@@ -7,11 +7,15 @@
 //! line read is `GET /chats/{campfireId}/lines/{lineId}`. Candidates come from two sources,
 //! tried in order and each cached [`CAMPFIRE_INDEX_TTL`]:
 //!
-//! 1. The bucket's project dock, whose `chat` tool is the project's Campfire: one project
-//!    read per bucket, and the answer for every line posted in a project. Cached per bucket.
+//! 1. The bucket's own Campfire. For a project, its dock's `chat` tool: one project read per
+//!    bucket, and the answer for every line posted in a project. For a bucket that is not a
+//!    project (the project read answers 404), the Ping read, since a ping's bucket (its type
+//!    and wire path are "Circle") holds one Campfire, named by the Ping's `room_url`. Cached
+//!    per bucket.
 //! 2. The account-wide Campfire listing (BC3 has no per-bucket one), filtered to the
-//!    bucket, for buckets that are not projects or whose dock did not hold the line. Cached
-//!    per account, so a burst of lines costs one listing.
+//!    bucket, for buckets that are neither or whose own Campfire did not hold the line. BC3
+//!    lists only dock-positioned Campfires there, so a ping's is never in it. Cached per
+//!    account, so a burst of lines costs one listing.
 //!
 //! The index lives on the client every [`AccountClient`] is derived from, and a client is
 //! bound to one credential, so entries are never shared across authorization contexts —
@@ -35,7 +39,7 @@ use crate::error::{Error, ErrorCode};
 use crate::generated::services::campfires::ListCampfiresParams;
 use crate::generated::types::DockItem;
 
-/// How long a cached discovery source — a bucket's project dock, the account's Campfire
+/// How long a cached discovery source — a bucket's own Campfire, the account's Campfire
 /// listing — is reused before it is read again.
 pub const CAMPFIRE_INDEX_TTL: Duration = Duration::from_secs(10 * 60);
 
@@ -48,19 +52,20 @@ pub const CAMPFIRE_INDEX_MIN_REFRESH: Duration = Duration::from_secs(30);
 
 /// How many Campfires one
 /// [`summarize`](crate::services::recordings::RecordingsService::summarize) call tries,
-/// across both sources and the refresh. A project has one Campfire and a handful of pings; a
-/// bucket past this bound is not a shape BC3 produces, and the call reports
+/// across both sources and the refresh. A project or a Ping has one Campfire; a bucket
+/// past this bound is not a shape BC3 produces, and the call reports
 /// [`RecordingSummaryError::CampfireDiscoveryIncomplete`](crate::services::recordings::RecordingSummaryError::CampfireDiscoveryIncomplete)
 /// rather than calling the rest absent.
 pub const MAX_CAMPFIRE_CANDIDATES: usize = 50;
 
 /// Caps the account-wide Campfire listing the fallback source reads. A listing that
-/// overflows it is not cached and the call reports incomplete discovery: the dock covers
-/// every project, so the listing only ever serves the leftover, and an account with more
+/// overflows it is not cached and the call reports incomplete discovery: the bucket's own
+/// Campfire covers every project and every ping, so the listing only ever serves the
+/// leftover, and an account with more
 /// Campfires than this should not pay a full walk per ten minutes for it.
 pub const MAX_CAMPFIRE_LISTING: usize = 1000;
 
-/// Bounds each discovery cache's entry count. The dock cache holds one snapshot per bucket
+/// Bounds each discovery cache's entry count. The bucket cache holds one snapshot per bucket
 /// consulted within the TTL: a connector listening across every project an agent can see
 /// touches hundreds of buckets, not thousands, and a snapshot is a handful of ids, so 1024
 /// is generous headroom at a few hundred KB, and the bound exists so that a process alive
@@ -70,6 +75,29 @@ const CAMPFIRE_INDEX_MAX_ITEMS: usize = 1024;
 
 /// The dock tool whose id is the project's Campfire.
 const CHAT_DOCK_TOOL: &str = "chat";
+
+/// The id of the Campfire a Ping's `room_url` names: a path ending in `/chats/{digits}`,
+/// with or without `.json`. The URL is a bucket-scoped one, which the route table does not
+/// carry for `GetCampfire`, so the shape is read here.
+fn campfire_id_from_room_url(room_url: &str) -> Option<i64> {
+    let path = match url::Url::parse(room_url) {
+        Ok(parsed) if !parsed.cannot_be_a_base() => parsed.path().to_string(),
+        _ => room_url
+            .split(['?', '#'])
+            .next()
+            .unwrap_or_default()
+            .to_string(),
+    };
+    let last = path.strip_suffix(".json").unwrap_or(&path);
+    let (head, id) = last.rsplit_once('/')?;
+    if !head.ends_with("/chats") && head != "chats" {
+        return None;
+    }
+    if id.is_empty() || !id.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    id.parse().ok().filter(|id| *id != 0)
+}
 
 /// A reader of the current instant, so a test can move time without sleeping.
 pub(crate) type Clock = Arc<dyn Fn() -> Instant + Send + Sync>;
@@ -417,8 +445,9 @@ impl CampfireIndex {
         }
     }
 
-    /// The Campfire ids a bucket's project dock names. A bucket that is not a project (a
-    /// 404 on the project read) has none; any other failure of the read is returned.
+    /// The bucket's own Campfire ids: a project's dock `chat` tools or, for a bucket that is
+    /// not a project, the Ping's Campfire. A bucket that is neither (404 on both reads)
+    /// has none; any other failure of either read is returned.
     pub(crate) async fn dock_campfires(
         &self,
         account: &AccountClient,
@@ -441,7 +470,15 @@ impl CampfireIndex {
                         .filter(|item: &&DockItem| item.name == CHAT_DOCK_TOOL && item.id != 0)
                         .map(|item| item.id)
                         .collect()),
-                    Err(error) if error.code() == ErrorCode::NotFound => Ok(Vec::new()),
+                    Err(error) if error.code() == ErrorCode::NotFound => {
+                        match reader.pings().get(bucket_id).await {
+                            Ok(ping) => Ok(campfire_id_from_room_url(&ping.room_url)
+                                .into_iter()
+                                .collect()),
+                            Err(error) if error.code() == ErrorCode::NotFound => Ok(Vec::new()),
+                            Err(error) => Err(error),
+                        }
+                    }
                     Err(error) => Err(error),
                 }
             })
@@ -1058,6 +1095,31 @@ mod tests {
         let (joined, ()) = futures_util::join!(second, releaser);
         assert_eq!(*joined.unwrap().value, 11);
         assert_eq!(loads.load(Ordering::SeqCst), 1, "no second load");
+    }
+
+    #[test]
+    fn a_room_url_names_the_campfire_it_ends_in() {
+        for (url, id) in [
+            (
+                "https://3.basecampapi.com/195539477/buckets/2085958600/chats/1069479600.json",
+                Some(1_069_479_600),
+            ),
+            ("/buckets/7/chats/42", Some(42)),
+            ("/chats/42.json", Some(42)),
+            ("chats/42", Some(42)),
+            ("https://x.test/9/buckets/7/chats/42.json?a=1#b", Some(42)),
+            ("https://x.test/9/buckets/7/chats/42/lines.json", None),
+            ("https://x.test/9/buckets/7/chats/42/lines/5.json", None),
+            ("https://x.test/9/buckets/7/todos/42.json", None),
+            ("/buckets/7/chats/", None),
+            ("/buckets/7/chats/abc.json", None),
+            ("/buckets/7/chats/0.json", None),
+            ("/buckets/7/chats/99999999999999999999.json", None),
+            ("/buckets/7/mychats/42.json", None),
+            ("", None),
+        ] {
+            assert_eq!(campfire_id_from_room_url(url), id, "{url:?}");
+        }
     }
 
     #[test]

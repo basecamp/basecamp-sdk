@@ -267,6 +267,17 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             unit(account.projects().update(id("projectId"), &request).await)
         }
         "TrashProject" => unit(account.projects().trash(id("projectId")).await),
+        "ListPings" => {
+            let pings = account.pings().list().await?;
+            Ok(Outcome::Json(summarize_pings(&pings)))
+        }
+        "CreatePing" => {
+            let request = CreatePingRequestContent {
+                user_ids: optional_int64_list_param(body, "user_ids").unwrap_or_default(),
+                new_group: optional_bool_param(body, "new_group"),
+            };
+            json(account.pings().create(&request).await?)
+        }
         "GetTemplateLibraryTodolists" => {
             let library = account.templates().get_library_todolists().await?;
             Ok(Outcome::Json(summarize_template_library_todolists(&library)))
@@ -1424,6 +1435,15 @@ fn summarize_projects(projects: &[Project]) -> Value {
         "project_count": projects.len(),
         "first_project_id": projects.first().map_or(0, |p| p.id),
         "last_project_id": projects.last().map_or(0, |p| p.id),
+    })
+}
+
+fn summarize_pings(pings: &[Ping]) -> Value {
+    json!({
+        "ping_count": pings.len(),
+        "first_ping_id": pings.first().map_or(0, |p| p.id),
+        "last_ping_id": pings.last().map_or(0, |p| p.id),
+        "first_ping_room_url": pings.first().map_or("", |p| p.room_url.as_str()),
     })
 }
 

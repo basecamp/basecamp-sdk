@@ -287,6 +287,18 @@ private fun summarizeProjects(projects: List<Project>): JsonElement = buildJsonO
 }
 
 /**
+ * Flattens a Ping list into top-level scalars, for the reason summarizeProjects
+ * gives. The ids and the first room_url show the array was decoded in the order
+ * served, not merely received.
+ */
+private fun summarizePings(pings: List<Ping>): JsonElement = buildJsonObject {
+    put("ping_count", pings.size)
+    put("first_ping_id", pings.firstOrNull()?.id ?: 0L)
+    put("last_ping_id", pings.lastOrNull()?.id ?: 0L)
+    put("first_ping_room_url", pings.firstOrNull()?.roomUrl ?: "")
+}
+
+/**
  * Flattens the versions array into top-level scalars.
  *
  * GET /uploads/{id}/versions.json returns an ARRAY and a responseBody path
@@ -1225,6 +1237,21 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         "RecordProjectVisit" -> {
             account.projects.recordProjectVisit(tc.pathParams.longParam("projectId"))
             DispatchResult()
+        }
+
+        "ListPings" -> {
+            DispatchResult(resultJson = summarizePings(account.pings.list()))
+        }
+
+        "CreatePing" -> {
+            val rb = tc.requestBody
+            val ping = account.pings.create(
+                CreatePingBody(
+                    userIds = rb?.get("user_ids")?.jsonArray?.map { it.jsonPrimitive.long } ?: emptyList(),
+                    newGroup = rb?.get("new_group")?.jsonPrimitive?.booleanOrNull,
+                ),
+            )
+            DispatchResult(resultJson = Json.encodeToJsonElement(Ping.serializer(), ping))
         }
 
         "GetTemplateLibraryTodolists" -> {

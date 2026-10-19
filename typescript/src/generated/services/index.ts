@@ -19,6 +19,7 @@ export { CardsService } from "./cards.js";
 export { CardStepsService } from "./card-steps.js";
 export { CardTablesService } from "./card-tables.js";
 export { EverythingService } from "./everything.js";
+export { PingsService } from "./pings.js";
 export { PeopleService } from "./people.js";
 export { CommentsService } from "./comments.js";
 export { DocumentsService } from "./documents.js";

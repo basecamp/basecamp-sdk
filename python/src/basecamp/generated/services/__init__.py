@@ -39,6 +39,7 @@ from basecamp.generated.services.my_assignments import MyAssignmentsService, Asy
 from basecamp.generated.services.my_notes import MyNotesService, AsyncMyNotesService
 from basecamp.generated.services.my_notifications import MyNotificationsService, AsyncMyNotificationsService
 from basecamp.generated.services.people import PeopleService, AsyncPeopleService
+from basecamp.generated.services.pings import PingsService, AsyncPingsService
 from basecamp.generated.services.projects import ProjectsService, AsyncProjectsService
 from basecamp.generated.services.recordings import RecordingsService, AsyncRecordingsService
 from basecamp.generated.services.reports import ReportsService, AsyncReportsService
@@ -132,6 +133,8 @@ __all__ = [
     "AsyncMyNotificationsService",
     "PeopleService",
     "AsyncPeopleService",
+    "PingsService",
+    "AsyncPingsService",
     "ProjectsService",
     "AsyncProjectsService",
     "RecordingsService",

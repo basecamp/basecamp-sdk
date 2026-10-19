@@ -473,6 +473,7 @@ All services are constructed from an `AccountClient`, obtained via `client.for_a
 | | MessageTypes | `account.message_types` |
 | | Comments | `account.comments` |
 | **Chat** | Campfires | `account.campfires` |
+| | Pings | `account.pings` |
 | **Scheduling** | Schedules | `account.schedules` |
 | | Timeline | `account.timeline` |
 | | Lineup | `account.lineup` |

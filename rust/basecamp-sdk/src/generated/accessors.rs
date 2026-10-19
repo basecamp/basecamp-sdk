@@ -187,6 +187,11 @@ impl AccountClient {
         services::people::PeopleService::new(self)
     }
 
+    /// `Pings` operations.
+    pub fn pings(&self) -> services::pings::PingsService<'_> {
+        services::pings::PingsService::new(self)
+    }
+
     /// `Projects` operations.
     pub fn projects(&self) -> services::projects::ProjectsService<'_> {
         services::projects::ProjectsService::new(self)

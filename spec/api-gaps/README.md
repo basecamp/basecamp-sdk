@@ -86,6 +86,10 @@ making the absorption journey publicly auditable.
 | [recording-show-unscoped](recording-show-unscoped.md) | addressed-in-bc3-pr-10158 | master | medium |
 | [recording-backlinks](recording-backlinks.md) | addressed-in-bc3-pr-13121 | master | medium |
 | [account-people-enrollment](account-people-enrollment.md) | addressed-in-bc3-pr-9962 | master | medium |
+| [pings](pings.md) | absorbed-in-sdk | master | high |
+| [hill-chart-progress-updates](hill-chart-progress-updates.md) | addressed-in-bc3-pr-13620 | master | medium |
+| [project-join-admission](project-join-admission.md) | addressed-in-bc3-pr-13623 | master | medium |
+| [vault-view-preference](vault-view-preference.md) | addressed-in-bc3-pr-13372 | master | low |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
@@ -113,12 +117,57 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `66d387b62fb` (2026-09-15). <!-- @bc3-pin -->
+> The provenance pin is `b1f18fd182b` (2026-10-19). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
+>
+> The `66d387b62fb..b1f18fd182b` range is **1634 commits** by `git log`, read
+> from a local bc3 checkout. Twenty-five files under `doc/api` change, and the
+> vendored route table moves from 403 routes across 70 sections to 416 across
+> 72. The thirteen new routes, every one accounted for:
+>
+> - BC3 **#13943** — Pings, three routes
+>   (`GET`/`POST /circles.json`, `GET /circles/:id.json`), **absorbed** ahead of
+>   this repin as the `Pings` service ([`pings.md`](pings.md)). The three
+>   temporary `sdk_routes_absent_from_bc3_docs` waivers that carried them are
+>   deleted.
+> - BC3 **#13049** (`95cd1d290f`) and **#13058** (`188b97cab7`) — the event
+>   feed, three routes (`GET /events.json`, `GET /inbox.json`, `POST
+>   /events/stream_ticket.json`), absorbed ahead of this repin
+>   ([`event-feed.md`](event-feed.md)). Their three direction 1 waivers are
+>   deleted.
+> - BC3 **#13644** (`4312abe566`) — `POST /recordings/:id/filing.json` and its
+>   bucket-scoped alias, moving a document, upload or vault between vaults, absorbed ahead of this repin as
+>   `MoveRecordingToVault`. Its direction 1 waiver is deleted.
+> - BC3 **#13620** (`fd7f569808`) — hill chart progress updates, two routes.
+>   **Registered**: [`hill-chart-progress-updates.md`](hill-chart-progress-updates.md),
+>   `addressed-in-bc3-pr-13620`.
+> - BC3 **#13623** (`c579a5a18c`) — `POST /buckets/:id/admissions.json`, joining
+>   an all-access project. **Registered**:
+>   [`project-join-admission.md`](project-join-admission.md),
+>   `addressed-in-bc3-pr-13623`.
+> - BC3 **#13372** (`1b5ac5ea73`) — `PUT /vaults/:id/view_preference.json` and
+>   its bucket-scoped alias.
+>   **Registered**: [`vault-view-preference.md`](vault-view-preference.md),
+>   `addressed-in-bc3-pr-13372`.
+>
+> The remaining doc changes add no route and are **recorded, not registered**:
+> field and behavior notes on operations the SDK already models, which this
+> repin does not absorb and the route gate cannot see. They are `boss` on a
+> personal agent's person, the `Person types` and agent-access sections in the
+> API README, `parent` on schedule entries in the reports, `respondents` on
+> creating and updating a question, a 191-character limit and `422` on
+> `CreateBoost`, the broader move-a-card rule for `column_id` within a project,
+> a `performed_by` that may be a `Tombstone`, and `download_url` examples moving
+> from the storage host to the API host. `GET /chats.json` is documented as
+> listing project Campfires only, which is the premise of the Ping discovery
+> fix. The rest is rich text tag list, webhook visibility, template library and
+> card table template example reordering, and wording. Absorbing any of them is
+> its own PR. The `bc3-four` compatibility pin does not move: this sync
+> re-verifies only `master`.
 >
 > The `5daa0911d33..66d387b62fb` range is **217 commits** (14 merges, 203
 > non-merge). Twelve non-merge commits touch `doc/api` or `app/views/api`, and

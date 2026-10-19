@@ -435,6 +435,7 @@ The SDK provides typed services for the complete Basecamp API:
 | `messageTypes` | list, get, create, update, delete |
 | `comments` | list, get, create, update, expandMentions, createWithMentions |
 | `campfires` | list, get, listLines, getLine, createLine, updateLine, deleteLine |
+| `pings` | list, get, create — private conversations, each with its own Campfire (a Ping's id is its bucket's id) |
 
 ### Card Tables (Kanban)
 

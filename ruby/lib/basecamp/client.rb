@@ -612,6 +612,11 @@ module Basecamp
       service(:subtasks) { Services::SubtasksService.new(self) }
     end
 
+    # @return [Services::PingsService]
+    def pings
+      service(:pings) { Services::PingsService.new(self) }
+    end
+
     # @return [Services::AccountService]
     def account
       service(:account) { Services::AccountService.new(self) }

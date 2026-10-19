@@ -4,6 +4,7 @@ import com.basecamp.sdk.AccountClient
 import com.basecamp.sdk.BasecampException
 import com.basecamp.sdk.PaginationOptions
 import com.basecamp.sdk.generated.campfires
+import com.basecamp.sdk.generated.pings
 import com.basecamp.sdk.generated.projects
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
@@ -17,7 +18,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.TimeSource
 
 /**
- * How long a cached discovery source — a bucket's project dock, the account's
+ * How long a cached discovery source — a bucket's own Campfire, the account's
  * Campfire listing — is reused before it is read again.
  */
 const val CAMPFIRE_INDEX_TTL_MILLIS: Long = 10 * 60 * 1000
@@ -33,8 +34,8 @@ internal const val CAMPFIRE_INDEX_MIN_REFRESH_MILLIS: Long = 30 * 1000
 
 /**
  * Bounds how many Campfires one `summarize` call tries, across both sources and
- * the refresh. A project has one Campfire and a handful of pings; a bucket past
- * this bound is not a shape BC3 produces, and the call reports
+ * the refresh. A project or a Ping has one Campfire; a bucket past this bound
+ * is not a shape BC3 produces, and the call reports
  * `campfire_discovery_incomplete` rather than calling the rest absent.
  */
 const val MAX_CAMPFIRE_CANDIDATES: Int = 50
@@ -42,14 +43,14 @@ const val MAX_CAMPFIRE_CANDIDATES: Int = 50
 /**
  * Caps the account-wide Campfire listing the fallback source reads. A listing
  * that overflows it is not cached and the call reports
- * `campfire_discovery_incomplete`: the dock covers every project, so the listing
- * only ever serves the leftover, and an account with more Campfires than this
- * should not pay a full walk per ten minutes for it.
+ * `campfire_discovery_incomplete`: the bucket's own Campfire covers every project
+ * and every ping, so the listing only ever serves the leftover, and an account
+ * with more Campfires than this should not pay a full walk per ten minutes for it.
  */
 const val MAX_CAMPFIRE_LISTING: Int = 1000
 
 /**
- * Bounds each discovery cache's entry count. The dock cache holds one snapshot
+ * Bounds each discovery cache's entry count. The bucket cache holds one snapshot
  * per bucket consulted within the TTL: a connector listening across every
  * project an agent can see touches hundreds of buckets, not thousands, and a
  * snapshot is a handful of ids, so 1024 is generous headroom at a few hundred
@@ -338,7 +339,7 @@ internal class TtlCache<K, V>(
     }
 }
 
-/** A dock cache key: an account's view of one bucket. */
+/** A bucket cache key: an account's view of one bucket. */
 internal data class CampfireBucketKey(val accountId: String, val bucketId: Long)
 
 /**
@@ -355,6 +356,19 @@ internal class SourceRead(val ids: List<Long>, val fetched: Long, val cached: Bo
 internal class CampfireListingOverflow :
     Exception("campfire listing exceeds MAX_CAMPFIRE_LISTING ($MAX_CAMPFIRE_LISTING)")
 
+private val ROOM_URL_CAMPFIRE = Regex("/chats/(\\d+)(?:\\.json)?$")
+
+/**
+ * The Campfire id a Ping's `room_url` names, or null when it names none: the
+ * path must end in `/chats/{digits}` with an optional `.json`, so a lines, todos
+ * or empty URL is no candidate rather than a guess.
+ */
+internal fun campfireIdFromRoomUrl(roomUrl: String): Long? {
+    val noQuery = roomUrl.substringBefore('#').substringBefore('?')
+    val path = if ("://" in noQuery) "/" + noQuery.substringAfter("://").substringAfter('/', "") else noQuery
+    return ROOM_URL_CAMPFIRE.find(path)?.groupValues?.get(1)?.toLongOrNull()?.takeIf { it != 0L }
+}
+
 /**
  * Campfire discovery for chat lines: the two sources, each cached
  * [CAMPFIRE_INDEX_TTL_MILLIS].
@@ -363,12 +377,15 @@ internal class CampfireListingOverflow :
  * and the line read is `/chats/{campfireId}/lines/{lineId}`. Candidates come
  * from two sources, tried in order:
  *
- *  1. The bucket's project dock, whose `chat` tool is the project's Campfire:
- *     one project read per bucket, and the answer for every line posted in a
- *     project. Cached per bucket.
+ *  1. The bucket's own Campfire. For a project, its dock's `chat` tool: one
+ *     project read per bucket, and the answer for every line posted in a
+ *     project. For a bucket that is not a project (the project read 404s), the
+ *     Ping read, since a ping's bucket (type "Circle") holds one Campfire, named by
+ *     its `room_url`. Cached per bucket.
  *  2. The account-wide Campfire listing (BC3 has no per-bucket one), filtered to
- *     the bucket, for buckets that are not projects or whose dock did not hold
- *     the line. Cached per account, so a burst of lines costs one listing.
+ *     the bucket, for buckets that are neither or whose own Campfire did not hold
+ *     the line. BC3 lists only dock-positioned Campfires there, so a ping's is
+ *     never in it. Cached per account, so a burst of lines costs one listing.
  *
  * It lives on the client (shared by every [AccountClient] the client hands out);
  * a client is bound to one credential, so entries are never shared across
@@ -393,9 +410,10 @@ internal class CampfireIndex(now: () -> Long = ::monotonicMillis) {
     )
 
     /**
-     * The Campfire ids a bucket's project dock names. A bucket that is not a
-     * project (a 404 on the project read) has none; any other failure of the read
-     * is raised.
+     * The bucket's own Campfire ids: a project's dock `chat` tools, or, for a
+     * bucket that is not a project, the Ping's Campfire. A bucket that is
+     * neither (a 404 on both reads) has none; any other failure of either read is
+     * raised.
      */
     suspend fun dockCampfires(account: AccountClient, bucketId: Long, refresh: Boolean): SourceRead {
         val key = CampfireBucketKey(account.accountId, bucketId)
@@ -405,7 +423,15 @@ internal class CampfireIndex(now: () -> Long = ::monotonicMillis) {
             } catch (e: BasecampException.NotFound) {
                 null
             }
-            project?.dock.orEmpty().filter { it.name == "chat" && it.id != 0L }.map { it.id }
+            if (project != null) {
+                return@get project.dock.orEmpty().filter { it.name == "chat" && it.id != 0L }.map { it.id }
+            }
+            val ping = try {
+                account.pings.get(bucketId)
+            } catch (e: BasecampException.NotFound) {
+                return@get emptyList()
+            }
+            listOfNotNull(campfireIdFromRoomUrl(ping.roomUrl))
         }
         return SourceRead(hit.value, hit.fetched, hit.cached)
     }
