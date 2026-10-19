@@ -3,11 +3,14 @@ package prometheus
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
@@ -269,5 +272,99 @@ func TestMetricLabels(t *testing.T) {
 	count := testutil.CollectAndCount(reg, "basecamp_http_requests_total")
 	if count < len(statusCodes) {
 		t.Errorf("expected at least %d metric series, got %d", len(statusCodes), count)
+	}
+}
+
+// TestExpositionShape pins, byte for byte, the text exposition a scraper
+// receives for every metric family the hooks register: names, HELP, TYPE, label
+// sets, counter values, and the histogram's bucket boundaries, sum and count.
+// Dashboards and alerts key on exactly this output, so a client_golang or
+// prometheus/common change to it must fail here rather than slip through the
+// presence checks above.
+//
+// It serves the registry through promhttp.HandlerFor and compares the response
+// body, rather than using testutil.GatherAndCompare: that parses the expected
+// text and re-encodes both sides through the same encoder before comparing, so
+// an encoder change moves both sides together and passes. promhttp is also the
+// path an application exposes, and it exists on every client_golang this module
+// supports (the go.mod floor and the "latest dependencies" CI job), unlike
+// testutil.GatherAndFormat.
+func TestExpositionShape(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	hooks := NewHooks(reg)
+	ctx := context.Background()
+
+	op := basecamp.OperationInfo{Service: "Todos", Operation: "Complete"}
+	hooks.OnOperationEnd(ctx, op, nil, 100*time.Millisecond)
+	hooks.OnOperationEnd(ctx, op, errors.New("boom"), 100*time.Millisecond)
+
+	get := basecamp.RequestInfo{Method: "GET", URL: "https://example.com/api/todos", Attempt: 1}
+	post := basecamp.RequestInfo{Method: "POST", URL: "https://example.com/api/todos", Attempt: 1}
+	hooks.OnRequestEnd(ctx, get, basecamp.RequestResult{StatusCode: 200, FromCache: true})
+	hooks.OnRequestEnd(ctx, post, basecamp.RequestResult{StatusCode: 404, Error: errors.New("not found")})
+	hooks.OnRequestEnd(ctx, get, basecamp.RequestResult{Error: errors.New("dial tcp: refused")})
+	hooks.OnRetry(ctx, get, 2, errors.New("timeout"))
+
+	expected := `
+# HELP basecamp_cache_operations_total Total number of cache operations.
+# TYPE basecamp_cache_operations_total counter
+basecamp_cache_operations_total{result="hit"} 1
+basecamp_cache_operations_total{result="miss"} 1
+# HELP basecamp_errors_total Total number of errors.
+# TYPE basecamp_errors_total counter
+basecamp_errors_total{http_method="GET",type="network"} 1
+basecamp_errors_total{http_method="POST",type="not_found"} 1
+# HELP basecamp_http_requests_total Total number of HTTP requests to Basecamp API.
+# TYPE basecamp_http_requests_total counter
+basecamp_http_requests_total{http_method="GET",status_code="0"} 1
+basecamp_http_requests_total{http_method="GET",status_code="200"} 1
+basecamp_http_requests_total{http_method="POST",status_code="404"} 1
+# HELP basecamp_operation_duration_seconds Duration of Basecamp API operations in seconds.
+# TYPE basecamp_operation_duration_seconds histogram
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="0.005"} 0
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="0.01"} 0
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="0.025"} 0
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="0.05"} 0
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="0.1"} 2
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="0.25"} 2
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="0.5"} 2
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="1"} 2
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="2.5"} 2
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="5"} 2
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="10"} 2
+basecamp_operation_duration_seconds_bucket{operation="Todos.Complete",le="+Inf"} 2
+basecamp_operation_duration_seconds_sum{operation="Todos.Complete"} 0.2
+basecamp_operation_duration_seconds_count{operation="Todos.Complete"} 2
+# HELP basecamp_operations_total Total number of Basecamp API operations.
+# TYPE basecamp_operations_total counter
+basecamp_operations_total{operation="Todos.Complete",status="error"} 1
+basecamp_operations_total{operation="Todos.Complete",status="success"} 1
+# HELP basecamp_retries_total Total number of request retries.
+# TYPE basecamp_retries_total counter
+basecamp_retries_total{http_method="GET"} 1
+`
+	expected = strings.TrimPrefix(expected, "\n")
+
+	// Pin the negotiation: ask for the classic text format (0.0.4), uncompressed,
+	// so the body does not depend on a default Accept or on OpenMetrics or
+	// compression support in the client_golang under test. No metric-name filter:
+	// an extra or missing family fails too.
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/metrics", nil)
+	req.Header.Set("Accept", "text/plain; version=0.0.4")
+	req.Header.Set("Accept-Encoding", "identity")
+	rec := httptest.NewRecorder()
+	promhttp.HandlerFor(reg, promhttp.HandlerOpts{ErrorHandling: promhttp.PanicOnError}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/plain; version=0.0.4") {
+		t.Fatalf("Content-Type = %q, want the text/plain version=0.0.4 format", ct)
+	}
+	if ce := rec.Header().Get("Content-Encoding"); ce != "" {
+		t.Fatalf("Content-Encoding = %q, want none", ce)
+	}
+	if got := rec.Body.String(); got != expected {
+		t.Fatalf("exposition differs from the pinned bytes\n--- got\n%s--- want\n%s", got, expected)
 	}
 }
