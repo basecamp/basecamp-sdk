@@ -102,6 +102,15 @@ def _campfire(campfire_id: int, bucket_id: int = BUCKET) -> dict:
     return {"id": campfire_id, "type": "Chat::Transcript", "bucket": {"id": bucket_id, "name": "b", "type": "Project"}}
 
 
+def _ping(campfire_id: int | None = 77) -> dict:
+    room_url = "" if campfire_id is None else f"{BASE}/buckets/{BUCKET}/chats/{campfire_id}.json"
+    return {"id": BUCKET, "title": "Launch crew", "named": True, "room_url": room_url, "people": []}
+
+
+def _mount_not_a_ping() -> respx.Route:
+    return respx.get(f"{BASE}/circles/{BUCKET}").mock(return_value=_not_found())
+
+
 def _line(campfire_id: int, *, line_type: str = "Chat::Lines::Text", content: str = "Hello everyone!") -> dict:
     return {
         "id": LINE_ID,
@@ -744,8 +753,9 @@ class TestChatLineDiscovery:
         assert raised.value.bucket_id == BUCKET
 
     @respx.mock
-    def test_a_bucket_that_is_not_a_project_falls_through_to_the_listing(self):
+    def test_a_bucket_that_is_neither_a_project_nor_a_ping_falls_through_to_the_listing(self):
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        ping = _mount_not_a_ping()
         listing = respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(200, json=[_campfire(5), _campfire(6, bucket_id=999)])
         )
@@ -756,14 +766,89 @@ class TestChatLineDiscovery:
             bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
         )
 
-        assert listing.called
+        assert ping.called and listing.called
         assert summary["campfire_id"] == 5
         assert not elsewhere.called, "a Campfire in another bucket is never a candidate"
+
+    @respx.mock
+    def test_a_ping_is_found_under_its_campfire_without_a_listing(self):
+        # BC3's listing holds only dock-positioned Campfires, so a ping's is
+        # never in it. The listing is mounted as a failure to prove the verdict
+        # does not depend on it. Named after Go's
+        # TestSummarize_ChatLineFoundViaPing.
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        ping = respx.get(f"{BASE}/circles/{BUCKET}").mock(return_value=httpx.Response(200, json=_ping(77)))
+        listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(503, json={"error": "down"}))
+        line = respx.get(f"{BASE}/chats/77/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(77)))
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 77
+        assert ping.called and line.called
+        assert not listing.called
+        assert [str(call.request.url.path) for call in respx.calls] == [
+            f"/{ACCOUNT}/projects/{BUCKET}",
+            f"/{ACCOUNT}/circles/{BUCKET}",
+            f"/{ACCOUNT}/chats/77/lines/{LINE_ID}",
+        ]
+
+    @respx.mock
+    def test_a_ping_read_failure_is_raised_not_called_unresolved(self):
+        # "Pings have been disabled" is a failed read. Reporting it as "the
+        # line is under no Campfire you can see" would hide the cause.
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/circles/{BUCKET}").mock(
+            return_value=httpx.Response(403, json={"error": "Pings have been disabled"})
+        )
+        listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(200, json=[]))
+
+        with pytest.raises(ForbiddenError) as raised:
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+
+        assert not isinstance(raised.value, RecordingUnresolvedError)
+        assert not listing.called
+
+    @respx.mock
+    def test_a_project_never_pays_for_a_ping_read(self):
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=httpx.Response(200, json=_project(77)))
+        ping = respx.get(f"{BASE}/circles/{BUCKET}").mock(return_value=httpx.Response(500, json={"error": "boom"}))
+        respx.get(f"{BASE}/chats/77/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(77)))
+
+        _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+
+        assert not ping.called
+
+    @pytest.mark.parametrize(
+        "room_url",
+        [None, f"{BASE}/buckets/{BUCKET}/todolists/9", f"{BASE}/buckets/{BUCKET}/chats/77/lines.json"],
+        ids=["empty", "not-a-campfire", "lines-route"],
+    )
+    @respx.mock
+    def test_a_room_url_that_names_no_campfire_falls_through_to_the_listing(self, room_url):
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        body = _ping(None)
+        if room_url is not None:
+            body["room_url"] = room_url
+        ping = respx.get(f"{BASE}/circles/{BUCKET}").mock(return_value=httpx.Response(200, json=body))
+        listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(200, json=[_campfire(5)]))
+        wrong = respx.get(f"{BASE}/chats/77/lines/{LINE_ID}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 5
+        assert ping.called and listing.called
+        assert not wrong.called
 
     @respx.mock
     def test_more_candidates_than_the_budget_is_incomplete_never_unresolved(self):
         # Nothing left unsearched is ever reported absent.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        _mount_not_a_ping()
         respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(200, json=[_campfire(i) for i in range(1, MAX_CAMPFIRE_CANDIDATES + 11)])
         )
@@ -847,6 +932,7 @@ class TestChatLineDiscovery:
         # running out of budget is not "something was left unsearched" — every
         # candidate that exists was tried, so the verdict is unresolved.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        _mount_not_a_ping()
         respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(200, json=[_campfire(i) for i in range(1, MAX_CAMPFIRE_CANDIDATES + 1)])
         )
@@ -869,6 +955,7 @@ class TestChatLineDiscovery:
         # than becoming "discovery incomplete". Named after Go's
         # TestSummarize_ChatLineListingFailurePassesThrough.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        _mount_not_a_ping()
         respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(403, json={"error": "Denied"}))
 
         with pytest.raises(ForbiddenError):
@@ -910,6 +997,7 @@ class TestChatLineDiscovery:
         # `GET /chats/0/lines/N`. Skipping it spends none of the candidate
         # budget Go spends, which moves the verdict and not merely the ids.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        _mount_not_a_ping()
         respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(
                 200,
@@ -944,6 +1032,7 @@ class TestChatLineDiscovery:
         # exists to keep apart. `2**63` is in the list because the RANGE is
         # part of the type: Go refuses it exactly as it refuses a string.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        _mount_not_a_ping()
         respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(
                 200,
@@ -995,6 +1084,7 @@ class TestChatLineDiscovery:
     @respx.mock
     def test_a_null_campfire_bucket_is_not_a_failure(self):
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        _mount_not_a_ping()
         respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(200, json=[{"id": 11, "bucket": None}, _campfire(5)])
         )
@@ -1021,6 +1111,7 @@ class TestChatLineDiscovery:
         # produces `GET /chats/0/lines/N`. Screening these here would cost a
         # unit of the candidate budget that Go spends, which moves the verdict.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        _mount_not_a_ping()
         respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(
                 200,
@@ -1091,6 +1182,7 @@ class TestChatLineDiscovery:
     @respx.mock
     def test_a_listing_over_its_cap_is_incomplete_and_is_not_cached(self):
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        _mount_not_a_ping()
         overflowing = [_campfire(i) for i in range(1, _campfire_index.MAX_CAMPFIRE_LISTING + 1)]
         listing = respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(
@@ -1123,6 +1215,20 @@ class TestDiscoveryCache:
         account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID + 1, event_type="chat.line.created")
 
         assert project.call_count == 1
+
+    @respx.mock
+    def test_a_second_line_in_the_same_ping_reuses_the_ping_read(self):
+        project = respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        ping = respx.get(f"{BASE}/circles/{BUCKET}").mock(return_value=httpx.Response(200, json=_ping(77)))
+        line = respx.get(url__regex=rf"{BASE}/chats/77/lines/\d+").mock(
+            return_value=httpx.Response(200, json=_line(77))
+        )
+        account = _account()
+
+        account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+        account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID + 1, event_type="chat.line.created")
+
+        assert (project.call_count, ping.call_count, line.call_count) == (1, 1, 2)
 
     @respx.mock
     def test_the_cache_expires(self):
@@ -1239,6 +1345,7 @@ class TestDiscoveryCache:
         # The listing is cached per account, so a burst of lines in a
         # non-project bucket costs one listing, not one per line.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        _mount_not_a_ping()
         listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(200, json=[_campfire(5)]))
         respx.get(url__regex=rf"{BASE}/chats/5/lines/\d+").mock(return_value=httpx.Response(200, json=_line(5)))
         account = _account()
@@ -1281,6 +1388,7 @@ class TestHookIdentities:
     def test_hooks_see_the_constituent_reads_under_their_own_names(self):
         # SPEC section 18 rule 3: a composite mints no operation identity.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        _mount_not_a_ping()
         respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(200, json=[_campfire(5)]))
         respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
         hooks = RecordingHooks()
@@ -1289,7 +1397,7 @@ class TestHookIdentities:
             bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
         )
 
-        assert hooks.operations == ["projects.get", "campfires.list", "campfires.get_line"]
+        assert hooks.operations == ["projects.get", "pings.get", "campfires.list", "campfires.get_line"]
         assert not any("summarize" in operation for operation in hooks.operations)
 
     @respx.mock
@@ -1334,6 +1442,34 @@ class TestAsync:
 
         assert summary["campfire_id"] == 2
         assert project.call_count == 1
+
+    @respx.mock
+    async def test_discovers_a_pings_line_under_its_ping_and_caches_it(self):
+        project = respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        ping = respx.get(f"{BASE}/circles/{BUCKET}").mock(return_value=httpx.Response(200, json=_ping(77)))
+        listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(503, json={"error": "down"}))
+        respx.get(url__regex=rf"{BASE}/chats/77/lines/\d+").mock(return_value=httpx.Response(200, json=_line(77)))
+        account = AsyncClient(access_token="test-token").for_account(ACCOUNT)
+
+        summary = await account.recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+        await account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID + 1, event_type="chat.line.created")
+
+        assert summary["campfire_id"] == 77
+        assert (project.call_count, ping.call_count) == (1, 1)
+        assert not listing.called
+
+    @respx.mock
+    async def test_a_ping_read_failure_is_raised_not_called_unresolved(self):
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/circles/{BUCKET}").mock(
+            return_value=httpx.Response(403, json={"error": "Pings have been disabled"})
+        )
+        account = AsyncClient(access_token="test-token").for_account(ACCOUNT)
+
+        with pytest.raises(ForbiddenError):
+            await account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
     @respx.mock
     async def test_unresolved_is_its_own_identity(self):

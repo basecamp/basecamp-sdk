@@ -4,12 +4,15 @@ A ``chat.line.created`` row carries the line's id and bucket, not its Campfire,
 and the line read is ``/chats/{campfire_id}/lines/{line_id}``. Candidates come
 from two sources, tried in order and each cached :data:`CAMPFIRE_INDEX_TTL`:
 
-1. The bucket's project dock, whose ``chat`` tool is the project's Campfire: one
+1. The bucket's own Campfire. For a project, its dock's ``chat`` tool: one
    project read per bucket, and the answer for every line posted in a project.
-   Cached per bucket.
+   For a bucket that is not a project (the project read 404s), the Ping read,
+   since a ping's bucket (bucket type and wire path "Circle") holds one
+   Campfire, named by its ``room_url``. Cached per bucket.
 2. The account-wide Campfire listing (BC3 has no per-bucket one), filtered to
-   the bucket, for buckets that are not projects or whose dock did not hold the
-   line. Cached per account, so a burst of lines costs one listing.
+   the bucket, for buckets that are neither or whose own Campfire did not hold
+   the line. BC3 lists only dock-positioned Campfires there, so a ping's is
+   never in it. Cached per account, so a burst of lines costs one listing.
 
 The search tries the line under each candidate until one answers, within one
 total budget of :data:`MAX_CAMPFIRE_CANDIDATES` per call.
@@ -52,17 +55,19 @@ slot's release covers every way a load can end.
 from __future__ import annotations
 
 import asyncio
+import re
 import threading
 import time
 from collections.abc import Awaitable, Callable, Hashable
 from dataclasses import dataclass, field
 from typing import Any, Generic, NoReturn, TypeVar
+from urllib.parse import urlsplit
 
 from basecamp._decoding import decoded_array, decoded_object, decoded_string
 from basecamp._person_id import Refusal, parse_int64
 from basecamp.errors import ApiError, CampfireIndexLoadAbortedError, NotFoundError
 
-#: How long a cached discovery source -- a bucket's project dock, the account's
+#: How long a cached discovery source -- a bucket's own Campfire, the account's
 #: Campfire listing -- is reused before it is read again.
 CAMPFIRE_INDEX_TTL = 600.0
 
@@ -73,19 +78,19 @@ CAMPFIRE_INDEX_TTL = 600.0
 CAMPFIRE_INDEX_MIN_REFRESH = 30.0
 
 #: How many Campfires one ``summarize`` call tries, across both sources and the
-#: refresh. A project has one Campfire and a handful of pings; a bucket past this
-#: bound is not a shape BC3 produces, and the call reports discovery incomplete
-#: rather than calling the rest absent.
+#: refresh. A project or a Ping has one Campfire; a bucket past this bound is
+#: not a shape BC3 produces, and the call reports discovery incomplete rather
+#: than calling the rest absent.
 MAX_CAMPFIRE_CANDIDATES = 50
 
 #: Caps the account-wide Campfire listing the fallback source reads. A listing
 #: that overflows it is not cached and the call reports discovery incomplete:
-#: the dock covers every project, so the listing only ever serves the leftover,
-#: and an account with more Campfires than this should not pay a full walk per
-#: TTL for it.
+#: the bucket's own Campfire covers every project and every ping, so the listing
+#: only ever serves the leftover, and an account with more Campfires than this
+#: should not pay a full walk per TTL for it.
 MAX_CAMPFIRE_LISTING = 1000
 
-#: Bounds each discovery cache's entry count. The dock cache holds one snapshot
+#: Bounds each discovery cache's entry count. The bucket cache holds one snapshot
 #: per bucket consulted within the TTL: a connector listening across every
 #: project an agent can see touches hundreds of buckets, not thousands, and a
 #: snapshot is a handful of ids, so this is generous headroom at a few hundred
@@ -656,6 +661,23 @@ def _dock_campfire_ids(project: Any) -> list[int]:
     return ids
 
 
+_CAMPFIRE_ROOM_PATH = re.compile(r"(?:/.*)?/chats/([0-9]+)(?:\.json)?")
+
+
+def _ping_campfire_ids(ping: Any) -> list[int]:
+    """The Campfire id a Ping's ``room_url`` names, as a candidate list.
+
+    A ``room_url`` that does not name a Campfire route (``/chats/{id}``, with an
+    optional ``.json``) yields no candidates; a lines or todos URL never does.
+    """
+    room_url = decoded_string(decoded_object(ping, "the ping").get("room_url"), "a ping room_url")
+    match = _CAMPFIRE_ROOM_PATH.fullmatch(urlsplit(room_url).path)
+    if match is None:
+        return []
+    campfire_id = int(match.group(1))
+    return [campfire_id] if 0 < campfire_id <= _INT64_MAX else []
+
+
 def _campfires_by_bucket(campfires: Any) -> dict[int, list[int]]:
     by_bucket: dict[int, list[int]] = {}
     for entry in decoded_array(campfires, "the campfire listing"):
@@ -693,18 +715,25 @@ class CampfireIndex:
         )
 
     def dock_campfires(self, account: Any, bucket_id: int, *, refresh: bool) -> SourceRead:
-        """The Campfire ids a bucket's project dock names.
+        """The Campfire ids a bucket's own Campfire source names.
 
-        A bucket that is not a project (a 404 on the project read) has none; any
-        other failure of the read is raised.
+        A project's dock ``chat`` tools or, for a bucket that is not a project (a
+        404 on the project read), its Ping's Campfire. A bucket that is neither
+        (404 on both reads) has none; any other failure of either read is raised.
         """
 
         def load() -> list[int]:
             try:
                 project = account.projects.get(project_id=bucket_id)
             except NotFoundError:
+                pass
+            else:
+                return _dock_campfire_ids(project)
+            try:
+                ping = account.pings.get(ping_id=bucket_id)
+            except NotFoundError:
                 return []
-            return _dock_campfire_ids(project)
+            return _ping_campfire_ids(ping)
 
         hit = self._docks.get((account.account_id, bucket_id), refresh=refresh, load=load)
         return SourceRead(list(hit.value), hit.fetched, hit.cached)
@@ -758,8 +787,14 @@ class AsyncCampfireIndex:
             try:
                 project = await account.projects.get(project_id=bucket_id)
             except NotFoundError:
+                pass
+            else:
+                return _dock_campfire_ids(project)
+            try:
+                ping = await account.pings.get(ping_id=bucket_id)
+            except NotFoundError:
                 return []
-            return _dock_campfire_ids(project)
+            return _ping_campfire_ids(ping)
 
         hit = await self._docks.get((account.account_id, bucket_id), refresh=refresh, load=load)
         return SourceRead(list(hit.value), hit.fetched, hit.cached)

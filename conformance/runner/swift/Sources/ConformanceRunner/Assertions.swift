@@ -78,10 +78,13 @@ private func compositeHopIsOnContract(
 
     switch tc.operation {
     case "RecordingsSummarize":
-        // The bucket's project dock, the account-wide Campfire listing, and a
-        // line read under one candidate Campfire — the two-hop discovery, in the
-        // only shapes it has.
-        if hop.count == 2, hop[0] == "projects" { return hop[1] == id("bucketId") }
+        // The bucket's own Campfire (its project, or its Ping, read at
+        // /circles, when it is not one), the account-wide Campfire listing, and
+        // a line read under one candidate Campfire — the discovery, in the only
+        // shapes it has.
+        if hop.count == 2, hop[0] == "projects" || hop[0] == "circles" {
+            return hop[1] == id("bucketId")
+        }
         if hop == ["chats.json"] { return true }
         if hop.count == 4, hop[0] == "chats", hop[2] == "lines", Int(hop[1]) != nil {
             return hop[3] == id("recordingId")

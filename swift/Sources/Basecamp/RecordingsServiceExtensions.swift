@@ -327,7 +327,7 @@ enum RecordingSummaryKind: Sendable {
 }
 
 extension RecordingsService {
-    /// How long a cached discovery source — a bucket's project dock, the
+    /// How long a cached discovery source — a bucket's own Campfire, the
     /// account's Campfire listing — is reused before it is read again.
     public static let campfireIndexTTL: TimeInterval = 10 * 60
 
@@ -346,16 +346,16 @@ extension RecordingsService {
     static let campfireIndexMinRefresh: TimeInterval = 30
 
     /// Bounds how many Campfires one ``summarize(_:)`` call tries, across both
-    /// sources and the refresh. A project has one Campfire and a handful of
-    /// pings; a bucket past this bound is not a shape BC3 produces, and the call
-    /// reports incomplete discovery rather than calling the rest absent.
+    /// sources and the refresh. A project or a Ping has one Campfire; a bucket
+    /// past this bound is not a shape BC3 produces, and the call reports
+    /// incomplete discovery rather than calling the rest absent.
     public static let maxCampfireCandidates = 50
 
     /// Caps the account-wide Campfire listing the fallback source reads. A
     /// listing that overflows it is not cached and the call reports incomplete
-    /// discovery: the dock covers every project, so the listing only ever serves
-    /// the leftover, and an account with more Campfires than this should not pay
-    /// a full walk per TTL for it.
+    /// discovery: the bucket's own Campfire covers every project and every ping,
+    /// so the listing only ever serves the leftover, and an account with more
+    /// Campfires than this should not pay a full walk per TTL for it.
     public static let maxCampfireListing = 1000
 
     /// The prefix every chat-line subtype shares (`Chat::Lines::Text`,

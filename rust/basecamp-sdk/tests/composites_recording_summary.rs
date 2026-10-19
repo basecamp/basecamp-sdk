@@ -2,7 +2,7 @@
 //! mention composites.
 //!
 //! `conformance/tests/recording_summary.json` is the contract, and the Rust conformance
-//! runner executes all 40 of its cases. What is here is what a single-case fixture cannot
+//! runner executes all of its cases. What is here is what a single-case fixture cannot
 //! reach: the discovery index living ACROSS calls, the budget and listing bounds, the
 //! difference between "unresolved" and "incomplete", and the hook identities SPEC §18 rule 3
 //! requires.
@@ -158,8 +158,8 @@ fn line_path(campfire_id: i64) -> String {
 }
 
 /// The dock, the listing and both line reads, as the fixture's discovery case scripts them:
-/// the bucket is not a project, so the listing supplies two candidates and the second
-/// answers.
+/// the bucket is not a project, and not a Ping either (the unmounted Ping route answers
+/// 404), so the listing supplies two candidates and the second answers.
 async fn discovery_server(second_line_status: u16) -> MockServer {
     let server = MockServer::start().await;
     mount(
@@ -205,8 +205,144 @@ async fn discovery_server(second_line_status: u16) -> MockServer {
     server
 }
 
+/// A Ping as BC3 answers it, with the Campfire its `room_url` names.
+fn ping_with_room(room_url: &str) -> Value {
+    let mut ping: Value =
+        serde_json::from_str(include_str!("../../../spec/fixtures/pings/get.json")).unwrap();
+    ping["id"] = json!(BUCKET);
+    ping["room_url"] = json!(room_url);
+    ping
+}
+
+fn ping_room(campfire_id: i64) -> String {
+    format!("https://3.basecampapi.com/999/buckets/{BUCKET}/chats/{campfire_id}.json")
+}
+
 fn chat_line_ref() -> RecordingRef {
     RecordingRef::from_event(BUCKET, LINE, "chat.line.created")
+}
+
+/// A ping's bucket is a Ping, not a project, and BC3's Campfire listing holds only
+/// dock-positioned Campfires, so the Ping read is what names a ping's Campfire.
+#[tokio::test]
+async fn a_pings_line_is_found_under_its_campfire_and_the_ping_is_cached() {
+    let server = MockServer::start().await;
+    mount(
+        &server,
+        "GET",
+        &format!("/999/projects/{BUCKET}"),
+        404,
+        &not_found(),
+    )
+    .await;
+    mount(
+        &server,
+        "GET",
+        &format!("/999/circles/{BUCKET}"),
+        200,
+        &ping_with_room(&ping_room(SECOND_CAMPFIRE)),
+    )
+    .await;
+    mount(
+        &server,
+        "GET",
+        &line_path(SECOND_CAMPFIRE),
+        200,
+        &chat_line(BUCKET, SECOND_CAMPFIRE, "Chat::Lines::Text", "Hello!"),
+    )
+    .await;
+    let account = account(&server);
+    let summary = account
+        .recordings()
+        .summarize(&chat_line_ref())
+        .await
+        .unwrap();
+    assert_eq!(summary.campfire_id, Some(SECOND_CAMPFIRE));
+    assert_eq!(
+        paths(&server).await,
+        vec![
+            format!("/999/projects/{BUCKET}"),
+            format!("/999/circles/{BUCKET}"),
+            line_path(SECOND_CAMPFIRE),
+        ],
+        "no listing is read for a Ping"
+    );
+
+    account
+        .recordings()
+        .summarize(&chat_line_ref())
+        .await
+        .unwrap();
+    assert_eq!(
+        &paths(&server).await[3..],
+        &[line_path(SECOND_CAMPFIRE)],
+        "a second line in the same Ping costs no project or Ping read"
+    );
+}
+
+#[tokio::test]
+async fn a_ping_read_that_fails_is_that_reads_own_error_not_unresolved() {
+    let server = MockServer::start().await;
+    mount(
+        &server,
+        "GET",
+        &format!("/999/projects/{BUCKET}"),
+        404,
+        &not_found(),
+    )
+    .await;
+    mount(
+        &server,
+        "GET",
+        &format!("/999/circles/{BUCKET}"),
+        403,
+        &json!({ "error": "Pings have been disabled" }),
+    )
+    .await;
+    let error = account(&server)
+        .recordings()
+        .summarize(&chat_line_ref())
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), ErrorCode::Forbidden);
+    assert!(RecordingSummaryError::of(&error).is_none());
+    assert_eq!(
+        paths(&server).await,
+        vec![
+            format!("/999/projects/{BUCKET}"),
+            format!("/999/circles/{BUCKET}")
+        ],
+        "no listing, no line reads"
+    );
+}
+
+#[tokio::test]
+async fn a_ping_whose_room_url_names_no_campfire_yields_no_candidates() {
+    let server = discovery_server(200).await;
+    mount(
+        &server,
+        "GET",
+        &format!("/999/circles/{BUCKET}"),
+        200,
+        &ping_with_room(&format!(
+            "https://3.basecampapi.com/999/buckets/{BUCKET}/todos/1.json"
+        )),
+    )
+    .await;
+    let summary = account(&server)
+        .recordings()
+        .summarize(&chat_line_ref())
+        .await
+        .unwrap();
+    assert_eq!(summary.campfire_id, Some(SECOND_CAMPFIRE));
+    assert_eq!(
+        paths(&server).await[..3],
+        [
+            format!("/999/projects/{BUCKET}"),
+            format!("/999/circles/{BUCKET}"),
+            "/999/chats.json".to_string(),
+        ]
+    );
 }
 
 #[tokio::test]
@@ -215,16 +351,16 @@ async fn the_discovery_index_is_reused_across_calls_on_one_client() {
     let account = account(&server);
     let first = account.recordings().summarize(&chat_line_ref()).await;
     assert_eq!(first.unwrap().campfire_id, Some(SECOND_CAMPFIRE));
-    assert_eq!(paths(&server).await.len(), 4);
+    assert_eq!(paths(&server).await.len(), 5);
 
-    // The dock and the listing are both cached now, so the second call pays only for the
-    // line reads: nothing re-reads a source inside its TTL.
+    // The dock, the Ping and the listing are all cached now, so the second call pays only
+    // for the line reads: nothing re-reads a source inside its TTL.
     let second = account.recordings().summarize(&chat_line_ref()).await;
     assert_eq!(second.unwrap().campfire_id, Some(SECOND_CAMPFIRE));
     let paths = paths(&server).await;
-    assert_eq!(paths.len(), 6);
+    assert_eq!(paths.len(), 7);
     assert_eq!(
-        &paths[4..],
+        &paths[5..],
         &[line_path(FIRST_CAMPFIRE), line_path(SECOND_CAMPFIRE)]
     );
 }
@@ -248,7 +384,11 @@ async fn the_index_is_shared_by_every_account_client_of_one_client() {
         .summarize(&chat_line_ref())
         .await
         .unwrap();
-    assert_eq!(paths(&server).await.len(), 6, "one dock and one listing");
+    assert_eq!(
+        paths(&server).await.len(),
+        7,
+        "one project, one Ping and one listing read"
+    );
 }
 
 #[tokio::test]
@@ -263,8 +403,8 @@ async fn a_separate_client_starts_with_an_empty_index() {
     }
     assert_eq!(
         paths(&server).await.len(),
-        8,
-        "a second client re-reads both sources"
+        10,
+        "a second client re-reads every source"
     );
 }
 
@@ -367,7 +507,7 @@ async fn a_second_unresolvable_line_declines_the_refresh_under_the_floor() {
     assert!(!unresolved.refreshed);
     assert_eq!(
         paths(&server).await.len(),
-        6,
+        7,
         "only the two line reads were paid for again"
     );
 }
@@ -386,7 +526,7 @@ async fn a_candidates_non_404_answer_is_returned_as_that_reads_own_error() {
         RecordingSummaryError::of(&error).is_none(),
         "a permission failure is not the composite's own verdict"
     );
-    assert_eq!(paths(&server).await.len(), 4);
+    assert_eq!(paths(&server).await.len(), 5);
 }
 
 #[tokio::test]
@@ -785,6 +925,7 @@ async fn hooks_see_the_constituent_reads_under_their_own_names() {
         operations,
         vec![
             "GetProject",
+            "GetPing",
             "ListCampfires",
             "GetCampfireLine",
             "GetCampfireLine"

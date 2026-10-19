@@ -729,12 +729,14 @@ pointer does not carry). `boost.created` is refused with `ErrNoRecordingType`
 rather than read as something it is not.
 
 Chat lines need discovery first: their read takes the Campfire id, which the
-pointer does not carry. `Summarize` reads the bucket's project dock, whose
-chat tool is the project's Campfire (one project read per bucket, cached ten
-minutes), and consults the account-wide Campfire listing filtered to the
-bucket (cached ten minutes per account) when the dock does not settle it —
-a bucket that is not a project, or a line the dock's Campfire answers 404 for,
-such as a ping listed under the same bucket. It tries the line under each
+pointer does not carry. `Summarize` reads the bucket's own Campfire: a
+project's dock chat tool, or, when the bucket is not a project, the Ping
+read, since a Ping lives in its own bucket with one Campfire (one read per
+bucket, cached ten minutes). It consults the account-wide Campfire listing
+filtered to the bucket (cached ten minutes per account) when that does not
+settle it: a bucket that is neither, or a line the bucket's Campfire answers
+404 for. BC3 lists only dock-positioned Campfires there, so a Ping's
+Campfire is never in the listing. It tries the line under each
 candidate and reports `CampfireID` — the reply destination — on success. A candidate that answers anything but 404 stops the
 loop with that error, so a 401, 403 or 5xx never reads as "not here". When
 every candidate says 404 the cached sources are re-read (at most once per 30

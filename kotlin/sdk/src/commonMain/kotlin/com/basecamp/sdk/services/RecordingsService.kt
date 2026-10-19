@@ -444,12 +444,13 @@ class RecordingsService(private val account: AccountClient) :
     ): Pair<CampfireLine, Long> {
         val search = ChatLineSearch(lineId)
 
-        // Pass 1: what the sources already hold — the dock (read if it must be),
-        // then the listing only if it is cached. A listing fetch is the
-        // expensive, slow request, and it is not made until the dock — including
+        // Pass 1: what the sources already hold — the bucket's own Campfire (the
+        // project's dock, or a Ping; read if it must be), then the
+        // listing only if it is cached. A listing fetch is the expensive, slow
+        // request, and it is not made until the bucket's own Campfire — including
         // its refresh — has had its say, so a listing that is down, over its cap,
-        // or stalled never stands between a project's line and the one project
-        // read that finds it.
+        // or stalled never stands between a project's or a ping's line and the
+        // one read that finds it.
         var dock = index.dockCampfires(account, bucketId, refresh = false)
         search.tryAll(dock.ids)?.let { return it }
         val listed = index.cachedListedCampfires(account.accountId, bucketId)
@@ -458,8 +459,8 @@ class RecordingsService(private val account: AccountClient) :
             search.tryAll(listed.ids)?.let { return it }
         }
 
-        // Pass 2: re-read the dock if it was served from cache (the floor may
-        // decline), then fetch or refresh the listing. Whatever comes back is the
+        // Pass 2: re-read the bucket's own Campfire if it was served from cache
+        // (the floor may decline), then fetch or refresh the listing. Whatever comes back is the
         // current snapshot of that source, whoever loaded it — another caller may
         // have populated or refreshed it in the meantime — so it always replaces
         // the pass-1 one; "refreshed" is whether a source the conclusion had
@@ -475,7 +476,7 @@ class RecordingsService(private val account: AccountClient) :
         //
         // Gating on `skipped` instead is subtly wrong, and it is the shape this
         // code had: `skipped` is set only when a candidate is OBSERVED and cannot
-        // be tried, so a dock holding exactly the budget's worth of candidates
+        // be tried, so an own-Campfire source holding exactly the budget's worth of candidates
         // that all answer 404 leaves the budget at zero with `skipped` still
         // false. The listing would then be fetched — a request that cannot help —
         // and a failure on it replaces a deterministic `incomplete` with a

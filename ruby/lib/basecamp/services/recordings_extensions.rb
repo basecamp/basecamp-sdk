@@ -49,6 +49,8 @@ module Basecamp
         "The recording summary reads this field to decide what the recording is and which " \
         "project it belongs to, so a value of the wrong type cannot be used."
 
+      ROOM_URL_CAMPFIRE = %r{/chats/([0-9]+)(?:\.json)?\z}
+
       DISCOVERY_HINT =
         "The recording summary reads this field to decide which Campfires a chat line could " \
         "be in, so a value of the wrong type cannot be used."
@@ -133,10 +135,10 @@ module Basecamp
       RICH_TEXT_CHAT_LINE_TYPES = [ "Chat::Lines::RichText", "Chat::Lines::Integration" ].freeze
 
       # Bounds how many Campfires one {#summarize} call tries, across both
-      # discovery sources and the refresh. A project has one Campfire and a
-      # handful of pings; a bucket past this bound is not a shape BC3 produces,
-      # and the call reports {Basecamp::CampfireDiscoveryIncompleteError} rather
-      # than calling the rest absent.
+      # discovery sources and the refresh. A project or a Ping has one
+      # Campfire; a bucket past this bound is not a shape BC3 produces, and the
+      # call reports {Basecamp::CampfireDiscoveryIncompleteError} rather than
+      # calling the rest absent.
       MAX_CAMPFIRE_CANDIDATES = 50
 
       # Where #project leaves the validated bucket id for the cross-bucket
@@ -1029,14 +1031,14 @@ module Basecamp
         account_id = @client.account_id
         search = ChatLineSearch.new(campfires: @client.campfires, line_id: line_id)
 
-        # Pass 1: what the sources already hold — the dock (read if it must be),
-        # then the listing only if it is cached. A listing fetch is the
-        # expensive, slow request, and it is not made until the dock — including
-        # its refresh — has had its say, so a listing that is down, over its cap,
-        # or stalled never stands between a project's line and the one project
-        # read that finds it.
+        # Pass 1: what the sources already hold — the bucket's own Campfire
+        # (read if it must be), then the listing only if it is cached. A listing
+        # fetch is the expensive, slow request, and it is not made until the
+        # bucket's own source — including its refresh — has had its say, so a
+        # listing that is down, over its cap, or stalled never stands between a
+        # project's line and the one project read that finds it.
         dock = index.dock_campfires(account_id: account_id, bucket_id: bucket_id) do
-          dock_campfire_ids(bucket_id)
+          bucket_campfire_ids(bucket_id)
         end
         found = search.try(dock.ids)
         return found if found
@@ -1048,7 +1050,7 @@ module Basecamp
           return found if found
         end
 
-        # Pass 2: re-read the dock if it was served from cache (the floor may
+        # Pass 2: re-read the bucket's own source if it was served from cache (the floor may
         # decline), then fetch or refresh the listing. Whatever comes back is the
         # current snapshot of that source, whoever loaded it — another caller may
         # have populated or refreshed it in the meantime — so it always replaces
@@ -1071,7 +1073,7 @@ module Basecamp
 
         if search.budget_left? && dock.cached?
           again = index.dock_campfires(account_id: account_id, bucket_id: bucket_id, refresh: true) do
-            dock_campfire_ids(bucket_id)
+            bucket_campfire_ids(bucket_id)
           end
           refreshed = true if again.fetched > dock.fetched || !again.cached?
           dock = again
@@ -1119,17 +1121,52 @@ module Basecamp
         )
       end
 
-      # The Campfire ids a bucket's project dock names. A bucket that is not a
-      # project (a 404 on the project read) has none; any other failure of the
-      # read is raised.
-      def dock_campfire_ids(bucket_id)
+      # The bucket's own Campfire ids: a project's dock "chat" tools or, when
+      # the project read 404s, its Ping's Campfire. A bucket that is neither
+      # has none; any other failure of either read is raised, so a 403 "Pings
+      # have been disabled" is a failed read and never an unresolved line.
+      def bucket_campfire_ids(bucket_id)
         project = begin
           @client.projects.get(project_id: bucket_id)
+        rescue NotFoundError
+          return ping_campfire_ids(bucket_id)
+        end
+
+        dock_campfire_ids(read_record(project))
+      end
+
+      # The one Campfire a Ping holds, named by its +room_url+. A Ping whose
+      # room_url names no Campfire has none.
+      def ping_campfire_ids(bucket_id)
+        ping = begin
+          @client.pings.get(ping_id: bucket_id)
         rescue NotFoundError
           return []
         end
 
-        project = read_record(project)
+        room_url = read_record(ping)["room_url"]
+        return [] if room_url.nil?
+
+        unless room_url.is_a?(String)
+          raise malformed_response("the Ping's \"room_url\" is #{MergeSafe.describe(room_url)}, not a string",
+            hint: DISCOVERY_HINT)
+        end
+
+        id = campfire_id_from_room_url(room_url)
+        id ? [ id ] : []
+      end
+
+      # Strict: the path must end in +/chats/{digits}+, optionally +.json+, so a
+      # Campfire's lines, a to-do or a garbled URL name no Campfire.
+      def campfire_id_from_room_url(room_url)
+        match = ROOM_URL_CAMPFIRE.match(room_url.split(/[?#]/, 2).first)
+        return nil if match.nil?
+
+        id = Ids.bounded_decimal(match[1], signed: false)
+        id.is_a?(Integer) && id.positive? ? id : nil
+      end
+
+      def dock_campfire_ids(project)
         dock = project["dock"]
         # An absent dock is genuinely none — a project need not have one, and the
         # reference reads its zero value. Anything else that is not an array is a

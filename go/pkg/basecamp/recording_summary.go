@@ -630,12 +630,16 @@ func firstNonEmpty(values ...string) string {
 // and the line read is /chats/{campfireId}/lines/{lineId}. Candidates come
 // from two sources, tried in order and each cached ten minutes:
 //
-//  1. The bucket's project dock, whose "chat" tool is the project's Campfire:
-//     one project read per bucket, and the answer for every line posted in a
-//     project. Cached per bucket.
+//  1. The bucket's own Campfire. For a project, its dock's "chat" tool: one
+//     project read per bucket, and the answer for every line posted in a
+//     project. For a bucket that is not a project (the project read 404s),
+//     the Ping read, since a Ping's bucket (a "Circle") holds one Campfire,
+//     named by its room_url. Cached per bucket.
 //  2. The account-wide Campfire listing (BC3 has no per-bucket one), filtered
-//     to the bucket, for buckets that are not projects or whose dock did not
-//     hold the line. Cached per account, so a burst of lines costs one listing.
+//     to the bucket, for buckets that are neither or whose own Campfire did
+//     not hold the line. BC3 lists only dock-positioned Campfires there, so a
+//     Ping's is never in it. Cached per account, so a burst of lines costs one
+//     listing.
 //
 // The loop tries the line under each candidate until one answers, within one
 // total budget of MaxCampfireCandidates per call.
@@ -661,7 +665,7 @@ func firstNonEmpty(values ...string) string {
 
 const (
 	// CampfireIndexTTL is how long a cached discovery source — a bucket's
-	// project dock, the account's Campfire listing — is reused before it is
+	// own Campfire, the account's Campfire listing — is reused before it is
 	// read again.
 	CampfireIndexTTL = 10 * time.Minute
 
@@ -673,17 +677,18 @@ const (
 	campfireIndexMinRefresh = 30 * time.Second
 
 	// MaxCampfireCandidates bounds how many Campfires one Summarize call
-	// tries, across both sources and the refresh. A project has one Campfire
-	// and a handful of pings; a bucket past this bound is not a shape BC3
-	// produces, and the call reports ErrCampfireDiscoveryIncomplete rather
-	// than calling the rest absent.
+	// tries, across both sources and the refresh. A project or a Ping has
+	// one Campfire; a bucket past this bound is not a shape BC3 produces, and
+	// the call reports ErrCampfireDiscoveryIncomplete rather than calling the
+	// rest absent.
 	MaxCampfireCandidates = 50
 
 	// MaxCampfireListing caps the account-wide Campfire listing the fallback
 	// source reads. A listing that overflows it is not cached and the call
-	// reports ErrCampfireDiscoveryIncomplete: the dock covers every project,
-	// so the listing only ever serves the leftover, and an account with more
-	// Campfires than this should not pay a full walk per ten minutes for it.
+	// reports ErrCampfireDiscoveryIncomplete: the bucket's own Campfire
+	// covers every project and every Ping, so the listing only ever serves the
+	// leftover, and an account with more Campfires than this should not pay a
+	// full walk per ten minutes for it.
 	MaxCampfireListing = 1000
 )
 
@@ -757,8 +762,8 @@ type ttlLoad[V any] struct {
 	callerDone bool
 }
 
-// campfireIndexMaxItems bounds each discovery cache's entry count. The dock
-// cache holds one snapshot per bucket consulted within the TTL: a connector
+// campfireIndexMaxItems bounds each discovery cache's entry count. The
+// bucket cache holds one snapshot per bucket consulted within the TTL: a connector
 // listening across every project an agent can see touches hundreds of
 // buckets, not thousands, and a snapshot is a handful of ids, so 1024 is
 // generous headroom at a few hundred KB, and the bound exists so that a
@@ -975,26 +980,37 @@ type sourceRead struct {
 	cached  bool
 }
 
-// dockCampfires returns the Campfire ids a bucket's project dock names. A
-// bucket that is not a project (a 404 on the project read) has none; any
-// other failure of the read is returned.
+// dockCampfires returns the bucket's own Campfire ids: a project's dock
+// "chat" tools, or, for a bucket that is not a project, the Ping's
+// Campfire. A bucket that is neither (404 on both reads) has none; any other
+// failure of either read is returned.
 func (ix *campfireIndex) dockCampfires(ctx context.Context, ac *AccountClient, bucketID int64, refresh bool) (sourceRead, error) {
 	key := campfireBucketKey{accountID: ac.accountID, bucketID: bucketID}
 	hit, err := ix.docks.get(ctx, key, refresh, func(ctx context.Context) ([]int64, error) {
 		project, err := ac.Projects().Get(ctx, bucketID)
+		if err == nil {
+			var ids []int64
+			for _, item := range project.Dock {
+				if item.Name == "chat" && item.ID != 0 {
+					ids = append(ids, item.ID)
+				}
+			}
+			return ids, nil
+		}
+		if !isNotFound(err) {
+			return nil, err
+		}
+		ping, err := ac.Pings().Get(ctx, bucketID)
 		if err != nil {
-			if apiErr, ok := errors.AsType[*Error](err); ok && apiErr.Code == CodeNotFound {
+			if isNotFound(err) {
 				return nil, nil
 			}
 			return nil, err
 		}
-		var ids []int64
-		for _, item := range project.Dock {
-			if item.Name == "chat" && item.ID != 0 {
-				ids = append(ids, item.ID)
-			}
+		if id, ok := ping.CampfireID(); ok {
+			return []int64{id}, nil
 		}
-		return ids, nil
+		return nil, nil
 	})
 	if err != nil {
 		return sourceRead{}, err
@@ -1171,6 +1187,11 @@ func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineI
 		}
 	}
 	return nil, 0, unresolved
+}
+
+func isNotFound(err error) bool {
+	apiErr, ok := errors.AsType[*Error](err)
+	return ok && apiErr.Code == CodeNotFound
 }
 
 func containsID(ids []int64, id int64) bool {

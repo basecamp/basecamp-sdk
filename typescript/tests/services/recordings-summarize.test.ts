@@ -76,6 +76,13 @@ describe("recordings.summarize", () => {
       accessToken: "test-token",
       enableRetry: false,
     });
+    // A bucket whose project read 404s is next read as a Ping. Most tests mean
+    // "neither", so that is the default; a test about a Ping overrides it.
+    server.use(
+      http.get(`${BASE_URL}/circles/:pingId`, () =>
+        HttpResponse.json({ error: "Record not found" }, { status: 404 }),
+      ),
+    );
   });
 
   describe("routing", () => {
@@ -1410,6 +1417,101 @@ describe("recordings.summarize", () => {
       expect(summary.campfire_id).toBe(77);
     });
 
+    const ping = (bucketId: number, roomUrl: string) => ({
+      id: bucketId,
+      title: "Launch crew",
+      named: true,
+      room_url: roomUrl,
+      people: [],
+    });
+    const roomUrl = (bucketId: number, campfireId: number) =>
+      `${BASE_URL}/buckets/${bucketId}/chats/${campfireId}.json`;
+
+    it("finds a ping's line under its Ping's Campfire, and caches the Ping like a dock", async () => {
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+        http.get(`${BASE_URL}/circles/${BUCKET}`, () => HttpResponse.json(ping(BUCKET, roomUrl(BUCKET, 88)))),
+        http.get(`${BASE_URL}/chats/88/lines/:lineId`, ({ params }) => HttpResponse.json(line(Number(params.lineId)))),
+      );
+
+      const first = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+      expect(paths).toEqual([
+        `/12345/projects/${BUCKET}`,
+        `/12345/circles/${BUCKET}`,
+        "/12345/chats/88/lines/9",
+      ]);
+      expect(first.campfire_id).toBe(88);
+
+      await client.recordings.summarize({ bucketId: BUCKET, recordingId: 10, eventType: "chat.line.created" });
+      expect(paths.slice(3)).toEqual(["/12345/chats/88/lines/10"]);
+    });
+
+    it("never reads a Ping for a project", async () => {
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => dock(77)),
+        http.get(`${BASE_URL}/chats/77/lines/9`, () => HttpResponse.json(line(9))),
+      );
+      await client.recordings.summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" });
+      expect(paths).toEqual([`/12345/projects/${BUCKET}`, "/12345/chats/77/lines/9"]);
+    });
+
+    it("passes a failed Ping read through, never as unresolved", async () => {
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+        http.get(`${BASE_URL}/circles/${BUCKET}`, () =>
+          HttpResponse.json({ error: "Pings have been disabled" }, { status: 403 }),
+        ),
+      );
+      const err = await client.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err).not.toBeInstanceOf(UnresolvedRecordingError);
+      expect((err as BasecampError).code).toBe("forbidden");
+      expect((err as BasecampError).httpStatus).toBe(403);
+      expect(paths).toEqual([`/12345/projects/${BUCKET}`, `/12345/circles/${BUCKET}`]);
+    });
+
+    it("gives a Ping whose room_url names no Campfire no candidates", async () => {
+      for (const url of ["", `${BASE_URL}/buckets/${BUCKET}/todos/5.json`, `${BASE_URL}/chats/5/lines.json`]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+          http.get(`${BASE_URL}/circles/${BUCKET}`, () => HttpResponse.json(ping(BUCKET, url))),
+          http.get(`${BASE_URL}/chats.json`, () => HttpResponse.json([])),
+        );
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+          .catch((e: unknown) => e);
+        expect(err, url).toBeInstanceOf(UnresolvedRecordingError);
+        expect((err as UnresolvedRecordingError).campfireIds, url).toEqual([]);
+      }
+    });
+
+    it("reads the Ping's Campfire id from either room_url spelling", async () => {
+      for (const url of [roomUrl(BUCKET, 88), `${BASE_URL}/chats/88.json`, `${BASE_URL}/buckets/${BUCKET}/chats/88`]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+          http.get(`${BASE_URL}/circles/${BUCKET}`, () => HttpResponse.json(ping(BUCKET, url))),
+          http.get(`${BASE_URL}/chats/88/lines/9`, () => HttpResponse.json(line(9))),
+        );
+        const summary = await fresh.recordings.summarize({
+          bucketId: BUCKET,
+          recordingId: 9,
+          eventType: "chat.line.created",
+        });
+        expect(summary.campfire_id, url).toBe(88);
+      }
+    });
+
     it("falls back to the account listing, filtered to the bucket, in listing order", async () => {
       const paths = trackRequests();
       server.use(
@@ -1430,6 +1532,7 @@ describe("recordings.summarize", () => {
       // The Campfire in the other bucket is never tried.
       expect(paths).toEqual([
         `/12345/projects/${BUCKET}`,
+        `/12345/circles/${BUCKET}`,
         "/12345/chats.json",
         "/12345/chats/60/lines/9",
         "/12345/chats/70/lines/9",
@@ -1693,6 +1796,7 @@ describe("recordings.summarize", () => {
       // The entry with no bucket id is never tried; the one with no campfire id is.
       expect(paths).toEqual([
         `/12345/projects/${BUCKET}`,
+        `/12345/circles/${BUCKET}`,
         "/12345/chats.json",
         "/12345/chats/0/lines/9",
         "/12345/chats/70/lines/9",
@@ -2106,6 +2210,32 @@ describe("recordings.summarize", () => {
 
       clock.ms += CAMPFIRE_INDEX_TTL_MS;
       await recordings.summarize({ bucketId: BUCKET, recordingId: 11, eventType: "chat.line.created" });
+      expect(paths.filter((p) => p === `/12345/projects/${BUCKET}`)).toHaveLength(2);
+    });
+
+    it("reuses a Ping's Campfire within the TTL, then re-reads project and Ping", async () => {
+      const clock = { ms: 0 };
+      const recordings = serviceWithClock(clock);
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+        http.get(`${BASE_URL}/circles/${BUCKET}`, () =>
+          HttpResponse.json({ id: BUCKET, room_url: `${BASE_URL}/buckets/${BUCKET}/chats/88.json`, people: [] }),
+        ),
+        http.get(`${BASE_URL}/chats/88/lines/:lineId`, () =>
+          HttpResponse.json(recording(9, "Chat::Lines::Text", { content: "hi" })),
+        ),
+      );
+
+      await recordings.summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" });
+      clock.ms += 60_000;
+      await recordings.summarize({ bucketId: BUCKET, recordingId: 10, eventType: "chat.line.created" });
+      expect(paths.filter((p) => p === `/12345/circles/${BUCKET}`)).toHaveLength(1);
+      expect(paths.filter((p) => p === `/12345/projects/${BUCKET}`)).toHaveLength(1);
+
+      clock.ms += CAMPFIRE_INDEX_TTL_MS;
+      await recordings.summarize({ bucketId: BUCKET, recordingId: 11, eventType: "chat.line.created" });
+      expect(paths.filter((p) => p === `/12345/circles/${BUCKET}`)).toHaveLength(2);
       expect(paths.filter((p) => p === `/12345/projects/${BUCKET}`)).toHaveLength(2);
     });
 

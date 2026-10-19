@@ -9,7 +9,8 @@ import XCTest
 /// are not restated here. What is restated here is everything that needs a wire
 /// shape the fixture has no way to script: a bucket the read disagrees with, a
 /// bucket with more visible Campfires than one call may try, a listing past its
-/// cap, and the dock cache actually being reused between two calls.
+/// cap, a Ping standing in for the project dock, and the bucket cache
+/// actually being reused between two calls.
 final class RecordingSummaryTests: XCTestCase {
     private let accountId = "999999999"
 
@@ -300,6 +301,8 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(
             server.paths.filter { $0.hasSuffix("/chats.json") }.count, 0,
             "the listing is never fetched once the dock has answered")
+        XCTAssertFalse(
+            server.paths.contains { $0.contains("/circles/") }, "a project never pays for a Ping read")
     }
 
     func testTheListingIsNotFetchedUntilTheDockHasHadItsSay() async throws {
@@ -312,7 +315,101 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(
             server.paths,
             ["/\(accountId)/projects/1", "/\(accountId)/chats/10/lines/7"],
-            "a project's line costs one project read and one line read")
+            "a project's line costs one project read and one line read, and no Ping read")
+    }
+
+    /// A ping's bucket is not a project, and BC3's Campfire listing holds only
+    /// dock-positioned Campfires, so the Ping read is the only thing that
+    /// names a ping's Campfire.
+    func testALineInAPingIsFoundThroughItsRoomAndTheAnswerIsCached() async throws {
+        let server = RecordingServer(pingCampfireId: 10)
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        let summary = try await account.recordings.summarize(
+            RecordingRef(bucketId: 1, recordingId: 7, eventType: "chat.line.created"))
+
+        XCTAssertEqual(summary.campfireId, 10)
+        XCTAssertEqual(
+            server.paths,
+            ["/\(accountId)/projects/1", "/\(accountId)/circles/1", "/\(accountId)/chats/10/lines/7"],
+            "a ping's line costs the project read, the Ping read and the line read, and no listing")
+
+        _ = try await account.recordings.summarize(
+            RecordingRef(bucketId: 1, recordingId: 8, eventType: "chat.line.created"))
+        XCTAssertEqual(
+            Array(server.paths.dropFirst(3)), ["/\(accountId)/chats/10/lines/8"],
+            "a second line in the same Ping costs neither the project nor the Ping read")
+    }
+
+    func testAPingReadThatFailsIsReturnedNotReportedUnresolved() async throws {
+        let server = RecordingServer(pingCampfireId: 10, pingStatus: 403)
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        do {
+            _ = try await account.recordings.summarize(
+                RecordingRef(bucketId: 1, recordingId: 7, eventType: "chat.line.created"))
+            XCTFail("expected the Ping read's 403")
+        } catch let error as BasecampError {
+            guard case .forbidden = error else { return XCTFail("expected forbidden, got \(error)") }
+        }
+
+        XCTAssertEqual(
+            server.paths, ["/\(accountId)/projects/1", "/\(accountId)/circles/1"],
+            "a disabled-pings 403 stops discovery: it is a failed read, not an absent bucket")
+    }
+
+    func testABucketThatIsNeitherAProjectNorAPingSeesThePing404BeforeTheListing() async throws {
+        let server = RecordingServer(listedCampfireIds: [10])
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        _ = try await account.recordings.summarize(
+            RecordingRef(bucketId: 1, recordingId: 7, eventType: "chat.line.created"))
+
+        XCTAssertEqual(
+            server.paths,
+            [
+                "/\(accountId)/projects/1", "/\(accountId)/circles/1",
+                "/\(accountId)/chats.json", "/\(accountId)/chats/10/lines/7",
+            ])
+    }
+
+    func testAPingWhoseRoomNamesNoCampfireYieldsNoCandidatesAndFallsThrough() async throws {
+        let server = RecordingServer(
+            listedCampfireIds: [10], pingCampfireId: 11,
+            pingRoomURL: "https://3.basecampapi.com/999999999/buckets/1/todos/11.json")
+        server.lineFoundUnder = 10
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        _ = try await account.recordings.summarize(
+            RecordingRef(bucketId: 1, recordingId: 7, eventType: "chat.line.created"))
+
+        XCTAssertEqual(
+            server.paths,
+            [
+                "/\(accountId)/projects/1", "/\(accountId)/circles/1",
+                "/\(accountId)/chats.json", "/\(accountId)/chats/10/lines/7",
+            ])
+    }
+
+    func testTheCampfireIdIsReadFromTheEndOfARoomURL() {
+        let cases: [(String, Int?)] = [
+            ("https://3.basecampapi.com/1/buckets/2/chats/3.json", 3),
+            ("https://3.basecampapi.com/1/buckets/2/chats/3", 3),
+            ("https://3.basecampapi.com/1/chats/3.json", 3),
+            ("https://3.basecampapi.com/1/buckets/2/chats/3.json?x=1#y", 3),
+            ("https://3.basecampapi.com/1/buckets/2/chats/3/lines.json", nil),
+            ("https://3.basecampapi.com/1/buckets/2/todos/3.json", nil),
+            ("https://3.basecampapi.com/1/buckets/2/chats/.json", nil),
+            ("https://3.basecampapi.com/1/buckets/2/chats/x3.json", nil),
+            ("https://3.basecampapi.com/1/buckets/2/chats/3.xml", nil),
+            ("https://3.basecampapi.com/1/buckets/2/chats/0.json", nil),
+            ("https://3.basecampapi.com/1/buckets/2/chats/99999999999999999999.json", nil),
+            ("https://3.basecampapi.com/1/buckets/2/chats/\u{663}.json", nil),
+            ("", nil),
+        ]
+        for (roomURL, expected) in cases {
+            XCTAssertEqual(CampfireIndex.campfireId(fromRoomURL: roomURL), expected, roomURL)
+        }
     }
 
     func testACandidatesNon404IsReturnedAsThatReadsError() async throws {
@@ -512,8 +609,8 @@ final class RecordingSummaryTests: XCTestCase {
             secondCall.contains { $0.hasSuffix("/chats.json") },
             "the listing was already consulted, so a spent budget does not re-read it")
         XCTAssertFalse(
-            secondCall.contains { $0.hasSuffix("/projects/1") },
-            "nor the dock")
+            secondCall.contains { $0.hasSuffix("/projects/1") || $0.hasSuffix("/circles/1") },
+            "nor the bucket's own Campfire")
     }
 
     func testAListingPastItsCapIsIncompleteNotUnresolved() async throws {
@@ -620,6 +717,9 @@ private final class RecordingServer: @unchecked Sendable {
     private let lineType: String
     private let lineContent: String
     private let lineStatusByCampfire: [Int: Int]
+    private let pingCampfireId: Int?
+    private let pingRoomURL: String?
+    private let pingStatus: Int?
     /// The Campfire the line is under, or nil when it is under none of them.
     var lineFoundUnder: Int?
 
@@ -633,7 +733,10 @@ private final class RecordingServer: @unchecked Sendable {
         listingAdvertisesMore: Bool = false,
         lineType: String = "Chat::Lines::Text",
         lineContent: String = "Hello everyone!",
-        lineStatusByCampfire: [Int: Int] = [:]
+        lineStatusByCampfire: [Int: Int] = [:],
+        pingCampfireId: Int? = nil,
+        pingRoomURL: String? = nil,
+        pingStatus: Int? = nil
     ) {
         self.commentBucketId = commentBucketId
         self.emptyParent = emptyParent
@@ -643,7 +746,11 @@ private final class RecordingServer: @unchecked Sendable {
         self.lineType = lineType
         self.lineContent = lineContent
         self.lineStatusByCampfire = lineStatusByCampfire
-        self.lineFoundUnder = dockCampfireIds.first ?? listedCampfireIds.first
+        self.pingCampfireId = pingCampfireId
+        self.pingRoomURL = pingRoomURL
+        self.pingStatus = pingStatus
+        self.lineFoundUnder =
+            dockCampfireIds.first ?? pingCampfireId ?? listedCampfireIds.first
     }
 
     func makeTransport() -> MockTransport {
@@ -671,6 +778,13 @@ private final class RecordingServer: @unchecked Sendable {
             if segments.count == 3, segments[1] == "projects" {
                 guard !dockCampfireIds.isEmpty else { return try notFound() }
                 return try reply(projectJSON(id: Int(segments[2]) ?? 0))
+            }
+            // /{account}/circles/{id}
+            if segments.count == 3, segments[1] == "circles" {
+                if let pingStatus { return try reply(["error": "Pings have been disabled"], status: pingStatus) }
+                guard let pingCampfireId else { return try notFound() }
+                return try reply(
+                    pingJSON(id: Int(segments[2]) ?? 0, campfireId: pingCampfireId))
             }
             // /{account}/chats.json
             if segments.count == 2, segments[1] == "chats.json" {
@@ -741,6 +855,24 @@ private final class RecordingServer: @unchecked Sendable {
                     "app_url": "https://3.basecamp.com/999999999/buckets/\(id)/message_boards/999",
                 ] as [String: Any]
             ],
+        ]
+    }
+
+    private func pingJSON(id: Int, campfireId: Int) -> [String: Any] {
+        let room =
+            pingRoomURL
+            ?? "https://3.basecampapi.com/999999999/buckets/\(id)/chats/\(campfireId).json"
+        let app = "https://3.basecamp.com/999999999/circles/\(id)"
+        let api = "https://3.basecampapi.com/999999999/circles/\(id).json"
+        return [
+            "id": id, "title": "Annie Bryan", "named": false,
+            "created_at": "2026-01-01T00:00:00.000Z", "updated_at": "2026-01-01T00:00:00.000Z",
+            "avatar_url": "https://3.basecamp-static.com/999999999/circles/\(id)/avatar",
+            "url": api, "app_url": app,
+            "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/ping\(id).json",
+            "room_url": room,
+            "links": ["self": api, "app": app, "bookmark": "b", "lines": "l", "files": "f"],
+            "people": [personJSON],
         ]
     }
 

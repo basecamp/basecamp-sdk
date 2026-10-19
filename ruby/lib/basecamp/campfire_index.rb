@@ -8,12 +8,15 @@ module Basecamp
   # Candidates come from two sources, tried in order and each cached {TTL}
   # seconds:
   #
-  # 1. The bucket's project dock, whose "chat" tool is the project's Campfire:
-  #    one project read per bucket, and the answer for every line posted in a
-  #    project. Cached per bucket.
+  # 1. The bucket's own Campfire. For a project, its dock's "chat" tool: one
+  #    project read per bucket, and the answer for every line posted in a
+  #    project. For a bucket that is not a project, its Ping's Campfire, since
+  #    a Ping's bucket type is "Circle". Cached per bucket.
   # 2. The account-wide Campfire listing (BC3 has no per-bucket one), filtered
-  #    to the bucket, for buckets that are not projects or whose dock did not
-  #    hold the line. Cached per account, so a burst of lines costs one listing.
+  #    to the bucket, for buckets that are neither or whose own Campfire did not
+  #    hold the line. BC3 lists only dock-positioned Campfires there, so a
+  #    ping's is never in it. Cached per account, so a burst of lines costs one
+  #    listing.
   #
   # This class holds the caching only; the reads themselves are passed in as
   # blocks by +RecordingsExtensions+, so every request still goes through a
@@ -28,7 +31,7 @@ module Basecamp
   # buckets and accounts consulted within the last TTL, and never more than the
   # bound, whatever the Client has seen.
   class CampfireIndex
-    # How long a cached discovery source — a bucket's project dock, the
+    # How long a cached discovery source — a bucket's own Campfire, the
     # account's Campfire listing — is reused before it is read again.
     TTL = 600.0
 
@@ -40,12 +43,13 @@ module Basecamp
 
     # Caps the account-wide Campfire listing the fallback source reads. A
     # listing that overflows it is not cached and the call reports
-    # {CampfireDiscoveryIncompleteError}: the dock covers every project, so the
-    # listing only ever serves the leftover, and an account with more Campfires
-    # than this should not pay a full walk per TTL for it.
+    # {CampfireDiscoveryIncompleteError}: the bucket's own Campfire covers every
+    # project and every ping, so the listing only ever serves the leftover, and
+    # an account with more Campfires than this should not pay a full walk per
+    # TTL for it.
     MAX_LISTING = 1000
 
-    # Bounds each cache's entry count. The dock cache holds one snapshot per
+    # Bounds each cache's entry count. The bucket cache holds one snapshot per
     # bucket consulted within the TTL: a connector listening across every
     # project an agent can see touches hundreds of buckets, not thousands, and a
     # snapshot is a handful of ids, so this is generous headroom at a few
@@ -75,12 +79,13 @@ module Basecamp
       @listings = TTLCache.new(ttl: TTL, floor: MIN_REFRESH, max_items: MAX_ITEMS, clock: clock)
     end
 
-    # The Campfire ids a bucket's project dock names.
+    # The Campfire ids a bucket's own source names: a project's dock, or a
+    # Ping's room.
     #
     # @param account_id [String]
     # @param bucket_id [Integer]
     # @param refresh [Boolean] re-read a cached snapshot older than {MIN_REFRESH}
-    # @yieldreturn [Array<Integer>] the dock's Campfire ids
+    # @yieldreturn [Array<Integer>] the bucket's own Campfire ids
     # @return [SourceRead]
     def dock_campfires(account_id:, bucket_id:, refresh: false, &load)
       hit = @docks.get([ account_id, bucket_id ], refresh: refresh, &load)
@@ -92,7 +97,8 @@ module Basecamp
     #
     # It exists so a caller can consult what the source already holds before
     # deciding whether to pay for the listing fetch — the expensive, slow
-    # request, which the dock (including its refresh) should get to pre-empt.
+    # request, which the bucket's own source (including its refresh) should get
+    # to pre-empt.
     #
     # @param account_id [String]
     # @param bucket_id [Integer]

@@ -324,12 +324,15 @@ func TestSummarize_ReadErrorsPassThrough(t *testing.T) {
 
 // chatFixture is the server side of chat line discovery: an account-wide
 // Campfire listing, a project dock per bucket (a bucket absent from docks is
-// not a project and answers 404), and the line under one Campfire; every
-// other Campfire answers 404 for it, or whatever lineStatus says.
+// not a project and answers 404), a Ping per bucket (a bucket absent from
+// pings is not a Ping and answers 404), and the line under one Campfire;
+// every other Campfire answers 404 for it, or whatever lineStatus says.
 type chatFixture struct {
 	listing    atomic.Pointer[[]byte]
 	mu         sync.Mutex
 	docks      map[int64]int64 // bucket -> the dock's chat tool id
+	pings      map[int64]int64 // bucket -> the Ping's Campfire id
+	pingStatus int             // non-zero: the Ping read answers this instead
 	buckets    map[int64]int64 // campfire -> its bucket, for the served line
 	foundUnder atomic.Int64
 	lineStatus func(campfireID int64) int
@@ -338,7 +341,7 @@ type chatFixture struct {
 
 func newChatFixture(t *testing.T, foundUnder int64, pairs ...[2]int64) *chatFixture {
 	t.Helper()
-	f := &chatFixture{docks: map[int64]int64{}, buckets: map[int64]int64{}}
+	f := &chatFixture{docks: map[int64]int64{}, pings: map[int64]int64{}, buckets: map[int64]int64{}}
 	f.setListing(t, pairs...)
 	f.foundUnder.Store(foundUnder)
 	return f
@@ -365,10 +368,38 @@ func (f *chatFixture) setDock(bucket, campfire int64) {
 	}
 }
 
+// setPing makes a bucket a Ping whose Campfire is campfire.
+func (f *chatFixture) setPing(bucket, campfire int64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.pings[bucket] = campfire
+	f.buckets[campfire] = bucket
+}
+
 func (f *chatFixture) route(t *testing.T) func(w http.ResponseWriter, r *http.Request, path string) bool {
 	line := loadSummaryFixture(t, "campfires/line_get.json")
 	project := loadSummaryFixture(t, "projects/get.json") // dock chat tool 1069479341, bucket 2085958499
+	ping := loadSummaryFixture(t, "pings/get.json")
 	return func(w http.ResponseWriter, _ *http.Request, path string) bool {
+		if bucket, ok := strings.CutPrefix(path, "/195539477/circles/"); ok {
+			if f.pingStatus != 0 {
+				writeJSON(w, f.pingStatus, []byte(`{"error":"Pings have been disabled"}`))
+				return true
+			}
+			f.mu.Lock()
+			chatID, isPing := f.pings[parseID(bucket)]
+			f.mu.Unlock()
+			if !isPing {
+				writeJSON(w, http.StatusNotFound, []byte(`{"error":"Record not found"}`))
+				return true
+			}
+			var c map[string]any
+			_ = json.Unmarshal(ping, &c)
+			c["id"] = parseID(bucket)
+			c["room_url"] = "https://3.basecampapi.com/195539477/buckets/" + bucket + "/chats/" + itoa64(chatID) + ".json"
+			writeJSON(w, http.StatusOK, mustJSON(c))
+			return true
+		}
 		if bucket, ok := strings.CutPrefix(path, "/195539477/projects/"); ok {
 			if f.dockStatus != 0 {
 				writeJSON(w, f.dockStatus, []byte(`{"error":"nope"}`))
@@ -446,6 +477,7 @@ func lineRef() RecordingRef {
 
 const (
 	projectRead = "/195539477/projects/2085958499"
+	pingRead    = "/195539477/circles/2085958499"
 	listingRead = "/195539477/chats"
 )
 
@@ -479,8 +511,9 @@ func TestSummarize_ChatLineFoundViaProjectDock(t *testing.T) {
 }
 
 func TestSummarize_ChatLineFoundUnderSecondCampfire(t *testing.T) {
-	// A bucket that is not a project (a Circle, say): no dock. Two Campfires
-	// in the line's bucket, one in another project that must never be tried.
+	// A bucket that is neither a project nor a Ping: no dock and no room.
+	// Two Campfires in the line's bucket, one in another project that must
+	// never be tried.
 	fx := newChatFixture(t, 1069479345, [2]int64{1069479400, letoLocator}, [2]int64{1069479340, letoLaptop}, [2]int64{1069479345, letoLaptop})
 	account, srv, _ := newSummaryClient(t, fx.route(t))
 
@@ -488,7 +521,7 @@ func TestSummarize_ChatLineFoundUnderSecondCampfire(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Summarize: %v", err)
 	}
-	want := []string{projectRead, listingRead, lineRead(1069479340), lineRead(1069479345)}
+	want := []string{projectRead, pingRead, listingRead, lineRead(1069479340), lineRead(1069479345)}
 	if reqs := srv.requests(); !reflect.DeepEqual(reqs, want) {
 		t.Fatalf("requests = %v, want %v", reqs, want)
 	}
@@ -522,9 +555,55 @@ func TestSummarize_ChatLineFoundUnderSecondCampfire(t *testing.T) {
 	}
 }
 
+// A Ping's bucket is a Circle, not a project, and BC3's Campfire listing
+// holds only dock-positioned Campfires, so the Ping read is what names a
+// ping's Campfire. A project never pays for it.
+func TestSummarize_ChatLineFoundViaPing(t *testing.T) {
+	fx := newChatFixture(t, 1069479345, [2]int64{1069479400, letoLocator})
+	fx.setPing(letoLaptop, 1069479345)
+	account, srv, _ := newSummaryClient(t, fx.route(t))
+
+	got, err := account.Recordings().Summarize(context.Background(), lineRef())
+	if err != nil {
+		t.Fatalf("Summarize: %v", err)
+	}
+	if want := []string{projectRead, pingRead, lineRead(1069479345)}; !reflect.DeepEqual(srv.requests(), want) {
+		t.Fatalf("requests = %v, want %v", srv.requests(), want)
+	}
+	if got.CampfireID != 1069479345 {
+		t.Errorf("CampfireID = %d, want 1069479345", got.CampfireID)
+	}
+
+	// The Ping is cached like a dock: the next line in it costs one read.
+	if _, err := account.Recordings().Summarize(context.Background(), RecordingRef{BucketID: letoLaptop, RecordingID: 1069479350, RecordingType: "Chat::Lines::RichText"}); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{projectRead, pingRead, lineRead(1069479345), lineRead(1069479345)}; !reflect.DeepEqual(srv.requests(), want) {
+		t.Fatalf("requests = %v, want %v", srv.requests(), want)
+	}
+}
+
+func TestSummarize_ChatLinePingReadFailureIsNotUnresolved(t *testing.T) {
+	fx := newChatFixture(t, 1069479345)
+	fx.setPing(letoLaptop, 1069479345)
+	fx.pingStatus = http.StatusForbidden
+	account, srv, _ := newSummaryClient(t, fx.route(t))
+
+	_, err := account.Recordings().Summarize(context.Background(), lineRef())
+	if apiErr, ok := errors.AsType[*Error](err); !ok || apiErr.Code != CodeForbidden {
+		t.Fatalf("err = %v, want the Ping read's 403", err)
+	}
+	if errors.Is(err, ErrRecordingUnresolved) {
+		t.Fatal("a failed Ping read must not read as unresolved")
+	}
+	if want := []string{projectRead, pingRead}; !reflect.DeepEqual(srv.requests(), want) {
+		t.Fatalf("requests = %v, want %v", srv.requests(), want)
+	}
+}
+
 func TestSummarize_ChatLineDockMissFallsBackToListing(t *testing.T) {
-	// The dock names a Campfire the line is not in (it was posted in a ping
-	// listed for the same bucket); the listing supplies the rest.
+	// The dock names a Campfire the line is not in (it was posted in a second
+	// Campfire listed for the same bucket); the listing supplies the rest.
 	fx := newChatFixture(t, 1069479345, [2]int64{1069479341, letoLaptop}, [2]int64{1069479345, letoLaptop})
 	fx.setDock(letoLaptop, 1069479341)
 	account, srv, _ := newSummaryClient(t, fx.route(t))
@@ -635,7 +714,7 @@ func TestSummarize_ChatLineUnresolvedIsDistinct(t *testing.T) {
 	reqs := srv.requests()
 	// Both cached sources are tried first; then the dock is re-read, then the
 	// listing.
-	want := []string{lineRead(1069479340), lineRead(1069479345), projectRead, listingRead, lineRead(1069479399)}
+	want := []string{lineRead(1069479340), lineRead(1069479345), projectRead, pingRead, listingRead, lineRead(1069479399)}
 	if tail := reqs[len(reqs)-len(want):]; !reflect.DeepEqual(tail, want) {
 		t.Fatalf("requests = %v, want tail %v", reqs, want)
 	}
@@ -703,7 +782,7 @@ func TestSummarize_ChatLineReadFailureIsNotUnresolved(t *testing.T) {
 func TestSummarize_ChatLineListingFailurePassesThrough(t *testing.T) {
 	account, srv, _ := newSummaryClient(t, func(w http.ResponseWriter, _ *http.Request, path string) bool {
 		switch path {
-		case projectRead:
+		case projectRead, pingRead:
 			writeJSON(w, http.StatusNotFound, []byte(`{"error":"Record not found"}`))
 		case listingRead:
 			writeJSON(w, http.StatusServiceUnavailable, []byte(`{"error":"down"}`))
