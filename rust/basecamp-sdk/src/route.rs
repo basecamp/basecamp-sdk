@@ -3,7 +3,7 @@
 
 use std::fmt::Display;
 
-use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_decode_str, utf8_percent_encode};
 
 use crate::http::Method;
 
@@ -226,7 +226,10 @@ impl Route {
                     return None;
                 }
                 let param = self.params.iter().find(|param| param.name == name)?;
-                params.push((param.name, (*actual).to_string()));
+                let value = percent_decode_str(actual)
+                    .decode_utf8()
+                    .map_or_else(|_| (*actual).to_string(), std::borrow::Cow::into_owned);
+                params.push((param.name, value));
             } else if pattern != actual {
                 return None;
             }

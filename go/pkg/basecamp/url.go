@@ -3,6 +3,7 @@ package basecamp
 import (
 	_ "embed"
 	"encoding/json"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -350,6 +351,9 @@ func (r *Router) tryMatchRoute(path, fragment string) *Match {
 
 		for j, paramName := range rt.params {
 			val := matches[j+1]
+			if unescaped, err := url.PathUnescape(val); err == nil {
+				val = unescaped
+			}
 			m.Params[paramName] = val
 			switch paramName {
 			case "accountId":

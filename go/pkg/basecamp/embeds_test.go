@@ -257,3 +257,24 @@ func TestEmbedsService_HooksSeeTheOperationIDs(t *testing.T) {
 		t.Errorf("expected the hooks to see the operation ids, got %v", seen)
 	}
 }
+
+func TestEmbedsService_MatchAPIDecodesAnEncodedSGID(t *testing.T) {
+	m := DefaultRouter().MatchAPI("https://3.basecampapi.com/99999/embeds/a%2Fb+c%3D.json")
+	if m == nil || m.Operation != "GetEmbed" {
+		t.Fatalf("expected GetEmbed, got %+v", m)
+	}
+	if m.Params["sgid"] != "a/b+c=" || m.ResourceID() != "a/b+c=" {
+		t.Fatalf("expected the decoded sgid, got param %q and resource id %q", m.Params["sgid"], m.ResourceID())
+	}
+
+	svc := testEmbedsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.EscapedPath() != "/99999/embeds/a%2Fb+c=" {
+			t.Errorf("expected the sgid sent once escaped, got %s", r.URL.EscapedPath())
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(loadEmbedsFixture(t, "pending.json"))
+	})
+	if _, err := svc.Get(context.Background(), m.Params["sgid"]); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
