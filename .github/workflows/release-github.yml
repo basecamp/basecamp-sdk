@@ -33,9 +33,11 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
           MAX_WAIT=19800  # 5.5 hours: each publish now waits for a reviewer's approval
           POLL=30
-          ELAPSED=0
+          # Bash's SECONDS counts the requests and jq between sleeps too, so the wait ends
+          # on time and the job's 340 minutes leave room for the report below.
+          SECONDS=0
 
-          while [ $ELAPSED -lt $MAX_WAIT ]; do
+          while [ "$SECONDS" -lt "$MAX_WAIT" ]; do
             ALL_DONE=true
             ANY_FAILED=false
             STATUS_LINE=""
@@ -92,9 +94,8 @@ jobs:
               exit 0
             fi
 
-            echo "Waiting ${POLL}s for remaining workflows... (${ELAPSED}s elapsed)"
+            echo "Waiting ${POLL}s for remaining workflows... (${SECONDS}s elapsed)"
             sleep $POLL
-            ELAPSED=$((ELAPSED + POLL))
           done
 
           echo "::error::Timed out waiting for SDK release workflows after ${MAX_WAIT}s"
