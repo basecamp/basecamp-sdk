@@ -124,6 +124,13 @@ targets:
   - id: ping-list
     operation: ListPings
     fixture: pings/list.json
+  - id: embed-pending
+    operation: CreateEmbed
+    fixture: embeds/pending.json
+  - id: embed-active
+    fixture: embeds/active.json
+    pointer: ""
+    schema: Embed
   - id: todolist-get
     fixture: todolists/get.json
     pointer: ""
@@ -433,6 +440,7 @@ covered_schemas:
   Card: [card-get]
   Subtask: [subtask-get]
   Ping: [ping-get]
+  Embed: [embed-active]
   Todolist: [todolist-get, todolist-group-get]
   Upload: [upload-get]
   UploadVersion: [upload-version-0, upload-version-recordable-gone]

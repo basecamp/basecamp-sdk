@@ -1,0 +1,320 @@
+[
+  {
+    "name": "CreateEmbed posts the url and accepts the 200 pending embed",
+    "description": "POST /embeds.json with the url alone. A new embed answers 200 with status pending and only url, status and sgid.",
+    "operation": "CreateEmbed",
+    "method": "POST",
+    "path": "/embeds.json",
+    "requestBody": {
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "status": "pending",
+          "sgid": "BAh7BkkiC19yYWlscwY6BkVU--10dcfa365b396dfbb686898681ccecb3c96dea3f"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/embeds.json"
+      },
+      {
+        "type": "requestBody",
+        "path": "url",
+        "expected": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "pending"
+      },
+      {
+        "type": "responseBody",
+        "path": "sgid",
+        "expected": "BAh7BkkiC19yYWlscwY6BkVU--10dcfa365b396dfbb686898681ccecb3c96dea3f"
+      }
+    ],
+    "tags": [
+      "embeds",
+      "create",
+      "path"
+    ]
+  },
+  {
+    "name": "CreateEmbed returns the embed Basecamp already has",
+    "description": "Create is find-or-create: a URL Basecamp already has an embed for answers 200 with that embed in whatever status it has, here active with its content_type.",
+    "operation": "CreateEmbed",
+    "method": "POST",
+    "path": "/embeds.json",
+    "requestBody": {
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "status": "active",
+          "sgid": "BAh7BkkiC19yYWlscwY6BkVU--10dcfa365b396dfbb686898681ccecb3c96dea3f",
+          "type": "video",
+          "content_type": "embed/youtube-video",
+          "image_url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+          "content": ""
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "sgid",
+        "expected": "BAh7BkkiC19yYWlscwY6BkVU--10dcfa365b396dfbb686898681ccecb3c96dea3f"
+      },
+      {
+        "type": "responseBody",
+        "path": "content_type",
+        "expected": "embed/youtube-video"
+      }
+    ],
+    "tags": [
+      "embeds",
+      "create"
+    ]
+  },
+  {
+    "name": "CreateEmbed 422 maps to validation with the server's message",
+    "description": "A URL no oEmbed provider matches answers 422 with an error body before any embed is created.",
+    "operation": "CreateEmbed",
+    "method": "POST",
+    "path": "/embeds.json",
+    "requestBody": {
+      "url": "https://example.com/page"
+    },
+    "mockResponses": [
+      {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Basecamp can't embed this URL. Link to it instead."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 422
+      },
+      {
+        "type": "errorMessage",
+        "expected": "Basecamp can't embed this URL. Link to it instead."
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "embeds",
+      "create",
+      "error-mapping"
+    ]
+  },
+  {
+    "name": "CreateEmbed 429 is a verdict and surfaces on the first attempt",
+    "description": "Past 100 new embeds an hour bc3 refuses another with a 429 and no Retry-After, for the rest of the hour. CreateEmbed declares retry_on: [503], so the 429 is not retried even though the operation is idempotent, and maps to rate_limit.",
+    "operation": "CreateEmbed",
+    "method": "POST",
+    "path": "/embeds.json",
+    "requestBody": {
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    },
+    "mockResponses": [
+      {
+        "status": 429,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Too many new embeds. Try again later."
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "status": "pending",
+          "sgid": "BAh7BkkiC19yYWlscwY6BkVU--10dcfa365b396dfbb686898681ccecb3c96dea3f"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "rate_limit"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 429
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "embeds",
+      "create",
+      "error-mapping",
+      "retry"
+    ]
+  },
+  {
+    "name": "GetEmbed reads an embed by its sgid",
+    "description": "GET /embeds/{sgid}. An active embed carries type, content_type, image_url and content.",
+    "operation": "GetEmbed",
+    "method": "GET",
+    "path": "/embeds/{sgid}",
+    "pathParams": {
+      "sgid": "BAh7BkkiC19yYWlscwY6BkVU--10dcfa365b396dfbb686898681ccecb3c96dea3f"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "status": "active",
+          "sgid": "BAh7BkkiC19yYWlscwY6BkVU--10dcfa365b396dfbb686898681ccecb3c96dea3f",
+          "type": "video",
+          "content_type": "embed/youtube-video",
+          "image_url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+          "content": ""
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/embeds/BAh7BkkiC19yYWlscwY6BkVU--10dcfa365b396dfbb686898681ccecb3c96dea3f"
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "video"
+      },
+      {
+        "type": "responseBody",
+        "path": "image_url",
+        "expected": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
+      }
+    ],
+    "tags": [
+      "embeds",
+      "get",
+      "path"
+    ]
+  },
+  {
+    "name": "GetEmbed 404 maps to not_found",
+    "description": "An sgid that does not name an embed answers 404.",
+    "operation": "GetEmbed",
+    "method": "GET",
+    "path": "/embeds/{sgid}",
+    "pathParams": {
+      "sgid": "missing"
+    },
+    "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Not found"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "not_found"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 404
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "embeds",
+      "get",
+      "error-mapping"
+    ]
+  }
+]

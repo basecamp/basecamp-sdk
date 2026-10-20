@@ -80,6 +80,7 @@ import { ClientVisibilityService } from "./generated/services/client-visibility.
 import { BoostsService } from "./generated/services/boosts.js";
 import { SubtasksService } from "./generated/services/subtasks.js";
 import { PingsService } from "./generated/services/pings.js";
+import { EmbedsService } from "./generated/services/embeds.js";
 import { AccountService } from "./generated/services/account.js";
 import { GaugesService } from "./generated/services/gauges.js";
 import { MyAssignmentsService } from "./generated/services/my-assignments.js";
@@ -231,6 +232,7 @@ export interface BasecampClient extends RawClient {
   readonly subtasks: SubtasksService;
   /** Pings service - private conversations, each with their own Campfire */
   readonly pings: PingsService;
+  readonly embeds: EmbedsService;
   /** Account service - get and update account settings */
   readonly account: AccountService;
   /** Gauges service - manage project progress gauges */
@@ -537,6 +539,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("boosts", () => new BoostsService(client, hooks, fetchPage, maxPages));
   defineService("subtasks", () => new SubtasksService(client, hooks, fetchPage, maxPages));
   defineService("pings", () => new PingsService(client, hooks, fetchPage, maxPages));
+  defineService("embeds", () => new EmbedsService(client, hooks, fetchPage, maxPages));
   defineService("account", () => new AccountService(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl));
   defineService("gauges", () => new GaugesService(client, hooks, fetchPage, maxPages));
   defineService("myAssignments", () => new MyAssignmentsService(client, hooks, fetchPage, maxPages));

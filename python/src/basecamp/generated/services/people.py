@@ -267,7 +267,7 @@ class PeopleService(BaseService):
         and re-asking cannot change the answer, so this operation declares
         `retryOn: [503]` and a 429 surfaces on the first attempt (status-mapped to
         `rate_limit`, since the wire status is the only signal). Every other
-        operation retries on 429.
+        operation but CreateEmbed retries on 429.
 
         Args:
             project_id: The project id.
@@ -577,7 +577,7 @@ class AsyncPeopleService(AsyncBaseService):
         and re-asking cannot change the answer, so this operation declares
         `retryOn: [503]` and a 429 surfaces on the first attempt (status-mapped to
         `rate_limit`, since the wire status is the only signal). Every other
-        operation retries on 429.
+        operation but CreateEmbed retries on 429.
 
         Args:
             project_id: The project id.

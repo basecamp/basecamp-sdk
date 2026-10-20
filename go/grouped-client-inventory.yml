@@ -216,6 +216,7 @@ not_grouped:
   - CreateCardStep
   - CreateChatbot
   - CreateCloudFile
+  - CreateEmbed
   - CreateEventBoost
   - CreateFolder
   - CreateGaugeNeedle
@@ -274,6 +275,7 @@ not_grouped:
   - GetClientCorrespondence
   - GetClientReply
   - GetCloudFile
+  - GetEmbed
   - GetEverythingCheckins
   - GetEverythingComments
   - GetEverythingCompletedCards

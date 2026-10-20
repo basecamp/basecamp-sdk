@@ -20,7 +20,7 @@ enum Metadata {
         "CreateCloudFile": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateComment": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateDocument": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
-        "CreateEmbed": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
+        "CreateEmbed": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [503]),
         "CreateEventBoost": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateFolder": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateGaugeNeedle": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),

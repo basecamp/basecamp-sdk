@@ -29,7 +29,7 @@ func NewEmbedsService(client *AccountClient) *EmbedsService {
 
 func (s *EmbedsService) Create(ctx context.Context, url string) (result *Embed, err error) {
 	op := OperationInfo{
-		Service: "Embeds", Operation: "Create",
+		Service: "Embeds", Operation: "CreateEmbed",
 		ResourceType: "embed", IsMutation: true,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
@@ -58,7 +58,7 @@ func (s *EmbedsService) Create(ctx context.Context, url string) (result *Embed, 
 
 func (s *EmbedsService) Get(ctx context.Context, sgid string) (result *Embed, err error) {
 	op := OperationInfo{
-		Service: "Embeds", Operation: "Get",
+		Service: "Embeds", Operation: "GetEmbed",
 		ResourceType: "embed", IsMutation: false,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {

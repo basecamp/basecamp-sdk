@@ -9,7 +9,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 const slashedEmbedSGID = "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiI2dpZDovL2JjMy9FbWJlZC85OTg/ZXhwaXJlc19pbgY7AFRJIghwdXIGOwBUSSIPYXR0YWNoYWJsZQY7AFQ=--5d2b6e1c9a0f4e8b7c3d2a1f0e9d8c7b6a5f4e3d"
@@ -43,7 +46,6 @@ func TestEmbedsService_Create(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		json.Unmarshal(body, &received)
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
 		w.Write(loadEmbedsFixture(t, "pending.json"))
 	})
 
@@ -60,10 +62,9 @@ func TestEmbedsService_Create(t *testing.T) {
 	}
 }
 
-func TestEmbedsService_Create_ExistingEmbedAnswers200(t *testing.T) {
+func TestEmbedsService_Create_ReturnsAnExistingActiveEmbed(t *testing.T) {
 	svc := testEmbedsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		w.Write(loadEmbedsFixture(t, "active.json"))
 	})
 
@@ -136,7 +137,6 @@ func TestEmbedsService_Create_RetriesAsIdempotent(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		w.Write(loadEmbedsFixture(t, "pending.json"))
 	}, WithBaseDelay(1))
 
@@ -202,5 +202,58 @@ func TestEmbedsService_Get_NotFound(t *testing.T) {
 	apiErr, ok := errors.AsType[*Error](err)
 	if !ok || apiErr.Code != CodeNotFound || apiErr.HTTPStatus != 404 {
 		t.Errorf("expected not_found, got: %v", err)
+	}
+}
+
+func TestEmbedsService_Create_429IsAVerdictNotRetried(t *testing.T) {
+	attempts := 0
+	svc := testEmbedsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte(`{"error":"Too many new embeds. Try again later."}`))
+	}, WithBaseDelay(1))
+
+	_, err := svc.Create(context.Background(), "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.HTTPStatus != 429 || apiErr.Code != CodeRateLimit {
+		t.Fatalf("expected a 429 rate_limit error, got: %v", err)
+	}
+	if attempts != 1 {
+		t.Errorf("expected the 429 on the first attempt with no retry, got %d attempts", attempts)
+	}
+
+	retryOn, ok := generated.GetOperationRetryOn("CreateEmbed")
+	if !ok || slices.Contains(retryOn, http.StatusTooManyRequests) || !slices.Contains(retryOn, http.StatusServiceUnavailable) {
+		t.Errorf("expected CreateEmbed to retry on 503 and not 429, got %v (ok=%v)", retryOn, ok)
+	}
+}
+
+func TestEmbedsService_HooksSeeTheOperationIDs(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(loadEmbedsFixture(t, "pending.json"))
+	}))
+	t.Cleanup(server.Close)
+
+	var seen []string
+	hooks := &testHooks{
+		onOperationStart: func(ctx context.Context, op OperationInfo) context.Context {
+			seen = append(seen, op.Service+"."+op.Operation)
+			return ctx
+		},
+	}
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	embeds := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithHooks(hooks)).ForAccount("99999").Embeds()
+
+	if _, err := embeds.Create(context.Background(), "https://www.youtube.com/watch?v=dQw4w9WgXcQ"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, err := embeds.Get(context.Background(), "BAh7--abc"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !slices.Equal(seen, []string{"Embeds.CreateEmbed", "Embeds.GetEmbed"}) {
+		t.Errorf("expected the hooks to see the operation ids, got %v", seen)
 	}
 }

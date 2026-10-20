@@ -263,7 +263,7 @@ impl<'a> PeopleService<'a> {
     /// and re-asking cannot change the answer, so this operation declares
     /// `retryOn: \[503\]` and a 429 surfaces on the first attempt (status-mapped to
     /// `rate_limit`, since the wire status is the only signal). Every other
-    /// operation retries on 429.
+    /// operation but CreateEmbed retries on 429.
     ///
     /// `PUT /projects/{projectId}/people/client_users.json` — idempotent; retries up to 3 attempt(s) on 503.
     pub async fn update_project_client_access(

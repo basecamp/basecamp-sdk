@@ -1254,6 +1254,16 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult(resultJson = Json.encodeToJsonElement(Ping.serializer(), ping))
         }
 
+        "CreateEmbed" -> {
+            val embed = account.embeds.create(CreateEmbedBody(url = tc.requestBody.stringParam("url")))
+            DispatchResult(resultJson = Json.encodeToJsonElement(Embed.serializer(), embed))
+        }
+
+        "GetEmbed" -> {
+            val embed = account.embeds.get(tc.pathParams.stringParam("sgid"))
+            DispatchResult(resultJson = Json.encodeToJsonElement(Embed.serializer(), embed))
+        }
+
         "GetTemplateLibraryTodolists" -> {
             DispatchResult(resultJson = summarizeTemplateLibraryTodolists(account.templates.getLibraryTodolists()))
         }

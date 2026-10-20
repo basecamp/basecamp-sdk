@@ -488,6 +488,14 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
                 userIds: rb.intArray("user_ids") ?? []))
         return DispatchResult(resultJSON: try resultJSON(ping))
 
+    case "CreateEmbed":
+        let embed = try await account.embeds.create(req: CreateEmbedRequest(url: rb.stringParam("url")))
+        return DispatchResult(resultJSON: try resultJSON(embed))
+
+    case "GetEmbed":
+        let embed = try await account.embeds.get(sgid: pathParams.stringParam("sgid"))
+        return DispatchResult(resultJSON: try resultJSON(embed))
+
     case "GetTemplateLibraryTodolists":
         let library = try await account.templates.getLibraryTodolists()
         return DispatchResult(resultJSON: summarizeTemplateLibraryTodolists(library))

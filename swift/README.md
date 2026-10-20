@@ -193,6 +193,7 @@ The SDK exposes `57` account-scoped services. <!-- @service-count --> The tables
 | `comments` | Comments on recordings |
 | `campfires` | Chat rooms |
 | `pings` | Pings: direct and group chats, each with its own Campfire |
+| `embeds` | Embeds for rich text: create one for a URL, get it by sgid |
 | `forwards` | Email forwards |
 
 ### Card Tables (Kanban)

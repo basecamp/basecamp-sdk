@@ -349,6 +349,7 @@ The SDK provides the full account-scoped service set documented in SPEC §5. The
 | `card_steps` | Card workflow steps |
 | `subtasks` | Subtasks (checklist items) on to-dos and cards |
 | `pings` | Pings (direct and group chats) |
+| `embeds` | Embeds for rich text (create, get) |
 | `wormholes` | Card table wormholes (cross-project moves) |
 | `lineup` | Card lineup view |
 | `tools` | Project dock tools |

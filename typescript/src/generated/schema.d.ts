@@ -1243,13 +1243,17 @@ export interface paths {
         /**
          * @description Create an embed for a URL, or return the one Basecamp already has for it.
          *
-         *     Answers `201 Created` with a new embed, whose status is `pending`, and
-         *     `200 OK` with an existing embed in any status. Get the embed about once a
-         *     second until its status is `active` or `not_found`.
+         *     Answers `200 OK` with the embed either way. A new embed's status is
+         *     `pending`; get it about once a second until its status is `active` or
+         *     `not_found`.
          *
          *     Answers `422` (`{"error": "Basecamp can't embed this URL. Link to it
-         *     instead."}`) for a URL no provider embeds, and `429` when the caller has
-         *     created too many new embeds in the last hour.
+         *     instead."}`) for a URL no provider embeds. Past 100 new embeds in an hour,
+         *     creating another answers `429` (`{"error": "Too many new embeds. Try again
+         *     later."}`) with no Retry-After; asking for an embed Basecamp already has
+         *     still works. That 429 is a verdict for the rest of the hour, not
+         *     throttling, so this operation declares `retryOn: [503]` and the 429
+         *     surfaces on the first attempt.
          */
         post: operations["CreateEmbed"];
         delete?: never;
@@ -2313,7 +2317,7 @@ export interface paths {
          *     and re-asking cannot change the answer, so this operation declares
          *     `retryOn: [503]` and a 429 surfaces on the first attempt (status-mapped to
          *     `rate_limit`, since the wire status is the only signal). Every other
-         *     operation retries on 429.
+         *     operation but CreateEmbed retries on 429.
          */
         put: operations["UpdateProjectClientAccess"];
         post?: never;
@@ -14338,8 +14342,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description CreateEmbed 201 response */
-            201: {
+            /** @description CreateEmbed 200 response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -791,6 +791,16 @@ async function executeOperation(
         return { result: ping };
       }
 
+      case "CreateEmbed": {
+        const embed = await client.embeds.create({ url: body.url as string });
+        return { result: embed };
+      }
+
+      case "GetEmbed": {
+        const embed = await client.embeds.get(String(params.sgid));
+        return { result: embed };
+      }
+
       case "GetTemplateLibraryTodolists": {
         const library = await client.templates.getLibraryTodolists();
         return { result: summarizeTemplateLibraryTodolists(library) };

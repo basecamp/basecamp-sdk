@@ -487,6 +487,12 @@ class AccountClient:
         return self._service("pings", lambda: PingsService(self))
 
     @property
+    def embeds(self):
+        from basecamp.generated.services.embeds import EmbedsService
+
+        return self._service("embeds", lambda: EmbedsService(self))
+
+    @property
     def client_approvals(self):
         from basecamp.generated.services.client_approvals import ClientApprovalsService
 

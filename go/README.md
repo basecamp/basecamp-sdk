@@ -543,6 +543,7 @@ for both.
 | `Comments()` | List, Get, Create, Update, Trash, ExpandMentions, CreateWithMentions |
 | `Campfires()` | List, Get, ListLines, GetLine, CreateLine, UpdateLine, DeleteLine, Chatbot CRUD |
 | `Pings()` | List, Get, Create |
+| `Embeds()` | Create, Get |
 | `Forwards()` | List, Get |
 
 ### Scheduling

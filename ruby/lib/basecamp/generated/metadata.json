@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-10-20T14:59:18Z",
+  "generated": "2026-10-20T15:47:49Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -1140,7 +1140,6 @@
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
-          429,
           503
         ]
       },

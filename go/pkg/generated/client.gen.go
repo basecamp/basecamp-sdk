@@ -28126,7 +28126,7 @@ var operationRetryOn = map[string][]int{
 	"UpdateTool":                         {429, 503},
 	"GetDocument":                        {429, 503},
 	"ReplaceDocument":                    {429, 503},
-	"CreateEmbed":                        {429, 503},
+	"CreateEmbed":                        {503},
 	"GetEmbed":                           {429, 503},
 	"PollEvents":                         {429, 503},
 	"CreateStreamTicket":                 {429, 503},
@@ -33480,7 +33480,7 @@ func (r ReplaceDocumentResponse) ContentType() string {
 type CreateEmbedResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *CreateEmbedResponseContent
+	JSON200      *CreateEmbedResponseContent
 	JSON400      *BadRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
@@ -48225,12 +48225,12 @@ func ParseCreateEmbedResponse(rsp *http.Response) (*CreateEmbedResponse, error) 
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest CreateEmbedResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON201 = &dest
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequestErrorResponseContent

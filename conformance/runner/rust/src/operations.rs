@@ -278,6 +278,13 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             };
             json(account.pings().create(&request).await?)
         }
+        "CreateEmbed" => {
+            let request = CreateEmbedRequestContent {
+                url: string_param(body, "url"),
+            };
+            json(account.embeds().create(&request).await?)
+        }
+        "GetEmbed" => json(account.embeds().get(&string_param(path, "sgid")).await?),
         "GetTemplateLibraryTodolists" => {
             let library = account.templates().get_library_todolists().await?;
             Ok(Outcome::Json(summarize_template_library_todolists(&library)))

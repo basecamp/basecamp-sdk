@@ -37,7 +37,7 @@ object Metadata {
         "CreateCloudFile" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateComment" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateDocument" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
-        "CreateEmbed" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "CreateEmbed" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(503))),
         "CreateEventBoost" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateFolder" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "CreateGaugeNeedle" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),

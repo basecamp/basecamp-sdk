@@ -947,6 +947,14 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		})
 		return operationResult{err: err, result: ping}
 
+	case "CreateEmbed":
+		embed, err := account.Embeds().Create(ctx, getStringParam(tc.RequestBody, "url"))
+		return operationResult{err: err, result: embed}
+
+	case "GetEmbed":
+		embed, err := account.Embeds().Get(ctx, getStringParam(tc.PathParams, "sgid"))
+		return operationResult{err: err, result: embed}
+
 	case "GetTemplateLibraryTodolists":
 		library, err := account.Templates().GetLibraryTodolists(ctx)
 		if err != nil {
