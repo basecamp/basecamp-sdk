@@ -168,7 +168,10 @@ spec.fetch("paths").each do |path, item|
     id = operation["operationId"]
     raise "openapi.json has an operation with no operationId at #{verb} #{path}" if id.nil?
     raise "openapi.json path #{path} is not account-scoped" unless path.start_with?("/{accountId}")
-    wire[id] = { method: verb.upcase, path: path.sub("/{accountId}", "") }
+    string_params = (operation["parameters"] || [])
+                    .select { |p| p["in"] == "path" && p.dig("schema", "type") == "string" }
+                    .map { |p| p["name"] }
+    wire[id] = { method: verb.upcase, path: path.sub("/{accountId}", ""), string_params: string_params }
   end
 end
 
@@ -209,14 +212,14 @@ def canonical(service) = service.downcase.gsub(/[^a-z0-9]/, "").sub(/service\z/,
 # `index` is the operation's position in the sorted roster and drives the helper
 # rotation described in the header.
 
-def interpolate(path, style)
+def interpolate(path, style, string_params = [])
   path.gsub(/\{(\w+)\}/) do
     param = Regexp.last_match(1)
     case style
     when :braces then "{#{param}}"
     when :dollar then "${#{param}}"
     when :hash   then "\#{#{snake_case(param)}}"
-    when :paren  then "\\(#{param})"
+    when :paren  then string_params.include?(param) ? "\\(pathSegment(#{param}))" : "\\(#{param})"
     when :fstr   then "{#{snake_case(param)}}"
     else raise "unknown interpolation style #{style.inspect}"
     end
@@ -343,7 +346,7 @@ def kt_method(id, op, index)
 end
 
 def sw_method(id, op, index)
-  path = interpolate(op[:path], :paren)
+  path = interpolate(op[:path], :paren, op[:string_params])
   info = %(OperationInfo(service: "#{op[:service]}", operation: "#{id}", isMutation: #{index.even?}))
   call =
     case [op[:method], index % 4]

@@ -296,7 +296,7 @@ def normalize_path(raw)
     .sub(/\?.*\z/m, "")        # Ruby's two http_post_raw sites carry ?name=...
     .gsub(/\$\{[^}]*\}/, "{}") # TypeScript, Kotlin
     .gsub(/#\{[^}]*\}/, "{}")  # Ruby
-    .gsub(/\\\([^)]*\)/, "{}") # Swift
+    .gsub(/\\\((?:[^()]|\([^()]*\))*\)/, "{}") # Swift
     .gsub(/\{[^}]*\}/, "{}")   # Python f-strings, Rust doc lines, and openapi.json itself
 end
 

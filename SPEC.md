@@ -3115,6 +3115,7 @@ the category slug is the filename (basename, `_` written as `-`).
 | boosts-write | `boosts_write.json` | §6 Error Taxonomy, §11 Response Semantics |
 | cards-write | `cards_write.json` | §5 Merge-Safe Write Surface (Cards), §18 Hand-Written Composite Methods |
 | documents-write | `documents_write.json` | §5 Merge-Safe Write Surface (Documents), §18 Hand-Written Composite Methods |
+| embeds | `embeds.json` | §6 Error Taxonomy, §7 Retry (Gate 3: a declared `retry_on` without 429), §11 Response Semantics |
 | downloads | `downloads.json` | §14 Download |
 | error-mapping | `error-mapping.json` | §6 Error Taxonomy |
 | event-feed | `event_feed.json` | §23 Event Feed Connector (Wire Operations), §6 Error Taxonomy, §11 Response Semantics |
@@ -5211,6 +5212,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `pings.json` | The Pings service: the unpaginated list decoded in order and empty, disabled Pings as `forbidden`, creation with `user_ids` and `new_group` answering 201, `new_group` omitted when unset, and a bodiless 422 as `validation` (6 cases) | §3, §6, §10, §11 |
 | `project_constructions.json` | Project construction from a template: attributes nested under the `project` envelope, `start_date` carried when given and absent when omitted (2 cases) | §3, §10, §11 |
 | `boosts_write.json` | Updating a boost: the flat `PUT /boosts/{id}` route with `content` alone, and 403, 404 and a bodiless 422 mapped to their codes (4 cases) | §6, §11 |
+| `embeds.json` | The Embeds service: a create with `url` alone answering 200 for a new pending embed and for an existing active one, a 422 as `validation` with the server's message, a 429 surfacing on the first attempt as `rate_limit`, a read by sgid, and a 404 (6 cases) | §6, §7, §11 |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 <!-- @fixture-section-map:end -->
 
