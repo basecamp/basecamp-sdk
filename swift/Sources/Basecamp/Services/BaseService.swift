@@ -629,6 +629,14 @@ open class BaseService: @unchecked Sendable {
 
     // MARK: - Helpers
 
+    private static let pathSegmentAllowed = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+    )
+
+    func pathSegment(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: Self.pathSegmentAllowed) ?? value
+    }
+
     /// Builds the full request URL for an account-relative path. Absolute URLs
     /// must target the configured origin (localhost carve-out) so the bearer
     /// token is never attached to a foreign host.

@@ -1047,6 +1047,36 @@
       }
     },
     {
+      "pattern": "/{accountId}/embeds",
+      "resource": "Embeds",
+      "operations": {
+        "POST": "CreateEmbed"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/embeds/{sgid}",
+      "resource": "Embeds",
+      "operations": {
+        "GET": "GetEmbed"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "sgid": {
+          "role": "recording",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/events",
       "resource": "EventFeed",
       "operations": {

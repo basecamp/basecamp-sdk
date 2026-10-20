@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from typing import Any
+from urllib.parse import quote
 
 from basecamp import _security
 from basecamp._decoding import decoded_array, decoded_envelope_array, decoded_object
@@ -502,6 +503,10 @@ class AsyncBaseService:
 
     def _compact(self, **kwargs: Any) -> dict:
         return {k: v for k, v in kwargs.items() if v is not None}
+
+    @staticmethod
+    def _path_segment(value: object) -> str:
+        return quote(str(value), safe="")
 
     def _bucket_path(self, project_id: int | str, path: str) -> str:
         return f"/buckets/{project_id}{path}"

@@ -140,7 +140,7 @@ class SchedulesService(BaseService):
                 service="schedules", operation="get_entry_occurrence", is_mutation=False, resource_id=entry_id
             ),
             "GET",
-            f"/schedule_entries/{entry_id}/occurrences/{date}",
+            f"/schedule_entries/{entry_id}/occurrences/{self._path_segment(date)}",
             operation="GetScheduleEntryOccurrence",
         )
 
@@ -409,7 +409,7 @@ class AsyncSchedulesService(AsyncBaseService):
                 service="schedules", operation="get_entry_occurrence", is_mutation=False, resource_id=entry_id
             ),
             "GET",
-            f"/schedule_entries/{entry_id}/occurrences/{date}",
+            f"/schedule_entries/{entry_id}/occurrences/{self._path_segment(date)}",
             operation="GetScheduleEntryOccurrence",
         )
 

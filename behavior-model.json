@@ -196,6 +196,18 @@
         ]
       }
     },
+    "CreateEmbed": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateEventBoost": {
       "retry": {
         "max": 2,
@@ -1073,6 +1085,18 @@
       }
     },
     "GetDocument": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetEmbed": {
       "readonly": true,
       "retry": {
         "max": 3,

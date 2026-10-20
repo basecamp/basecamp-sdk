@@ -84,6 +84,7 @@ class ServiceGenerator
     'Boosts' => 'Boosts',
     'Subtasks' => 'Subtasks',
     'Pings' => 'Pings',
+    'Embeds' => 'Embeds',
     'Untagged' => 'Miscellaneous'
   }.freeze
 
@@ -365,7 +366,7 @@ class ServiceGenerator
     clientcorrespondences clientreply clientreplies forwardreply
     forwardreplies campfireline campfirelines todolistgroup todolistgroups
     todolistorgroup uploadversions hillchart hillcharts subtask subtasks ping pings
-    wormhole wormholes
+    wormhole wormholes embed embeds
   ].freeze
 
   def initialize(openapi_path)
@@ -571,7 +572,7 @@ class ServiceGenerator
       operation_id: operation_id,
       method_name: method_name,
       http_method: http_method,
-      path: convert_path(path),
+      path: convert_path(path, path_params),
       description: description,
       path_params: path_params,
       query_params: query_params,
@@ -679,14 +680,15 @@ class ServiceGenerator
     SIMPLE_RESOURCES.include?(resource.downcase.gsub('_', ''))
   end
 
-  def convert_path(path)
+  def convert_path(path, path_params = [])
     # Remove /{accountId} prefix
     path = path.sub(%r{^/\{accountId\}}, '')
+    string_params = path_params.select { |p| p[:type] == 'String' }.map { |p| p[:name] }
     # Convert {camelCaseParam} to #{snake_case_param}
     path.gsub(/\{(\w+)\}/) do |_match|
       param = ::Regexp.last_match(1)
       snake_param = to_snake_case(param)
-      "\#{#{snake_param}}"
+      string_params.include?(param) ? "\#{path_segment(#{snake_param})}" : "\#{#{snake_param}}"
     end
   end
 

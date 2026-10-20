@@ -191,6 +191,7 @@ private let simpleResources: Set<String> = [
     "boost", "boosts",
     "subtask", "subtasks",
     "ping", "pings",
+    "embed", "embeds",
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
 ]

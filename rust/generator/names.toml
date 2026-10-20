@@ -25,6 +25,7 @@
 "Boosts" = "Boosts"
 "Subtasks" = "Subtasks"
 "Pings" = "Pings"
+"Embeds" = "Embeds"
 "Untagged" = "Miscellaneous"
 
 # SERVICE_SPLITS flattened: operations that belong to a different service than their tag

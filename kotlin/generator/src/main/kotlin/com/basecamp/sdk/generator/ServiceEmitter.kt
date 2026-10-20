@@ -387,7 +387,9 @@ class ServiceEmitter(private val api: OpenApiParser) {
         // Replace path params like {projectId} with $projectId
         var path = op.path
         for (p in op.pathParams) {
-            path = path.replace("{${p.name}}", "\${${p.name.snakeToCamelCase()}}")
+            val name = p.name.snakeToCamelCase()
+            val expression = if (p.type == "String") "pathSegment($name)" else name
+            path = path.replace("{${p.name}}", "\${$expression}")
         }
         return "\"$path\""
     }

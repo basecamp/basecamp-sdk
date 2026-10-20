@@ -358,6 +358,23 @@ pub static CREATE_DOCUMENT: Route = Route {
     metadata: &metadata::CREATE_DOCUMENT,
 };
 
+/// `POST /embeds.json`.
+pub static CREATE_EMBED: Route = Route {
+    id: "CreateEmbed",
+    service: "Embeds",
+    method: Method::POST,
+    path: "/embeds.json",
+    pattern: "/embeds",
+    resource_type: "embed",
+    params: &[],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::CREATE_EMBED,
+};
+
 /// `POST /recordings/{recordingId}/events/{eventId}/boosts.json`.
 pub static CREATE_EVENT_BOOST: Route = Route {
     id: "CreateEventBoost",
@@ -1951,6 +1968,26 @@ pub static GET_DOCUMENT: Route = Route {
     write: None,
     deprecated: false,
     metadata: &metadata::GET_DOCUMENT,
+};
+
+/// `GET /embeds/{sgid}`.
+pub static GET_EMBED: Route = Route {
+    id: "GetEmbed",
+    service: "Embeds",
+    method: Method::GET,
+    path: "/embeds/{sgid}",
+    pattern: "/embeds/{sgid}",
+    resource_type: "embed",
+    params: &[RouteParam {
+        name: "sgid",
+        kind: ParamKind::String,
+    }],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::GET_EMBED,
 };
 
 /// `GET /checkins.json`.
@@ -5887,6 +5924,7 @@ pub static ROUTES: &[&Route] = &[
     &CREATE_CLOUD_FILE,
     &CREATE_COMMENT,
     &CREATE_DOCUMENT,
+    &CREATE_EMBED,
     &CREATE_EVENT_BOOST,
     &CREATE_FOLDER,
     &CREATE_GAUGE_NEEDLE,
@@ -5963,6 +6001,7 @@ pub static ROUTES: &[&Route] = &[
     &GET_CLOUD_FILE,
     &GET_COMMENT,
     &GET_DOCUMENT,
+    &GET_EMBED,
     &GET_EVERYTHING_CHECKINS,
     &GET_EVERYTHING_COMMENTS,
     &GET_EVERYTHING_COMPLETED_CARDS,

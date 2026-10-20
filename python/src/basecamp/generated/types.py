@@ -489,6 +489,10 @@ class CreateDocumentRequestContent(TypedDict):
     visible_to_clients: NotRequired[bool]
 
 
+class CreateEmbedRequestContent(TypedDict):
+    url: str
+
+
 class CreateEventBoostRequestContent(TypedDict):
     content: str
 
@@ -758,6 +762,16 @@ class DraftParent(TypedDict):
     app_url: str
     id: int
     title: str
+
+
+class Embed(TypedDict):
+    content: NotRequired[str]
+    content_type: NotRequired[str]
+    image_url: NotRequired[Optional[str]]
+    sgid: str
+    status: str
+    type: NotRequired[str]
+    url: str
 
 
 class EnableOutOfOfficeRequestContent(TypedDict):

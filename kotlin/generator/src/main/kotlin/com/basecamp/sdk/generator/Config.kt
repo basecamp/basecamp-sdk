@@ -18,6 +18,7 @@ val TAG_TO_SERVICE = mapOf(
     "Boosts" to "Boosts",
     "Subtasks" to "Subtasks",
     "Pings" to "Pings",
+    "Embeds" to "Embeds",
     "Untagged" to "Miscellaneous",
 )
 
@@ -353,6 +354,7 @@ val TYPE_ALIASES = mapOf(
     "CampfireLine" to "CampfireLine",
     "Chatbot" to "Chatbot",
     "Ping" to "Ping",
+    "Embed" to "Embed",
     "Webhook" to "Webhook",
     "Vault" to "Vault",
     "Document" to "Document",
@@ -465,6 +467,7 @@ val SIMPLE_RESOURCES = setOf(
     "boost", "boosts",
     "subtask", "subtasks",
     "ping", "pings",
+    "embed", "embeds",
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
 )

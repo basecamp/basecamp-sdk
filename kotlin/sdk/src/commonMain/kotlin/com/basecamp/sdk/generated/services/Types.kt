@@ -383,6 +383,11 @@ data class ListMyDraftsOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
+/** Request body for CreateEmbed. */
+data class CreateEmbedBody(
+    val url: String
+)
+
 /** Options for PollEvents. */
 data class PollEventsOptions(
     /** Entry point: a decimal event id (start after it; `0` replays served history back to the epoch), or the literal `now` (skip history). Mutually exclusive with `position` in practice; omit both to enter at the present. */

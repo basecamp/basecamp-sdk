@@ -46,6 +46,7 @@ TAG_TO_SERVICE = {
     "Boosts": "Boosts",
     "Subtasks": "Subtasks",
     "Pings": "Pings",
+    "Embeds": "Embeds",
     "Untagged": "Miscellaneous",
 }
 
@@ -310,6 +311,7 @@ SIMPLE_RESOURCES = {
     "clientreplies", "forwardreply", "forwardreplies", "campfireline", "campfirelines",
     "todolistgroup", "todolistgroups", "todolistorgroup", "uploadversions",
     "wormhole", "wormholes", "subtask", "subtasks", "ping", "pings",
+    "embed", "embeds",
 }
 
 
@@ -793,6 +795,9 @@ def build_info_kwargs(op: dict, service_name: str) -> str:
 def build_path_expr(op: dict) -> str:
     """Build the f-string path expression."""
     path = op["path"]
+    for p in op["path_params"]:
+        if p["type"] == "str":
+            path = path.replace("{" + p["python_name"] + "}", "{self._path_segment(" + p["python_name"] + ")}")
     # If path contains interpolation vars, use f-string
     if "{" in path:
         return 'f"' + path + '"'

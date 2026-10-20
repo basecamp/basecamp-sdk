@@ -162,6 +162,10 @@ module Basecamp
         kwargs.compact
       end
 
+      def path_segment(value)
+        CGI.escapeURIComponent(value.to_s)
+      end
+
       # Like compact_params, but also drops empty arrays. For query filters an
       # empty array means "no filter" and must be omitted entirely: Faraday's
       # nested encoder would otherwise emit a bare `bucket_ids[]`, which Rails

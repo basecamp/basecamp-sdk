@@ -189,7 +189,10 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
     }
 
     // Build OperationInfo
-    let swiftPath = pathToSwiftInterpolation(op.path)
+    let swiftPath = pathToSwiftInterpolation(
+        op.path,
+        stringParams: Set(op.pathParams.filter { $0.swiftType == "String" }.map(\.name))
+    )
     let projectParam = op.pathParams.first { $0.name == "projectId" || $0.name == "bucketId" }
     let resourceParam = op.pathParams.last { $0.name != "projectId" && $0.name != "bucketId" && ($0.name.hasSuffix("Id") || $0.name == "id") }
 

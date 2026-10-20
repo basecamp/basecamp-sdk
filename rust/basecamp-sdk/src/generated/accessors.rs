@@ -107,6 +107,11 @@ impl AccountClient {
         services::drafts::DraftsService::new(self)
     }
 
+    /// `Embeds` operations.
+    pub fn embeds(&self) -> services::embeds::EmbedsService<'_> {
+        services::embeds::EmbedsService::new(self)
+    }
+
     /// `EventFeed` operations.
     pub fn event_feed(&self) -> services::event_feed::EventFeedService<'_> {
         services::event_feed::EventFeedService::new(self)

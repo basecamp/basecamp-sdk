@@ -209,7 +209,7 @@ func extractResourceType(_ operationId: String) -> String {
 ///
 /// `/{accountId}/buckets/{projectId}/todos/{todoId}.json`
 /// → `"/buckets/\(projectId)/todos/\(todoId).json"`
-func pathToSwiftInterpolation(_ path: String) -> String {
+func pathToSwiftInterpolation(_ path: String, stringParams: Set<String> = []) -> String {
     // First strip the accountId prefix
     let stripped = convertPath(path)
     // Replace {paramName} with \(paramName)
@@ -219,8 +219,10 @@ func pathToSwiftInterpolation(_ path: String) -> String {
     for match in matches.reversed() {
         let range = Range(match.range, in: stripped)!
         let paramRange = Range(match.range(at: 1), in: stripped)!
-        let paramName = toCamelCase(String(stripped[paramRange]))
-        result.replaceSubrange(range, with: "\\(\(paramName))")
+        let rawName = String(stripped[paramRange])
+        let paramName = toCamelCase(rawName)
+        let expression = stringParams.contains(rawName) ? "pathSegment(\(paramName))" : paramName
+        result.replaceSubrange(range, with: "\\(\(expression))")
     }
     return result
 }

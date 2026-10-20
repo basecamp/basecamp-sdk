@@ -1231,6 +1231,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/embeds.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Create an embed for a URL, or return the one Basecamp already has for it.
+         *
+         *     Answers `201 Created` with a new embed, whose status is `pending`, and
+         *     `200 OK` with an existing embed in any status. Get the embed about once a
+         *     second until its status is `active` or `not_found`.
+         *
+         *     Answers `422` (`{"error": "Basecamp can't embed this URL. Link to it
+         *     instead."}`) for a URL no provider embeds, and `429` when the caller has
+         *     created too many new embeds in the last hour.
+         */
+        post: operations["CreateEmbed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/embeds/{sgid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get an embed by its sgid.
+         *
+         *     Answers `404 Not Found` for an sgid that does not name an embed.
+         */
+        get: operations["GetEmbed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events.json": {
         parameters: {
             query?: never;
@@ -4668,6 +4716,11 @@ export interface components {
             visible_to_clients?: boolean;
         };
         CreateDocumentResponseContent: components["schemas"]["Document"];
+        CreateEmbedRequestContent: {
+            /** @description The URL of the content to embed. */
+            url: string;
+        };
+        CreateEmbedResponseContent: components["schemas"]["Embed"];
         CreateEventBoostRequestContent: {
             content: string;
         };
@@ -5124,6 +5177,39 @@ export interface components {
             id: number;
             title: string;
             app_url: string;
+        };
+        /**
+         * @description Content from another site, such as a YouTube video, that rich text shows
+         *     inline. Put it in rich text as `<bc-attachment sgid="SGID"></bc-attachment>`
+         *     once its status is `active`; an embed that is not active shows as a link to
+         *     its URL.
+         */
+        Embed: {
+            url: string;
+            /**
+             * @description `pending` while Basecamp asks the provider about the URL, then `active`,
+             *     or `not_found` when the provider has nothing to embed.
+             */
+            status: string;
+            /** @description An embed's signed global id, an opaque string. */
+            sgid: string;
+            /**
+             * @description The provider's oEmbed type, such as `video`, `rich` or `photo`. Present
+             *     only when the embed is active.
+             */
+            type?: string;
+            /** @description Such as `embed/youtube-video`. Present only when the embed is active. */
+            content_type?: string;
+            /**
+             * @description Present only when the embed is active, and null when the provider gave no
+             *     image.
+             */
+            image_url?: string | null;
+            /**
+             * @description The provider's HTML, sanitized. Present only when the embed is active and
+             *     the provider gave HTML; may be empty.
+             */
+            content?: string;
         };
         EnableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         EnableOutOfOfficeRequestContent: {
@@ -5605,6 +5691,7 @@ export interface components {
         GetCloudFileResponseContent: components["schemas"]["CloudFile"];
         GetCommentResponseContent: components["schemas"]["Comment"];
         GetDocumentResponseContent: components["schemas"]["Document"];
+        GetEmbedResponseContent: components["schemas"]["Embed"];
         GetEverythingCheckinsResponseContent: components["schemas"]["Recording"][];
         GetEverythingCommentsResponseContent: components["schemas"]["Recording"][];
         GetEverythingCompletedCardsResponseContent: components["schemas"]["BucketCardsGroup"][];
@@ -14225,6 +14312,152 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateEmbed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEmbedRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateEmbed 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateEmbedResponseContent"];
+                };
+            };
+            /** @description BadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEmbed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description An embed's signed global id, an opaque string. */
+                sgid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEmbed 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEmbedResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

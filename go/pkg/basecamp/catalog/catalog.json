@@ -903,6 +903,50 @@
       "bodyRequired": true
     },
     {
+      "operationId": "CreateEmbed",
+      "tag": "Embeds",
+      "method": "POST",
+      "path": "/{accountId}/embeds.json",
+      "doc": "Create an embed for a URL, or return the one Basecamp already has for it.\n\nAnswers `201 Created` with a new embed, whose status is `pending`, and\n`200 OK` with an existing embed in any status. Get the embed about once a\nsecond until its status is `active` or `not_found`.\n\nAnswers `422` (`{\"error\": \"Basecamp can't embed this URL. Link to it\ninstead.\"}`) for a URL no provider embeds, and `429` when the caller has\ncreated too many new embeds in the last hour.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "url": {
+            "description": "The URL of the content to embed.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "bodyRequired": true
+    },
+    {
       "operationId": "CreateEventBoost",
       "tag": "Boosts",
       "method": "POST",
@@ -4793,6 +4837,47 @@
           "schema": {
             "format": "int64",
             "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "operationId": "GetEmbed",
+      "tag": "Embeds",
+      "method": "GET",
+      "path": "/{accountId}/embeds/{sgid}",
+      "doc": "Get an embed by its sgid.\n\nAnswers `404 Not Found` for an sgid that does not name an embed.",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "sgid",
+          "in": "path",
+          "required": true,
+          "description": "An embed's signed global id, an opaque string.",
+          "schema": {
+            "description": "An embed's signed global id, an opaque string.",
+            "type": "string"
           }
         }
       ]

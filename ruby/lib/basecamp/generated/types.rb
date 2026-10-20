@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-19T21:23:14Z
+# Generated: 2026-10-20T14:59:18Z
 
 require "json"
 require "time"
@@ -1677,6 +1677,43 @@ module Basecamp
           "app_url" => @app_url,
           "id" => @id,
           "title" => @title,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Embed
+    class Embed
+      include TypeHelpers
+      attr_accessor :sgid, :status, :url, :content, :content_type, :image_url, :type
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[sgid status url].freeze
+      end
+
+      def initialize(data = {})
+        @sgid = data["sgid"]
+        @status = data["status"]
+        @url = data["url"]
+        @content = data["content"]
+        @content_type = data["content_type"]
+        @image_url = data["image_url"]
+        @type = data["type"]
+      end
+
+      def to_h
+        {
+          "sgid" => @sgid,
+          "status" => @status,
+          "url" => @url,
+          "content" => @content,
+          "content_type" => @content_type,
+          "image_url" => @image_url,
+          "type" => @type,
         }.compact
       end
 

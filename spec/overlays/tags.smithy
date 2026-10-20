@@ -430,3 +430,6 @@ apply DeleteSubtask @tags(["Subtasks"])
 apply ListPings @tags(["Pings"])
 apply GetPing @tags(["Pings"])
 apply CreatePing @tags(["Pings"])
+
+apply CreateEmbed @tags(["Embeds"])
+apply GetEmbed @tags(["Embeds"])
