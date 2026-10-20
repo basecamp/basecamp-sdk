@@ -40,19 +40,26 @@ jobs:
             ANY_FAILED=false
             STATUS_LINE=""
 
+            # One request per poll for every run on this commit: a per-workflow
+            # `gh run list --workflow` costs two requests each, and seven of them
+            # every 30s outruns GITHUB_TOKEN's 1,000 requests/hour well inside
+            # the approval wait.
+            # event=push: a workflow_dispatch rehearsal on the same tag is a
+            # dry run whose publish job was skipped, and it must not stand in
+            # for the tag-triggered publish.
+            RUNS_JSON=$(gh api \
+              "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&event=push&per_page=100" \
+              --jq '.workflow_runs') || {
+              # A transient API error shouldn't end a wait measured in hours
+              echo "::warning::Listing workflow runs failed; retrying next poll"
+              RUNS_JSON='[]'
+            }
+
             for WF in "${WORKFLOWS[@]}"; do
-              # Fetch recent runs and find the one matching this tag push
-              # --event push: a workflow_dispatch rehearsal on the same tag is a
-              # dry run whose publish job was skipped, and it must not stand in
-              # for the tag-triggered publish.
-              RUN_JSON=$(gh run list \
-                --repo "$GITHUB_REPOSITORY" \
-                --workflow "$WF" \
-                --branch "$TAG" \
-                --event push \
-                --limit 5 \
-                --json conclusion,headSha \
-                --jq "[.[] | select(.headSha == \"$GITHUB_SHA\")] | .[0] // empty")
+              # Newest run of this workflow for this tag push
+              RUN_JSON=$(echo "$RUNS_JSON" | jq -c \
+                --arg path ".github/workflows/$WF" --arg tag "$TAG" \
+                '[.[] | select(.path == $path and .head_branch == $tag)] | .[0] // empty')
 
               if [ -z "$RUN_JSON" ]; then
                 ALL_DONE=false
