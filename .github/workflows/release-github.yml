@@ -59,7 +59,7 @@ jobs:
               # Newest run of this workflow for this tag push
               RUN_JSON=$(echo "$RUNS_JSON" | jq -c \
                 --arg path ".github/workflows/$WF" --arg tag "$TAG" \
-                '[.[] | select(.path == $path and .head_branch == $tag)] | .[0] // empty')
+                '[.[] | select((.path | sub("@.*$"; "")) == $path and .head_branch == $tag)] | .[0] // empty')
 
               if [ -z "$RUN_JSON" ]; then
                 ALL_DONE=false
