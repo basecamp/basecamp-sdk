@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
 module Basecamp
-  VERSION = "0.25.0"
+  VERSION = "0.26.0"
   API_VERSION = "2026-10-19"
 end
