@@ -51,7 +51,7 @@ class EmbedsServiceTest < Minitest::Test
   end
 
   def test_get_escapes_the_sgid_as_one_path_segment
-    escaped = SLASHED_SGID.sub("/", "%2F").gsub("=", "%3D")
+    escaped = SLASHED_SGID.gsub("/", "%2F").gsub("=", "%3D")
     stub = stub_request(:get, "https://3.basecampapi.com/12345/embeds/#{escaped}")
       .to_return(status: 200, body: load_fixture("embeds/active.json").to_json, headers: { "Content-Type" => "application/json" })
 
