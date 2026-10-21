@@ -78,7 +78,7 @@ open class SchedulesService(client: AccountClient) : BaseService(client) {
             resourceId = entryId,
         )
         return request(info, {
-            httpGet("/schedule_entries/${entryId}/occurrences/${date}", operationName = info.operation)
+            httpGet("/schedule_entries/${entryId}/occurrences/${pathSegment(date)}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<ScheduleEntry>(body)
         }

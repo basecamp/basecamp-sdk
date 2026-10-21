@@ -617,6 +617,10 @@ module Basecamp
       service(:pings) { Services::PingsService.new(self) }
     end
 
+    def embeds
+      service(:embeds) { Services::EmbedsService.new(self) }
+    end
+
     # @return [Services::AccountService]
     def account
       service(:account) { Services::AccountService.new(self) }

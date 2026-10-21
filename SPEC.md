@@ -52,7 +52,7 @@ When artifacts conflict, this precedence governs:
 |-----------|---------------|
 | **Config** | Holds validated configuration: base URL, timeouts, retry params, pagination caps. May support env-var override (see §2). |
 | **Client** | Top-level entry point. Enforces exactly-one-of auth. Owns account-independent services (authorization). |
-| **AccountClient** | Account-scoped facade. Prepends `/{accountId}` to paths. Owns all `56` account-scoped services. <!-- @service-count --> |
+| **AccountClient** | Account-scoped facade. Prepends `/{accountId}` to paths. Owns all `57` account-scoped services. <!-- @service-count --> |
 | **Services** | One class per API resource group. Generated from OpenAPI tags. Methods map to operations. |
 | **BaseService** | Abstract base for generated services. Provides request execution, error mapping, pagination following, hooks integration. |
 | **HTTP Transport** | Executes HTTP requests. Applies auth headers, User-Agent, Content-Type. Implements retry, caching. |
@@ -295,19 +295,19 @@ Cross-SDK Divergence).
 
 - **authorization** — identity lookup and account listing via Launchpad. Exposes `getInfo()` which GETs `https://launchpad.37signals.com/authorization.json` and returns `{expires_at, identity, accounts}`. Implemented in Go, Ruby, and TypeScript. Swift, Kotlin, and Rust do not currently expose this service — a known gap. OAuth utility functions (PKCE, state generation, discovery, code exchange) are standalone helpers in §16, not service methods.
 
-### AccountClient-Level Services (account-scoped) — `56` services <!-- @service-count -->
+### AccountClient-Level Services (account-scoped) — `57` services <!-- @service-count -->
 
 <!-- @account-scoped-services:begin -->
-account, attachments, bookmarks, boosts, bubbleUps, calendars, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, cloudFiles, comments, documents, drafts, eventFeed, events, everything, folders, forwards, gauges, googleDocuments, hillCharts, lineup, messageBoards, messageTypes, messages, myAssignments, myNotes, myNotifications, people, pings, projects, recordings, reports, schedules, search, subscriptions, subtasks, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks, wormholes
+account, attachments, bookmarks, boosts, bubbleUps, calendars, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, cloudFiles, comments, documents, drafts, embeds, eventFeed, events, everything, folders, forwards, gauges, googleDocuments, hillCharts, lineup, messageBoards, messageTypes, messages, myAssignments, myNotes, myNotifications, people, pings, projects, recordings, reports, schedules, search, subscriptions, subtasks, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks, wormholes
 <!-- @account-scoped-services:end -->
 
-**Total surface:** one client-level service (authorization) alongside the `56` account-scoped ones above. <!-- @service-count -->
+**Total surface:** one client-level service (authorization) alongside the `57` account-scoped ones above. <!-- @service-count -->
 
 That roster is the canonical surface, not a per-SDK inventory. Accessor counts vary by SDK with split and wiring decisions, and Appendix F tabulates each — that table, not this section, is where a given SDK's surface is stated.
 
 ### Derivation Rule `[static]`
 
-The OpenAPI spec groups operations under coarse tags (e.g., `Card Tables`, `Todos`, `Files`). The service generators split those tags into the `56` fine-grained services above <!-- @service-count --> using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`, `HillCharts`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`, `CloudFiles`, `GoogleDocuments`. Both examples are exhaustive on purpose: an abridged one is how `cloudFiles` and `googleDocuments` stayed invisible to this section for so long — a service that arrives through a split rather than a tag of its own is named nowhere a reader would look. These mappings are defined in each language's generator script. They are six hand-maintained copies of one table (Rust's is the `names.toml` its generator reads), and `make check-service-inventory-parity` compares what those copies **emitted** — the TypeScript, Ruby, Kotlin, Swift and Rust generated service directories, Python's generated `__init__.py` barrel, the two generated accessor files this section's roster is derived from, Rust's generated `accessors.rs`, and Go's hand-written accessors — so identical service sets are enforced rather than merely expected. It reads what each generator already emitted rather than reimplementing the mappings, which is what keeps it from being a seventh copy — with Go the one exception, having no generated per-service files, so its hand-written accessors are compared against the others' generated output and carry the carve-outs noted below. (Python is read from its barrel rather than its directory. That began as a workaround: its generator, alone among the five, did not delete outputs a mapping stopped producing, so a directory listing counted the corpse as still emitted. The generator sweeps now (#757), which fixes it at the source. That sweep reads this same barrel — it is the generator's own record of what it last emitted, and each run deletes `that record minus its own output`, inspecting no file's contents; the two readers share a source and remain independent, since a sweep that stops working leaves the barrel correct and the corpse invisible to a barrel reader exactly as before. The barrel reading is kept for that reason and because it names exactly the modules the mapping produced, excluding the two hand-written base files without a drop-list.) Each per-SDK `check-*-service-drift` script remains the freshness gate for its own SDK; none of them can see another SDK, which is the axis this one adds. Go's two divergences (it folds `clientVisibility` into another service and spells `timesheets` singular) are stated as data in that gate and fail it if they ever stop applying; Appendix F records them.
+The OpenAPI spec groups operations under coarse tags (e.g., `Card Tables`, `Todos`, `Files`). The service generators split those tags into the `57` fine-grained services above <!-- @service-count --> using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`, `HillCharts`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`, `CloudFiles`, `GoogleDocuments`. Both examples are exhaustive on purpose: an abridged one is how `cloudFiles` and `googleDocuments` stayed invisible to this section for so long — a service that arrives through a split rather than a tag of its own is named nowhere a reader would look. These mappings are defined in each language's generator script. They are six hand-maintained copies of one table (Rust's is the `names.toml` its generator reads), and `make check-service-inventory-parity` compares what those copies **emitted** — the TypeScript, Ruby, Kotlin, Swift and Rust generated service directories, Python's generated `__init__.py` barrel, the two generated accessor files this section's roster is derived from, Rust's generated `accessors.rs`, and Go's hand-written accessors — so identical service sets are enforced rather than merely expected. It reads what each generator already emitted rather than reimplementing the mappings, which is what keeps it from being a seventh copy — with Go the one exception, having no generated per-service files, so its hand-written accessors are compared against the others' generated output and carry the carve-outs noted below. (Python is read from its barrel rather than its directory. That began as a workaround: its generator, alone among the five, did not delete outputs a mapping stopped producing, so a directory listing counted the corpse as still emitted. The generator sweeps now (#757), which fixes it at the source. That sweep reads this same barrel — it is the generator's own record of what it last emitted, and each run deletes `that record minus its own output`, inspecting no file's contents; the two readers share a source and remain independent, since a sweep that stops working leaves the barrel correct and the corpse invisible to a barrel reader exactly as before. The barrel reading is kept for that reason and because it names exactly the modules the mapping produced, excluding the two hand-written base files without a drop-list.) Each per-SDK `check-*-service-drift` script remains the freshness gate for its own SDK; none of them can see another SDK, which is the axis this one adds. Go's two divergences (it folds `clientVisibility` into another service and spells `timesheets` singular) are stated as data in that gate and fail it if they ever stop applying; Appendix F records them.
 
 ### Merge-Safe Write Surface (Cards)
 
@@ -810,7 +810,7 @@ someone noticing it. Every delay-bearing branch in this document, walked back th
 
 | Loop / branch | Repeat is driven by | Verdict |
 |---|---|---|
-| §7 generated-operation retry | declared `retry_on` (`{429, 503}`; `{503}` for `UpdateProjectClientAccess`), or a network error | **in** |
+| §7 generated-operation retry | declared `retry_on` (`{429, 503}`; `{503}` for `UpdateProjectClientAccess` and `CreateEmbed`), or a network error | **in** |
 | §14 `DownloadURL` hop 1 | declared `{429, 502, 503, 504}`, or a network error | **in** |
 | §16 poll — `authorization_pending`, `slow_down` | a 4xx protocol answer meaning "not yet" | **out** |
 | §16 poll — `429` + `too_many_requests` | the one pair §16 declares retryable; the origin refused to serve | **in** |
@@ -1015,7 +1015,7 @@ If `behavior-model.json` marks an operation with `idempotent: true`, the POST be
 
 The error must be retryable. Two categories qualify:
 
-- **HTTP status retry:** Response status is in the operation's **declared** retryable set. `behavior-model.json` specifies `retry_on: [429, 503]` for every operation but one: `UpdateProjectClientAccess` declares `retry_on: [503]`, because its 429 is the account seat-limit verdict (no `Retry-After`; re-asking cannot change the answer), not throttling. The declared set is **exhaustive**: a status outside it — including 500, 502, and 504 — is not retried and is surfaced to the caller on the first attempt. An implementation may still *classify* those statuses as retryable in its error taxonomy (§6); that is a caller-facing hint and must not widen the transport's gate.
+- **HTTP status retry:** Response status is in the operation's **declared** retryable set. `behavior-model.json` specifies `retry_on: [429, 503]` for every operation but two, which declare `retry_on: [503]` because their 429 is a verdict (no `Retry-After`; re-asking cannot change the answer), not throttling: `UpdateProjectClientAccess`, whose 429 is the account seat limit, and `CreateEmbed`, whose 429 refuses new embeds for the rest of the hour. The declared set is **exhaustive**: a status outside it — including 500, 502, and 504 — is not retried and is surfaced to the caller on the first attempt. An implementation may still *classify* those statuses as retryable in its error taxonomy (§6); that is a caller-facing hint and must not widen the transport's gate.
 - **Network error retry:** Connection failures, timeouts, and DNS errors (no HTTP response received) are retryable. These correspond to `BasecampError(code: "network", retryable: true)` in §6. **Divergence:** **Go, Python, Swift, TypeScript, Kotlin, and Rust** retry network errors for retry-eligible operations — including idempotent mutations — with Swift, Go, TypeScript, Kotlin, and Rust gating on operation idempotency, so a non-idempotent POST is attempted once. TypeScript additionally treats caller aborts and request timeouts as terminal, Rust treats a per-attempt transport timeout as terminal (its shipped transport tells one apart from other connection failures), and Kotlin carves out the whole-request time budget (Ktor's `HttpRequestTimeoutException`): once the caller's configured request timeout has elapsed, the failure surfaces without retry. **Ruby** retries network errors too, but only on GET: its transport routes every non-GET to a single-attempt path, so no mutation ever sees a network retry. The spec prescribes network error retry as the target behavior.
 
 **Non-retryable statuses (never retry regardless of method):** 401, 403, 404, 400, 422.
@@ -1232,7 +1232,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All `283` operations in `behavior-model.json` use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` (`[503]` — its 429 is a seat-limit verdict, §7 Gate 3). <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
+All `285` operations in `behavior-model.json` use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` and `CreateEmbed` (`[503]` — each one's 429 is a verdict, the seat limit and the hourly new-embed limit, §7 Gate 3). <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -2091,7 +2091,7 @@ END
 
 ### Hop-1 Retry `[conformance]`
 
-The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `283` operations but `UpdateProjectClientAccess`, and never governing `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `285` operations but `UpdateProjectClientAccess` and `CreateEmbed`, and never governing `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
 
 That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does — `downloads.json` pins all four statuses. The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds, which not every download path yet gives them (#775).
 
@@ -3115,6 +3115,7 @@ the category slug is the filename (basename, `_` written as `-`).
 | boosts-write | `boosts_write.json` | §6 Error Taxonomy, §11 Response Semantics |
 | cards-write | `cards_write.json` | §5 Merge-Safe Write Surface (Cards), §18 Hand-Written Composite Methods |
 | documents-write | `documents_write.json` | §5 Merge-Safe Write Surface (Documents), §18 Hand-Written Composite Methods |
+| embeds | `embeds.json` | §6 Error Taxonomy, §7 Retry (Gate 3: a declared `retry_on` without 429), §11 Response Semantics |
 | downloads | `downloads.json` | §14 Download |
 | error-mapping | `error-mapping.json` | §6 Error Taxonomy |
 | event-feed | `event_feed.json` | §23 Event Feed Connector (Wire Operations), §6 Error Taxonomy, §11 Response Semantics |
@@ -5058,9 +5059,9 @@ Repeated from §5 for quick reference.
 
 **Client-level (1):** authorization
 
-**AccountClient-level (`56`):** <!-- @service-count -->
+**AccountClient-level (`57`):** <!-- @service-count -->
 <!-- @account-scoped-services:begin -->
-account, attachments, bookmarks, boosts, bubbleUps, calendars, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, cloudFiles, comments, documents, drafts, eventFeed, events, everything, folders, forwards, gauges, googleDocuments, hillCharts, lineup, messageBoards, messageTypes, messages, myAssignments, myNotes, myNotifications, people, pings, projects, recordings, reports, schedules, search, subscriptions, subtasks, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks, wormholes
+account, attachments, bookmarks, boosts, bubbleUps, calendars, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, cloudFiles, comments, documents, drafts, embeds, eventFeed, events, everything, folders, forwards, gauges, googleDocuments, hillCharts, lineup, messageBoards, messageTypes, messages, myAssignments, myNotes, myNotifications, people, pings, projects, recordings, reports, schedules, search, subscriptions, subtasks, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks, wormholes
 <!-- @account-scoped-services:end -->
 
 ---
@@ -5211,6 +5212,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `pings.json` | The Pings service: the unpaginated list decoded in order and empty, disabled Pings as `forbidden`, creation with `user_ids` and `new_group` answering 201, `new_group` omitted when unset, and a bodiless 422 as `validation` (6 cases) | §3, §6, §10, §11 |
 | `project_constructions.json` | Project construction from a template: attributes nested under the `project` envelope, `start_date` carried when given and absent when omitted (2 cases) | §3, §10, §11 |
 | `boosts_write.json` | Updating a boost: the flat `PUT /boosts/{id}` route with `content` alone, and 403, 404 and a bodiless 422 mapped to their codes (4 cases) | §6, §11 |
+| `embeds.json` | The Embeds service: a create with `url` alone answering 200 for a new pending embed and for an existing active one, a 422 as `validation` with the server's message, a 429 surfacing on the first attempt as `rate_limit`, a read by sgid, and a 404 (6 cases) | §6, §7, §11 |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 <!-- @fixture-section-map:end -->
 
@@ -5232,7 +5234,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
         "max": 3,                   ← total attempts (including first)
         "base_delay_ms": 1000,      ← initial delay before first retry
         "backoff": "exponential",   ← always "exponential" in practice
-        "retry_on": [429, 503]      ← HTTP statuses that trigger retry ([503] for UpdateProjectClientAccess)
+        "retry_on": [429, 503]      ← HTTP statuses that trigger retry ([503] for UpdateProjectClientAccess and CreateEmbed)
       }
     }
   },
@@ -5258,10 +5260,10 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: `283` <!-- @operation-count -->
+- Total operations: `285` <!-- @operation-count -->
 - Idempotent: 98 (flagged with `idempotent: true`)
 - Non-idempotent: 185 (no `idempotent` field, or not present)
-- All operations use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` (`[503]`)
+- All operations use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` and `CreateEmbed` (`[503]`)
 
 ---
 
@@ -5559,8 +5561,8 @@ SDK's own hand-written file.
 
 | SDK | Account-scoped services |
 |-----|------------------------|
-| Swift | `56` — full canonical set (`AccountClient+Services.swift`, generated; one of §5's two sources) <!-- @service-count --> |
-| Kotlin | `56` — full canonical set (`ServiceAccessors.kt`, generated; §5's other source). Eight accessors expose handwritten composites that subclass their generated service — `cards`, `comments`, `documents`, `recordings`, `schedules`, `todolists`, `todos`, `uploads`, per the generator's `HAND_WRITTEN_SERVICES` — and the rest are the generated classes directly. The accessor set is identical either way, which is why §5 derives from this file regardless <!-- @service-count --> |
+| Swift | `57` — full canonical set (`AccountClient+Services.swift`, generated; one of §5's two sources) <!-- @service-count --> |
+| Kotlin | `57` — full canonical set (`ServiceAccessors.kt`, generated; §5's other source). Eight accessors expose handwritten composites that subclass their generated service — `cards`, `comments`, `documents`, `recordings`, `schedules`, `todolists`, `todos`, `uploads`, per the generator's `HAND_WRITTEN_SERVICES` — and the rest are the generated classes directly. The accessor set is identical either way, which is why §5 derives from this file regardless <!-- @service-count --> |
 | Ruby | 56 — full canonical set. Held by its own accessor-roster test (`ruby/test/basecamp/accessor_inventory_test.rb`, added in #755) deriving the roster from `lib/basecamp/generated/services/`, so the next unwired service fails rather than going unnoticed. The seven hand-written composites are `prepend`ed onto their generated classes rather than subclassing them, so every accessor's class is the generated constant exactly — the five merge-safe writes, plus `recordings` and `comments` for the recording-summary and mention helpers (Appendix F), which is the count `ruby/lib/basecamp.rb`'s `on_load` hooks hold. |
 | TypeScript | 56 — full canonical set, on the flat client alongside `authorization` (no `AccountClient` tier; see Client Topology above). Held by its own accessor-roster tests (`typescript/tests/accessor-inventory.test.ts` and `tests/types/accessor-inventory.test-d.ts`, added in #755) deriving the roster from `src/generated/services/`. Four hand-maintained renderings, so two instruments: the imports and `defineService` calls are resolved on a constructed client, the `index.ts` export blocks get their own assertion (a missing export is invisible at runtime to an in-repo importer and only bites a consumer), and the `BasecampClient` interface is asserted type-level, the factory returning `client as BasecampClient` so no runtime check can see it. Eight accessors expose hand-written composites that subclass their generated service, which the class assertions allow for: `todos`, `todolists`, `cards`, `documents`, `uploads`, `schedules`, and — since the recording-summary port — `comments` and `recordings`. Named rather than counted, because a count is stale the moment a composite is added and nobody re-reads an inventory row to notice. |
 | Go | 55 accessors. One service is folded rather than missing: `clientVisibility`'s sole operation is `RecordingsService.SetClientVisibility`. `timesheets` is spelled `Timesheet` (singular). Capability is 56/56; the surface is not. Hand-written service wrappers around the generated OpenAPI client — not fully generated. |

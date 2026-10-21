@@ -354,6 +354,28 @@ async fn pings_list_reaches_the_wire() {
 }
 
 #[tokio::test]
+async fn embeds_get_reaches_the_wire() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/embeds/BAh7--abc"))
+        .and(header("Authorization", "Bearer test-token"))
+        .and(header("Accept", "application/json"))
+        .and(header(
+            "User-Agent",
+            basecamp_sdk::version::default_user_agent().as_str(),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "status": "pending",
+            "sgid": "BAh7--abc"
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    account(&server).embeds().get("BAh7--abc").await.unwrap();
+}
+
+#[tokio::test]
 async fn client_approvals_list_reaches_the_wire() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
@@ -1441,6 +1463,18 @@ error_case!(
 error_case!(
     pings_list_maps_a_rejection,
     |account: basecamp_sdk::AccountClient| async move { account.pings().list().await }
+);
+
+error_case!(
+    embeds_create_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .embeds()
+            .create(&basecamp_sdk::generated::types::CreateEmbedRequestContent {
+                url: "https://example.com/page".to_string(),
+            })
+            .await
+    }
 );
 
 error_case!(

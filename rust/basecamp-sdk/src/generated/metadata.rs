@@ -56,6 +56,9 @@ pub static CREATE_COMMENT: OperationMetadata = OperationMetadata { operation: "C
 /// `CreateDocument`.
 #[rustfmt::skip]
 pub static CREATE_DOCUMENT: OperationMetadata = OperationMetadata { operation: "CreateDocument", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `CreateEmbed`.
+#[rustfmt::skip]
+pub static CREATE_EMBED: OperationMetadata = OperationMetadata { operation: "CreateEmbed", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[503] } };
 /// `CreateEventBoost`.
 #[rustfmt::skip]
 pub static CREATE_EVENT_BOOST: OperationMetadata = OperationMetadata { operation: "CreateEventBoost", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -284,6 +287,9 @@ pub static GET_COMMENT: OperationMetadata = OperationMetadata { operation: "GetC
 /// `GetDocument`.
 #[rustfmt::skip]
 pub static GET_DOCUMENT: OperationMetadata = OperationMetadata { operation: "GetDocument", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `GetEmbed`.
+#[rustfmt::skip]
+pub static GET_EMBED: OperationMetadata = OperationMetadata { operation: "GetEmbed", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `GetEverythingCheckins`.
 #[rustfmt::skip]
 pub static GET_EVERYTHING_CHECKINS: OperationMetadata = OperationMetadata { operation: "GetEverythingCheckins", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -874,6 +880,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &CREATE_CLOUD_FILE,
     &CREATE_COMMENT,
     &CREATE_DOCUMENT,
+    &CREATE_EMBED,
     &CREATE_EVENT_BOOST,
     &CREATE_FOLDER,
     &CREATE_GAUGE_NEEDLE,
@@ -950,6 +957,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &GET_CLOUD_FILE,
     &GET_COMMENT,
     &GET_DOCUMENT,
+    &GET_EMBED,
     &GET_EVERYTHING_CHECKINS,
     &GET_EVERYTHING_COMMENTS,
     &GET_EVERYTHING_COMPLETED_CARDS,

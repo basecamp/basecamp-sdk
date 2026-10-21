@@ -124,6 +124,7 @@ type AccountClient struct {
 	cardSteps             *CardStepsService
 	subtasks              *SubtasksService
 	pings                 *PingsService
+	embeds                *EmbedsService
 	wormholes             *WormholesService
 	attachments           *AttachmentsService
 	clientApprovals       *ClientApprovalsService
@@ -1741,6 +1742,15 @@ func (ac *AccountClient) Pings() *PingsService {
 		ac.pings = NewPingsService(ac)
 	}
 	return ac.pings
+}
+
+func (ac *AccountClient) Embeds() *EmbedsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.embeds == nil {
+		ac.embeds = NewEmbedsService(ac)
+	}
+	return ac.embeds
 }
 
 // Wormholes returns the WormholesService for card-table wormhole operations.

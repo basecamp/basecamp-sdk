@@ -460,6 +460,10 @@ class OperationMapper
       summarize_pings(@account.pings.list)
     when "CreatePing"
       @account.pings.create(user_ids: body["user_ids"], new_group: body["new_group"])
+    when "CreateEmbed"
+      @account.embeds.create(url: body["url"])
+    when "GetEmbed"
+      @account.embeds.get(sgid: path_params["sgid"])
     when "GetTemplateLibraryTodolists"
       summarize_template_library_todolists(@account.templates.get_library_todolists)
     when "GetTemplateLibraryCardTables"

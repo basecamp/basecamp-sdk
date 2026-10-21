@@ -474,6 +474,7 @@ All services are constructed from an `AccountClient`, obtained via `client.for_a
 | | Comments | `account.comments` |
 | **Chat** | Campfires | `account.campfires` |
 | | Pings | `account.pings` |
+| | Embeds | `account.embeds` |
 | **Scheduling** | Schedules | `account.schedules` |
 | | Timeline | `account.timeline` |
 | | Lineup | `account.lineup` |

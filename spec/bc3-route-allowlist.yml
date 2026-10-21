@@ -150,6 +150,26 @@ sdk_routes_absent_from_bc3_docs:
       so no API view is needed; covered by the "destroy json" case in
       test/controllers/recordings/bubble_ups_controller_test.rb.
 
+  - method: POST
+    path: /embeds
+    reason: >-
+      CreateEmbed. Served on the API host and documented in
+      doc/api/sections/embeds.md ("Create an embed") by bc3 #13962 (branch
+      api-create-embeds), not yet merged, so neither bc3 master nor
+      the revision spec/api-provenance.json pins describes it. Drawn at
+      config/routes.rb:1464 (`resources :embeds, only: %i[ create show ]`);
+      EmbedsController#create renders app/views/api/embeds/show.json.jbuilder and
+      is covered by test/api/embeds_controller_api_test.rb on that branch. Before
+      #13962 the API host answers 404. Delete at the repin past #13962.
+
+  - method: GET
+    path: /embeds/:id
+    reason: >-
+      GetEmbed. Same bc3 #13962 ("Get an embed"), same draw; EmbedsController#show
+      renders app/views/api/embeds/show.json.jbuilder, covered by the "show" cases
+      of test/api/embeds_controller_api_test.rb on that branch. Before #13962 the
+      API host has no template and answers 500. Delete at the repin past #13962.
+
 # ---------------------------------------------------------------------------
 # Known-defective SDK routes — bc3 does NOT serve these, and we know it.
 #

@@ -68,6 +68,8 @@ abstract class BaseService(
         return "$base/$accountId$normalizedPath"
     }
 
+    protected fun pathSegment(value: String): String = value.encodeURLPathPart()
+
     /**
      * Builds a query string from key-value pairs, URL-encoding values.
      * Null values are omitted. Returns "" if no params, or "?k1=v1&k2=v2".

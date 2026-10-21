@@ -281,6 +281,8 @@ walk(
 # optional-and-nullable treatment as the Fifth-g date passes below.
 .components.schemas.SearchResult.properties.color += { "nullable": true }
 |
+.components.schemas.Embed.properties.image_url += { "nullable": true }
+|
 # Fifth pass: override starts_at/ends_at on ScheduleEntry response to use types.FlexibleTime
 # The API returns date-only strings ("2006-01-02") for all-day schedule entries,
 # which time.Time cannot parse. FlexibleTime handles RFC3339, RFC3339Nano, and date-only.

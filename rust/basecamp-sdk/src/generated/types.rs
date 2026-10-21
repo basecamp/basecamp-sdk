@@ -1220,6 +1220,16 @@ pub struct CreateDocumentRequestContent {
 /// `CreateDocumentResponseContent`.
 pub type CreateDocumentResponseContent = Document;
 
+/// The `CreateEmbedRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreateEmbedRequestContent {
+    /// The URL of the content to embed.
+    pub url: String,
+}
+
+/// `CreateEmbedResponseContent`.
+pub type CreateEmbedResponseContent = Embed;
+
 /// The `CreateEventBoostRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateEventBoostRequestContent {
@@ -1984,6 +1994,37 @@ pub struct DraftParent {
     pub title: String,
     /// `app_url`.
     pub app_url: String,
+}
+
+/// Content from another site, such as a YouTube video, that rich text shows
+/// inline. Put it in rich text as `\<bc-attachment sgid="SGID"\>\</bc-attachment\>`
+/// once its status is `active`; an embed that is not active shows as a link to
+/// its URL.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Embed {
+    /// `url`.
+    pub url: String,
+    /// `pending` while Basecamp asks the provider about the URL, then `active`,
+    /// or `not_found` when the provider has nothing to embed.
+    pub status: String,
+    /// An embed's signed global id, an opaque string.
+    pub sgid: String,
+    /// The provider's oEmbed type, such as `video`, `rich` or `photo`. Present
+    /// only when the embed is active.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    /// Such as `embed/youtube-video`. Present only when the embed is active.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_type: Option<String>,
+    /// Present only when the embed is active, and null when the provider gave no
+    /// image.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_url: Option<String>,
+    /// The provider's HTML, sanitized. Present only when the embed is active and
+    /// the provider gave HTML; may be empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
 }
 
 /// `EnableCardColumnOnHoldResponseContent`.
@@ -2800,6 +2841,9 @@ pub type GetCommentResponseContent = Comment;
 
 /// `GetDocumentResponseContent`.
 pub type GetDocumentResponseContent = Document;
+
+/// `GetEmbedResponseContent`.
+pub type GetEmbedResponseContent = Embed;
 
 /// `GetEverythingCheckinsResponseContent`.
 pub type GetEverythingCheckinsResponseContent = Vec<Recording>;

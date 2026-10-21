@@ -486,6 +486,12 @@ class AsyncAccountClient:
         return self._service("pings", lambda: AsyncPingsService(self))
 
     @property
+    def embeds(self):
+        from basecamp.generated.services.embeds import AsyncEmbedsService
+
+        return self._service("embeds", lambda: AsyncEmbedsService(self))
+
+    @property
     def client_approvals(self):
         from basecamp.generated.services.client_approvals import AsyncClientApprovalsService
 

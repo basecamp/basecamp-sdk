@@ -386,7 +386,9 @@ service Basecamp {
     // Batch 22 - Pings (wire path and bucket type "Circle")
     ListPings,
     GetPing,
-    CreatePing
+    CreatePing,
+    CreateEmbed,
+    GetEmbed
   ]
 }
 
@@ -6638,7 +6640,7 @@ structure ProjectAccessResult {
 /// and re-asking cannot change the answer, so this operation declares
 /// `retryOn: [503]` and a 429 surfaces on the first attempt (status-mapped to
 /// `rate_limit`, since the wire status is the only signal). Every other
-/// operation retries on 429.
+/// operation but CreateEmbed retries on 429.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [503])
 @basecampIdempotent(natural: true)
@@ -13904,4 +13906,101 @@ structure CreatePingInput {
 
 structure CreatePingOutput {
   ping: Ping
+}
+
+/// An embed's signed global id, an opaque string.
+string EmbedSgid
+
+/// Content from another site, such as a YouTube video, that rich text shows
+/// inline. Put it in rich text as `<bc-attachment sgid="SGID"></bc-attachment>`
+/// once its status is `active`; an embed that is not active shows as a link to
+/// its URL.
+structure Embed {
+  @required
+  url: String
+
+  /// `pending` while Basecamp asks the provider about the URL, then `active`,
+  /// or `not_found` when the provider has nothing to embed.
+  @required
+  status: String
+
+  @required
+  sgid: EmbedSgid
+
+  /// The provider's oEmbed type, such as `video`, `rich` or `photo`. Present
+  /// only when the embed is active.
+  type: String
+
+  /// Such as `embed/youtube-video`. Present only when the embed is active.
+  content_type: String
+
+  /// Present only when the embed is active, and null when the provider gave no
+  /// image.
+  image_url: String
+
+  /// The provider's HTML, sanitized. Present only when the embed is active and
+  /// the provider gave HTML; may be empty.
+  content: String
+}
+
+/// Create an embed for a URL, or return the one Basecamp already has for it.
+///
+/// Answers `200 OK` with the embed either way. A new embed's status is
+/// `pending`; get it about once a second until its status is `active` or
+/// `not_found`.
+///
+/// Answers `422` (`{"error": "Basecamp can't embed this URL. Link to it
+/// instead."}`) for a URL no provider embeds. Past 100 new embeds in an hour,
+/// creating another answers `429` (`{"error": "Too many new embeds. Try again
+/// later."}`) with no Retry-After; asking for an embed Basecamp already has
+/// still works. That 429 is a verdict for the rest of the hour, not
+/// throttling, so this operation declares `retryOn: [503]` and the 429
+/// surfaces on the first attempt.
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/embeds.json")
+operation CreateEmbed {
+  input: CreateEmbedInput
+  output: CreateEmbedOutput
+  errors: [BadRequestError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateEmbedInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// The URL of the content to embed.
+  @required
+  url: String
+}
+
+structure CreateEmbedOutput {
+  embed: Embed
+}
+
+/// Get an embed by its sgid.
+///
+/// Answers `404 Not Found` for an sgid that does not name an embed.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/embeds/{sgid}")
+operation GetEmbed {
+  input: GetEmbedInput
+  output: GetEmbedOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetEmbedInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  sgid: EmbedSgid
+}
+
+structure GetEmbedOutput {
+  embed: Embed
 }

@@ -49,7 +49,7 @@ public final class SchedulesService: BaseService, @unchecked Sendable {
         return try await request(
             OperationInfo(service: "Schedules", operation: "GetScheduleEntryOccurrence", resourceType: "schedule_entry_occurrence", isMutation: false, resourceId: entryId),
             method: "GET",
-            path: "/schedule_entries/\(entryId)/occurrences/\(date)",
+            path: "/schedule_entries/\(entryId)/occurrences/\(pathSegment(date))",
             retryConfig: Metadata.retryConfig(for: "GetScheduleEntryOccurrence")
         )
     }

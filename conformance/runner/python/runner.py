@@ -860,6 +860,10 @@ class OperationMapper:
                     user_ids=body["user_ids"],
                     new_group=body.get("new_group"),
                 )
+            case "CreateEmbed":
+                return self._account.embeds.create(url=body["url"])
+            case "GetEmbed":
+                return self._account.embeds.get(sgid=path_params["sgid"])
             case "GetTemplateLibraryTodolists":
                 return _summarize_template_library_todolists(
                     self._account.templates.get_library_todolists()

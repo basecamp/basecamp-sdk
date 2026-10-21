@@ -714,6 +714,18 @@ type CreateDocumentRequestContent struct {
 // CreateDocumentResponseContent defines model for CreateDocumentResponseContent.
 type CreateDocumentResponseContent = Document
 
+// CreateEmbedRequestContent defines model for CreateEmbedRequestContent.
+type CreateEmbedRequestContent struct {
+	// Url The URL of the content to embed.
+	Url string `json:"url"`
+}
+
+// CreateEmbedResponseContent Content from another site, such as a YouTube video, that rich text shows
+// inline. Put it in rich text as `<bc-attachment sgid="SGID"></bc-attachment>`
+// once its status is `active`; an embed that is not active shows as a link to
+// its URL.
+type CreateEmbedResponseContent = Embed
+
 // CreateEventBoostRequestContent defines model for CreateEventBoostRequestContent.
 type CreateEventBoostRequestContent struct {
 	Content string `json:"content"`
@@ -1339,6 +1351,35 @@ type DraftParent struct {
 	Title  string `json:"title"`
 }
 
+// Embed Content from another site, such as a YouTube video, that rich text shows
+// inline. Put it in rich text as `<bc-attachment sgid="SGID"></bc-attachment>`
+// once its status is `active`; an embed that is not active shows as a link to
+// its URL.
+type Embed struct {
+	// Content The provider's HTML, sanitized. Present only when the embed is active and
+	// the provider gave HTML; may be empty.
+	Content *string `json:"content,omitempty"`
+
+	// ContentType Such as `embed/youtube-video`. Present only when the embed is active.
+	ContentType *string `json:"content_type,omitempty"`
+
+	// ImageUrl Present only when the embed is active, and null when the provider gave no
+	// image.
+	ImageUrl *string `json:"image_url,omitempty"`
+
+	// Sgid An embed's signed global id, an opaque string.
+	Sgid string `json:"sgid"`
+
+	// Status `pending` while Basecamp asks the provider about the URL, then `active`,
+	// or `not_found` when the provider has nothing to embed.
+	Status string `json:"status"`
+
+	// Type The provider's oEmbed type, such as `video`, `rich` or `photo`. Present
+	// only when the embed is active.
+	Type *string `json:"type,omitempty"`
+	Url  string  `json:"url"`
+}
+
 // EnableCardColumnOnHoldResponseContent defines model for EnableCardColumnOnHoldResponseContent.
 type EnableCardColumnOnHoldResponseContent = CardColumn
 
@@ -1836,6 +1877,12 @@ type GetCommentResponseContent = Comment
 
 // GetDocumentResponseContent defines model for GetDocumentResponseContent.
 type GetDocumentResponseContent = Document
+
+// GetEmbedResponseContent Content from another site, such as a YouTube video, that rich text shows
+// inline. Put it in rich text as `<bc-attachment sgid="SGID"></bc-attachment>`
+// once its status is `active`; an embed that is not active shows as a link to
+// its URL.
+type GetEmbedResponseContent = Embed
 
 // GetEverythingCheckinsResponseContent defines model for GetEverythingCheckinsResponseContent.
 type GetEverythingCheckinsResponseContent = []Recording
@@ -5960,6 +6007,9 @@ type UpdateToolJSONRequestBody = UpdateToolRequestContent
 // ReplaceDocumentJSONRequestBody defines body for ReplaceDocument for application/json ContentType.
 type ReplaceDocumentJSONRequestBody = ReplaceDocumentRequestContent
 
+// CreateEmbedJSONRequestBody defines body for CreateEmbed for application/json ContentType.
+type CreateEmbedJSONRequestBody = CreateEmbedRequestContent
+
 // UpdateGaugeNeedleJSONRequestBody defines body for UpdateGaugeNeedle for application/json ContentType.
 type UpdateGaugeNeedleJSONRequestBody = UpdateGaugeNeedleRequestContent
 
@@ -7035,6 +7085,14 @@ type ClientInterface interface {
 	ReplaceDocumentWithBody(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	ReplaceDocument(ctx context.Context, accountId string, documentId int64, body ReplaceDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateEmbedWithBody request with any body
+	CreateEmbedWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateEmbed(ctx context.Context, accountId string, body CreateEmbedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEmbed request
+	GetEmbed(ctx context.Context, accountId string, sgid string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PollEvents request
 	PollEvents(ctx context.Context, accountId string, params *PollEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9100,6 +9158,34 @@ func (c *Client) ReplaceDocument(ctx context.Context, accountId string, document
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewReplaceDocumentRequest(c.Server, accountId, documentId, body)
 	}, true, "ReplaceDocument", reqEditors...)
+
+}
+
+// CreateEmbedWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) CreateEmbedWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewCreateEmbedRequestWithBody(c.Server, accountId, contentType, body)
+	}, true, "CreateEmbed", reqEditors...)
+
+}
+
+func (c *Client) CreateEmbed(ctx context.Context, accountId string, body CreateEmbedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewCreateEmbedRequest(c.Server, accountId, body)
+	}, true, "CreateEmbed", reqEditors...)
+
+}
+
+// GetEmbed is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEmbed(ctx context.Context, accountId string, sgid string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEmbedRequest(c.Server, accountId, sgid)
+	}, true, "GetEmbed", reqEditors...)
 
 }
 
@@ -16675,6 +16761,94 @@ func NewReplaceDocumentRequestWithBody(server string, accountId string, document
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateEmbedRequest calls the generic CreateEmbed builder with application/json body
+func NewCreateEmbedRequest(server string, accountId string, body CreateEmbedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateEmbedRequestWithBody(server, accountId, "application/json", bodyReader)
+}
+
+// NewCreateEmbedRequestWithBody generates requests for CreateEmbed with any type of body
+func NewCreateEmbedRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/embeds.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetEmbedRequest generates requests for GetEmbed
+func NewGetEmbedRequest(server string, accountId string, sgid string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "sgid", runtime.ParamLocationPath, sgid)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/embeds/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -27366,6 +27540,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetDocument":                        {Idempotent: true, HasSensitiveParams: false},
 	"ReplaceDocument":                    {Idempotent: true, HasSensitiveParams: false},
+	"CreateEmbed":                        {Idempotent: true, HasSensitiveParams: false},
+	"GetEmbed":                           {Idempotent: true, HasSensitiveParams: false},
 	"PollEvents":                         {Idempotent: true, HasSensitiveParams: false},
 	"CreateStreamTicket":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingFiles":                 {Idempotent: true, HasSensitiveParams: false},
@@ -27658,6 +27834,8 @@ var operationRetryMax = map[string]int{
 	"UpdateTool":                         3,
 	"GetDocument":                        3,
 	"ReplaceDocument":                    3,
+	"CreateEmbed":                        3,
+	"GetEmbed":                           3,
 	"PollEvents":                         3,
 	"CreateStreamTicket":                 3,
 	"GetEverythingFiles":                 3,
@@ -27948,6 +28126,8 @@ var operationRetryOn = map[string][]int{
 	"UpdateTool":                         {429, 503},
 	"GetDocument":                        {429, 503},
 	"ReplaceDocument":                    {429, 503},
+	"CreateEmbed":                        {503},
+	"GetEmbed":                           {429, 503},
 	"PollEvents":                         {429, 503},
 	"CreateStreamTicket":                 {429, 503},
 	"GetEverythingFiles":                 {429, 503},
@@ -29580,6 +29760,14 @@ type ClientWithResponsesInterface interface {
 	ReplaceDocumentWithBodyWithResponse(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceDocumentResponse, error)
 
 	ReplaceDocumentWithResponse(ctx context.Context, accountId string, documentId int64, body ReplaceDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceDocumentResponse, error)
+
+	// CreateEmbedWithBodyWithResponse request with any body
+	CreateEmbedWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEmbedResponse, error)
+
+	CreateEmbedWithResponse(ctx context.Context, accountId string, body CreateEmbedJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEmbedResponse, error)
+
+	// GetEmbedWithResponse request
+	GetEmbedWithResponse(ctx context.Context, accountId string, sgid string, reqEditors ...RequestEditorFn) (*GetEmbedResponse, error)
 
 	// PollEventsWithResponse request
 	PollEventsWithResponse(ctx context.Context, accountId string, params *PollEventsParams, reqEditors ...RequestEditorFn) (*PollEventsResponse, error)
@@ -33283,6 +33471,77 @@ func (r ReplaceDocumentResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ReplaceDocumentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateEmbedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *CreateEmbedResponseContent
+	JSON400      *BadRequestErrorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateEmbedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateEmbedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateEmbedResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEmbedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEmbedResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEmbedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEmbedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEmbedResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -41068,6 +41327,32 @@ func (c *ClientWithResponses) ReplaceDocumentWithResponse(ctx context.Context, a
 	return ParseReplaceDocumentResponse(rsp)
 }
 
+// CreateEmbedWithBodyWithResponse request with arbitrary body returning *CreateEmbedResponse
+func (c *ClientWithResponses) CreateEmbedWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEmbedResponse, error) {
+	rsp, err := c.CreateEmbedWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateEmbedResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateEmbedWithResponse(ctx context.Context, accountId string, body CreateEmbedJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEmbedResponse, error) {
+	rsp, err := c.CreateEmbed(ctx, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateEmbedResponse(rsp)
+}
+
+// GetEmbedWithResponse request returning *GetEmbedResponse
+func (c *ClientWithResponses) GetEmbedWithResponse(ctx context.Context, accountId string, sgid string, reqEditors ...RequestEditorFn) (*GetEmbedResponse, error) {
+	rsp, err := c.GetEmbed(ctx, accountId, sgid, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEmbedResponse(rsp)
+}
+
 // PollEventsWithResponse request returning *PollEventsResponse
 func (c *ClientWithResponses) PollEventsWithResponse(ctx context.Context, accountId string, params *PollEventsParams, reqEditors ...RequestEditorFn) (*PollEventsResponse, error) {
 	rsp, err := c.PollEvents(ctx, accountId, params, reqEditors...)
@@ -47913,6 +48198,124 @@ func ParseReplaceDocumentResponse(rsp *http.Response) (*ReplaceDocumentResponse,
 		var dest ValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateEmbedResponse parses an HTTP response from a CreateEmbedWithResponse call
+func ParseCreateEmbedResponse(rsp *http.Response) (*CreateEmbedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateEmbedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CreateEmbedResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON400 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEmbedResponse parses an HTTP response from a GetEmbedWithResponse call
+func ParseGetEmbedResponse(rsp *http.Response) (*GetEmbedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEmbedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEmbedResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

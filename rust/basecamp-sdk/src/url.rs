@@ -150,6 +150,17 @@ mod tests {
     }
 
     #[test]
+    fn decodes_an_encoded_sgid_so_it_round_trips_through_fill() {
+        let matched = router()
+            .recognize("https://3.basecampapi.com/999/embeds/a%2Fb+c%3D.json")
+            .unwrap();
+        assert_eq!(matched.operation(), Some("GetEmbed"));
+        assert_eq!(matched.resource_id(), Some("a/b+c="));
+        let route = ROUTES.iter().find(|route| route.id == "GetEmbed").unwrap();
+        assert_eq!(route.fill(&[&"a/b+c="]), "/embeds/a%2Fb%2Bc%3D");
+    }
+
+    #[test]
     fn recognizes_bare_paths_and_refuses_unknown_ones() {
         assert_eq!(
             router().recognize("/projects.json").unwrap().operation(),

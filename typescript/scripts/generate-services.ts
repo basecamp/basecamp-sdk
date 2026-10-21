@@ -178,6 +178,7 @@ const TAG_TO_SERVICE: Record<string, string> = {
   Boosts: "Boosts",
   Subtasks: "Subtasks",
   Pings: "Pings",
+  Embeds: "Embeds",
   Untagged: "Miscellaneous",
 };
 
@@ -757,6 +758,7 @@ function isSimpleResource(resource: string): boolean {
     "boost", "boosts",
     "subtask", "subtasks",
     "ping", "pings",
+    "embed", "embeds",
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
   ];

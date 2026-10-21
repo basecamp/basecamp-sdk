@@ -572,6 +572,11 @@ export {
   type CreatePingRequest,
 } from "./generated/services/pings.js";
 
+export {
+  EmbedsService,
+  type CreateEmbedRequest,
+} from "./generated/services/embeds.js";
+
 // Account service - generated
 export {
   AccountService,

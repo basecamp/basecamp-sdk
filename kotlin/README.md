@@ -12,7 +12,7 @@ Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 - Kotlin Multiplatform (JVM target)
 - Builder DSL for client configuration
-- `56` services covering the complete Basecamp API <!-- @service-count -->
+- `57` services covering the complete Basecamp API <!-- @service-count -->
 - OAuth 2.0 with PKCE support
 - Webhook signature verification (HMAC-SHA256)
 - ETag-based HTTP caching (opt-in)
@@ -486,7 +486,7 @@ if (!isValid) {
 
 ## Services
 
-The SDK exposes `56` account-scoped services. <!-- @service-count --> The tables below group the common ones; see `com/basecamp/sdk/generated/services/` for the full set.
+The SDK exposes `57` account-scoped services. <!-- @service-count --> The tables below group the common ones; see `com/basecamp/sdk/generated/services/` for the full set.
 
 ### Projects & Organization
 
@@ -516,6 +516,7 @@ The SDK exposes `56` account-scoped services. <!-- @service-count --> The tables
 | `comments` | Comments on recordings |
 | `campfires` | Chat rooms |
 | `pings` | Pings (private conversations) |
+| `embeds` | Embeds for rich text |
 | `forwards` | Email forwards |
 
 ### Card Tables (Kanban)
