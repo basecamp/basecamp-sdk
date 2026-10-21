@@ -307,19 +307,35 @@ class HttpPaginationMetaTest < Minitest::Test
     end
   end
 
-  def test_a_huge_total_count_header_is_bounded_rather_than_converted
-    # On the clock, because the answer is 0 either way and only the cost
-    # differs — the same reason the id bound needed a timing assertion.
-    stub_get("/things.json", response_body: [ { "id" => 1 } ],
-                             headers: { "X-Total-Count" => "9" * 2_000_000 })
+  # Records every String#to_i whose receiver is longer than an int64 can be,
+  # while a test holds the log open. Inert otherwise.
+  module RecordsLongConversions
+    def to_i(...)
+      log = Thread.current[:basecamp_long_conversions]
+      log << bytesize if log && bytesize > Basecamp::Ids::MAX_DIGITS
+      super
+    end
+  end
+  String.prepend(RecordsLongConversions)
 
-    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  def test_a_huge_total_count_header_is_bounded_rather_than_converted
+    # The largest header value net-http lets through: 0.10 refuses a response
+    # field over 65,536 bytes in set_field, before WebMock hands the response
+    # to Faraday (#1013), so a longer one never reaches the SDK at all.
+    #
+    # Not on the clock: the answer is 0 either way, and converting 65,536
+    # digits costs milliseconds, so a timing bound here would pass with the
+    # length gate removed. Assert instead that the run is refused by length and
+    # never converted. ids_test.rb times the gate itself at five million digits.
+    header = "9" * 65_536
+    stub_get("/things.json", response_body: [ { "id" => 1 } ], headers: { "X-Total-Count" => header })
+
+    conversions = Thread.current[:basecamp_long_conversions] = []
 
     assert_equal 0, @http.paginate("/things.json").meta.total_count
-
-    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - elapsed
-
-    assert_operator elapsed, :<, 1.0, "a two-million-digit header took #{elapsed.round(3)}s"
+    assert_empty conversions, "a #{header.bytesize}-digit header was converted before it was bounded"
+  ensure
+    Thread.current[:basecamp_long_conversions] = nil
   end
 
   def test_a_paginated_body_that_is_not_a_list_fails_with_a_basecamp_error
