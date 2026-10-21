@@ -2,7 +2,7 @@ module github.com/basecamp/basecamp-sdk/go
 
 go 1.26.0
 
-toolchain go1.26.9
+toolchain go1.26.10
 
 require (
 	github.com/basecamp/actioncable-go v1.2.0
