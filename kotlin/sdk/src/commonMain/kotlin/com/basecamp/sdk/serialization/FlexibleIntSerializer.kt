@@ -9,7 +9,8 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonPrimitive
-import kotlin.math.truncate
+import kotlin.math.abs
+import kotlin.math.round
 
 /**
  * A serializer for Int fields that flexibly handles the BC3 API's
@@ -22,6 +23,8 @@ import kotlin.math.truncate
  * - JSON number `1024` → `1024`
  * - JSON number `1024.0` → `1024`
  * - JSON string `"1024"` → `1024`
+ * - JSON number `752.0000000000001` → `752` (floating-point noise, within
+ *   [TOLERANCE] of an integer, as Go's `types.FlexIntTolerance`)
  * - JSON number `1024.5` → throws (non-integral)
  * - out-of-Int-range → throws
  *
@@ -30,6 +33,9 @@ import kotlin.math.truncate
  * coerced to a sentinel 0.
  */
 object FlexibleIntSerializer : KSerializer<Int> {
+    /** How far from an integer a number may sit and still read as it. Matches Go's `types.FlexIntTolerance`. */
+    const val TOLERANCE = 1e-6
+
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("FlexibleInt", PrimitiveKind.INT)
 
@@ -45,13 +51,14 @@ object FlexibleIntSerializer : KSerializer<Int> {
         if (element is JsonPrimitive) {
             val d = element.content.toDoubleOrNull()
                 ?: throw SerializationException("FlexibleInt: ${element.content} is not a number")
-            if (d != truncate(d)) {
+            val n = round(d)
+            if (abs(d - n) > TOLERANCE) {
                 throw SerializationException("FlexibleInt: $d is not an integer")
             }
-            if (d < Int.MIN_VALUE.toDouble() || d > Int.MAX_VALUE.toDouble()) {
+            if (n < Int.MIN_VALUE.toDouble() || n > Int.MAX_VALUE.toDouble()) {
                 throw SerializationException("FlexibleInt: $d overflows Int")
             }
-            return d.toInt()
+            return n.toInt()
         }
         throw SerializationException("FlexibleInt: expected a JSON number")
     }

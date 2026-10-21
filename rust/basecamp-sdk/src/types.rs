@@ -115,7 +115,11 @@ impl fmt::Display for FlexibleTime {
 pub(crate) mod flex_int {
     use serde::{Deserialize, Deserializer};
 
-    /// `null` is `None`; an integer or an integral float is the integer.
+    /// How far from an integer a number may sit and still read as it: the API computes some
+    /// dimensions in floating point and serves `752.0000000000001`. Go's `types.FlexIntTolerance`.
+    const TOLERANCE: f64 = 1e-6;
+
+    /// `null` is `None`; an integer, or a float within `TOLERANCE` of one, is the integer.
     pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Option<i32>, D::Error> {
@@ -127,13 +131,14 @@ pub(crate) mod flex_int {
                         .map(Some)
                         .map_err(|_| serde::de::Error::custom("dimension out of range"))
                 } else if let Some(value) = number.as_f64() {
-                    if value.fract() == 0.0
-                        && (f64::from(i32::MIN)..=f64::from(i32::MAX)).contains(&value)
-                    {
-                        #[allow(clippy::cast_possible_truncation)]
-                        Ok(Some(value as i32))
-                    } else {
+                    let rounded = value.round();
+                    if (value - rounded).abs() > TOLERANCE {
                         Err(serde::de::Error::custom("dimension is not integral"))
+                    } else if (f64::from(i32::MIN)..=f64::from(i32::MAX)).contains(&rounded) {
+                        #[allow(clippy::cast_possible_truncation)]
+                        Ok(Some(rounded as i32))
+                    } else {
+                        Err(serde::de::Error::custom("dimension out of range"))
                     }
                 } else {
                     Err(serde::de::Error::custom("dimension is not a number"))
@@ -456,6 +461,43 @@ mod tests {
             Some(i32::MAX)
         );
         assert!(serde_json::from_str::<Dimensions>(r#"{"width": 2147483648.0}"#).is_err());
+    }
+
+    /// Sentry BC-MCP-K/M: the API served `752.0000000000001` and `496.00000000000006`.
+    /// Floating-point noise reads as the integer; a real fraction or overflow is refused.
+    #[test]
+    fn dimensions_round_float_noise_and_refuse_real_fractions() {
+        for (input, expected) in [
+            ("752.0000000000001", 752),
+            ("496.00000000000006", 496),
+            ("751.9999999999999", 752),
+            ("-752.0000000000001", -752),
+            ("752.0000009", 752),
+            ("2147483647.0000002", i32::MAX),
+            ("-2147483648.0000002", i32::MIN),
+        ] {
+            let json = format!(r#"{{"width": {input}}}"#);
+            assert_eq!(
+                serde_json::from_str::<Dimensions>(&json).unwrap().width,
+                Some(expected),
+                "{input}"
+            );
+        }
+        for input in [
+            "752.5",
+            "752.001",
+            "752.0000011",
+            "0.5",
+            "2147483647.5",
+            "2147483647.9999998",
+            "9007199254740993",
+        ] {
+            let json = format!(r#"{{"width": {input}}}"#);
+            assert!(
+                serde_json::from_str::<Dimensions>(&json).is_err(),
+                "{input}"
+            );
+        }
     }
 
     #[test]
