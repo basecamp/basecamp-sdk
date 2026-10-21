@@ -164,6 +164,72 @@ jobs:
         working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
+  # govulncheck above reports only what it can reach from the packages it
+  # loads, and govulncheck v1.8.0 and v1.9.0 drop the imports of in-package
+  # _test.go files even under -test (golang/go#80601). So a known-vulnerable
+  # module used only by such a test passes it: with go.opentelemetry.io/otel/sdk
+  # lowered to v1.44.0 (GO-2026-6505), every govulncheck mode reported clean.
+  # `-scan module` doesn't close the gap: it scans the modules imported by the
+  # package in the working directory (go/ has only generate.go, which imports
+  # nothing), not the module graph (golang/go#80521). It does the same with
+  # GOWORK=off. This job fails on any known Go vulnerability in a version
+  # required by any go.mod in the repo, whether or not anything reaches it. The
+  # go.mod files list every module that provides a package to a build, test
+  # or tool. The modules only `go list -m all` shows provide no package to
+  # any of those.
+  # No ignore list: an exception would go in an osv-scanner.toml
+  # [[IgnoredVulns]] entry with a reason and an ignoreUntil date.
+  go-module-graph-vulns:
+    name: Go Module Graph Vulnerabilities
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # A release binary rather than `go install`, because osv-scanner v2.7.0
+      # requires go >= 1.27 and this repo is on 1.26. It is pinned by version
+      # and by the binary's own SHA-256, so a re-tagged release can't change
+      # what runs here. The advisory data is fetched live at scan time.
+      - name: Install osv-scanner
+        env:
+          OSV_SCANNER_VERSION: '2.7.0'
+          OSV_SCANNER_SHA256: '160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b'
+        run: |
+          bin="$RUNNER_TEMP/osv-scanner"
+          curl -sSfL -o "$bin" "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SCANNER_SHA256}  ${bin}" | sha256sum --check --strict
+          chmod +x "$bin"
+
+      # Scans every go.mod in the repo, so a new module is covered without
+      # editing this file. Today that is go/, conformance/runner/go/,
+      # scripts/check-wrapper-drift/ and scripts/gen-catalog/. Only the
+      # go.mod extractor is enabled: the lockfiles of the other SDKs keep
+      # their own gates above. It exits nonzero on any finding, and also if
+      # it finds no go.mod or doesn't recognise the extractor name.
+      # Go call analysis is on by default and runs govulncheck in-process.
+      # A finding it marks uncalled doesn't fail the scan, which would bring
+      # back the blind spot this job exists to close. So it is switched off:
+      # every vulnerable version fails, reachable or not.
+      - name: Scan every go.mod for known vulnerabilities
+        run: |
+          "$RUNNER_TEMP/osv-scanner" scan source --recursive \
+            --x-no-default-plugins --x-plugins go/gomod \
+            --no-call-analysis=go .
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
+
   gosec:
     name: Go Security Checker
     runs-on: ubuntu-latest
