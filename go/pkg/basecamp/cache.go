@@ -1,6 +1,7 @@
 package basecamp
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
@@ -52,8 +53,20 @@ func (c *Cache) Key(url, accountID, token string) string {
 
 // GetETag returns the cached ETag for a key, or empty string if not found.
 func (c *Cache) GetETag(key string) string {
-	etag, _ := c.entry(key)
-	return etag
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	// Only the first line: the body can be tens of megabytes.
+	f, err := os.Open(c.entryFile(key)) // #nosec G703 -- cache dir is caller-configured
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = f.Close() }()
+	line, err := bufio.NewReader(f).ReadString('\n')
+	if err != nil || len(line) < 2 {
+		return ""
+	}
+	return line[:len(line)-1]
 }
 
 // GetBody returns the cached response body for a key, or nil if not found.
@@ -97,7 +110,10 @@ func (c *Cache) Set(key string, body []byte, etag string) error {
 	if err != nil {
 		return err
 	}
-	_, err = tmp.Write(append([]byte(etag+"\n"), body...))
+	_, err = tmp.WriteString(etag + "\n")
+	if err == nil {
+		_, err = tmp.Write(body)
+	}
 	if closeErr := tmp.Close(); err == nil {
 		err = closeErr
 	}
