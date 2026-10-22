@@ -277,7 +277,7 @@ export interface BasecampClientOptions {
   maxPages?: number;
 }
 
-export const VERSION = "0.27.0";
+export const VERSION = "0.27.1";
 export const API_VERSION = "2026-10-19";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
