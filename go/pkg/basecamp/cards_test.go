@@ -779,6 +779,22 @@ func testCardsServer(t *testing.T, handler http.HandlerFunc) *CardsService {
 	return account.Cards()
 }
 
+func TestCardsService_Get_Completion(t *testing.T) {
+	svc := testCardsServer(t, serveJSON(withFixtureCompletion(t, loadCardsFixture(t, "get.json"))))
+	card, err := svc.Get(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertFixtureCompletion(t, card.Completion, card.CompletedAt, card.Completer)
+
+	svc = testCardsServer(t, serveJSON(loadCardsFixture(t, "get.json")))
+	card, err = svc.Get(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertNoCompletion(t, card.Completion, card.CompletedAt, card.Completer)
+}
+
 // cardStrPtr is the presence-bearing test helper: UpdateCardRequest's scalars
 // are pointers so a caller can distinguish "leave alone" from "set empty".
 func cardStrPtr(v string) *string { return &v }

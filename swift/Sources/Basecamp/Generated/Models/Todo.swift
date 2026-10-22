@@ -24,6 +24,7 @@ public struct Todo: Codable, Sendable {
     public var commentsCount: Int32?
     public var commentsUrl: String?
     public var completed: Bool?
+    public var completion: RecordingCompletion?
     public var completionSubscribers: [Person]?
     public var completionUrl: String?
     public var description: String?
@@ -59,6 +60,7 @@ public struct Todo: Codable, Sendable {
         commentsCount: Int32? = nil,
         commentsUrl: String? = nil,
         completed: Bool? = nil,
+        completion: RecordingCompletion? = nil,
         completionSubscribers: [Person]? = nil,
         completionUrl: String? = nil,
         description: String? = nil,
@@ -93,6 +95,7 @@ public struct Todo: Codable, Sendable {
         self.commentsCount = commentsCount
         self.commentsUrl = commentsUrl
         self.completed = completed
+        self.completion = completion
         self.completionSubscribers = completionSubscribers
         self.completionUrl = completionUrl
         self.description = description
@@ -129,6 +132,7 @@ public struct Todo: Codable, Sendable {
         case commentsCount
         case commentsUrl
         case completed
+        case completion
         case completionSubscribers
         case completionUrl
         case description
@@ -166,6 +170,7 @@ public struct Todo: Codable, Sendable {
         self.commentsCount = try container.decodeIfPresent(Int32.self, forKey: .commentsCount)
         self.commentsUrl = try container.decodeIfPresent(String.self, forKey: .commentsUrl)
         self.completed = try container.decodeIfPresent(Bool.self, forKey: .completed)
+        self.completion = try container.decodeIfPresent(RecordingCompletion.self, forKey: .completion)
         self.completionSubscribers = try container.decodePeopleIfPresent([Person].self, forKey: .completionSubscribers)
         self.completionUrl = try container.decodeIfPresent(String.self, forKey: .completionUrl)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
@@ -203,6 +208,7 @@ public struct Todo: Codable, Sendable {
         try container.encodeIfPresent(self.commentsCount, forKey: .commentsCount)
         try container.encodeIfPresent(self.commentsUrl, forKey: .commentsUrl)
         try container.encodeIfPresent(self.completed, forKey: .completed)
+        try container.encodeIfPresent(self.completion, forKey: .completion)
         try container.encodeIfPresent(self.completionSubscribers, forKey: .completionSubscribers)
         try container.encodeIfPresent(self.completionUrl, forKey: .completionUrl)
         try container.encodeIfPresent(self.description, forKey: .description)

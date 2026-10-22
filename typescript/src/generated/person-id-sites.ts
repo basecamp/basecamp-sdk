@@ -20,10 +20,12 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "CreateCard": [
     "assignees.[]",
     "completer",
+    "completion.creator",
     "completion_subscribers.[]",
     "creator",
     "steps.[].assignees.[]",
     "steps.[].completer",
+    "steps.[].completion.creator",
     "steps.[].creator"
   ],
   "CreateCardColumn": [
@@ -33,6 +35,7 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "CreateCardStep": [
     "assignees.[]",
     "completer",
+    "completion.creator",
     "creator"
   ],
   "CreateCloudFile": [
@@ -72,6 +75,7 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "CreateSubtask": [
     "assignees.[]",
     "completer",
+    "completion.creator",
     "creator"
   ],
   "CreateTemplateLibraryCardTable": [
@@ -106,10 +110,12 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   ],
   "CreateTodo": [
     "assignees.[]",
+    "completion.creator",
     "completion_subscribers.[]",
     "creator",
     "steps.[].assignees.[]",
     "steps.[].completer",
+    "steps.[].completion.creator",
     "steps.[].creator"
   ],
   "CreateTodolist": [
@@ -120,10 +126,12 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   ],
   "CreateTodosetTodo": [
     "assignees.[]",
+    "completion.creator",
     "completion_subscribers.[]",
     "creator",
     "steps.[].assignees.[]",
     "steps.[].completer",
+    "steps.[].completion.creator",
     "steps.[].creator"
   ],
   "CreateTool": [
@@ -163,10 +171,12 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "GetAssignedTodos": [
     "person",
     "todos.[].assignees.[]",
+    "todos.[].completion.creator",
     "todos.[].completion_subscribers.[]",
     "todos.[].creator",
     "todos.[].steps.[].assignees.[]",
     "todos.[].steps.[].completer",
+    "todos.[].steps.[].completion.creator",
     "todos.[].steps.[].creator"
   ],
   "GetBoost": [
@@ -185,10 +195,12 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "GetCard": [
     "assignees.[]",
     "completer",
+    "completion.creator",
     "completion_subscribers.[]",
     "creator",
     "steps.[].assignees.[]",
     "steps.[].completer",
+    "steps.[].completion.creator",
     "steps.[].creator"
   ],
   "GetCardColumn": [
@@ -198,6 +210,7 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "GetCardStep": [
     "assignees.[]",
     "completer",
+    "completion.creator",
     "creator"
   ],
   "GetCardTable": [
@@ -236,18 +249,22 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "GetEverythingCompletedCards": [
     "[].cards.[].assignees.[]",
     "[].cards.[].completer",
+    "[].cards.[].completion.creator",
     "[].cards.[].completion_subscribers.[]",
     "[].cards.[].creator",
     "[].cards.[].steps.[].assignees.[]",
     "[].cards.[].steps.[].completer",
+    "[].cards.[].steps.[].completion.creator",
     "[].cards.[].steps.[].creator"
   ],
   "GetEverythingCompletedTodos": [
     "[].todos.[].assignees.[]",
+    "[].todos.[].completion.creator",
     "[].todos.[].completion_subscribers.[]",
     "[].todos.[].creator",
     "[].todos.[].steps.[].assignees.[]",
     "[].todos.[].steps.[].completer",
+    "[].todos.[].steps.[].completion.creator",
     "[].todos.[].steps.[].creator"
   ],
   "GetEverythingFiles": [
@@ -262,78 +279,96 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "GetEverythingNoDueDateCards": [
     "[].cards.[].assignees.[]",
     "[].cards.[].completer",
+    "[].cards.[].completion.creator",
     "[].cards.[].completion_subscribers.[]",
     "[].cards.[].creator",
     "[].cards.[].steps.[].assignees.[]",
     "[].cards.[].steps.[].completer",
+    "[].cards.[].steps.[].completion.creator",
     "[].cards.[].steps.[].creator"
   ],
   "GetEverythingNoDueDateTodos": [
     "[].todos.[].assignees.[]",
+    "[].todos.[].completion.creator",
     "[].todos.[].completion_subscribers.[]",
     "[].todos.[].creator",
     "[].todos.[].steps.[].assignees.[]",
     "[].todos.[].steps.[].completer",
+    "[].todos.[].steps.[].completion.creator",
     "[].todos.[].steps.[].creator"
   ],
   "GetEverythingNotNowCards": [
     "[].cards.[].assignees.[]",
     "[].cards.[].completer",
+    "[].cards.[].completion.creator",
     "[].cards.[].completion_subscribers.[]",
     "[].cards.[].creator",
     "[].cards.[].steps.[].assignees.[]",
     "[].cards.[].steps.[].completer",
+    "[].cards.[].steps.[].completion.creator",
     "[].cards.[].steps.[].creator"
   ],
   "GetEverythingOpenCards": [
     "[].cards.[].assignees.[]",
     "[].cards.[].completer",
+    "[].cards.[].completion.creator",
     "[].cards.[].completion_subscribers.[]",
     "[].cards.[].creator",
     "[].cards.[].steps.[].assignees.[]",
     "[].cards.[].steps.[].completer",
+    "[].cards.[].steps.[].completion.creator",
     "[].cards.[].steps.[].creator"
   ],
   "GetEverythingOpenTodos": [
     "[].todos.[].assignees.[]",
+    "[].todos.[].completion.creator",
     "[].todos.[].completion_subscribers.[]",
     "[].todos.[].creator",
     "[].todos.[].steps.[].assignees.[]",
     "[].todos.[].steps.[].completer",
+    "[].todos.[].steps.[].completion.creator",
     "[].todos.[].steps.[].creator"
   ],
   "GetEverythingOverdueCards": [
     "[].assignees.[]",
     "[].completer",
+    "[].completion.creator",
     "[].completion_subscribers.[]",
     "[].creator",
     "[].steps.[].assignees.[]",
     "[].steps.[].completer",
+    "[].steps.[].completion.creator",
     "[].steps.[].creator"
   ],
   "GetEverythingOverdueTodos": [
     "[].assignees.[]",
+    "[].completion.creator",
     "[].completion_subscribers.[]",
     "[].creator",
     "[].steps.[].assignees.[]",
     "[].steps.[].completer",
+    "[].steps.[].completion.creator",
     "[].steps.[].creator"
   ],
   "GetEverythingUnassignedCards": [
     "[].cards.[].assignees.[]",
     "[].cards.[].completer",
+    "[].cards.[].completion.creator",
     "[].cards.[].completion_subscribers.[]",
     "[].cards.[].creator",
     "[].cards.[].steps.[].assignees.[]",
     "[].cards.[].steps.[].completer",
+    "[].cards.[].steps.[].completion.creator",
     "[].cards.[].steps.[].creator"
   ],
   "GetEverythingUnassignedTodos": [
     "[].todos.[].assignees.[]",
+    "[].todos.[].completion.creator",
     "[].todos.[].completion_subscribers.[]",
     "[].todos.[].creator",
     "[].todos.[].steps.[].assignees.[]",
     "[].todos.[].steps.[].completer",
+    "[].todos.[].steps.[].completion.creator",
     "[].todos.[].steps.[].creator"
   ],
   "GetForward": [
@@ -374,28 +409,36 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   ],
   "GetOverdueTodos": [
     "over_a_month_late.[].assignees.[]",
+    "over_a_month_late.[].completion.creator",
     "over_a_month_late.[].completion_subscribers.[]",
     "over_a_month_late.[].creator",
     "over_a_month_late.[].steps.[].assignees.[]",
     "over_a_month_late.[].steps.[].completer",
+    "over_a_month_late.[].steps.[].completion.creator",
     "over_a_month_late.[].steps.[].creator",
     "over_a_week_late.[].assignees.[]",
+    "over_a_week_late.[].completion.creator",
     "over_a_week_late.[].completion_subscribers.[]",
     "over_a_week_late.[].creator",
     "over_a_week_late.[].steps.[].assignees.[]",
     "over_a_week_late.[].steps.[].completer",
+    "over_a_week_late.[].steps.[].completion.creator",
     "over_a_week_late.[].steps.[].creator",
     "over_three_months_late.[].assignees.[]",
+    "over_three_months_late.[].completion.creator",
     "over_three_months_late.[].completion_subscribers.[]",
     "over_three_months_late.[].creator",
     "over_three_months_late.[].steps.[].assignees.[]",
     "over_three_months_late.[].steps.[].completer",
+    "over_three_months_late.[].steps.[].completion.creator",
     "over_three_months_late.[].steps.[].creator",
     "under_a_week_late.[].assignees.[]",
+    "under_a_week_late.[].completion.creator",
     "under_a_week_late.[].completion_subscribers.[]",
     "under_a_week_late.[].creator",
     "under_a_week_late.[].steps.[].assignees.[]",
     "under_a_week_late.[].steps.[].completer",
+    "under_a_week_late.[].steps.[].completion.creator",
     "under_a_week_late.[].steps.[].creator"
   ],
   "GetPerson": [
@@ -451,6 +494,7 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "GetSubtask": [
     "assignees.[]",
     "completer",
+    "completion.creator",
     "creator"
   ],
   "GetTemplateLibraryCardTables": [
@@ -485,10 +529,12 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   ],
   "GetTodo": [
     "assignees.[]",
+    "completion.creator",
     "completion_subscribers.[]",
     "creator",
     "steps.[].assignees.[]",
     "steps.[].completer",
+    "steps.[].completion.creator",
     "steps.[].creator"
   ],
   "GetTodolistOrGroup": [
@@ -529,10 +575,12 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "ListCards": [
     "[].assignees.[]",
     "[].completer",
+    "[].completion.creator",
     "[].completion_subscribers.[]",
     "[].creator",
     "[].steps.[].assignees.[]",
     "[].steps.[].completer",
+    "[].steps.[].completion.creator",
     "[].steps.[].creator"
   ],
   "ListClientApprovals": [
@@ -608,6 +656,7 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "ListSubtasks": [
     "[].assignees.[]",
     "[].completer",
+    "[].completion.creator",
     "[].creator"
   ],
   "ListTodolistGroups": [
@@ -618,10 +667,12 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   ],
   "ListTodos": [
     "[].assignees.[]",
+    "[].completion.creator",
     "[].completion_subscribers.[]",
     "[].creator",
     "[].steps.[].assignees.[]",
     "[].steps.[].completer",
+    "[].steps.[].completion.creator",
     "[].steps.[].creator"
   ],
   "ListUploadVersions": [
@@ -647,10 +698,12 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   ],
   "ReplaceTodo": [
     "assignees.[]",
+    "completion.creator",
     "completion_subscribers.[]",
     "creator",
     "steps.[].assignees.[]",
     "steps.[].completer",
+    "steps.[].completion.creator",
     "steps.[].creator"
   ],
   "Search": [
@@ -664,6 +717,7 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "SetCardStepCompletion": [
     "assignees.[]",
     "completer",
+    "completion.creator",
     "creator"
   ],
   "SetClientVisibility": [
@@ -681,10 +735,12 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "UpdateCard": [
     "assignees.[]",
     "completer",
+    "completion.creator",
     "completion_subscribers.[]",
     "creator",
     "steps.[].assignees.[]",
     "steps.[].completer",
+    "steps.[].completion.creator",
     "steps.[].creator"
   ],
   "UpdateCardColumn": [
@@ -694,6 +750,7 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "UpdateCardStep": [
     "assignees.[]",
     "completer",
+    "completion.creator",
     "creator"
   ],
   "UpdateCloudFile": [
@@ -731,6 +788,7 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "UpdateSubtask": [
     "assignees.[]",
     "completer",
+    "completion.creator",
     "creator"
   ],
   "UpdateTimesheetEntry": [

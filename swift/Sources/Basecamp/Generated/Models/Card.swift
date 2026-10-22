@@ -23,8 +23,11 @@ public struct Card: Codable, Sendable {
     public var commentsCount: Int32?
     public var commentsUrl: String?
     public var completed: Bool?
+    /// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
     public var completedAt: String?
+    /// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
     public var completer: Person?
+    public var completion: RecordingCompletion?
     public var completionSubscribers: [Person]?
     public var completionUrl: String?
     public var content: String?
@@ -61,6 +64,7 @@ public struct Card: Codable, Sendable {
         completed: Bool? = nil,
         completedAt: String? = nil,
         completer: Person? = nil,
+        completion: RecordingCompletion? = nil,
         completionSubscribers: [Person]? = nil,
         completionUrl: String? = nil,
         content: String? = nil,
@@ -96,6 +100,7 @@ public struct Card: Codable, Sendable {
         self.completed = completed
         self.completedAt = completedAt
         self.completer = completer
+        self.completion = completion
         self.completionSubscribers = completionSubscribers
         self.completionUrl = completionUrl
         self.content = content
@@ -133,6 +138,7 @@ public struct Card: Codable, Sendable {
         case completed
         case completedAt
         case completer
+        case completion
         case completionSubscribers
         case completionUrl
         case content
@@ -171,6 +177,7 @@ public struct Card: Codable, Sendable {
         self.completed = try container.decodeIfPresent(Bool.self, forKey: .completed)
         self.completedAt = try container.decodeIfPresent(String.self, forKey: .completedAt)
         self.completer = try container.decodeIfPresent(Person.self, forKey: .completer)
+        self.completion = try container.decodeIfPresent(RecordingCompletion.self, forKey: .completion)
         self.completionSubscribers = try container.decodePeopleIfPresent([Person].self, forKey: .completionSubscribers)
         self.completionUrl = try container.decodeIfPresent(String.self, forKey: .completionUrl)
         self.content = try container.decodeIfPresent(String.self, forKey: .content)
@@ -209,6 +216,7 @@ public struct Card: Codable, Sendable {
         try container.encodeIfPresent(self.completed, forKey: .completed)
         try container.encodeIfPresent(self.completedAt, forKey: .completedAt)
         try container.encodeIfPresent(self.completer, forKey: .completer)
+        try container.encodeIfPresent(self.completion, forKey: .completion)
         try container.encodeIfPresent(self.completionSubscribers, forKey: .completionSubscribers)
         try container.encodeIfPresent(self.completionUrl, forKey: .completionUrl)
         try container.encodeIfPresent(self.content, forKey: .content)

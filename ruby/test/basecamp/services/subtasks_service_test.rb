@@ -57,6 +57,17 @@ class SubtasksServiceTest < Minitest::Test
     assert_equal "Hero shot on the desk", subtask["title"]
   end
 
+  def test_get_completed_carries_its_completion
+    stub_get("/12345/subtasks/1069479879", response_body: load_fixture("subtasks/get-completed.json"))
+
+    subtask = Basecamp::Types::Subtask.new(@account.subtasks.get(subtask_id: 1069479879))
+
+    assert_equal true, subtask.completed
+    assert_equal Time.utc(2026, 7, 3, 15, 42, 10), subtask.completion.created_at
+    assert_equal 1049715938, subtask.completion.creator.id
+    assert_equal "Annie Bryan", subtask.completion.creator.name
+  end
+
   def test_get_not_found
     stub_get("/12345/subtasks/999", status: 404, response_body: { "error" => "Not found" })
 

@@ -4309,6 +4309,11 @@ export interface components {
             description_attachments: components["schemas"]["RichTextAttachment"][];
             due_on?: string | null;
             completed?: boolean;
+            completion?: components["schemas"]["RecordingCompletion"];
+            /**
+             * @deprecated
+             * @description This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
+             */
             completed_at?: string;
             /** Format: int32 */
             comments_count?: number;
@@ -4317,6 +4322,10 @@ export interface components {
             parent: components["schemas"]["RecordingParent"];
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
+            /**
+             * @deprecated
+             * @description This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
+             */
             completer?: components["schemas"]["Person"];
             assignees?: components["schemas"]["Person"][];
             completion_subscribers?: components["schemas"]["Person"][];
@@ -6778,6 +6787,11 @@ export interface components {
             name: string;
             icon?: string;
         };
+        /** @description Who completed a to-do, card or subtask, and when. */
+        RecordingCompletion: {
+            created_at: string;
+            creator: components["schemas"]["Person"];
+        };
         RecordingParent: {
             /** Format: int64 */
             id: number;
@@ -7409,10 +7423,19 @@ export interface components {
             position?: number;
             due_on?: string;
             completed?: boolean;
+            completion?: components["schemas"]["RecordingCompletion"];
+            /**
+             * @deprecated
+             * @description This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
+             */
             completed_at?: string;
             parent: components["schemas"]["RecordingParent"];
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
+            /**
+             * @deprecated
+             * @description This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
+             */
             completer?: components["schemas"]["Person"];
             assignees?: components["schemas"]["Person"][];
             completion_url?: string;
@@ -7688,6 +7711,7 @@ export interface components {
             creator: components["schemas"]["Person"];
             description?: string;
             completed?: boolean;
+            completion?: components["schemas"]["RecordingCompletion"];
             content: string;
             description_attachments: components["schemas"]["RichTextAttachment"][];
             starts_on?: string | null;

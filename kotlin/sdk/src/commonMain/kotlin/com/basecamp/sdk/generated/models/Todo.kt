@@ -34,6 +34,7 @@ data class Todo(
     val position: Int? = null,
     val description: String? = null,
     val completed: Boolean? = null,
+    val completion: RecordingCompletion? = null,
     @SerialName("starts_on") val startsOn: String? = null,
     @SerialName("due_on") val dueOn: String? = null,
     val assignees: List<Person>? = null,

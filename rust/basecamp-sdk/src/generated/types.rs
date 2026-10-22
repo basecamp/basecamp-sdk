@@ -408,7 +408,13 @@ pub struct Card {
     /// `completed`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed: Option<bool>,
-    /// `completed_at`.
+    /// `completion`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion: Option<RecordingCompletion>,
+    /// This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
+    #[deprecated(
+        note = "This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead"
+    )]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<DateTime>,
     /// `comments_count`.
@@ -426,7 +432,10 @@ pub struct Card {
     pub bucket: TodoBucket,
     /// `creator`.
     pub creator: Person,
-    /// `completer`.
+    /// This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
+    #[deprecated(
+        note = "This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead"
+    )]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completer: Option<Person>,
     /// `assignees`.
@@ -4732,6 +4741,16 @@ pub struct RecordingCategory {
     pub icon: Option<String>,
 }
 
+/// Who completed a to-do, card or subtask, and when.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct RecordingCompletion {
+    /// `created_at`.
+    pub created_at: DateTime,
+    /// `creator`.
+    pub creator: Person,
+}
+
 /// The `RecordingParent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -5578,7 +5597,13 @@ pub struct Subtask {
     /// `completed`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed: Option<bool>,
-    /// `completed_at`.
+    /// `completion`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion: Option<RecordingCompletion>,
+    /// This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
+    #[deprecated(
+        note = "This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead"
+    )]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<DateTime>,
     /// `parent`.
@@ -5587,7 +5612,10 @@ pub struct Subtask {
     pub bucket: TodoBucket,
     /// `creator`.
     pub creator: Person,
-    /// `completer`.
+    /// This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
+    #[deprecated(
+        note = "This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead"
+    )]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completer: Option<Person>,
     /// `assignees`.
@@ -6027,6 +6055,9 @@ pub struct Todo {
     /// `completed`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed: Option<bool>,
+    /// `completion`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion: Option<RecordingCompletion>,
     /// `content`.
     pub content: String,
     /// `description_attachments`.

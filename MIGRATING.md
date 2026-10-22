@@ -24,6 +24,24 @@ They are now `Option<DateChange>`, which breaks source that sets them. Write
 as before, `basecamp_sdk::services::DateChange`. `None` still leaves the date
 unchanged. `CardsService::update` and its `UpdateCardRequest` are unchanged.
 
+### To-dos, cards and subtasks: who completed one, and when, is `completion`
+
+Basecamp says who completed a to-do, card or subtask, and when, in a
+`completion` object of `created_at` and `creator`, present only once the item
+is completed. No SDK modeled it, so that information was lost. Cards and
+subtasks modeled `completed_at` and `completer` instead, which Basecamp never
+sends, so they were always empty.
+
+Every SDK now has `completion` on `Todo`, `Card` and `Subtask`. `completed_at`
+and `completer` on cards and subtasks are deprecated, not removed, so reading
+them now warns where the language does: Kotlin and Rust at compile time, and
+TypeScript and Go in the editor. A build that treats warnings as errors stops
+compiling until you read `completion` instead.
+
+Go also fills its deprecated `CompletedAt` and `Completer` from `completion`,
+on `Todo` as well as `Card` and `Subtask`, so existing Go callers start getting
+real values. In the other SDKs the deprecated fields stay empty.
+
 # v0.25.0
 
 ### Check-in questions: update no longer takes `paused`

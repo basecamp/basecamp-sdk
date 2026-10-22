@@ -1717,6 +1717,9 @@ structure Todo {
   creator: Person
   description: TodoDescription
   completed: Boolean
+  /// Who completed the recording and when. Present only on a completed
+  /// recording; absent, not null, otherwise.
+  completion: RecordingCompletion
   @required
   content: TodoContent
   @required
@@ -1741,6 +1744,14 @@ structure Todo {
   /// embeds. A to-do with more than 100 reports the total in
   /// `subtasks_count`; fetch the rest from `subtasks_url`.
   steps: SubtaskList
+}
+
+/// Who completed a to-do, card or subtask, and when.
+structure RecordingCompletion {
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  creator: Person
 }
 
 list RichTextAttachmentList {
@@ -6316,6 +6327,10 @@ structure Card {
   description_attachments: RichTextAttachmentList
   due_on: ISO8601Date
   completed: Boolean
+  /// Who completed the recording and when. Present only on a completed
+  /// recording; absent, not null, otherwise.
+  completion: RecordingCompletion
+  @deprecated(message: "Never sent by Basecamp; read completion.created_at instead", since: "2026-10")
   completed_at: ISO8601Timestamp
   comments_count: Integer
   comments_url: String
@@ -6326,6 +6341,9 @@ structure Card {
   bucket: TodoBucket
   @required
   creator: Person
+  // The OpenAPI conversion drops this message from a $ref member, so
+  // smithy-build.json restores it with jsonAdd for every SDK's deprecation.
+  @deprecated(message: "Never sent by Basecamp; read completion.creator instead", since: "2026-10")
   completer: Person
   assignees: PersonList
   completion_subscribers: PersonList
@@ -6383,6 +6401,10 @@ structure Subtask {
   position: Integer
   due_on: ISO8601Date
   completed: Boolean
+  /// Who completed the recording and when. Present only on a completed
+  /// recording; absent, not null, otherwise.
+  completion: RecordingCompletion
+  @deprecated(message: "Never sent by Basecamp; read completion.created_at instead", since: "2026-10")
   completed_at: ISO8601Timestamp
   @required
   parent: RecordingParent
@@ -6390,6 +6412,9 @@ structure Subtask {
   bucket: TodoBucket
   @required
   creator: Person
+  // The OpenAPI conversion drops this message from a $ref member, so
+  // smithy-build.json restores it with jsonAdd for every SDK's deprecation.
+  @deprecated(message: "Never sent by Basecamp; read completion.creator instead", since: "2026-10")
   completer: Person
   assignees: PersonList
   completion_url: String

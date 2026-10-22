@@ -5,6 +5,8 @@
  * `type` stays "Kanban::Step", reached through the canonical flat /subtasks
  * routes bc3 documents (bc3#12659).
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
@@ -13,6 +15,10 @@ import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
+
+const completedSubtask = JSON.parse(
+  readFileSync(join(__dirname, "..", "..", "..", "spec", "fixtures", "subtasks", "get-completed.json"), "utf8")
+);
 
 const sampleSubtask = (id = 1, position = 1) => ({
   id,
@@ -86,6 +92,20 @@ describe("SubtasksService", () => {
       expect(subtask.id).toBe(42);
       expect(subtask.title).toBe("Hero shot on the desk");
       expect(subtask.completion_url).toBe(`${BASE_URL}/subtasks/42/completion.json`);
+    });
+
+    it("should say who completed a completed subtask, and when", async () => {
+      server.use(
+        http.get(`${BASE_URL}/subtasks/1069479879`, () => {
+          return HttpResponse.json(completedSubtask);
+        })
+      );
+
+      const subtask = await client.subtasks.get(1069479879);
+      expect(subtask.completed).toBe(true);
+      expect(subtask.completion?.created_at).toBe("2026-07-03T15:42:10.000Z");
+      expect(subtask.completion?.creator.id).toBe(1049715938);
+      expect(subtask.completion?.creator.name).toBe("Annie Bryan");
     });
 
     it("should throw not_found for a missing subtask", async () => {
