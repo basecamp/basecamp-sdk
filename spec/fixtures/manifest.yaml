@@ -118,6 +118,10 @@ targets:
     fixture: subtasks/get-completed.json
     pointer: ""
     schema: Subtask
+  - id: recording-completion
+    fixture: subtasks/get-completed.json
+    pointer: "/completion"
+    schema: RecordingCompletion
   - id: subtask-list
     operation: ListSubtasks
     fixture: subtasks/list.json
@@ -445,7 +449,8 @@ covered_schemas:
   Message: [message-get]
   Document: [document-get]
   Card: [card-get]
-  Subtask: [subtask-get]
+  Subtask: [subtask-get, subtask-get-completed]
+  RecordingCompletion: [recording-completion]
   Ping: [ping-get]
   Embed: [embed-active]
   Todolist: [todolist-get, todolist-group-get]

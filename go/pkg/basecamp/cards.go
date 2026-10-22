@@ -113,7 +113,6 @@ type Card struct {
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
 	DueOn                  string               `json:"due_on,omitempty"`
 	Completed              bool                 `json:"completed"`
-	CompletedAt            *time.Time           `json:"completed_at,omitempty"`
 	CommentsCount          int                  `json:"comments_count"`
 	BoostsCount            int                  `json:"boosts_count"`
 	BoostsURL              string               `json:"boosts_url,omitempty"`
@@ -128,37 +127,48 @@ type Card struct {
 	Parent                 *Parent   `json:"parent,omitempty"`
 	Bucket                 *Bucket   `json:"bucket,omitempty"`
 	Creator                *Person   `json:"creator,omitempty"`
-	Completer              *Person   `json:"completer,omitempty"`
 	Assignees              []Person  `json:"assignees,omitempty"`
 	CompletionSubscribers  []Person  `json:"completion_subscribers,omitempty"`
 	Steps                  []Subtask `json:"steps,omitempty"`
+
+	// Completion is nil unless the card is completed.
+	Completion *RecordingCompletion `json:"completion,omitempty"`
+	// Deprecated: use Completion.CreatedAt.
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	// Deprecated: use Completion.Creator.
+	Completer *Person `json:"completer,omitempty"`
 }
 
 // Subtask is a checklist item under a to-do or a card. Kanban card steps are
 // subtasks too: SubtasksService and CardStepsService return the same records,
 // whose wire `type` stays "Kanban::Step" permanently.
 type Subtask struct {
-	ID               int64      `json:"id"`
-	Status           string     `json:"status"`
-	VisibleToClients bool       `json:"visible_to_clients"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Title            string     `json:"title"`
-	InheritsStatus   bool       `json:"inherits_status"`
-	Type             string     `json:"type"`
-	URL              string     `json:"url"`
-	AppURL           string     `json:"app_url"`
-	BookmarkURL      string     `json:"bookmark_url"`
-	CompletionURL    string     `json:"completion_url,omitempty"`
-	Position         int        `json:"position"`
-	DueOn            string     `json:"due_on,omitempty"`
-	Completed        bool       `json:"completed"`
-	CompletedAt      *time.Time `json:"completed_at,omitempty"`
-	Parent           *Parent    `json:"parent,omitempty"`
-	Bucket           *Bucket    `json:"bucket,omitempty"`
-	Creator          *Person    `json:"creator,omitempty"`
-	Completer        *Person    `json:"completer,omitempty"`
-	Assignees        []Person   `json:"assignees,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	InheritsStatus   bool      `json:"inherits_status"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url"`
+	CompletionURL    string    `json:"completion_url,omitempty"`
+	Position         int       `json:"position"`
+	DueOn            string    `json:"due_on,omitempty"`
+	Completed        bool      `json:"completed"`
+	Parent           *Parent   `json:"parent,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
+	Assignees        []Person  `json:"assignees,omitempty"`
+
+	// Completion is nil unless the subtask is completed.
+	Completion *RecordingCompletion `json:"completion,omitempty"`
+	// Deprecated: use Completion.CreatedAt.
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	// Deprecated: use Completion.Creator.
+	Completer *Person `json:"completer,omitempty"`
 }
 
 // CardStep is the deprecated former name of Subtask.
@@ -1582,10 +1592,7 @@ func cardFromGenerated(gc generated.Card) Card {
 		c.DueOn = gc.DueOn.String()
 	}
 
-	// Handle completed_at
-	if gc.CompletedAt != nil {
-		c.CompletedAt = gc.CompletedAt
-	}
+	c.Completion, c.CompletedAt, c.Completer = completionFromGenerated(gc.Completion, gc.CompletedAt, gc.Completer)
 
 	if gc.Parent.Id != 0 || gc.Parent.Title != "" {
 		c.Parent = &Parent{
@@ -1608,11 +1615,6 @@ func cardFromGenerated(gc generated.Card) Card {
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
 		creator := personFromGenerated(gc.Creator)
 		c.Creator = &creator
-	}
-
-	if gc.Completer != nil {
-		completer := personFromGenerated(*gc.Completer)
-		c.Completer = &completer
 	}
 
 	if len(gc.Assignees) > 0 {
@@ -1668,10 +1670,7 @@ func subtaskFromGenerated(gs generated.Subtask) Subtask {
 		s.DueOn = gs.DueOn.String()
 	}
 
-	// Handle completed_at
-	if gs.CompletedAt != nil {
-		s.CompletedAt = gs.CompletedAt
-	}
+	s.Completion, s.CompletedAt, s.Completer = completionFromGenerated(gs.Completion, gs.CompletedAt, gs.Completer)
 
 	if gs.Parent.Id != 0 || gs.Parent.Title != "" {
 		s.Parent = &Parent{
@@ -1694,11 +1693,6 @@ func subtaskFromGenerated(gs generated.Subtask) Subtask {
 	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
 		creator := personFromGenerated(gs.Creator)
 		s.Creator = &creator
-	}
-
-	if gs.Completer != nil {
-		completer := personFromGenerated(*gs.Completer)
-		s.Completer = &completer
 	}
 
 	if len(gs.Assignees) > 0 {

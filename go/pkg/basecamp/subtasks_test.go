@@ -214,12 +214,72 @@ func TestSubtasksService_Get(t *testing.T) {
 	}
 }
 
-func TestSubtasksService_Get_Completed(t *testing.T) {
-	svc := testSubtasksServer(t, func(w http.ResponseWriter, r *http.Request) {
+// The completed-subtask fixture's completion: Annie Bryan at 15:42:10 UTC,
+// distinct from the subtask's own creator and timestamps.
+var (
+	fixtureCompleterID   int64 = 1049715938
+	fixtureCompleterName       = "Annie Bryan"
+	fixtureCompletedAt         = time.Date(2026, 7, 3, 15, 42, 10, 0, time.UTC)
+)
+
+// withFixtureCompletion returns body with the completed-subtask fixture's
+// `completion` object added, the shape bc3's shared recordings/_completion
+// partial renders on every completed to-do, card and subtask.
+func withFixtureCompletion(t *testing.T, body []byte) []byte {
+	t.Helper()
+	var completed map[string]json.RawMessage
+	if err := json.Unmarshal(loadSubtasksFixture(t, "get-completed.json"), &completed); err != nil {
+		t.Fatalf("failed to unmarshal get-completed.json: %v", err)
+	}
+	var doc map[string]json.RawMessage
+	if err := json.Unmarshal(body, &doc); err != nil {
+		t.Fatalf("failed to unmarshal body: %v", err)
+	}
+	doc["completed"] = json.RawMessage("true")
+	doc["completion"] = completed["completion"]
+	out, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("failed to marshal body: %v", err)
+	}
+	return out
+}
+
+func serveJSON(body []byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write(loadSubtasksFixture(t, "get-completed.json"))
-	})
+		w.Write(body)
+	}
+}
+
+func assertFixtureCompletion(t *testing.T, completion *RecordingCompletion, completedAt *time.Time, completer *Person) {
+	t.Helper()
+	if completion == nil {
+		t.Fatal("expected Completion, got nil")
+	}
+	if !completion.CreatedAt.Equal(fixtureCompletedAt) {
+		t.Errorf("expected Completion.CreatedAt %s, got %s", fixtureCompletedAt, completion.CreatedAt)
+	}
+	if completion.Creator == nil || completion.Creator.ID != fixtureCompleterID || completion.Creator.Name != fixtureCompleterName {
+		t.Errorf("expected Completion.Creator %s (%d), got %+v", fixtureCompleterName, fixtureCompleterID, completion.Creator)
+	}
+	if completer == nil || completer.ID != fixtureCompleterID || completer.Name != fixtureCompleterName {
+		t.Errorf("expected completer %s (%d), got %+v", fixtureCompleterName, fixtureCompleterID, completer)
+	}
+	if completedAt == nil || !completedAt.Equal(fixtureCompletedAt) {
+		t.Errorf("expected completed_at %s, got %v", fixtureCompletedAt, completedAt)
+	}
+}
+
+func assertNoCompletion(t *testing.T, completion *RecordingCompletion, completedAt *time.Time, completer *Person) {
+	t.Helper()
+	if completion != nil || completedAt != nil || completer != nil {
+		t.Errorf("an incomplete recording must leave Completion, CompletedAt and Completer nil, got %+v, %v, %+v", completion, completedAt, completer)
+	}
+}
+
+func TestSubtasksService_Get_Completed(t *testing.T) {
+	svc := testSubtasksServer(t, serveJSON(loadSubtasksFixture(t, "get-completed.json")))
 
 	subtask, err := svc.Get(context.Background(), 500)
 	if err != nil {
@@ -228,13 +288,20 @@ func TestSubtasksService_Get_Completed(t *testing.T) {
 	if !subtask.Completed {
 		t.Error("expected the subtask to be completed")
 	}
-	if subtask.Completer == nil || subtask.Completer.ID != 1049715938 || subtask.Completer.Name != "Annie Bryan" {
-		t.Errorf("expected completer Annie Bryan (1049715938), got %+v", subtask.Completer)
+	assertFixtureCompletion(t, subtask.Completion, subtask.CompletedAt, subtask.Completer)
+	if subtask.Creator == nil || subtask.Creator.Name != "Matt Donahue" {
+		t.Errorf("the completion must not replace the subtask's own creator, got %+v", subtask.Creator)
 	}
-	wantCompletedAt := time.Date(2026, 7, 3, 15, 42, 10, 0, time.UTC)
-	if subtask.CompletedAt == nil || !subtask.CompletedAt.Equal(wantCompletedAt) {
-		t.Errorf("expected completed_at %s, got %v", wantCompletedAt, subtask.CompletedAt)
+}
+
+func TestSubtasksService_Get_Incomplete(t *testing.T) {
+	svc := testSubtasksServer(t, serveJSON(loadSubtasksFixture(t, "get.json")))
+
+	subtask, err := svc.Get(context.Background(), 500)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
+	assertNoCompletion(t, subtask.Completion, subtask.CompletedAt, subtask.Completer)
 }
 
 func TestSubtasksService_Get_NotFound(t *testing.T) {

@@ -29,7 +29,10 @@ data class Subtask(
     val position: Int? = null,
     @SerialName("due_on") val dueOn: String? = null,
     val completed: Boolean? = null,
+    val completion: RecordingCompletion? = null,
+    @Deprecated("This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead")
     @SerialName("completed_at") val completedAt: String? = null,
+    @Deprecated("This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead")
     val completer: Person? = null,
     val assignees: List<Person>? = null,
     @SerialName("completion_url") val completionUrl: String? = null

@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-10-22T21:43:13Z",
+  "generated": "2026-10-22T22:35:52Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -3765,10 +3765,12 @@
     "CreateCard": [
       "assignees.[]",
       "completer",
+      "completion.creator",
       "completion_subscribers.[]",
       "creator",
       "steps.[].assignees.[]",
       "steps.[].completer",
+      "steps.[].completion.creator",
       "steps.[].creator"
     ],
     "CreateCardColumn": [
@@ -3778,6 +3780,7 @@
     "CreateCardStep": [
       "assignees.[]",
       "completer",
+      "completion.creator",
       "creator"
     ],
     "CreateCloudFile": [
@@ -3817,6 +3820,7 @@
     "CreateSubtask": [
       "assignees.[]",
       "completer",
+      "completion.creator",
       "creator"
     ],
     "CreateTemplateLibraryCardTable": [
@@ -3851,10 +3855,12 @@
     ],
     "CreateTodo": [
       "assignees.[]",
+      "completion.creator",
       "completion_subscribers.[]",
       "creator",
       "steps.[].assignees.[]",
       "steps.[].completer",
+      "steps.[].completion.creator",
       "steps.[].creator"
     ],
     "CreateTodolist": [
@@ -3865,10 +3871,12 @@
     ],
     "CreateTodosetTodo": [
       "assignees.[]",
+      "completion.creator",
       "completion_subscribers.[]",
       "creator",
       "steps.[].assignees.[]",
       "steps.[].completer",
+      "steps.[].completion.creator",
       "steps.[].creator"
     ],
     "CreateTool": [
@@ -3908,10 +3916,12 @@
     "GetAssignedTodos": [
       "person",
       "todos.[].assignees.[]",
+      "todos.[].completion.creator",
       "todos.[].completion_subscribers.[]",
       "todos.[].creator",
       "todos.[].steps.[].assignees.[]",
       "todos.[].steps.[].completer",
+      "todos.[].steps.[].completion.creator",
       "todos.[].steps.[].creator"
     ],
     "GetBoost": [
@@ -3930,10 +3940,12 @@
     "GetCard": [
       "assignees.[]",
       "completer",
+      "completion.creator",
       "completion_subscribers.[]",
       "creator",
       "steps.[].assignees.[]",
       "steps.[].completer",
+      "steps.[].completion.creator",
       "steps.[].creator"
     ],
     "GetCardColumn": [
@@ -3943,6 +3955,7 @@
     "GetCardStep": [
       "assignees.[]",
       "completer",
+      "completion.creator",
       "creator"
     ],
     "GetCardTable": [
@@ -3981,18 +3994,22 @@
     "GetEverythingCompletedCards": [
       "[].cards.[].assignees.[]",
       "[].cards.[].completer",
+      "[].cards.[].completion.creator",
       "[].cards.[].completion_subscribers.[]",
       "[].cards.[].creator",
       "[].cards.[].steps.[].assignees.[]",
       "[].cards.[].steps.[].completer",
+      "[].cards.[].steps.[].completion.creator",
       "[].cards.[].steps.[].creator"
     ],
     "GetEverythingCompletedTodos": [
       "[].todos.[].assignees.[]",
+      "[].todos.[].completion.creator",
       "[].todos.[].completion_subscribers.[]",
       "[].todos.[].creator",
       "[].todos.[].steps.[].assignees.[]",
       "[].todos.[].steps.[].completer",
+      "[].todos.[].steps.[].completion.creator",
       "[].todos.[].steps.[].creator"
     ],
     "GetEverythingFiles": [
@@ -4007,78 +4024,96 @@
     "GetEverythingNoDueDateCards": [
       "[].cards.[].assignees.[]",
       "[].cards.[].completer",
+      "[].cards.[].completion.creator",
       "[].cards.[].completion_subscribers.[]",
       "[].cards.[].creator",
       "[].cards.[].steps.[].assignees.[]",
       "[].cards.[].steps.[].completer",
+      "[].cards.[].steps.[].completion.creator",
       "[].cards.[].steps.[].creator"
     ],
     "GetEverythingNoDueDateTodos": [
       "[].todos.[].assignees.[]",
+      "[].todos.[].completion.creator",
       "[].todos.[].completion_subscribers.[]",
       "[].todos.[].creator",
       "[].todos.[].steps.[].assignees.[]",
       "[].todos.[].steps.[].completer",
+      "[].todos.[].steps.[].completion.creator",
       "[].todos.[].steps.[].creator"
     ],
     "GetEverythingNotNowCards": [
       "[].cards.[].assignees.[]",
       "[].cards.[].completer",
+      "[].cards.[].completion.creator",
       "[].cards.[].completion_subscribers.[]",
       "[].cards.[].creator",
       "[].cards.[].steps.[].assignees.[]",
       "[].cards.[].steps.[].completer",
+      "[].cards.[].steps.[].completion.creator",
       "[].cards.[].steps.[].creator"
     ],
     "GetEverythingOpenCards": [
       "[].cards.[].assignees.[]",
       "[].cards.[].completer",
+      "[].cards.[].completion.creator",
       "[].cards.[].completion_subscribers.[]",
       "[].cards.[].creator",
       "[].cards.[].steps.[].assignees.[]",
       "[].cards.[].steps.[].completer",
+      "[].cards.[].steps.[].completion.creator",
       "[].cards.[].steps.[].creator"
     ],
     "GetEverythingOpenTodos": [
       "[].todos.[].assignees.[]",
+      "[].todos.[].completion.creator",
       "[].todos.[].completion_subscribers.[]",
       "[].todos.[].creator",
       "[].todos.[].steps.[].assignees.[]",
       "[].todos.[].steps.[].completer",
+      "[].todos.[].steps.[].completion.creator",
       "[].todos.[].steps.[].creator"
     ],
     "GetEverythingOverdueCards": [
       "[].assignees.[]",
       "[].completer",
+      "[].completion.creator",
       "[].completion_subscribers.[]",
       "[].creator",
       "[].steps.[].assignees.[]",
       "[].steps.[].completer",
+      "[].steps.[].completion.creator",
       "[].steps.[].creator"
     ],
     "GetEverythingOverdueTodos": [
       "[].assignees.[]",
+      "[].completion.creator",
       "[].completion_subscribers.[]",
       "[].creator",
       "[].steps.[].assignees.[]",
       "[].steps.[].completer",
+      "[].steps.[].completion.creator",
       "[].steps.[].creator"
     ],
     "GetEverythingUnassignedCards": [
       "[].cards.[].assignees.[]",
       "[].cards.[].completer",
+      "[].cards.[].completion.creator",
       "[].cards.[].completion_subscribers.[]",
       "[].cards.[].creator",
       "[].cards.[].steps.[].assignees.[]",
       "[].cards.[].steps.[].completer",
+      "[].cards.[].steps.[].completion.creator",
       "[].cards.[].steps.[].creator"
     ],
     "GetEverythingUnassignedTodos": [
       "[].todos.[].assignees.[]",
+      "[].todos.[].completion.creator",
       "[].todos.[].completion_subscribers.[]",
       "[].todos.[].creator",
       "[].todos.[].steps.[].assignees.[]",
       "[].todos.[].steps.[].completer",
+      "[].todos.[].steps.[].completion.creator",
       "[].todos.[].steps.[].creator"
     ],
     "GetForward": [
@@ -4119,28 +4154,36 @@
     ],
     "GetOverdueTodos": [
       "over_a_month_late.[].assignees.[]",
+      "over_a_month_late.[].completion.creator",
       "over_a_month_late.[].completion_subscribers.[]",
       "over_a_month_late.[].creator",
       "over_a_month_late.[].steps.[].assignees.[]",
       "over_a_month_late.[].steps.[].completer",
+      "over_a_month_late.[].steps.[].completion.creator",
       "over_a_month_late.[].steps.[].creator",
       "over_a_week_late.[].assignees.[]",
+      "over_a_week_late.[].completion.creator",
       "over_a_week_late.[].completion_subscribers.[]",
       "over_a_week_late.[].creator",
       "over_a_week_late.[].steps.[].assignees.[]",
       "over_a_week_late.[].steps.[].completer",
+      "over_a_week_late.[].steps.[].completion.creator",
       "over_a_week_late.[].steps.[].creator",
       "over_three_months_late.[].assignees.[]",
+      "over_three_months_late.[].completion.creator",
       "over_three_months_late.[].completion_subscribers.[]",
       "over_three_months_late.[].creator",
       "over_three_months_late.[].steps.[].assignees.[]",
       "over_three_months_late.[].steps.[].completer",
+      "over_three_months_late.[].steps.[].completion.creator",
       "over_three_months_late.[].steps.[].creator",
       "under_a_week_late.[].assignees.[]",
+      "under_a_week_late.[].completion.creator",
       "under_a_week_late.[].completion_subscribers.[]",
       "under_a_week_late.[].creator",
       "under_a_week_late.[].steps.[].assignees.[]",
       "under_a_week_late.[].steps.[].completer",
+      "under_a_week_late.[].steps.[].completion.creator",
       "under_a_week_late.[].steps.[].creator"
     ],
     "GetPerson": [
@@ -4196,6 +4239,7 @@
     "GetSubtask": [
       "assignees.[]",
       "completer",
+      "completion.creator",
       "creator"
     ],
     "GetTemplateLibraryCardTables": [
@@ -4230,10 +4274,12 @@
     ],
     "GetTodo": [
       "assignees.[]",
+      "completion.creator",
       "completion_subscribers.[]",
       "creator",
       "steps.[].assignees.[]",
       "steps.[].completer",
+      "steps.[].completion.creator",
       "steps.[].creator"
     ],
     "GetTodolistOrGroup": [
@@ -4274,10 +4320,12 @@
     "ListCards": [
       "[].assignees.[]",
       "[].completer",
+      "[].completion.creator",
       "[].completion_subscribers.[]",
       "[].creator",
       "[].steps.[].assignees.[]",
       "[].steps.[].completer",
+      "[].steps.[].completion.creator",
       "[].steps.[].creator"
     ],
     "ListClientApprovals": [
@@ -4353,6 +4401,7 @@
     "ListSubtasks": [
       "[].assignees.[]",
       "[].completer",
+      "[].completion.creator",
       "[].creator"
     ],
     "ListTodolistGroups": [
@@ -4363,10 +4412,12 @@
     ],
     "ListTodos": [
       "[].assignees.[]",
+      "[].completion.creator",
       "[].completion_subscribers.[]",
       "[].creator",
       "[].steps.[].assignees.[]",
       "[].steps.[].completer",
+      "[].steps.[].completion.creator",
       "[].steps.[].creator"
     ],
     "ListUploadVersions": [
@@ -4392,10 +4443,12 @@
     ],
     "ReplaceTodo": [
       "assignees.[]",
+      "completion.creator",
       "completion_subscribers.[]",
       "creator",
       "steps.[].assignees.[]",
       "steps.[].completer",
+      "steps.[].completion.creator",
       "steps.[].creator"
     ],
     "Search": [
@@ -4409,6 +4462,7 @@
     "SetCardStepCompletion": [
       "assignees.[]",
       "completer",
+      "completion.creator",
       "creator"
     ],
     "SetClientVisibility": [
@@ -4426,10 +4480,12 @@
     "UpdateCard": [
       "assignees.[]",
       "completer",
+      "completion.creator",
       "completion_subscribers.[]",
       "creator",
       "steps.[].assignees.[]",
       "steps.[].completer",
+      "steps.[].completion.creator",
       "steps.[].creator"
     ],
     "UpdateCardColumn": [
@@ -4439,6 +4495,7 @@
     "UpdateCardStep": [
       "assignees.[]",
       "completer",
+      "completion.creator",
       "creator"
     ],
     "UpdateCloudFile": [
@@ -4476,6 +4533,7 @@
     "UpdateSubtask": [
       "assignees.[]",
       "completer",
+      "completion.creator",
       "creator"
     ],
     "UpdateTimesheetEntry": [

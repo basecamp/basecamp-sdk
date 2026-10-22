@@ -8,6 +8,8 @@ A subtask is the SDK's ``Subtask`` type (formerly ``CardStep``), whose wire
 from __future__ import annotations
 
 import json
+from pathlib import Path
+from typing import get_type_hints
 
 import httpx
 import pytest
@@ -15,8 +17,11 @@ import respx
 
 from basecamp import Client
 from basecamp.errors import ForbiddenError, NotFoundError, ValidationError
+from basecamp.generated.types import Person, RecordingCompletion, Subtask
 
 BASE = "https://3.basecampapi.com/12345"
+
+COMPLETED = Path(__file__).parents[3] / "spec" / "fixtures" / "subtasks" / "get-completed.json"
 
 
 def _subtask(subtask_id: int, position: int = 1) -> dict:
@@ -77,6 +82,25 @@ class TestGet:
 
         assert subtask["id"] == 42
         assert subtask["completion_url"] == f"{BASE}/subtasks/42/completion.json"
+
+    @respx.mock
+    def test_a_completed_subtask_says_who_completed_it_and_when(self):
+        respx.get(f"{BASE}/subtasks/1069479879").mock(
+            return_value=httpx.Response(200, json=json.loads(COMPLETED.read_text(encoding="utf-8")))
+        )
+
+        subtask = _subtasks().get(subtask_id=1069479879)
+
+        assert subtask["completed"] is True
+        assert subtask["completion"]["created_at"] == "2026-07-03T15:42:10.000Z"
+        assert subtask["completion"]["creator"]["id"] == 1049715938
+        assert subtask["completion"]["creator"]["name"] == "Annie Bryan"
+
+    def test_the_subtask_type_declares_its_completion(self):
+        hints = get_type_hints(Subtask)
+
+        assert hints["completion"] is RecordingCompletion
+        assert get_type_hints(RecordingCompletion)["creator"] is Person
 
     @respx.mock
     def test_404_surfaces_as_not_found(self):

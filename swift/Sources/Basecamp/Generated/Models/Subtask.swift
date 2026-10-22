@@ -18,8 +18,11 @@ public struct Subtask: Codable, Sendable {
     public var assignees: [Person]?
     public var bookmarkUrl: String?
     public var completed: Bool?
+    /// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
     public var completedAt: String?
+    /// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
     public var completer: Person?
+    public var completion: RecordingCompletion?
     public var completionUrl: String?
     public var dueOn: String?
     public var position: Int32?
@@ -43,6 +46,7 @@ public struct Subtask: Codable, Sendable {
         completed: Bool? = nil,
         completedAt: String? = nil,
         completer: Person? = nil,
+        completion: RecordingCompletion? = nil,
         completionUrl: String? = nil,
         dueOn: String? = nil,
         position: Int32? = nil
@@ -65,6 +69,7 @@ public struct Subtask: Codable, Sendable {
         self.completed = completed
         self.completedAt = completedAt
         self.completer = completer
+        self.completion = completion
         self.completionUrl = completionUrl
         self.dueOn = dueOn
         self.position = position
@@ -89,6 +94,7 @@ public struct Subtask: Codable, Sendable {
         case completed
         case completedAt
         case completer
+        case completion
         case completionUrl
         case dueOn
         case position
@@ -114,6 +120,7 @@ public struct Subtask: Codable, Sendable {
         self.completed = try container.decodeIfPresent(Bool.self, forKey: .completed)
         self.completedAt = try container.decodeIfPresent(String.self, forKey: .completedAt)
         self.completer = try container.decodeIfPresent(Person.self, forKey: .completer)
+        self.completion = try container.decodeIfPresent(RecordingCompletion.self, forKey: .completion)
         self.completionUrl = try container.decodeIfPresent(String.self, forKey: .completionUrl)
         self.dueOn = try container.decodeIfPresent(String.self, forKey: .dueOn)
         self.position = try container.decodeIfPresent(Int32.self, forKey: .position)
@@ -139,6 +146,7 @@ public struct Subtask: Codable, Sendable {
         try container.encodeIfPresent(self.completed, forKey: .completed)
         try container.encodeIfPresent(self.completedAt, forKey: .completedAt)
         try container.encodeIfPresent(self.completer, forKey: .completer)
+        try container.encodeIfPresent(self.completion, forKey: .completion)
         try container.encodeIfPresent(self.completionUrl, forKey: .completionUrl)
         try container.encodeIfPresent(self.dueOn, forKey: .dueOn)
         try container.encodeIfPresent(self.position, forKey: .position)

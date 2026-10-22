@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-22T21:43:13Z
+# Generated: 2026-10-22T22:35:52Z
 
 require "json"
 require "time"
@@ -594,7 +594,11 @@ module Basecamp
     # Card
     class Card
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_at, :completer, :completion_subscribers, :completion_url, :content, :description, :due_on, :position, :steps, :subscription_url, :subtasks_completed_count, :subtasks_count, :subtasks_url
+      # @!attribute [rw] completed_at
+      #   @deprecated This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
+      # @!attribute [rw] completer
+      #   @deprecated This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
+      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_at, :completer, :completion, :completion_subscribers, :completion_url, :content, :description, :due_on, :position, :steps, :subscription_url, :subtasks_completed_count, :subtasks_count, :subtasks_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -625,6 +629,7 @@ module Basecamp
         @completed = parse_boolean(data["completed"])
         @completed_at = parse_datetime(data["completed_at"])
         @completer = parse_type(data["completer"], "Person")
+        @completion = parse_type(data["completion"], "RecordingCompletion")
         @completion_subscribers = parse_array(data["completion_subscribers"], "Person")
         @completion_url = data["completion_url"]
         @content = data["content"]
@@ -663,6 +668,7 @@ module Basecamp
           "completed" => @completed,
           "completed_at" => @completed_at,
           "completer" => @completer,
+          "completion" => @completion,
           "completion_subscribers" => @completion_subscribers,
           "completion_url" => @completion_url,
           "content" => @content,
@@ -4059,6 +4065,33 @@ module Basecamp
       end
     end
 
+    # RecordingCompletion
+    class RecordingCompletion
+      include TypeHelpers
+      attr_accessor :created_at, :creator
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at creator].freeze
+      end
+
+      def initialize(data = {})
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+      end
+
+      def to_h
+        {
+          "created_at" => @created_at,
+          "creator" => @creator,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
     # RecordingParent
     class RecordingParent
       include TypeHelpers
@@ -4563,7 +4596,11 @@ module Basecamp
     # Subtask
     class Subtask
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :completed, :completed_at, :completer, :completion_url, :due_on, :position
+      # @!attribute [rw] completed_at
+      #   @deprecated This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
+      # @!attribute [rw] completer
+      #   @deprecated This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :completed, :completed_at, :completer, :completion, :completion_url, :due_on, :position
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -4589,6 +4626,7 @@ module Basecamp
         @completed = parse_boolean(data["completed"])
         @completed_at = parse_datetime(data["completed_at"])
         @completer = parse_type(data["completer"], "Person")
+        @completion = parse_type(data["completion"], "RecordingCompletion")
         @completion_url = data["completion_url"]
         @due_on = data["due_on"]
         @position = parse_integer(data["position"])
@@ -4614,6 +4652,7 @@ module Basecamp
           "completed" => @completed,
           "completed_at" => @completed_at,
           "completer" => @completer,
+          "completion" => @completion,
           "completion_url" => @completion_url,
           "due_on" => @due_on,
           "position" => @position,
@@ -5056,7 +5095,7 @@ module Basecamp
     # Todo
     class Todo
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url, :subtasks_completed_count, :subtasks_count, :subtasks_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url, :subtasks_completed_count, :subtasks_count, :subtasks_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -5086,6 +5125,7 @@ module Basecamp
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @completed = parse_boolean(data["completed"])
+        @completion = parse_type(data["completion"], "RecordingCompletion")
         @completion_subscribers = parse_array(data["completion_subscribers"], "Person")
         @completion_url = data["completion_url"]
         @description = data["description"]
@@ -5123,6 +5163,7 @@ module Basecamp
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
           "completed" => @completed,
+          "completion" => @completion,
           "completion_subscribers" => @completion_subscribers,
           "completion_url" => @completion_url,
           "description" => @description,

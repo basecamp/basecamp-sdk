@@ -165,8 +165,11 @@ class Card(TypedDict):
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     completed: NotRequired[bool]
+    # deprecated (source-only): This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
     completed_at: NotRequired[str]
+    # deprecated (source-only): This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
     completer: NotRequired[Person]
+    completion: NotRequired[RecordingCompletion]
     completion_subscribers: NotRequired[list[Person]]
     completion_url: NotRequired[str]
     content: NotRequired[str]
@@ -1636,6 +1639,11 @@ class RecordingCategory(TypedDict):
     name: str
 
 
+class RecordingCompletion(TypedDict):
+    created_at: str
+    creator: Person
+
+
 class RecordingParent(TypedDict):
     app_url: str
     bucket: NotRequired[RecordingBucket]
@@ -1889,8 +1897,11 @@ class Subtask(TypedDict):
     bookmark_url: NotRequired[str]
     bucket: TodoBucket
     completed: NotRequired[bool]
+    # deprecated (source-only): This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
     completed_at: NotRequired[str]
+    # deprecated (source-only): This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
     completer: NotRequired[Person]
+    completion: NotRequired[RecordingCompletion]
     completion_url: NotRequired[str]
     created_at: str
     creator: Person
@@ -2051,6 +2062,7 @@ class Todo(TypedDict):
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     completed: NotRequired[bool]
+    completion: NotRequired[RecordingCompletion]
     completion_subscribers: NotRequired[list[Person]]
     completion_url: NotRequired[str]
     content: str

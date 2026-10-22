@@ -50,13 +50,11 @@ type Todo struct {
 	CommentsURL            string               `json:"comments_url,omitempty"`
 	// SubtasksCount is the real number of subtasks; Steps embeds at most 100.
 	// SubtasksURL lists all of them, paginated (SubtasksService.List).
-	SubtasksCount          int        `json:"subtasks_count,omitempty"`
-	SubtasksCompletedCount int        `json:"subtasks_completed_count,omitempty"`
-	SubtasksURL            string     `json:"subtasks_url,omitempty"`
-	CompletionURL          string     `json:"completion_url,omitempty"`
-	CompletedAt            *time.Time `json:"completed_at,omitempty"`
-	Completer              *Person    `json:"completer,omitempty"`
-	Assignees              []Person   `json:"assignees,omitempty"`
+	SubtasksCount          int      `json:"subtasks_count,omitempty"`
+	SubtasksCompletedCount int      `json:"subtasks_completed_count,omitempty"`
+	SubtasksURL            string   `json:"subtasks_url,omitempty"`
+	CompletionURL          string   `json:"completion_url,omitempty"`
+	Assignees              []Person `json:"assignees,omitempty"`
 	// CompletionSubscribers distinguishes present-but-empty from absent:
 	// a non-nil zero-length slice means the server sent an empty list,
 	// nil means the property was absent from the response. Deliberately
@@ -67,6 +65,19 @@ type Todo struct {
 	// Steps are the BC5-added subtasks embedded in a Todo response, the same
 	// Subtask shape a card embeds.
 	Steps []Subtask `json:"steps,omitempty"`
+
+	// Completion is nil unless the to-do is completed.
+	Completion *RecordingCompletion `json:"completion,omitempty"`
+	// Deprecated: use Completion.CreatedAt.
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	// Deprecated: use Completion.Creator.
+	Completer *Person `json:"completer,omitempty"`
+}
+
+// RecordingCompletion is who completed a to-do, card or subtask, and when.
+type RecordingCompletion struct {
+	CreatedAt time.Time `json:"created_at"`
+	Creator   *Person   `json:"creator"`
 }
 
 // Person represents a Basecamp user or system actor.
@@ -924,6 +935,7 @@ func todoFromGenerated(gt generated.Todo) Todo {
 		SubtasksCompletedCount: int(deref(gt.SubtasksCompletedCount)),
 		SubtasksURL:            deref(gt.SubtasksUrl),
 	}
+	t.Completion, t.CompletedAt, t.Completer = completionFromGenerated(gt.Completion, nil, nil)
 
 	if gt.Id != 0 {
 		t.ID = gt.Id
@@ -994,6 +1006,24 @@ func todoFromGenerated(gt generated.Todo) Todo {
 	}
 
 	return t
+}
+
+// completionFromGenerated also returns the deprecated CompletedAt and
+// Completer, copied from completion so changing one does not change the
+// other. Basecamp never sends completed_at or completer; they are read only
+// when completion is absent, so a stub of the old shape keeps its values.
+func completionFromGenerated(gc *generated.RecordingCompletion, legacyAt *time.Time, legacyBy *generated.Person) (completion *RecordingCompletion, completedAt *time.Time, completer *Person) {
+	if gc == nil {
+		if legacyBy != nil {
+			by := personFromGenerated(*legacyBy)
+			completer = &by
+		}
+		return nil, legacyAt, completer
+	}
+	creator := personFromGenerated(gc.Creator)
+	completion = &RecordingCompletion{CreatedAt: gc.CreatedAt, Creator: &creator}
+	at, by := gc.CreatedAt, creator
+	return completion, &at, &by
 }
 
 // richTextAttachmentFromGenerated converts a generated RichTextAttachment to

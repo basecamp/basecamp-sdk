@@ -240,17 +240,28 @@ type CampfireLineAttachment struct {
 
 // Card defines model for Card.
 type Card struct {
-	AppUrl                 string               `json:"app_url"`
-	Assignees              []Person             `json:"assignees,omitempty"`
-	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
-	BoostsCount            *int32               `json:"boosts_count,omitempty"`
-	BoostsUrl              *string              `json:"boosts_url,omitempty"`
-	Bucket                 TodoBucket           `json:"bucket"`
-	CommentsCount          *int32               `json:"comments_count,omitempty"`
-	CommentsUrl            *string              `json:"comments_url,omitempty"`
-	Completed              *bool                `json:"completed,omitempty"`
-	CompletedAt            *time.Time           `json:"completed_at,omitempty"`
-	Completer              *Person              `json:"completer,omitempty"`
+	AppUrl        string     `json:"app_url"`
+	Assignees     []Person   `json:"assignees,omitempty"`
+	BookmarkUrl   *string    `json:"bookmark_url,omitempty"`
+	BoostsCount   *int32     `json:"boosts_count,omitempty"`
+	BoostsUrl     *string    `json:"boosts_url,omitempty"`
+	Bucket        TodoBucket `json:"bucket"`
+	CommentsCount *int32     `json:"comments_count,omitempty"`
+	CommentsUrl   *string    `json:"comments_url,omitempty"`
+	Completed     *bool      `json:"completed,omitempty"`
+
+	// CompletedAt This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
+	//
+	// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+
+	// Completer This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
+	//
+	// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
+	Completer *Person `json:"completer,omitempty"`
+
+	// Completion Who completed a to-do, card or subtask, and when.
+	Completion             *RecordingCompletion `json:"completion,omitempty"`
 	CompletionSubscribers  []Person             `json:"completion_subscribers,omitempty"`
 	CompletionUrl          *string              `json:"completion_url,omitempty"`
 	Content                *string              `json:"content,omitempty"`
@@ -3176,6 +3187,12 @@ type RecordingCategory struct {
 	Name string  `json:"name"`
 }
 
+// RecordingCompletion Who completed a to-do, card or subtask, and when.
+type RecordingCompletion struct {
+	CreatedAt time.Time `json:"created_at"`
+	Creator   Person    `json:"creator"`
+}
+
 // RecordingParent defines model for RecordingParent.
 type RecordingParent struct {
 	AppUrl string           `json:"app_url"`
@@ -3778,27 +3795,38 @@ type Subscription struct {
 
 // Subtask defines model for Subtask.
 type Subtask struct {
-	AppUrl           string          `json:"app_url"`
-	Assignees        []Person        `json:"assignees,omitempty"`
-	BookmarkUrl      *string         `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	Completed        *bool           `json:"completed,omitempty"`
-	CompletedAt      *time.Time      `json:"completed_at,omitempty"`
-	Completer        *Person         `json:"completer,omitempty"`
-	CompletionUrl    *string         `json:"completion_url,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	DueOn            *types.Date     `json:"due_on,omitempty"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Position         *int32          `json:"position,omitempty"`
-	Status           string          `json:"status"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl      string     `json:"app_url"`
+	Assignees   []Person   `json:"assignees,omitempty"`
+	BookmarkUrl *string    `json:"bookmark_url,omitempty"`
+	Bucket      TodoBucket `json:"bucket"`
+	Completed   *bool      `json:"completed,omitempty"`
+
+	// CompletedAt This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
+	//
+	// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+
+	// Completer This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
+	//
+	// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead
+	Completer *Person `json:"completer,omitempty"`
+
+	// Completion Who completed a to-do, card or subtask, and when.
+	Completion       *RecordingCompletion `json:"completion,omitempty"`
+	CompletionUrl    *string              `json:"completion_url,omitempty"`
+	CreatedAt        time.Time            `json:"created_at"`
+	Creator          Person               `json:"creator"`
+	DueOn            *types.Date          `json:"due_on,omitempty"`
+	Id               int64                `json:"id"`
+	InheritsStatus   bool                 `json:"inherits_status"`
+	Parent           RecordingParent      `json:"parent"`
+	Position         *int32               `json:"position,omitempty"`
+	Status           string               `json:"status"`
+	Title            string               `json:"title"`
+	Type             string               `json:"type"`
+	UpdatedAt        time.Time            `json:"updated_at"`
+	Url              string               `json:"url"`
+	VisibleToClients bool                 `json:"visible_to_clients"`
 }
 
 // CardStep is the deprecated former name of Subtask.
@@ -4110,15 +4138,18 @@ type TimesheetEntry struct {
 
 // Todo defines model for Todo.
 type Todo struct {
-	AppUrl                 string               `json:"app_url"`
-	Assignees              []Person             `json:"assignees,omitempty"`
-	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
-	BoostsCount            *int32               `json:"boosts_count,omitempty"`
-	BoostsUrl              *string              `json:"boosts_url,omitempty"`
-	Bucket                 TodoBucket           `json:"bucket"`
-	CommentsCount          *int32               `json:"comments_count,omitempty"`
-	CommentsUrl            *string              `json:"comments_url,omitempty"`
-	Completed              *bool                `json:"completed,omitempty"`
+	AppUrl        string     `json:"app_url"`
+	Assignees     []Person   `json:"assignees,omitempty"`
+	BookmarkUrl   *string    `json:"bookmark_url,omitempty"`
+	BoostsCount   *int32     `json:"boosts_count,omitempty"`
+	BoostsUrl     *string    `json:"boosts_url,omitempty"`
+	Bucket        TodoBucket `json:"bucket"`
+	CommentsCount *int32     `json:"comments_count,omitempty"`
+	CommentsUrl   *string    `json:"comments_url,omitempty"`
+	Completed     *bool      `json:"completed,omitempty"`
+
+	// Completion Who completed a to-do, card or subtask, and when.
+	Completion             *RecordingCompletion `json:"completion,omitempty"`
 	CompletionSubscribers  []Person             `json:"completion_subscribers,omitempty"`
 	CompletionUrl          *string              `json:"completion_url,omitempty"`
 	Content                string               `json:"content"`

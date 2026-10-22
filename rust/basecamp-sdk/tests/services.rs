@@ -968,6 +968,38 @@ async fn subtasks_get_reaches_the_wire() {
     account(&server).subtasks().get(100).await.unwrap();
 }
 
+#[tokio::test]
+async fn subtasks_get_decodes_who_completed_it_and_when() {
+    let server = MockServer::start().await;
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/fixtures/subtasks/get-completed.json"
+    ))
+    .unwrap();
+    Mock::given(method("GET"))
+        .and(path("/999/subtasks/1069479879"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(fixture))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let subtask = account(&server)
+        .subtasks()
+        .get(1_069_479_879)
+        .await
+        .unwrap();
+    assert_eq!(subtask.completed, Some(true));
+    let completion = subtask
+        .completion
+        .expect("a completed subtask carries its completion");
+    assert_eq!(
+        completion.created_at,
+        "2026-07-03T15:42:10Z"
+            .parse::<basecamp_sdk::DateTime>()
+            .unwrap()
+    );
+    assert_eq!(completion.creator.id, 1_049_715_938);
+    assert_eq!(completion.creator.name.expose(), "Annie Bryan");
+}
+
 /// `CardStep` is the deprecated former name of `Subtask`: a type alias, so a
 /// value the old spelling names is the very value both services return, and
 /// it still decodes the wire shape.

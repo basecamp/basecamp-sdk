@@ -1159,6 +1159,22 @@ func testTodosServer(t *testing.T, handler http.HandlerFunc) *TodosService {
 	return account.Todos()
 }
 
+func TestTodosService_Get_Completion(t *testing.T) {
+	svc := testTodosServer(t, serveJSON(withFixtureCompletion(t, loadTodosFixture(t, "get.json"))))
+	todo, err := svc.Get(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertFixtureCompletion(t, todo.Completion, todo.CompletedAt, todo.Completer)
+
+	svc = testTodosServer(t, serveJSON(loadTodosFixture(t, "get.json")))
+	todo, err = svc.Get(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertNoCompletion(t, todo.Completion, todo.CompletedAt, todo.Completer)
+}
+
 func TestTodosService_List_QueryParameters(t *testing.T) {
 	fixture := loadTodosFixture(t, "list.json")
 

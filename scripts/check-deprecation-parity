@@ -8,6 +8,12 @@
 #   * TS / Go  — editor / static   (@deprecated JSDoc / // Deprecated: godoc)
 #   * Swift/Ruby/Python — documentation only (/// , YARD, docstring/comment)
 #
+# Four more member sites are the never-sent `completed_at` and `completer` on
+# Card and Subtask, which point at `completion`. `completer` is a $ref member,
+# and the OpenAPI conversion drops a $ref member's deprecation message, so
+# smithy-build.json restores it; the reason assertions below catch it falling
+# back to the generic "deprecated".
+#
 # A sixth site is a deprecated former NAME rather than a deprecated member: the
 # CardStep component, kept in openapi.json as a deprecated $ref to Subtask when
 # the shape was renamed. Every SDK emits it as an alias of Subtask, marked in
@@ -93,9 +99,12 @@ assert_contains "$GO" "// Deprecated: prefer creator_ids[]." "Go: search 'creato
 assert_contains "$GO" "// Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead" "Go: ClientSide type + clientside property marker"
 assert_contains "$GO" "type CardStep = Subtask" "Go: CardStep alias of Subtask (generated)"
 assert_contains "$GO" "// Deprecated: renamed to Subtask, the same Kanban::Step record." "Go: CardStep alias marker (generated)"
-# Exactly 6: 3 params + ClientSide type + clientside property + CardStep alias.
-# A control field gaining a marker would bump this count.
-assert_count "$GO" "^[[:space:]]*// Deprecated:" 6 "Go: exactly six deprecation markers (controls clean)"
+assert_count "$GO" "^[[:space:]]*// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead$" 2 "Go: Card + Subtask completed_at markers"
+assert_count "$GO" "^[[:space:]]*// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead$" 2 "Go: Card + Subtask completer markers"
+# Exactly 10: 3 params + ClientSide type + clientside property + CardStep alias
+# + completed_at and completer on Card and Subtask. A control field gaining a
+# marker would bump this count.
+assert_count "$GO" "^[[:space:]]*// Deprecated:" 10 "Go: exactly ten deprecation markers (controls clean)"
 # The hand-written wrapper package carries its own Subtask, so its alias is
 # hand-written beside it.
 assert_contains go/pkg/basecamp/cards.go "type CardStep = Subtask" "Go wrapper: CardStep alias of Subtask"
@@ -110,8 +119,11 @@ assert_count "$TS_SVC" "@deprecated" 3 "TS: exactly three option markers (contro
 # openapi-typescript output (schema.d.ts): ClientSide type + clientside property
 # (from the component/property `deprecated`), plus the 3 search params in the
 # paths section (from the param-level `deprecated: true` hoisted for Go), plus
-# the CardStep component. Six.
-assert_count typescript/src/generated/schema.d.ts "@deprecated" 6 "TS: ClientSide + property + 3 param + CardStep markers (openapi-typescript)"
+# the CardStep component, plus completed_at and completer on Card and Subtask.
+# Ten.
+assert_count typescript/src/generated/schema.d.ts "@deprecated" 10 "TS: ClientSide + property + 3 param + CardStep + 4 completion markers (openapi-typescript)"
+assert_count typescript/src/generated/schema.d.ts "@description This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead$" 2 "TS: Card + Subtask completed_at reason"
+assert_count typescript/src/generated/schema.d.ts "@description This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead$" 2 "TS: Card + Subtask completer reason"
 assert_contains typescript/src/generated/schema.d.ts 'CardStep: components["schemas"]["Subtask"];' "TS: CardStep component aliases Subtask (openapi-typescript)"
 for ts_file in typescript/src/generated/services/subtasks.ts typescript/src/generated/services/card-steps.ts; do
     assert_contains "$ts_file" "/** @deprecated renamed to Subtask, the same Kanban::Step record. */" "TS: CardStep alias marker in $ts_file"
@@ -132,6 +144,10 @@ assert_absent "$SW_SVC" "@available(*, deprecated" "Swift: no @available (doc-on
 SW_ALIAS=swift/Sources/Basecamp/Generated/Models/CardStep.swift
 assert_contains "$SW_ALIAS" "/// Deprecated: renamed to Subtask, the same Kanban::Step record." "Swift: CardStep alias doc marker"
 assert_contains "$SW_ALIAS" "public typealias CardStep = Subtask" "Swift: CardStep typealias of Subtask"
+for sw_model in Card Subtask; do
+    assert_contains swift/Sources/Basecamp/Generated/Models/$sw_model.swift "/// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead" "Swift: $sw_model completed_at marker"
+    assert_contains swift/Sources/Basecamp/Generated/Models/$sw_model.swift "/// Deprecated: This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead" "Swift: $sw_model completer marker"
+done
 assert_tree_count swift/Sources/Basecamp/Generated "@available(*, deprecated" 0 "Swift: no @available anywhere in generated Swift (doc-only signal class)"
 
 # ---- Kotlin (compiler warning: @Deprecated) ----------------------------------
@@ -145,6 +161,10 @@ assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/mode
 KT_ALIAS=kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/CardStep.kt
 assert_contains "$KT_ALIAS" '@Deprecated("renamed to Subtask, the same Kanban::Step record.", ReplaceWith("Subtask", "com.basecamp.sdk.generated.models.Subtask"))' "Kotlin: CardStep alias marker + ReplaceWith (with import)"
 assert_contains "$KT_ALIAS" "typealias CardStep = Subtask" "Kotlin: CardStep typealias of Subtask"
+for kt_model in Card Subtask; do
+    assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/$kt_model.kt '@Deprecated("This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead")' "Kotlin: $kt_model completed_at marker"
+    assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/$kt_model.kt '@Deprecated("This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead")' "Kotlin: $kt_model completer marker"
+done
 # Zero-generator-warning suppressions (generic, conditional).
 assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Project.kt '@Suppress("DEPRECATION")' "Kotlin: model @Suppress for deprecated-type reference"
 assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/search.kt '@Suppress("DEPRECATION")' "Kotlin: search service @Suppress for deprecated-param reads"
@@ -166,10 +186,12 @@ assert_count "$RS_SEARCH" '#\[deprecated\(' 3 "Rust: exactly three param markers
 assert_count "$RS_TYPES" 'note = "This shape is deprecated since 2024-01: Use Client Visibility feature instead"' 2 "Rust: ClientSide type + clientside field markers"
 assert_contains "$RS_TYPES" '#[deprecated(note = "renamed to Subtask, the same Kanban::Step record.")]' "Rust: CardStep alias marker"
 assert_contains "$RS_TYPES" "pub type CardStep = Subtask;" "Rust: CardStep alias of Subtask"
-# Exactly 6 in the whole generated tree: 3 params + ClientSide type + clientside
-# field + CardStep alias. A control item gaining a marker anywhere would bump
-# this count.
-assert_tree_count "$RS_GEN" '#[deprecated(' 6 "Rust: exactly six deprecation markers (controls clean)"
+assert_count "$RS_TYPES" 'note = "This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead"' 2 "Rust: Card + Subtask completed_at markers"
+assert_count "$RS_TYPES" 'note = "This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead"' 2 "Rust: Card + Subtask completer markers"
+# Exactly 10 in the whole generated tree: 3 params + ClientSide type +
+# clientside field + CardStep alias + completed_at and completer on Card and
+# Subtask. A control item gaining a marker anywhere would bump this count.
+assert_tree_count "$RS_GEN" '#[deprecated(' 10 "Rust: exactly ten deprecation markers (controls clean)"
 # Zero-warning suppressions where the deprecated items are read or constructed:
 # `#[allow(deprecated)]` on the search method, and types.rs's crate-style inner
 # `#![allow(deprecated, …)]` — hence the bare `allow(deprecated` token.
@@ -185,6 +207,8 @@ assert_contains "$RB_SVC" "@param creator_id [Integer, nil] Deprecated: prefer c
 RB_TYPES=ruby/lib/basecamp/generated/types.rb
 assert_contains "$RB_TYPES" "# @deprecated renamed to Subtask, the same Kanban::Step record." "Ruby: CardStep alias YARD marker"
 assert_contains "$RB_TYPES" "CardStep = Subtask" "Ruby: CardStep constant alias of Subtask"
+assert_count "$RB_TYPES" "^ +#   @deprecated This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead$" 2 "Ruby: Card + Subtask completed_at YARD markers"
+assert_count "$RB_TYPES" "^ +#   @deprecated This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead$" 2 "Ruby: Card + Subtask completer YARD markers"
 # Text matches only; the YARD registry sub-check below proves the tag attaches
 # to the CardStep constant and not to whatever follows it.
 
@@ -195,6 +219,8 @@ assert_count "$PY_SVC" "^ +- type: prefer type_names\[\]\." 2 "Python: search do
 assert_contains python/src/basecamp/generated/types.py '"""Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead"""' "Python: ClientSide TypedDict docstring"
 assert_contains python/src/basecamp/generated/types.py "# deprecated (source-only): This shape is deprecated since 2024-01: Use Client Visibility feature instead" "Python: clientside source-only comment"
 assert_contains python/src/basecamp/generated/types.py "# Deprecated: renamed to Subtask, the same Kanban::Step record." "Python: CardStep alias source comment"
+assert_count python/src/basecamp/generated/types.py "^ +# deprecated \(source-only\): This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.created_at instead$" 2 "Python: Card + Subtask completed_at source-only comments"
+assert_count python/src/basecamp/generated/types.py "^ +# deprecated \(source-only\): This shape is deprecated since 2026-10: Never sent by Basecamp; read completion.creator instead$" 2 "Python: Card + Subtask completer source-only comments"
 assert_contains python/src/basecamp/generated/types.py "CardStep = Subtask" "Python: CardStep alias of Subtask"
 
 # ---- Control: the plural replacements and search method stay clean -----------
@@ -226,6 +252,9 @@ assert_field_undeprecated "$KT_TYPES" "val bucketIds:" "Kotlin control: bucketId
 assert_field_undeprecated "$KT_TYPES" "val creatorIds:" "Kotlin control: creatorIds replacement is present and unmarked"
 assert_field_undeprecated "$KT_TYPES" "val fileType:" "Kotlin control: unrelated field (fileType) is unmarked"
 assert_field_undeprecated "$SW_SVC" "public var typeNames:" "Swift control: typeNames replacement is present and unmarked"
+for kt_model in Card Subtask Todo; do
+    assert_field_undeprecated kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/$kt_model.kt "val completion:" "Kotlin control: $kt_model completion replacement is present and unmarked"
+done
 
 # assert_rust_item_undeprecated <file> <item-decl-regex> <description>: the
 # declaring line must exist and the contiguous run of attributes and doc
@@ -254,6 +283,8 @@ assert_rust_item_undeprecated "$RS_SEARCH" "^[[:space:]]*pub type_names:" "Rust 
 assert_rust_item_undeprecated "$RS_SEARCH" "^[[:space:]]*pub bucket_ids:" "Rust control: bucket_ids replacement is present and unmarked"
 assert_rust_item_undeprecated "$RS_SEARCH" "^[[:space:]]*pub creator_ids:" "Rust control: creator_ids replacement is present and unmarked"
 assert_rust_item_undeprecated "$RS_SEARCH" "^[[:space:]]*pub file_type:" "Rust control: unrelated field (file_type) is unmarked"
+assert_count "$RS_TYPES" "^[[:space:]]*pub completion: Option<RecordingCompletion>,$" 3 "Rust control: completion present on Card, Subtask and Todo"
+assert_rust_item_undeprecated "$RS_TYPES" "^[[:space:]]*pub completion:" "Rust control: completion replacement is unmarked"
 # Control: the search method itself is not deprecated (only suppressed).
 assert_rust_item_undeprecated "$RS_SEARCH" "^[[:space:]]*pub (async )?fn search[<(]" "Rust control: search method is not itself deprecated"
 
