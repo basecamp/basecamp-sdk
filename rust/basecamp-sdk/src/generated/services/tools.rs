@@ -43,7 +43,15 @@ impl<'a> ToolsService<'a> {
         self.client.send(operation).await
     }
 
-    /// Delete a tool (trash it)
+    /// Remove a tool from the dock: deletes an external link or an empty extra tool, and disables any other tool (returns 204 No Content either way).
+    /// Deleted: an external link, or a tool that is empty while the project has another
+    /// tool of the same type, enabled or disabled. Items already in the trash don't count
+    /// as content. A deleted tool does not go to the trash: Basecamp permanently destroys
+    /// it, with everything inside it, about five days later.
+    /// Disabled: every other tool, such as the only tool of its type or a tool with
+    /// content, exactly as DisableTool does. It keeps its content, and EnableTool restores it.
+    /// To tell which happened, get the tool afterwards: a deleted tool has status "deleted",
+    /// while a disabled one keeps its status and has no position.
     ///
     /// `DELETE /dock/tools/{toolId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn delete(&self, tool_id: i64) -> Result<(), Error> {

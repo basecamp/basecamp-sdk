@@ -206,8 +206,19 @@ func (s *ToolsService) Update(ctx context.Context, toolID int64, title string) (
 	return &tool, nil
 }
 
-// Delete moves a tool to the trash.
-// Trashed tools can be recovered from the trash.
+// Delete removes a tool from the project dock. It never moves the tool to the
+// trash; Basecamp either deletes or disables it, and answers 204 in both cases.
+//
+// Deleted: an external link, or a tool that is empty while the project has
+// another tool of the same type. Items already in the trash don't count as
+// content. A deleted tool is permanently destroyed, with everything inside it,
+// about five days later, and cannot be restored.
+//
+// Disabled: every other tool, such as the only tool of its type or a tool with
+// content, exactly as Disable does. It keeps its content, and Enable restores it.
+//
+// To tell which happened, Get the tool afterwards: a deleted tool has Status
+// "deleted", while a disabled one keeps its status and has a nil Position.
 func (s *ToolsService) Delete(ctx context.Context, toolID int64) (err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Delete",
