@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
@@ -210,6 +211,29 @@ func TestSubtasksService_Get(t *testing.T) {
 	}
 	if subtask.DueOn != "" {
 		t.Errorf("expected no due date, got %q", subtask.DueOn)
+	}
+}
+
+func TestSubtasksService_Get_Completed(t *testing.T) {
+	svc := testSubtasksServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(loadSubtasksFixture(t, "get-completed.json"))
+	})
+
+	subtask, err := svc.Get(context.Background(), 500)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !subtask.Completed {
+		t.Error("expected the subtask to be completed")
+	}
+	if subtask.Completer == nil || subtask.Completer.ID != 1049715938 || subtask.Completer.Name != "Annie Bryan" {
+		t.Errorf("expected completer Annie Bryan (1049715938), got %+v", subtask.Completer)
+	}
+	wantCompletedAt := time.Date(2026, 7, 3, 15, 42, 10, 0, time.UTC)
+	if subtask.CompletedAt == nil || !subtask.CompletedAt.Equal(wantCompletedAt) {
+		t.Errorf("expected completed_at %s, got %v", wantCompletedAt, subtask.CompletedAt)
 	}
 }
 

@@ -111,6 +111,13 @@ targets:
     fixture: subtasks/get.json
     pointer: ""
     schema: Subtask
+  # get.json completed. bc3's shared recordings/_completion partial emits
+  # `completion` only on a completed recording; `completed_at` and
+  # `completer` are never on the wire.
+  - id: subtask-get-completed
+    fixture: subtasks/get-completed.json
+    pointer: ""
+    schema: Subtask
   - id: subtask-list
     operation: ListSubtasks
     fixture: subtasks/list.json
