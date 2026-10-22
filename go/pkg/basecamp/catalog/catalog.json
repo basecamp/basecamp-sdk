@@ -13593,7 +13593,8 @@
         "properties": {
           "category_id": {
             "format": "int64",
-            "type": "integer"
+            "type": "integer",
+            "x-basecamp-clearable": {}
           },
           "content": {
             "type": "string"

@@ -2335,6 +2335,7 @@ structure UpdateMessageInput {
   @documentation("active|drafted")
   status: String
 
+  @basecampClearable
   category_id: MessageTypeId
 }
 

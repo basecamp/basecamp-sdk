@@ -40593,7 +40593,8 @@
           },
           "category_id": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-basecamp-clearable": {}
           }
         }
       },

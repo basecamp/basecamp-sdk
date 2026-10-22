@@ -64,6 +64,8 @@ pub(crate) enum FieldType {
     Date,
     /// An optional `x-basecamp-clearable` date: unchanged, set, or cleared with `""`.
     DateChange,
+    /// An optional `x-basecamp-clearable` int64 id: unchanged, set, or cleared with `""`.
+    IdChange,
     FlexibleTime,
     Bool,
     Int32,
@@ -417,23 +419,29 @@ fn build_schemas(
 }
 
 /// The type of an `x-basecamp-clearable` member: one that can say leave, set or clear.
-/// Only an optional date has one (`DateChange`); any other kind would fall through to a
-/// type that cannot spell the clear, so it is refused.
+/// Only an optional date (`DateChange`) or int64 (`IdChange`) has one; any other kind would
+/// fall through to a type that cannot spell the clear, so it is refused.
 fn clearable(
     schema: &str,
     wire_name: &str,
     kind: &FieldType,
     required: bool,
 ) -> Result<FieldType, String> {
-    match kind {
-        FieldType::Date if !required => Ok(FieldType::DateChange),
-        FieldType::Date => Err(format!(
+    let change = match kind {
+        FieldType::Date => FieldType::DateChange,
+        FieldType::Int64 => FieldType::IdChange,
+        _ => {
+            return Err(format!(
+                "{schema}.{wire_name}: x-basecamp-clearable has a Rust type only for a date or an int64"
+            ));
+        }
+    };
+    if required {
+        return Err(format!(
             "{schema}.{wire_name}: x-basecamp-clearable on a required member, which can never be left alone"
-        )),
-        _ => Err(format!(
-            "{schema}.{wire_name}: x-basecamp-clearable has a Rust type only for a date"
-        )),
+        ));
     }
+    Ok(change)
 }
 
 fn is_nullable(property: &Value) -> bool {
