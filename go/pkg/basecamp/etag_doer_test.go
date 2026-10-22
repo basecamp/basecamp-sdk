@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -181,7 +182,7 @@ func TestETagDoer_CredentialsDoNotShareEntries(t *testing.T) {
 	assertStrings(t, "another credential's requests", s.requests(), []string{"page1:", "page2:"})
 }
 
-func TestETagDoer_AnETagWithoutItsBodyIsNotSent(t *testing.T) {
+func TestETagDoer_ARemovedEntryIsNotRevalidated(t *testing.T) {
 	s := newETagServer(t)
 	dir := t.TempDir()
 	cards := etagCardsService(t, s, "token", WithCache(NewCache(dir)))
@@ -292,16 +293,20 @@ func TestETagDoer_ABodyTooLargeToCacheIsReturnedWholeAndNotCached(t *testing.T) 
 	assertStrings(t, "requests", seen, []string{"", ""})
 }
 
+// Two Cache values on one directory stand in for two processes sharing a cache
+// (or two clients built with CacheEnabled): they share no lock, only files.
 func TestCache_EntryNeverPairsOneResponsesETagWithAnothersBody(t *testing.T) {
-	cache := NewCache(t.TempDir())
+	dir := t.TempDir()
 	const key = "k"
-	if err := cache.Set(key, []byte("body-0"), "0"); err != nil {
+	if err := NewCache(dir).Set(key, []byte("body-0"), "0"); err != nil {
 		t.Fatal(err)
 	}
 
 	var wg sync.WaitGroup
+	var writes atomic.Int64
 	stop := make(chan struct{})
 	for w := range 2 {
+		writer := NewCache(dir)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -312,14 +317,19 @@ func TestCache_EntryNeverPairsOneResponsesETagWithAnothersBody(t *testing.T) {
 				default:
 				}
 				v := fmt.Sprintf("%d-%d", w, i)
-				_ = cache.Set(key, []byte("body-"+v), v)
+				if err := writer.Set(key, []byte("body-"+v), v); err != nil {
+					t.Errorf("Set: %v", err)
+					return
+				}
+				writes.Add(1)
 			}
 		}()
 	}
 
+	reader := NewCache(dir)
 	torn := 0
 	for range 2000 {
-		etag, body := cache.entry(key)
+		etag, body := reader.entry(key)
 		if string(body) != "body-"+etag {
 			torn++
 		}
@@ -327,7 +337,13 @@ func TestCache_EntryNeverPairsOneResponsesETagWithAnothersBody(t *testing.T) {
 	close(stop)
 	wg.Wait()
 
+	if writes.Load() == 0 {
+		t.Fatal("no writes landed while reading")
+	}
 	if torn > 0 {
 		t.Errorf("%d of 2000 reads paired an ETag with another response's body", torn)
+	}
+	if etag, body := reader.entry(key); string(body) != "body-"+etag {
+		t.Errorf("the writers left %q beside %q", etag, body)
 	}
 }
