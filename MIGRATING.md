@@ -30,6 +30,15 @@ the category's timestamps, or treated its `icon` as always present. Read a
 type's timestamps with the message types `get`. Go's `Message.Category` stays a
 `*MessageType`, and its `CreatedAt` and `UpdatedAt` are still always zero.
 
+### Rust: a message update can clear the category
+
+`UpdateMessageRequestContent.category_id` was `Option<i64>`, which can leave
+a message's category alone or set one but never send the `"category_id": ""`
+that removes it. It is now `Option<IdChange>`, which breaks source that sets
+it. Write `Some(id.into())` where you wrote `Some(id)`, and clear with
+`Some(IdChange::Clear)`. `IdChange` is at `basecamp_sdk::IdChange`. `None`
+still leaves the category unchanged.
+
 ### Rust: card, card step and subtask updates can clear the due date
 
 `UpdateCardRequestContent.due_on`, `UpdateCardStepRequestContent.due_on` and
