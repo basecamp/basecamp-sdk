@@ -12929,7 +12929,8 @@
             "type": "string"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-basecamp-clearable": {}
           },
           "title": {
             "type": "string"
@@ -13038,7 +13039,8 @@
             "type": "array"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-basecamp-clearable": {}
           },
           "title": {
             "type": "string"
@@ -14385,7 +14387,8 @@
             "type": "array"
           },
           "due_on": {
-            "type": "string"
+            "type": "string",
+            "x-basecamp-clearable": {}
           },
           "title": {
             "type": "string"

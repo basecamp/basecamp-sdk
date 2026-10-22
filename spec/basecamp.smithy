@@ -47,6 +47,7 @@ use basecamp.traits#basecampWriteSemantics
 use basecamp.traits#basecampMultipart
 use basecamp.traits#basecampSensitive
 use basecamp.traits#basecampAuthRoutableUrl
+use basecamp.traits#basecampClearable
 
 /// Basecamp API
 @restJson1
@@ -5543,6 +5544,7 @@ structure UpdateCardInput {
 
   title: String
   content: String
+  @basecampClearable
   due_on: ISO8601Date
   assignee_ids: PersonIdList
 }
@@ -5927,6 +5929,7 @@ structure UpdateCardStepInput {
   stepId: CardStepId
 
   title: String
+  @basecampClearable
   due_on: ISO8601Date
   assignee_ids: PersonIdList
 }
@@ -13640,6 +13643,7 @@ structure UpdateSubtaskInput {
   subtaskId: SubtaskId
 
   title: String
+  @basecampClearable
   due_on: ISO8601Date
   assignee_ids: PersonIdList
 }
