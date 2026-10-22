@@ -33,10 +33,10 @@ import (
 // absent (nil) and an integer; none of them is "". Null is never the clear:
 // it would violate the §18 body-compaction rule. For the two due_on clears the
 // "" spelling is the one all six SDKs send identically (five strip nulls before
-// the wire). The category_id clear is Go-only — the shared contract still
-// models category_id as an integer, so the other five SDKs cannot yet spell it
-// — but it follows the same rule, and BC3 blank-casts "" to nil in both cases
-// (basecamp/bc3#12521). TestDatePointerCannotSpellEmptyDueOnClear proves that
+// the wire). The category_id clear follows the same rule: the spec marks it
+// x-basecamp-clearable, Rust's generated request spells it, and the other
+// generated SDKs still type it as an integer. BC3 blank-casts "" to nil in
+// both cases (basecamp/bc3#12521). TestDatePointerCannotSpellEmptyDueOnClear proves that
 // exhaustion for the date clears. Every other former caller builds its
 // generated request type; a new caller needs a wire encoding the generated
 // type provably cannot express.

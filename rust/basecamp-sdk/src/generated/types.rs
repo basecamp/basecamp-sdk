@@ -8,7 +8,9 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::types::{AuthRoutableUrl, Date, DateChange, DateTime, FlexibleTime, SensitiveString};
+use crate::types::{
+    AuthRoutableUrl, Date, DateChange, DateTime, FlexibleTime, IdChange, SensitiveString,
+};
 
 /// The `Account` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -6859,7 +6861,7 @@ pub struct UpdateMessageRequestContent {
     pub status: Option<String>,
     /// `category_id`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub category_id: Option<i64>,
+    pub category_id: Option<IdChange>,
 }
 
 /// `UpdateMessageResponseContent`.

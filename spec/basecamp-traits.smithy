@@ -244,8 +244,8 @@ structure basecampAuthRoutableUrl {}
 /// unchanged, and sending an explicit empty value (`""`) clears it, which
 /// BC3 casts to nil. An explicit `null` is never sent (SPEC.md §18 body
 /// compaction). A generator whose type for the member cannot spell `""`
-/// (a typed date, for one) must give it a type that can say all three:
-/// leave, set, clear.
+/// (a typed date or an integer id, for two) must give it a type that can
+/// say all three: leave, set, clear.
 ///
 /// Emits x-basecamp-clearable extension to OpenAPI for SDK code generators.
 @trait(selector: "structure > member")

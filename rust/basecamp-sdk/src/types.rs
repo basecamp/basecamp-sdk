@@ -72,7 +72,7 @@ impl<'de> Deserialize<'de> for Date {
 /// leaves the date alone, [`DateChange::Clear`] removes it, [`DateChange::On`] sets it.
 ///
 /// On the wire a clear is `""`, which BC3 casts to nil, never `null` (SPEC §18). It is the
-/// type of every request member the spec marks `x-basecamp-clearable`.
+/// type of every date request member the spec marks `x-basecamp-clearable`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DateChange {
     /// Remove the date.
@@ -105,6 +105,52 @@ impl<'de> Deserialize<'de> for DateChange {
             text.parse()
                 .map(DateChange::On)
                 .map_err(serde::de::Error::custom)
+        }
+    }
+}
+
+/// How a write addresses an id member: `Option<IdChange>` is the tri-state — `None` leaves
+/// it alone, [`IdChange::Clear`] removes it, [`IdChange::To`] points it at an id.
+///
+/// On the wire a clear is `""`, which BC3 reads as blank, never `null` (SPEC §18). It is the
+/// type of every optional integer request member the spec marks `x-basecamp-clearable`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum IdChange {
+    /// Remove the reference.
+    Clear,
+    /// Point it at this id.
+    To(i64),
+}
+
+impl From<i64> for IdChange {
+    fn from(id: i64) -> IdChange {
+        IdChange::To(id)
+    }
+}
+
+impl Serialize for IdChange {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            IdChange::Clear => serializer.serialize_str(""),
+            IdChange::To(id) => serializer.serialize_i64(*id),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for IdChange {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<IdChange, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Wire {
+            Id(i64),
+            Text(String),
+        }
+        match Wire::deserialize(deserializer)? {
+            Wire::Id(id) => Ok(IdChange::To(id)),
+            Wire::Text(text) if text.is_empty() => Ok(IdChange::Clear),
+            Wire::Text(text) => Err(serde::de::Error::custom(format!(
+                "an id change is an integer or \"\", not {text:?}"
+            ))),
         }
     }
 }
@@ -485,6 +531,22 @@ mod tests {
         );
         assert!(serde_json::from_str::<DateChange>("null").is_err());
         assert!(serde_json::from_str::<DateChange>("\"tomorrow\"").is_err());
+    }
+
+    #[test]
+    fn id_changes_spell_a_clear_as_empty_and_round_trip_through_json() {
+        assert_eq!(serde_json::to_string(&IdChange::To(42)).unwrap(), "42");
+        assert_eq!(serde_json::to_string(&IdChange::Clear).unwrap(), "\"\"");
+        assert_eq!(
+            serde_json::from_str::<IdChange>("42").unwrap(),
+            IdChange::To(42)
+        );
+        assert_eq!(
+            serde_json::from_str::<IdChange>("\"\"").unwrap(),
+            IdChange::Clear
+        );
+        assert!(serde_json::from_str::<IdChange>("null").is_err());
+        assert!(serde_json::from_str::<IdChange>("\"42\"").is_err());
     }
 
     #[test]

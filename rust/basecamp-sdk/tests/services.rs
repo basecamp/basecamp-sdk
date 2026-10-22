@@ -8,9 +8,10 @@
 mod support;
 
 use basecamp_sdk::models::{
-    UpdateCardRequestContent, UpdateCardStepRequestContent, UpdateSubtaskRequestContent,
+    UpdateCardRequestContent, UpdateCardStepRequestContent, UpdateMessageRequestContent,
+    UpdateSubtaskRequestContent,
 };
-use basecamp_sdk::{Date, DateChange};
+use basecamp_sdk::{Date, DateChange, IdChange};
 use support::account;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -1080,10 +1081,24 @@ where
     F: FnOnce(basecamp_sdk::AccountClient) -> Fut,
     Fut: std::future::Future<Output = Result<T, basecamp_sdk::Error>>,
 {
+    put_body_answered(route, serde_json::json!({"app_url": "x", "bucket": {"id": 1, "name": "x", "type": "x"}, "created_at": "2025-01-01T00:00:00Z", "creator": {"id": 1, "name": "x"}, "description_attachments": [], "id": 1, "inherits_status": false, "parent": {"app_url": "x", "id": 1, "title": "x", "type": "x", "url": "x"}, "status": "x", "title": "x", "type": "x", "updated_at": "2025-01-01T00:00:00Z", "url": "x", "visible_to_clients": false}), call).await
+}
+
+/// The JSON body one call PUT to `route`, answered with `response`, which the call must
+/// decode.
+async fn put_body_answered<F, Fut, T>(
+    route: &str,
+    response: serde_json::Value,
+    call: F,
+) -> serde_json::Value
+where
+    F: FnOnce(basecamp_sdk::AccountClient) -> Fut,
+    Fut: std::future::Future<Output = Result<T, basecamp_sdk::Error>>,
+{
     let server = MockServer::start().await;
     Mock::given(method("PUT"))
         .and(path(route))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"app_url": "x", "bucket": {"id": 1, "name": "x", "type": "x"}, "created_at": "2025-01-01T00:00:00Z", "creator": {"id": 1, "name": "x"}, "description_attachments": [], "id": 1, "inherits_status": false, "parent": {"app_url": "x", "id": 1, "title": "x", "type": "x", "url": "x"}, "status": "x", "title": "x", "type": "x", "updated_at": "2025-01-01T00:00:00Z", "url": "x", "visible_to_clients": false})))
+        .respond_with(ResponseTemplate::new(200).set_body_json(response))
         .expect(1)
         .mount(&server)
         .await;
@@ -1137,6 +1152,38 @@ async fn cards_update_verbatim_leaves_clears_or_sets_the_due_date() {
         })
         .await;
         assert_eq!(body, wire, "{due_on:?}");
+    }
+}
+
+/// `category_id` is `x-basecamp-clearable`: no key leaves the category, `""` (never `null`)
+/// removes it, and an id files the message under that type. BC3 answers with the message,
+/// whose category it embeds as id, name and icon.
+#[tokio::test]
+async fn messages_update_leaves_clears_or_sets_the_category() {
+    let changes = [
+        (None, serde_json::json!({"subject": "x"})),
+        (
+            Some(IdChange::Clear),
+            serde_json::json!({"subject": "x", "category_id": ""}),
+        ),
+        (
+            Some(1_069_479_340.into()),
+            serde_json::json!({"subject": "x", "category_id": 1_069_479_340}),
+        ),
+    ];
+    let message: serde_json::Value =
+        serde_json::from_str(include_str!("../../../spec/fixtures/messages/get.json")).unwrap();
+    for (category_id, wire) in changes {
+        let body = put_body_answered("/999/messages/100", message.clone(), |account| async move {
+            let request = UpdateMessageRequestContent {
+                subject: Some("x".into()),
+                category_id,
+                ..Default::default()
+            };
+            account.messages().update(100, &request).await
+        })
+        .await;
+        assert_eq!(body, wire, "{category_id:?}");
     }
 }
 

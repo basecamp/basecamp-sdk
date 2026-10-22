@@ -563,14 +563,34 @@ fn a_clearable_date_is_generated_as_a_date_change() {
 }
 
 #[test]
-fn a_clearable_member_that_is_not_a_date_is_refused() {
+fn a_clearable_int64_is_generated_as_an_id_change() {
+    let types = acceptance(
+        |openapi, _| {
+            openapi["components"]["schemas"]["CreateWidgetRequestContent"]["properties"]["owner_id"] = serde_json::json!({
+                "type": "integer",
+                "format": "int64",
+                "x-basecamp-clearable": {}
+            });
+        },
+        "types.rs",
+    );
+    assert!(
+        types.contains(
+            "    #[serde(default, skip_serializing_if = \"Option::is_none\")]\n    pub owner_id: Option<IdChange>,"
+        ),
+        "a clearable id must be able to say leave, set and clear: {types}"
+    );
+}
+
+#[test]
+fn a_clearable_member_that_is_neither_a_date_nor_an_int64_is_refused() {
     let stderr = refusal(|openapi, _| {
         openapi["components"]["schemas"]["CreateWidgetRequestContent"]["properties"]["color"]["x-basecamp-clearable"] =
             serde_json::json!({});
     });
     assert!(
         stderr.contains(
-            "CreateWidgetRequestContent.color: x-basecamp-clearable has a Rust type only for a date"
+            "CreateWidgetRequestContent.color: x-basecamp-clearable has a Rust type only for a date or an int64"
         ),
         "{stderr}"
     );
