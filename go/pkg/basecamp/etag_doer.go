@@ -29,24 +29,9 @@ type etagDoer struct {
 }
 
 func (d *etagDoer) Do(req *http.Request) (*http.Response, error) {
-	cache := d.client.cache
-	// A caller that set its own validator owns the 304.
-	if cache == nil || req.Method != http.MethodGet || req.Header.Get("If-None-Match") != "" {
+	key, cached := d.client.conditionalGET(req)
+	if key == "" {
 		return d.next.Do(req)
-	}
-
-	// The key matches singleRequest's: the full URL and the credential the auth
-	// editor applied, so each credential gets its own namespace.
-	key := cache.Key(req.URL.String(), "", req.Header.Get("Authorization"))
-
-	// Only ask for a 304 that can be answered: an ETag whose body is gone would
-	// turn an unchanged resource into an error.
-	var cached []byte
-	if etag := cache.GetETag(key); etag != "" {
-		if cached = cache.GetBody(key); cached != nil {
-			req.Header.Set("If-None-Match", etag)
-			d.client.logger.Debug("cache conditional request", "etag", etag)
-		}
 	}
 
 	resp, err := d.next.Do(req)
@@ -62,21 +47,57 @@ func (d *etagDoer) Do(req *http.Request) (*http.Response, error) {
 		return notModifiedAsCached(resp, cached), nil
 
 	case resp.StatusCode == http.StatusOK && resp.Header.Get("ETag") != "" && isJSONResponse(resp):
-		body, err := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
+		// Read no more than the cache keeps. A larger body is handed on as the
+		// prefix read so far followed by the rest of the stream, uncached, so
+		// it isn't buffered twice.
+		body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodyBytes+1))
 		if err != nil {
+			_ = resp.Body.Close()
 			return nil, err
 		}
-		if int64(len(body)) <= MaxResponseBodyBytes {
-			_ = cache.Set(key, body, resp.Header.Get("ETag")) // Ignore cache write errors
-			d.client.logger.Debug("cache stored", "etag", resp.Header.Get("ETag"))
+		if int64(len(body)) > MaxResponseBodyBytes {
+			resp.Body = struct {
+				io.Reader
+				io.Closer
+			}{io.MultiReader(bytes.NewReader(body), resp.Body), resp.Body}
+			return resp, nil
 		}
+		_ = resp.Body.Close()
+		_ = d.client.cache.Set(key, body, resp.Header.Get("ETag")) // Ignore cache write errors
+		d.client.logger.Debug("cache stored", "etag", resp.Header.Get("ETag"))
 		resp.Body = io.NopCloser(bytes.NewReader(body))
 		return resp, nil
 
 	default:
 		return resp, nil
 	}
+}
+
+// conditionalGET applies the ETag cache to an outgoing request. It returns the
+// cache key, empty when the request isn't cached, and the body a 304 stands
+// for, nil unless If-None-Match was sent.
+//
+//   - Only GETs, and only with a cache configured.
+//   - Only requests with an Authorization header. The key is scoped to that
+//     credential; an AuthStrategy that authenticates some other way (a cookie,
+//     an API-key header, mTLS) gives the cache nothing to tell callers apart
+//     by, and two of them sharing a cache would read each other's bodies.
+//   - Not a request that already carries If-None-Match: its caller owns the 304.
+//   - If-None-Match only when the entry's body is there too, read under the
+//     same lock as its ETag, so a 304 always has the body its ETag named.
+func (c *Client) conditionalGET(req *http.Request) (key string, cached []byte) {
+	auth := req.Header.Get("Authorization")
+	if c.cache == nil || req.Method != http.MethodGet || auth == "" || req.Header.Get("If-None-Match") != "" {
+		return "", nil
+	}
+
+	key = c.cache.Key(req.URL.String(), "", auth) // the URL already includes the account
+	if etag, body := c.cache.entry(key); etag != "" && body != nil {
+		req.Header.Set("If-None-Match", etag)
+		c.logger.Debug("cache conditional request", "etag", etag)
+		return key, body
+	}
+	return key, nil
 }
 
 // notModifiedAsCached turns a 304 into the 200 it stands for. Generated parsing

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -230,4 +231,103 @@ func TestETagDoer_SingleResourceGetRevalidates(t *testing.T) {
 		}
 	}
 	assertStrings(t, "requests", seen, []string{"", `"card-v0"`})
+}
+
+// sessionCookieAuth authenticates without an Authorization header, as a cookie or
+// API-key strategy would.
+type sessionCookieAuth struct{ session string }
+
+func (a sessionCookieAuth) Authenticate(_ context.Context, req *http.Request) error {
+	req.AddCookie(&http.Cookie{Name: "session", Value: a.session})
+	return nil
+}
+
+func TestETagDoer_StrategiesWithoutAnAuthorizationHeaderAreNotCached(t *testing.T) {
+	s := newETagServer(t)
+	cache := NewCache(t.TempDir())
+	ctx := context.Background()
+
+	for _, session := range []string{"a", "b", "a"} {
+		cards := etagCardsService(t, s, "unused", WithCache(cache), WithAuthStrategy(sessionCookieAuth{session}))
+		if _, err := cards.List(ctx, 7, nil); err != nil {
+			t.Fatalf("List: %v", err)
+		}
+	}
+	// With nothing to scope a key by, session b would otherwise have revalidated
+	// against, and been served, session a's cached pages.
+	assertStrings(t, "requests", s.requests(), []string{"page1:", "page2:", "page1:", "page2:", "page1:", "page2:"})
+
+	if _, err := os.Stat(filepath.Join(cache.dir, "etags.json")); !os.IsNotExist(err) {
+		t.Errorf("expected nothing cached, stat etags.json: %v", err)
+	}
+}
+
+func TestETagDoer_ABodyTooLargeToCacheIsReturnedWholeAndNotCached(t *testing.T) {
+	title := strings.Repeat("x", int(MaxResponseBodyBytes))
+	var mu sync.Mutex
+	var seen []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		seen = append(seen, r.Header.Get("If-None-Match"))
+		mu.Unlock()
+		w.Header().Set("ETag", `"huge"`)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"id":42,"title":%q}`, title)
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	cards := NewClient(cfg, &StaticTokenProvider{Token: "token"}, WithCache(NewCache(t.TempDir()))).ForAccount("99999").Cards()
+
+	for range 2 {
+		card, err := cards.Get(context.Background(), 42)
+		if err != nil {
+			t.Fatalf("Get: %v", err)
+		}
+		if len(card.Title) != len(title) {
+			t.Fatalf("title length = %d, want %d", len(card.Title), len(title))
+		}
+	}
+	assertStrings(t, "requests", seen, []string{"", ""})
+}
+
+func TestCache_EntryNeverPairsOneResponsesETagWithAnothersBody(t *testing.T) {
+	cache := NewCache(t.TempDir())
+	const key = "k"
+	if err := cache.Set(key, []byte("body-0"), "0"); err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+	for w := range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; ; i++ {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				v := fmt.Sprintf("%d-%d", w, i)
+				_ = cache.Set(key, []byte("body-"+v), v)
+			}
+		}()
+	}
+
+	torn := 0
+	for range 2000 {
+		etag, body := cache.entry(key)
+		if string(body) != "body-"+etag {
+			torn++
+		}
+	}
+	close(stop)
+	wg.Wait()
+
+	if torn > 0 {
+		t.Errorf("%d of 2000 reads paired an ETag with another response's body", torn)
+	}
 }

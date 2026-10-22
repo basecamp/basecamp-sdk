@@ -38,7 +38,19 @@ func (c *Cache) Key(url, accountID, token string) string {
 func (c *Cache) GetETag(key string) string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	return c.etagLocked(key)
+}
 
+// entry returns a key's ETag and body read under one lock, so a Set landing
+// between the two reads can't pair one response's ETag with another's body.
+// Either is empty when missing.
+func (c *Cache) entry(key string) (etag string, body []byte) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.etagLocked(key), c.bodyLocked(key)
+}
+
+func (c *Cache) etagLocked(key string) string {
 	etagsFile := filepath.Join(c.dir, "etags.json")
 	data, err := os.ReadFile(etagsFile) // #nosec G703 -- cache dir is caller-configured
 	if err != nil {
@@ -57,7 +69,10 @@ func (c *Cache) GetETag(key string) string {
 func (c *Cache) GetBody(key string) []byte {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	return c.bodyLocked(key)
+}
 
+func (c *Cache) bodyLocked(key string) []byte {
 	bodyFile := filepath.Join(c.dir, "responses", key+".body")
 	data, err := os.ReadFile(bodyFile) // #nosec G703 -- cache dir is caller-configured
 	if err != nil {
