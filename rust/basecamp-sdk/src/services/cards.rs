@@ -11,12 +11,13 @@
 //!
 //! Clearing the due date is something to say, not to leave unsaid. An absent `due_on`
 //! means "leave unchanged", so the clear is spelled `"due_on": ""`, which BC3 casts to
-//! nil; an explicit `null` is never sent (SPEC §18 body compaction).
+//! nil; an explicit `null` is never sent (SPEC §18 body compaction). The generated
+//! request's `due_on` is a [`DateChange`] (the spec marks it `x-basecamp-clearable`), so
+//! it spells the clear itself.
 
 pub use crate::generated::services::cards::{CardsService, ListCardsParams};
 
 use crate::error::Error;
-use crate::generated::routes;
 use crate::generated::types::{Card, UpdateCardRequestContent};
 use crate::services::DateChange;
 
@@ -49,32 +50,9 @@ impl UpdateCardRequest {
 
 impl CardsService<'_> {
     /// Updates a card, touching only the fields the caller named, in one PUT with no
-    /// preceding read.
-    ///
-    /// A due-date clear is the one body the generated request type cannot spell — its
-    /// `due_on` is a typed date, and `""` is not one — so that case takes the SPEC §18
-    /// carve-out: the generated request is serialised, `"due_on": ""` is set on it, and
-    /// the body goes out on the generated `UpdateCard` route, where hooks and retry still
-    /// see the operation under its own identity. Every other request goes through
-    /// [`CardsService::update_verbatim`] unchanged.
+    /// preceding read: [`CardsService::update_verbatim`] with exactly what the caller
+    /// addressed.
     pub async fn update(&self, card_id: i64, request: &UpdateCardRequest) -> Result<Card, Error> {
-        let body = request.body();
-        match request.due_on {
-            Some(DateChange::Clear) => {
-                let mut value = serde_json::to_value(&body).map_err(|error| {
-                    Error::usage(format!("request body could not be serialized: {error}"))
-                })?;
-                if let serde_json::Value::Object(members) = &mut value {
-                    members.insert(
-                        "due_on".to_string(),
-                        serde_json::Value::String(String::new()),
-                    );
-                }
-                let mut operation = self.client().operation(&routes::UPDATE_CARD, &[&card_id]);
-                operation.json(&value)?;
-                self.client().send(operation).await
-            }
-            _ => self.update_verbatim(card_id, &body).await,
-        }
+        self.update_verbatim(card_id, &request.body()).await
     }
 }
