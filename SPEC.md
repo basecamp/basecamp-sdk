@@ -1884,6 +1884,19 @@ only residual is a pre-existing encoder behavior in three SDKs, noted below:
   SDK-wide *encoder* behavior, **out of scope** for this response field (`todos
   show --json` surfaces it via the Go SDK, which round-trips faithfully).
 
+**Floating-point noise.** The API computes some dimensions in floating point, so
+an integral dimension can arrive a few ulps off (`752.0000000000001`,
+`496.00000000000006`). A number within **`1e-6`** of an integer is that integer;
+anything further off (`1024.5`, `1024.001`) is a real fraction and is refused,
+as is a rounded value outside int32 range. `1e-6` sits above float64's spacing
+everywhere in int32 range (under `5e-7` even at 2^31) and far below any
+fraction a pixel count could mean. Go (`types.FlexIntTolerance`), Kotlin
+(`FlexibleIntSerializer.TOLERANCE`) and Rust (`flex_int::TOLERANCE`) implement it.
+TypeScript and Python pass the number through unchanged. Residuals: Swift's
+synthesized `Int32?` decode refuses the noisy value (`Int32(exactly:)`), and
+Ruby's `parse_integer` truncates with `to_i`, so `751.9999999999999` reads `751`
+and `1024.5` reads `1024` instead of being refused.
+
 ### Date/Time Fields `[static]`
 
 Fields declared with `format: date-time` in the OpenAPI spec use ISO 8601 format. Implementations may use the language's native date/time type (Go `time.Time`, Ruby `Time`, Kotlin `Instant`) or keep them as ISO 8601 strings (TypeScript uses `string` from openapi-fetch schema types). The choice is a language adaptation.

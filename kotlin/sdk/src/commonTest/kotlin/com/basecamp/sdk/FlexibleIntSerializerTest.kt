@@ -46,6 +46,40 @@ class FlexibleIntSerializerTest {
     }
 
     @Test
+    fun roundsFloatingPointNoise() {
+        // Sentry BC-MCP-K/M: the API served 752.0000000000001 and 496.00000000000006.
+        for ((input, expected) in listOf(
+            "752.0000000000001" to 752,
+            "496.00000000000006" to 496,
+            "751.9999999999999" to 752,
+            "-752.0000000000001" to -752,
+            "752.0000009" to 752,
+            "2147483647.0000002" to Int.MAX_VALUE,
+            "-2147483648.0000002" to Int.MIN_VALUE,
+        )) {
+            assertEquals(expected, json.decodeFromString<Wrapper>("{\"width\": $input}").width, input)
+        }
+    }
+
+    @Test
+    fun rejectsRealFractionsAndOverflowPastTheTolerance() {
+        for (input in listOf("752.5", "752.001", "752.0000011", "0.5", "2147483647.5", "2147483647.9999998", "9007199254740993")) {
+            assertFailsWith<SerializationException>(input) {
+                json.decodeFromString<Wrapper>("{\"width\": $input}")
+            }
+        }
+    }
+
+    @Test
+    fun rejectsNonFiniteStrings() {
+        for (input in listOf("NaN", "-NaN", "Infinity", "-Infinity")) {
+            assertFailsWith<SerializationException>(input) {
+                json.decodeFromString<Wrapper>("{\"width\": \"$input\"}")
+            }
+        }
+    }
+
+    @Test
     fun rejectsFractionalValue() {
         assertFailsWith<SerializationException> {
             json.decodeFromString<Wrapper>("""{"width": 1024.5}""")
