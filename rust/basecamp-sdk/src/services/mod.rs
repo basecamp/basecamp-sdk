@@ -24,20 +24,4 @@ pub mod todolists;
 pub mod todos;
 pub mod uploads;
 
-use crate::types::Date;
-
-/// How a write addresses a date member: `Option<DateChange>` is the tri-state — `None`
-/// leaves the date alone, [`DateChange::Clear`] removes it, [`DateChange::On`] sets it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum DateChange {
-    /// Remove the date.
-    Clear,
-    /// Set the date.
-    On(Date),
-}
-
-impl From<Date> for DateChange {
-    fn from(date: Date) -> DateChange {
-        DateChange::On(date)
-    }
-}
+pub use crate::types::DateChange;

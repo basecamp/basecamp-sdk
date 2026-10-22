@@ -72,7 +72,7 @@ pub use oauth::{
 };
 pub use operation::Operation;
 pub use pagination::{ListMeta, ListResult, Page, PageItems};
-pub use types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveString};
+pub use types::{AuthRoutableUrl, Date, DateChange, DateTime, FlexibleTime, SensitiveString};
 pub use version::{API_VERSION, VERSION};
 
 pub use chrono;

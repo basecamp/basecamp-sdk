@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveString};
+use crate::types::{AuthRoutableUrl, Date, DateChange, DateTime, FlexibleTime, SensitiveString};
 
 /// The `Account` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -6666,7 +6666,7 @@ pub struct UpdateCardRequestContent {
     pub content: Option<String>,
     /// `due_on`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub due_on: Option<Date>,
+    pub due_on: Option<DateChange>,
     /// `assignee_ids`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assignee_ids: Option<Vec<i64>>,
@@ -6683,7 +6683,7 @@ pub struct UpdateCardStepRequestContent {
     pub title: Option<String>,
     /// `due_on`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub due_on: Option<Date>,
+    pub due_on: Option<DateChange>,
     /// `assignee_ids`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assignee_ids: Option<Vec<i64>>,
@@ -7020,7 +7020,7 @@ pub struct UpdateSubtaskRequestContent {
     pub title: Option<String>,
     /// `due_on`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub due_on: Option<Date>,
+    pub due_on: Option<DateChange>,
     /// `assignee_ids`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assignee_ids: Option<Vec<i64>>,

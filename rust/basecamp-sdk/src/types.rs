@@ -68,6 +68,47 @@ impl<'de> Deserialize<'de> for Date {
     }
 }
 
+/// How a write addresses a date member: `Option<DateChange>` is the tri-state — `None`
+/// leaves the date alone, [`DateChange::Clear`] removes it, [`DateChange::On`] sets it.
+///
+/// On the wire a clear is `""`, which BC3 casts to nil, never `null` (SPEC §18). It is the
+/// type of every request member the spec marks `x-basecamp-clearable`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DateChange {
+    /// Remove the date.
+    Clear,
+    /// Set the date.
+    On(Date),
+}
+
+impl From<Date> for DateChange {
+    fn from(date: Date) -> DateChange {
+        DateChange::On(date)
+    }
+}
+
+impl Serialize for DateChange {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            DateChange::Clear => serializer.serialize_str(""),
+            DateChange::On(date) => date.serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for DateChange {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<DateChange, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        if text.is_empty() {
+            Ok(DateChange::Clear)
+        } else {
+            text.parse()
+                .map(DateChange::On)
+                .map_err(serde::de::Error::custom)
+        }
+    }
+}
+
 /// A moment Basecamp writes either as a bare date (`2016-06-01`, an all-day entry) or as a
 /// full timestamp, and which the SDK round-trips verbatim rather than re-rendering.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
@@ -427,6 +468,23 @@ mod tests {
         let date: Date = serde_json::from_str("\"2026-03-04\"").unwrap();
         assert_eq!(date, Date::new(2026, 3, 4).unwrap());
         assert_eq!(serde_json::to_string(&date).unwrap(), "\"2026-03-04\"");
+    }
+
+    #[test]
+    fn date_changes_spell_a_clear_as_empty_and_round_trip_through_json() {
+        let set = DateChange::On(Date::new(2026, 3, 4).unwrap());
+        assert_eq!(serde_json::to_string(&set).unwrap(), "\"2026-03-04\"");
+        assert_eq!(serde_json::to_string(&DateChange::Clear).unwrap(), "\"\"");
+        assert_eq!(
+            serde_json::from_str::<DateChange>("\"2026-03-04\"").unwrap(),
+            set
+        );
+        assert_eq!(
+            serde_json::from_str::<DateChange>("\"\"").unwrap(),
+            DateChange::Clear
+        );
+        assert!(serde_json::from_str::<DateChange>("null").is_err());
+        assert!(serde_json::from_str::<DateChange>("\"tomorrow\"").is_err());
     }
 
     #[test]

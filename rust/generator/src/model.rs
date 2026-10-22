@@ -62,6 +62,8 @@ pub(crate) enum FieldType {
     AuthRoutableUrl,
     DateTime,
     Date,
+    /// An optional `x-basecamp-clearable` date: unchanged, set, or cleared with `""`.
+    DateChange,
     FlexibleTime,
     Bool,
     Int32,
@@ -370,7 +372,11 @@ fn build_schemas(
                 .ok_or(format!("{name}.properties is not an object"))?;
             let mut fields = Vec::new();
             for (wire_name, property) in properties {
-                let kind = field_type(wire_name, property, naming)?;
+                let mut kind = field_type(wire_name, property, naming)?;
+                let is_required = required.contains(wire_name.as_str());
+                if property.get("x-basecamp-clearable").is_some() {
+                    kind = clearable(&name, wire_name, &kind, is_required)?;
+                }
                 fields.push(Field {
                     wire_name: wire_name.clone(),
                     description: description_of(property),
@@ -378,7 +384,7 @@ fn build_schemas(
                     nullable: is_nullable(property),
                     deprecated: deprecation_of(property),
                     kind,
-                    required: required.contains(wire_name.as_str()),
+                    required: is_required,
                 });
             }
             Shape::Struct(fields)
@@ -408,6 +414,26 @@ fn build_schemas(
         });
     }
     Ok(schemas)
+}
+
+/// The type of an `x-basecamp-clearable` member: one that can say leave, set or clear.
+/// Only an optional date has one (`DateChange`); any other kind would fall through to a
+/// type that cannot spell the clear, so it is refused.
+fn clearable(
+    schema: &str,
+    wire_name: &str,
+    kind: &FieldType,
+    required: bool,
+) -> Result<FieldType, String> {
+    match kind {
+        FieldType::Date if !required => Ok(FieldType::DateChange),
+        FieldType::Date => Err(format!(
+            "{schema}.{wire_name}: x-basecamp-clearable on a required member, which can never be left alone"
+        )),
+        _ => Err(format!(
+            "{schema}.{wire_name}: x-basecamp-clearable has a Rust type only for a date"
+        )),
+    }
 }
 
 fn is_nullable(property: &Value) -> bool {

@@ -745,7 +745,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             let request = UpdateCardRequestContent {
                 title: optional_string_param(body, "title"),
                 content: optional_string_param(body, "content"),
-                due_on: date_param(body, "due_on")?,
+                due_on: date_change_param(body, "due_on")?,
                 assignee_ids: optional_int64_list_param(body, "assignee_ids"),
                 ..Default::default()
             };
@@ -1337,8 +1337,8 @@ fn date_param(params: &Params, key: &str) -> Result<Option<Date>, Error> {
         .transpose()
 }
 
-/// A date the fixture carries for a merge-safe composite: `""` is the clear, anything else
-/// a date the request sets.
+/// A date the fixture carries for a merge-safe composite or an `x-basecamp-clearable`
+/// request member: `""` is the clear, anything else a date the request sets.
 fn date_change_param(params: &Params, key: &str) -> Result<Option<DateChange>, Error> {
     optional_string_param(params, key)
         .map(|text| {

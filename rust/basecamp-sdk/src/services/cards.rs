@@ -41,10 +41,7 @@ impl UpdateCardRequest {
         UpdateCardRequestContent {
             title: self.title.clone(),
             content: self.content.clone(),
-            due_on: match self.due_on {
-                Some(DateChange::On(date)) => Some(date),
-                Some(DateChange::Clear) | None => None,
-            },
+            due_on: self.due_on,
             assignee_ids: self.assignee_ids.clone(),
         }
     }
