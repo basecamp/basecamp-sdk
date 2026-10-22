@@ -210,9 +210,12 @@ func (s *ToolsService) Update(ctx context.Context, toolID int64, title string) (
 // trash; Basecamp either deletes or disables it, and answers 204 in both cases.
 //
 // Deleted: an external link, or a tool that is empty while the project has
-// another tool of the same type. Items already in the trash don't count as
-// content. A deleted tool is permanently destroyed, with everything inside it,
-// about five days later, and cannot be restored.
+// another tool of the same type. Empty means nothing inside it is still in
+// place: items already in the trash don't count, archived and draft items do,
+// and for a Card Table only cards count, not columns. A deleted tool does not
+// go to the trash: Basecamp permanently destroys it, with everything inside it,
+// about five days later. Until then, a deleted external link can be restored in
+// the Basecamp web app.
 //
 // Disabled: every other tool, such as the only tool of its type or a tool with
 // content, exactly as Disable does. It keeps its content, and Enable restores it.
