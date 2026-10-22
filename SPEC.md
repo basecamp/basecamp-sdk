@@ -338,11 +338,14 @@ has since lost board access.
 Presence detection is language-native: Go `*string` (nil omits, pointer-to-empty clears),
 TypeScript `dueOn?: string | null`, Ruby/Python `nil`/`None` kwarg defaults with `""` to clear,
 Kotlin nullable parameters with `""` to clear, Swift a `DueDate` enum (`.preserve`/`.clear`/`.on`)
-because an optional cannot carry three states.
+because an optional cannot carry three states, Rust `Option<DateChange>` (`None`/`Some(Clear)`/`Some(On(date))`)
+on the generated request itself, because the spec marks `due_on` `x-basecamp-clearable`.
 
 Card **steps** share the contract: `title` is optional on update, an omitted key is unchanged,
 `"assignee_ids": []` removes everyone, and an assignee-only body is a valid partial update where it
-used to 400. `UpdateStepRequest.DueOn` is presence-bearing for the same reason as the card's.
+used to 400. `UpdateStepRequest.DueOn` is presence-bearing for the same reason as the card's, and
+Rust's generated `UpdateCardStepRequestContent.due_on` and `UpdateSubtaskRequestContent.due_on` are
+`Option<DateChange>` for the same reason.
 
 **Uploads** share it too, on both write paths. `Uploads::VersionsController#create` reads
 `description` with `key?`, so an omitted key carries the previous version's description forward and
@@ -3030,7 +3033,7 @@ Current composites:
 - **Cards** `update` (merge-safe) — see §5 "Merge-Safe Write Surface (Cards)". The raw path is `updateVerbatim`.
 - **Uploads** `download` — composes the generated `get` (GetUpload) with the client-level `downloadURL` primitive (§14), erroring when the upload carries no `download_url`; the result's filename prefers the upload metadata's `filename`.
 
-**Body compaction is not relaxed for composites.** A composite never sends `{"field": null}` to express "clear" (§18 rule). Where a server accepts a blank-cast — as BC3 does for `due_on`, which it casts to nil and which a server test pins — the **empty string** is the clear encoding, and it is the only one all seven SDKs can express identically: six strip nulls structurally before the wire (Python `_compact`, Ruby `compact_params`, Kotlin `?.let`, TypeScript's `JSON.stringify` dropping `undefined`, Swift `encodeIfPresent`, Rust `skip_serializing_if = "Option::is_none"`), but none of them strip `""`.
+**Body compaction is not relaxed for composites.** A composite never sends `{"field": null}` to express "clear" (§18 rule). Where a server accepts a blank-cast — as BC3 does for `due_on`, which it casts to nil and which a server test pins — the **empty string** is the clear encoding, and it is the only one all seven SDKs can express identically: six strip nulls structurally before the wire (Python `_compact`, Ruby `compact_params`, Kotlin `?.let`, TypeScript's `JSON.stringify` dropping `undefined`, Swift `encodeIfPresent`, Rust `skip_serializing_if = "Option::is_none"`), but none of them strip `""`. The spec marks each request member that takes this clear on a partial update with `@basecampClearable` (`x-basecamp-clearable` in OpenAPI): today the `due_on` of `UpdateCard`, `UpdateCardStep` and `UpdateSubtask`. A generator whose type for such a member cannot spell `""` gives it a type that can; Rust's is `DateChange`, so its generated requests send the clear themselves and need no hand-marshaled body.
 
 Omission is **not** a clear encoding. It once was for `due_on`, when BC3 merged card params over `{ due_on: nil }`; basecamp/bc3#12521 removed that default, so an absent key now means "leave unchanged" and an omission-encoded clear silently no-ops.
 

@@ -238,6 +238,20 @@ structure basecampSensitive {
 @specificationExtension(as: "x-basecamp-auth-routable-url")
 structure basecampAuthRoutableUrl {}
 
+/// Marks a request member of a partial update that the caller can clear.
+///
+/// The operation merges: omitting the member leaves the stored value
+/// unchanged, and sending an explicit empty value (`""`) clears it, which
+/// BC3 casts to nil. An explicit `null` is never sent (SPEC.md §18 body
+/// compaction). A generator whose type for the member cannot spell `""`
+/// (a typed date, for one) must give it a type that can say all three:
+/// leave, set, clear.
+///
+/// Emits x-basecamp-clearable extension to OpenAPI for SDK code generators.
+@trait(selector: "structure > member")
+@specificationExtension(as: "x-basecamp-clearable")
+structure basecampClearable {}
+
 // ============================================================================
 // Legacy Traits - Keep for backward compatibility (not emitted to OpenAPI)
 // ============================================================================

@@ -544,3 +544,49 @@ fn an_operation_without_a_tag_or_a_split_entry_fails_generation() {
         "{stderr}"
     );
 }
+
+#[test]
+fn a_clearable_date_is_generated_as_a_date_change() {
+    let types = acceptance(
+        |openapi, _| {
+            openapi["components"]["schemas"]["CreateWidgetRequestContent"]["properties"]["due_on"]
+                ["x-basecamp-clearable"] = serde_json::json!({});
+        },
+        "types.rs",
+    );
+    assert!(
+        types.contains(
+            "    #[serde(default, skip_serializing_if = \"Option::is_none\")]\n    pub due_on: Option<DateChange>,"
+        ),
+        "a clearable date must be able to say leave, set and clear: {types}"
+    );
+}
+
+#[test]
+fn a_clearable_member_that_is_not_a_date_is_refused() {
+    let stderr = refusal(|openapi, _| {
+        openapi["components"]["schemas"]["CreateWidgetRequestContent"]["properties"]["color"]["x-basecamp-clearable"] =
+            serde_json::json!({});
+    });
+    assert!(
+        stderr.contains(
+            "CreateWidgetRequestContent.color: x-basecamp-clearable has a Rust type only for a date"
+        ),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_clearable_required_date_is_refused() {
+    let stderr = refusal(|openapi, _| {
+        let schema = &mut openapi["components"]["schemas"]["CreateWidgetRequestContent"];
+        schema["properties"]["due_on"]["x-basecamp-clearable"] = serde_json::json!({});
+        schema["required"] = serde_json::json!(["name", "due_on"]);
+    });
+    assert!(
+        stderr.contains(
+            "CreateWidgetRequestContent.due_on: x-basecamp-clearable on a required member"
+        ),
+        "{stderr}"
+    );
+}

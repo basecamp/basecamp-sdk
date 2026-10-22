@@ -48,7 +48,7 @@ pub(crate) fn render(model: &Model) -> Result<String, String> {
     out.push_str("use std::collections::BTreeMap;\n\n");
     out.push_str("use serde::{Deserialize, Serialize};\n\n");
     out.push_str(
-        "use crate::types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveString};\n\n",
+        "use crate::types::{AuthRoutableUrl, Date, DateChange, DateTime, FlexibleTime, SensitiveString};\n\n",
     );
     let people = people(model);
     for schema in &model.schemas {
@@ -301,6 +301,7 @@ pub(crate) fn rust_type(kind: &FieldType, recursive: bool) -> String {
         FieldType::AuthRoutableUrl => "AuthRoutableUrl".into(),
         FieldType::DateTime => "DateTime".into(),
         FieldType::Date => "Date".into(),
+        FieldType::DateChange => "DateChange".into(),
         FieldType::FlexibleTime => "FlexibleTime".into(),
         FieldType::Bool => "bool".into(),
         FieldType::Int32 | FieldType::FlexInt => "i32".into(),

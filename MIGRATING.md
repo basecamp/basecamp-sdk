@@ -11,6 +11,19 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Rust: card, card step and subtask updates can clear the due date
+
+`UpdateCardRequestContent.due_on`, `UpdateCardStepRequestContent.due_on` and
+`UpdateSubtaskRequestContent.due_on` were `Option<Date>`, which can leave a
+due date alone or set one but never send the `"due_on": ""` that clears it.
+They are now `Option<DateChange>`, which breaks source that sets them. Write
+`Some(date.into())` where you wrote `Some(date)`, and clear with
+`Some(DateChange::Clear)`. `DateChange` is at `basecamp_sdk::DateChange` and,
+as before, `basecamp_sdk::services::DateChange`. `None` still leaves the date
+unchanged. `CardsService::update` and its `UpdateCardRequest` are unchanged.
+
 # v0.25.0
 
 ### Check-in questions: update no longer takes `paused`

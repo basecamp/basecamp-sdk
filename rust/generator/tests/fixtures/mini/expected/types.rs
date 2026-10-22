@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveString};
+use crate::types::{AuthRoutableUrl, Date, DateChange, DateTime, FlexibleTime, SensitiveString};
 
 /// The `CreateWidgetRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

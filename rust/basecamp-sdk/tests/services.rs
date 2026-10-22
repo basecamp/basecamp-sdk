@@ -7,6 +7,10 @@
 
 mod support;
 
+use basecamp_sdk::models::{
+    UpdateCardRequestContent, UpdateCardStepRequestContent, UpdateSubtaskRequestContent,
+};
+use basecamp_sdk::{Date, DateChange};
 use support::account;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -991,6 +995,89 @@ fn card_step_is_a_deprecated_alias_of_subtask() {
     .unwrap();
     assert_eq!(step.r#type, "Kanban::Step");
     assert_eq!(takes_subtask(&step), 100);
+}
+
+/// The three things a partial update can say about an `x-basecamp-clearable` due date, and
+/// the body each puts on the wire beside a title: no key, `""` (never `null`), or the date.
+fn due_on_changes() -> [(Option<DateChange>, serde_json::Value); 3] {
+    [
+        (None, serde_json::json!({"title": "x"})),
+        (
+            Some(DateChange::Clear),
+            serde_json::json!({"title": "x", "due_on": ""}),
+        ),
+        (
+            Date::new(2026, 3, 4).map(DateChange::On),
+            serde_json::json!({"title": "x", "due_on": "2026-03-04"}),
+        ),
+    ]
+}
+
+/// The JSON body one call PUT to `route`, answered with a recording both a card and a
+/// subtask decode.
+async fn put_body<F, Fut, T>(route: &str, call: F) -> serde_json::Value
+where
+    F: FnOnce(basecamp_sdk::AccountClient) -> Fut,
+    Fut: std::future::Future<Output = Result<T, basecamp_sdk::Error>>,
+{
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path(route))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"app_url": "x", "bucket": {"id": 1, "name": "x", "type": "x"}, "created_at": "2025-01-01T00:00:00Z", "creator": {"id": 1, "name": "x"}, "description_attachments": [], "id": 1, "inherits_status": false, "parent": {"app_url": "x", "id": 1, "title": "x", "type": "x", "url": "x"}, "status": "x", "title": "x", "type": "x", "updated_at": "2025-01-01T00:00:00Z", "url": "x", "visible_to_clients": false})))
+        .expect(1)
+        .mount(&server)
+        .await;
+    call(account(&server)).await.unwrap();
+    let requests = server.received_requests().await.unwrap();
+    serde_json::from_slice(&requests[0].body).unwrap()
+}
+
+#[tokio::test]
+async fn subtasks_update_leaves_clears_or_sets_the_due_date() {
+    for (due_on, wire) in due_on_changes() {
+        let body = put_body("/999/subtasks/100", |account| async move {
+            let request = UpdateSubtaskRequestContent {
+                title: Some("x".into()),
+                due_on,
+                ..Default::default()
+            };
+            account.subtasks().update(100, &request).await
+        })
+        .await;
+        assert_eq!(body, wire, "{due_on:?}");
+    }
+}
+
+#[tokio::test]
+async fn card_steps_update_leaves_clears_or_sets_the_due_date() {
+    for (due_on, wire) in due_on_changes() {
+        let body = put_body("/999/card_tables/steps/100", |account| async move {
+            let request = UpdateCardStepRequestContent {
+                title: Some("x".into()),
+                due_on,
+                ..Default::default()
+            };
+            account.card_steps().update(100, &request).await
+        })
+        .await;
+        assert_eq!(body, wire, "{due_on:?}");
+    }
+}
+
+#[tokio::test]
+async fn cards_update_verbatim_leaves_clears_or_sets_the_due_date() {
+    for (due_on, wire) in due_on_changes() {
+        let body = put_body("/999/card_tables/cards/100", |account| async move {
+            let request = UpdateCardRequestContent {
+                title: Some("x".into()),
+                due_on,
+                ..Default::default()
+            };
+            account.cards().update_verbatim(100, &request).await
+        })
+        .await;
+        assert_eq!(body, wire, "{due_on:?}");
+    }
 }
 
 #[tokio::test]
