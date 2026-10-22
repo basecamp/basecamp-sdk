@@ -1153,7 +1153,7 @@ class Message(TypedDict):
     boosts_count: NotRequired[int]
     boosts_url: NotRequired[str]
     bucket: TodoBucket
-    category: NotRequired[MessageType]
+    category: NotRequired[RecordingCategory]
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     content: str

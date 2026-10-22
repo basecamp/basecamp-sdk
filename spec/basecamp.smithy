@@ -4023,7 +4023,11 @@ structure Message {
   content: MessageContent
   @required
   content_attachments: RichTextAttachmentList
-  category: MessageType
+
+  /// The message's category, when it is filed under one. Rendered by the shared
+  /// recordings/_category partial (id, name, icon), not the full `MessageType`,
+  /// which also carries timestamps.
+  category: RecordingCategory
   boosts_count: Integer
   boosts_url: String
 }

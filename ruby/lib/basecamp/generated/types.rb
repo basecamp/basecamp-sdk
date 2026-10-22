@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-22T22:35:52Z
+# Generated: 2026-10-22T23:31:25Z
 
 require "json"
 require "time"
@@ -2662,7 +2662,7 @@ module Basecamp
         @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
-        @category = parse_type(data["category"], "MessageType")
+        @category = parse_type(data["category"], "RecordingCategory")
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @subscription_url = data["subscription_url"]
