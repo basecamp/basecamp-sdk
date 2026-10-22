@@ -81,7 +81,7 @@ class ToolsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Delete a tool (trash it)
+     * Remove a tool from the dock: deletes an external link or an empty extra tool, and disables any other tool.
      * @param toolId The tool ID
      */
     suspend fun delete(toolId: Long): Unit {

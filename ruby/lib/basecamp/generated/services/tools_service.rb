@@ -38,7 +38,7 @@ module Basecamp
         end
       end
 
-      # Delete a tool (trash it)
+      # Remove a tool from the dock: deletes an external link or an empty extra tool, and disables any other tool (returns 204 No Content either way).
       # @param tool_id [Integer] tool id ID
       # @return [void]
       def delete(tool_id:)

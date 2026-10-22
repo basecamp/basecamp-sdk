@@ -160,7 +160,7 @@ export class ToolsService extends BaseService {
   }
 
   /**
-   * Delete a tool (trash it)
+   * Remove a tool from the dock: deletes an external link or an empty extra tool, and disables any other tool.
    * @param toolId - The tool ID
    * @returns void
    * @throws {BasecampError} If the request fails
