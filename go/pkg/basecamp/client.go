@@ -470,7 +470,7 @@ func (c *Client) initGeneratedClient() {
 		}
 
 		gen, err := generated.NewClientWithResponses(serverURL,
-			generated.WithHTTPClient(c.httpClient),
+			generated.WithHTTPClient(&etagDoer{client: c, next: c.httpClient}),
 			generated.WithRetryConfig(retryCfg),
 			generated.WithRequestEditorFn(authEditor))
 		if err != nil {
