@@ -71,6 +71,15 @@ class FlexibleIntSerializerTest {
     }
 
     @Test
+    fun rejectsNonFiniteStrings() {
+        for (input in listOf("NaN", "-NaN", "Infinity", "-Infinity")) {
+            assertFailsWith<SerializationException>(input) {
+                json.decodeFromString<Wrapper>("{\"width\": \"$input\"}")
+            }
+        }
+    }
+
+    @Test
     fun rejectsFractionalValue() {
         assertFailsWith<SerializationException> {
             json.decodeFromString<Wrapper>("""{"width": 1024.5}""")

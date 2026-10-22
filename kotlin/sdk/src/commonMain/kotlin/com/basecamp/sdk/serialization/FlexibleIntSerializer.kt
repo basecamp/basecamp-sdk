@@ -51,6 +51,11 @@ object FlexibleIntSerializer : KSerializer<Int> {
         if (element is JsonPrimitive) {
             val d = element.content.toDoubleOrNull()
                 ?: throw SerializationException("FlexibleInt: ${element.content} is not a number")
+            // A string spelling "NaN" or "Infinity" parses as a Double; refuse it
+            // here, since NaN fails every comparison below and would read as 0.
+            if (!d.isFinite()) {
+                throw SerializationException("FlexibleInt: $d is not a finite number")
+            }
             val n = round(d)
             if (abs(d - n) > TOLERANCE) {
                 throw SerializationException("FlexibleInt: $d is not an integer")
