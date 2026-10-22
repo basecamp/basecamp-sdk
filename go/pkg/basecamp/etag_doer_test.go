@@ -7,10 +7,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // etagServer serves two pages of cards with fixed ETags and answers 304 to a
@@ -258,8 +260,8 @@ func TestETagDoer_StrategiesWithoutAnAuthorizationHeaderAreNotCached(t *testing.
 	// against, and been served, session a's cached pages.
 	assertStrings(t, "requests", s.requests(), []string{"page1:", "page2:", "page1:", "page2:", "page1:", "page2:"})
 
-	if _, err := os.Stat(filepath.Join(cache.dir, "etags.json")); !os.IsNotExist(err) {
-		t.Errorf("expected nothing cached, stat etags.json: %v", err)
+	if _, err := os.Stat(filepath.Join(cache.dir, "responses")); !os.IsNotExist(err) {
+		t.Errorf("expected nothing cached, stat responses: %v", err)
 	}
 }
 
@@ -296,6 +298,10 @@ func TestETagDoer_ABodyTooLargeToCacheIsReturnedWholeAndNotCached(t *testing.T) 
 // Two Cache values on one directory stand in for two processes sharing a cache
 // (or two clients built with CacheEnabled): they share no lock, only files.
 func TestCache_EntryNeverPairsOneResponsesETagWithAnothersBody(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("os.Rename isn't atomic on Windows, and a reader's open handle can make it fail")
+	}
+
 	dir := t.TempDir()
 	const key = "k"
 	if err := NewCache(dir).Set(key, []byte("body-0"), "0"); err != nil {
@@ -303,9 +309,9 @@ func TestCache_EntryNeverPairsOneResponsesETagWithAnothersBody(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	var writes atomic.Int64
+	var writes [2]atomic.Int64
 	stop := make(chan struct{})
-	for w := range 2 {
+	for w := range writes {
 		writer := NewCache(dir)
 		wg.Add(1)
 		go func() {
@@ -321,10 +327,18 @@ func TestCache_EntryNeverPairsOneResponsesETagWithAnothersBody(t *testing.T) {
 					t.Errorf("Set: %v", err)
 					return
 				}
-				writes.Add(1)
+				writes[w].Add(1)
 			}
 		}()
 	}
+
+	// Read only once both writers are publishing, and check that each kept
+	// publishing while the reads ran.
+	deadline := time.Now().Add(10 * time.Second)
+	for (writes[0].Load() == 0 || writes[1].Load() == 0) && time.Now().Before(deadline) {
+		runtime.Gosched()
+	}
+	before := [2]int64{writes[0].Load(), writes[1].Load()}
 
 	reader := NewCache(dir)
 	torn := 0
@@ -334,11 +348,12 @@ func TestCache_EntryNeverPairsOneResponsesETagWithAnothersBody(t *testing.T) {
 			torn++
 		}
 	}
+	during := [2]int64{writes[0].Load() - before[0], writes[1].Load() - before[1]}
 	close(stop)
 	wg.Wait()
 
-	if writes.Load() == 0 {
-		t.Fatal("no writes landed while reading")
+	if during[0] == 0 || during[1] == 0 {
+		t.Fatalf("writes during the reads = %v, want both writers publishing", during)
 	}
 	if torn > 0 {
 		t.Errorf("%d of 2000 reads paired an ETag with another response's body", torn)

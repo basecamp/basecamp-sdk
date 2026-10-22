@@ -42,8 +42,13 @@ func (c *Cache) Key(url, accountID, token string) string {
 // writers racing on one key leave one of their entries intact rather than one
 // response's ETag beside another's body. That pairing would be persistent: the
 // server keeps answering the newer ETag with 304, and the older body is served
-// until the resource changes again. (Before #1030 the ETags lived together in
-// etags.json and the bodies in responses/<key>.body, published separately.)
+// until the resource changes again. (On Windows os.Rename isn't promised to be
+// atomic, and a rename that fails just leaves the previous entry in place.)
+//
+// Before #1030 the ETags lived together in etags.json and the bodies in
+// responses/<key>.body, published separately. Those files read as misses
+// here, and only Clear removes them: an older SDK sharing the directory still
+// uses them, and deleting one half would leave it an ETag without its body.
 
 // GetETag returns the cached ETag for a key, or empty string if not found.
 func (c *Cache) GetETag(key string) string {
@@ -88,7 +93,7 @@ func (c *Cache) Set(key string, body []byte, etag string) error {
 		return err
 	}
 
-	tmp, err := os.CreateTemp(responsesDir, key+".*.tmp") // 0600
+	tmp, err := os.CreateTemp(responsesDir, "entry-*.tmp") // 0600; the key may be too long to prefix it
 	if err != nil {
 		return err
 	}
@@ -104,8 +109,6 @@ func (c *Cache) Set(key string, body []byte, etag string) error {
 		return err
 	}
 
-	// Drop this key's body in the old layout, if an earlier version left one.
-	_ = os.Remove(filepath.Join(responsesDir, key+".body")) // #nosec G703 -- cache dir is caller-configured
 	return nil
 }
 
@@ -130,7 +133,6 @@ func (c *Cache) Invalidate(key string) error {
 	if err := os.Remove(c.entryFile(key)); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	_ = os.Remove(filepath.Join(c.dir, "responses", key+".body")) // the old layout
 	return nil
 }
 

@@ -3,6 +3,7 @@ package basecamp
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -182,7 +183,36 @@ func TestCache_ReadsTheOldLayoutAsAMiss(t *testing.T) {
 	if err := c.Set("k", []byte("new body"), `"new"`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "responses", "k.body")); !os.IsNotExist(err) {
-		t.Errorf("Set left the old layout's body behind: %v", err)
+	if err := c.Invalidate("k"); err != nil {
+		t.Fatal(err)
+	}
+
+	// An older SDK sharing the directory still reads the old layout, so only
+	// Clear touches it.
+	if body, err := os.ReadFile(filepath.Join(dir, "responses", "k.body")); err != nil || string(body) != "old body" {
+		t.Errorf("old layout's body = %q, %v; want it untouched", body, err)
+	}
+	if index, err := os.ReadFile(filepath.Join(dir, "etags.json")); err != nil || !strings.Contains(string(index), "old") {
+		t.Errorf("old layout's etags.json = %q, %v; want it untouched", index, err)
+	}
+
+	if err := c.Clear(); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"etags.json", "responses"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); !os.IsNotExist(err) {
+			t.Errorf("Clear left %s: %v", name, err)
+		}
+	}
+}
+
+func TestCache_AcceptsKeysTooLongToPrefixATemporaryFile(t *testing.T) {
+	c := NewCache(t.TempDir())
+	key := strings.Repeat("k", 248) // key+".entry" fits in 255 bytes; key plus a random temp suffix would not
+	if err := c.Set(key, []byte("body"), `"v"`); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if got := c.GetBody(key); string(got) != "body" {
+		t.Errorf("GetBody = %q, want %q", got, "body")
 	}
 }
