@@ -198,38 +198,43 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 		return err
 	}
 
-	// Build multipart/form-data body
-	var buf bytes.Buffer
-	writer := multipart.NewWriter(&buf)
-	partHeader := make(textproto.MIMEHeader)
-	safeFilename := strings.NewReplacer("\r", "", "\n", "", `\`, `\\`, `"`, `\"`).Replace(filename)
-	partHeader.Set("Content-Disposition", fmt.Sprintf(`form-data; name="logo"; filename="%s"`, safeFilename))
-	safeContentType := strings.NewReplacer("\r", "", "\n", "").Replace(contentType)
-	partHeader.Set("Content-Type", safeContentType)
-	part, err := writer.CreatePart(partHeader)
+	body, multipartContentType, err := multipartFileBody("logo", logo, filename, contentType)
 	if err != nil {
-		return fmt.Errorf("failed to create form file: %w", err)
-	}
-	if _, err = io.Copy(part, logo); err != nil {
-		return fmt.Errorf("failed to write logo data: %w", err)
-	}
-	if err = writer.Close(); err != nil {
-		return fmt.Errorf("failed to close multipart writer: %w", err)
+		return err
 	}
 
-	// Delegate to the generated client — retry and auth are handled by the transport.
-	// Pass a *bytes.Reader so net/http snapshots it into GetBody and doWithRetry
-	// can replay the body on transient failures.
-	bodyBytes := buf.Bytes()
-	multipartContentType := writer.FormDataContentType()
 	resp, err := s.client.parent.gen.UpdateAccountLogoWithBodyWithResponse(
 		ctx,
 		s.client.accountID,
 		multipartContentType,
-		bytes.NewReader(bodyBytes),
+		body,
 	)
 	if err != nil {
 		return err
 	}
 	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// multipartFileBody encodes one file as a multipart/form-data body under field.
+// It returns a *bytes.Reader so net/http snapshots it into GetBody and
+// doWithRetry can replay the body on transient failures.
+func multipartFileBody(field string, file io.Reader, filename, contentType string) (*bytes.Reader, string, error) {
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	partHeader := make(textproto.MIMEHeader)
+	safeFilename := strings.NewReplacer("\r", "", "\n", "", `\`, `\\`, `"`, `\"`).Replace(filename)
+	partHeader.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, field, safeFilename))
+	safeContentType := strings.NewReplacer("\r", "", "\n", "").Replace(contentType)
+	partHeader.Set("Content-Type", safeContentType)
+	part, err := writer.CreatePart(partHeader)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to create form file: %w", err)
+	}
+	if _, err = io.Copy(part, file); err != nil {
+		return nil, "", fmt.Errorf("failed to write %s data: %w", field, err)
+	}
+	if err = writer.Close(); err != nil {
+		return nil, "", fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+	return bytes.NewReader(buf.Bytes()), writer.FormDataContentType(), nil
 }
