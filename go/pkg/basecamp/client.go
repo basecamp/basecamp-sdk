@@ -470,7 +470,7 @@ func (c *Client) initGeneratedClient() {
 		}
 
 		gen, err := generated.NewClientWithResponses(serverURL,
-			generated.WithHTTPClient(c.httpClient),
+			generated.WithHTTPClient(&etagDoer{client: c, next: c.httpClient}),
 			generated.WithRetryConfig(retryCfg),
 			generated.WithRequestEditorFn(authEditor))
 		if err != nil {
@@ -832,16 +832,8 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 	}
 	req.Header.Set("Accept", "application/json")
 
-	// Add ETag for cached GET requests. Derive cache key from the Authorization
-	// header applied by the auth strategy, so each credential gets its own namespace.
-	var cacheKey string
-	if method == "GET" && c.cache != nil {
-		cacheKey = c.cache.Key(url, "", req.Header.Get("Authorization")) // URL already includes account when needed
-		if etag := c.cache.GetETag(cacheKey); etag != "" {
-			req.Header.Set("If-None-Match", etag)
-			c.logger.Debug("cache conditional request", "etag", etag)
-		}
-	}
+	// Make cached GETs conditional (see conditionalGET).
+	cacheKey, cached := c.conditionalGET(req)
 
 	c.logger.Debug("http request", "method", method, "url", url, "attempt", attempt)
 
@@ -859,17 +851,14 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 	// Handle response based on status code
 	switch resp.StatusCode {
 	case http.StatusNotModified: // 304
-		if cacheKey != "" {
+		if cached != nil {
 			c.logger.Debug("cache hit", "status", 304)
-			cached := c.cache.GetBody(cacheKey)
-			if cached != nil {
-				return &Response{
-					Data:       cached,
-					StatusCode: http.StatusOK,
-					Headers:    resp.Header,
-					FromCache:  true,
-				}, nil
-			}
+			return &Response{
+				Data:       cached,
+				StatusCode: http.StatusOK,
+				Headers:    resp.Header,
+				FromCache:  true,
+			}, nil
 		}
 		return nil, ErrAPI(304, "304 received but no cached response available").withRequestID(requestID)
 
