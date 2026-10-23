@@ -89,7 +89,7 @@ func TestPageParamReachesWire(t *testing.T) {
 			return err
 		}},
 		{"timeline.Progress", `[]`, func(ctx context.Context, ac *AccountClient) error {
-			_, err := ac.Timeline().Progress(ctx, &TimelineListOptions{Page: 3})
+			_, err := ac.Timeline().Progress(ctx, &ProgressOptions{Page: 3})
 			return err
 		}},
 		{"timesheet.ProjectReport", `[]`, func(ctx context.Context, ac *AccountClient) error {

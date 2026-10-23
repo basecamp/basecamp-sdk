@@ -32,6 +32,12 @@ pub struct GetPersonProgressParams {
 /// Optional query parameters for `GetProgressReport`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct GetProgressReportParams {
+    /// The day to read (YYYY-MM-DD). The feed serves one day per request and defaults to today, so step this back a day at a time to read history; `page` pages within the day. The server reads an unparseable date as today.
+    pub date: Option<String>,
+    /// Only events in these projects. When omitted, the server applies the project filter the caller last saved in the web's activity view, not "all projects". If none of the IDs is a project the caller can access, the response is empty and the server clears that saved filter, so send only IDs the API just returned.
+    pub project_ids: Option<Vec<i64>>,
+    /// Only events created by these people. When omitted, the server applies the people filter the caller last saved in the web's activity view, not "everyone". If none of the IDs is a person the caller can see, the response is empty and the server clears that saved filter, so send only IDs the API just returned.
+    pub people_ids: Option<Vec<i64>>,
     /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     pub page: Option<i32>,
 }
@@ -100,6 +106,9 @@ impl<'a> ReportsService<'a> {
         params: &GetProgressReportParams,
     ) -> Result<Page<GetProgressReportResponseContent>, Error> {
         let mut operation = self.client.operation(&routes::GET_PROGRESS_REPORT, &[]);
+        operation.query_optional("date", params.date.as_ref());
+        operation.query_list_optional("project_ids[]", params.project_ids.as_deref());
+        operation.query_list_optional("people_ids[]", params.people_ids.as_deref());
         operation.query_optional("page", params.page.as_ref());
         self.client.send_page(operation).await
     }

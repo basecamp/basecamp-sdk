@@ -256,3 +256,53 @@ describe("ReportsService.upcoming", () => {
     expect(result.assignables).toEqual([]);
   });
 });
+
+describe("ReportsService.progress", () => {
+  let client: BasecampClient;
+
+  beforeEach(() => {
+    client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      enableRetry: false,
+    });
+  });
+
+  it("sends the date and both filters as bc3 reads them", async () => {
+    let query: URLSearchParams | undefined;
+    server.use(
+      http.get(`${BASE_URL}/reports/progress.json`, ({ request }) => {
+        query = new URL(request.url).searchParams;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    await client.reports.progress({
+      date: "2026-08-30",
+      projectIds: [27, 45144734],
+      peopleIds: [49285301],
+      page: 2,
+    });
+
+    expect(query?.get("date")).toBe("2026-08-30");
+    expect(query?.getAll("project_ids[]")).toEqual(["27", "45144734"]);
+    expect(query?.getAll("people_ids[]")).toEqual(["49285301"]);
+    expect(query?.get("page")).toBe("2");
+    expect(query?.has("project_ids")).toBe(false);
+    expect(query?.has("people_ids")).toBe(false);
+  });
+
+  it("sends no query when unfiltered", async () => {
+    let search: string | undefined;
+    server.use(
+      http.get(`${BASE_URL}/reports/progress.json`, ({ request }) => {
+        search = new URL(request.url).search;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    await client.reports.progress();
+
+    expect(search).toBe("");
+  });
+});

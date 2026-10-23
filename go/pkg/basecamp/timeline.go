@@ -136,6 +136,35 @@ type TimelineListOptions struct {
 	Page int
 }
 
+// ProgressOptions specifies options for the account-wide activity feed.
+type ProgressOptions struct {
+	// Limit is the maximum number of events to return.
+	// If 0, uses DefaultTimelineLimit (100). Any negative value means unlimited.
+	Limit int
+
+	// Page, if positive, fetches only that page of the day and disables
+	// auto-pagination (SPEC §8).
+	Page int
+
+	// Date is the day to read. Basecamp serves one day per request and the
+	// zero Date means today, so step Date back a day at a time to read
+	// history. Pagination stays within the day.
+	Date Date
+
+	// ProjectIDs limits the feed to these projects. When empty, Basecamp
+	// applies the project filter the caller last saved in the web's activity
+	// view, not every project. If none of the IDs is a project the caller can
+	// access, Basecamp returns no events and clears that saved filter, so pass
+	// only IDs the API just returned.
+	ProjectIDs []int64
+
+	// PeopleIDs limits the feed to events these people created. When empty,
+	// Basecamp applies the people filter the caller last saved in the web's
+	// activity view, not everyone. If none of the IDs is a person the caller
+	// can see, Basecamp returns no events and clears that saved filter.
+	PeopleIDs []int64
+}
+
 // TimelineListResult contains the results from listing timeline events.
 type TimelineListResult struct {
 	// Events is the list of timeline events returned.
@@ -161,16 +190,12 @@ func NewTimelineService(client *AccountClient) *TimelineService {
 	return &TimelineService{client: client}
 }
 
-// Progress returns the account-wide activity feed.
-// This shows recent activity across all projects.
-//
-// Pagination options:
-//   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
-//   - Page: if positive, fetches only that page and disables auto-pagination
+// Progress returns one day of the account-wide activity feed, today unless
+// opts.Date names another day. See ProgressOptions for the filters.
 //
 // The returned TimelineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOptions) (result *TimelineListResult, err error) {
+func (s *TimelineService) Progress(ctx context.Context, opts *ProgressOptions) (result *TimelineListResult, err error) {
 	op := OperationInfo{
 		Service: "Timeline", Operation: "Progress",
 		ResourceType: "timeline_event", IsMutation: false,
@@ -184,14 +209,9 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Call generated client for first page (spec-conformant - no manual path construction)
-	var params *generated.GetProgressReportParams
-	if opts != nil && opts.Page > 0 {
-		var page *int32
-		if page, err = pageParam(opts.Page); err != nil {
-			return nil, err
-		}
-		params = &generated.GetProgressReportParams{Page: page}
+	params, err := progressParams(opts)
+	if err != nil {
+		return nil, err
 	}
 
 	resp, err := s.client.parent.gen.GetProgressReportWithResponse(ctx, s.client.accountID, params)
@@ -243,6 +263,44 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 	}
 
 	return &TimelineListResult{Events: events, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
+}
+
+// progressParams refuses what Basecamp would misread: it reads an impossible
+// date as today, and a filter with no visible ID clears the caller's saved web
+// filter.
+func progressParams(opts *ProgressOptions) (params *generated.GetProgressReportParams, err error) {
+	params = &generated.GetProgressReportParams{}
+	if opts == nil {
+		return params, nil
+	}
+	if opts.Page > 0 {
+		if params.Page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+	}
+	if !opts.Date.IsValid() {
+		return nil, ErrUsage(fmt.Sprintf("progress date %#v is not a calendar date", opts.Date))
+	}
+	params.Date = omitzero(opts.Date.String())
+	if params.ProjectIds, err = progressIDs("project", opts.ProjectIDs); err != nil {
+		return nil, err
+	}
+	if params.PeopleIds, err = progressIDs("person", opts.PeopleIDs); err != nil {
+		return nil, err
+	}
+	return params, nil
+}
+
+func progressIDs(kind string, ids []int64) (*[]int64, error) {
+	for _, id := range ids {
+		if id <= 0 {
+			return nil, ErrUsage(fmt.Sprintf("progress %s ID %d is not an ID", kind, id))
+		}
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return &ids, nil
 }
 
 // ProjectTimeline returns the activity timeline for a specific project.

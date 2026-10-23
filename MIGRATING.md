@@ -13,6 +13,33 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Activity feed: read any day, and filter by project and person
+
+Basecamp's account-wide activity feed (`GetProgressReport`) serves one day
+per request, today unless told otherwise, and pages within that day. The SDKs
+could send only `page`, so no caller could read past midnight. Every SDK now
+sends `date`, `project_ids[]` and `people_ids[]`; read history by stepping
+`date` back a day at a time. `GetProjectTimeline` and `GetPersonProgress` do
+not take them, because Basecamp ignores them there.
+
+Two server behaviours to know before you send the ID lists. An omitted list
+is not "all": Basecamp applies the projects or people the user last picked in
+the web's activity view. And a list naming no ID the user can see returns no
+events and clears that saved web filter, so send only IDs the API just gave
+you.
+
+Go's `TimelineService.Progress` takes `*ProgressOptions` instead of
+`*TimelineListOptions`, which breaks source that passes options. Rename the
+type: `Limit` and `Page` mean what they did. `ProgressOptions` adds `Date`,
+`ProjectIDs` and `PeopleIDs`, and `Progress` refuses an impossible `Date` or
+a non-positive ID with a usage error rather than sending it.
+
+Rust's `GetProgressReportParams` gains three public fields, so a struct
+literal that names only `page`, such as `GetProgressReportParams { page:
+Some(2) }`, stops compiling. Add `..Default::default()` or set `date`,
+`project_ids` and `people_ids`. `&Default::default()` is unaffected. The other
+SDKs only gain optional parameters.
+
 ### Rust: card, card step and subtask updates can clear the due date
 
 `UpdateCardRequestContent.due_on`, `UpdateCardStepRequestContent.due_on` and

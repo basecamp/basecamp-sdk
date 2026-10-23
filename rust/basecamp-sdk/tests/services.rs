@@ -886,6 +886,40 @@ async fn reports_progress_reaches_the_wire() {
 }
 
 #[tokio::test]
+async fn reports_progress_sends_date_and_filters_as_bc3_reads_them() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/reports/progress.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+        .expect(1)
+        .mount(&server)
+        .await;
+    account(&server)
+        .reports()
+        .progress(&basecamp_sdk::services::reports::GetProgressReportParams {
+            date: Some("2026-08-30".into()),
+            project_ids: Some(vec![27, 45_144_734]),
+            people_ids: Some(vec![49_285_301]),
+            page: Some(2),
+        })
+        .await
+        .unwrap();
+    let requests = server.received_requests().await.unwrap();
+    let pairs: Vec<(String, String)> = requests[0].url.query_pairs().into_owned().collect();
+    let pair = |k: &str, v: &str| (k.to_string(), v.to_string());
+    assert_eq!(
+        pairs,
+        vec![
+            pair("date", "2026-08-30"),
+            pair("project_ids[]", "27"),
+            pair("project_ids[]", "45144734"),
+            pair("people_ids[]", "49285301"),
+            pair("page", "2"),
+        ]
+    );
+}
+
+#[tokio::test]
 async fn schedules_get_entry_reaches_the_wire() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

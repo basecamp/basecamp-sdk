@@ -1678,11 +1678,11 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		}
 
 	case "GetProgressReport":
-		var timelineOpts *basecamp.TimelineListOptions
+		var progressOpts *basecamp.ProgressOptions
 		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxItems > 0 {
-			timelineOpts = &basecamp.TimelineListOptions{Limit: tc.ConfigOverrides.MaxItems}
+			progressOpts = &basecamp.ProgressOptions{Limit: tc.ConfigOverrides.MaxItems}
 		}
-		result, err := account.Timeline().Progress(ctx, timelineOpts)
+		result, err := account.Timeline().Progress(ctx, progressOpts)
 		if err != nil {
 			return operationResult{err: err}
 		}

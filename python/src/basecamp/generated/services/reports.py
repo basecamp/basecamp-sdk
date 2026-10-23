@@ -11,10 +11,29 @@ from basecamp.hooks import OperationInfo
 
 
 class ReportsService(BaseService):
-    def progress(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+    def progress(
+        self,
+        *,
+        date: str | None = None,
+        project_ids: list[int] | None = None,
+        people_ids: list[int] | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
+    ) -> ListResult:
         """Get account-wide activity feed (progress report).
 
         Args:
+            date: The day to read (YYYY-MM-DD). The feed serves one day per request and defaults to
+                today, so step this back a day at a time to read history; `page` pages within the
+                day. The server reads an unparseable date as today.
+            project_ids: Only events in these projects. When omitted, the server applies the project
+                filter the caller last saved in the web's activity view, not "all projects". If none
+                of the IDs is a project the caller can access, the response is empty and the server
+                clears that saved filter, so send only IDs the API just returned.
+            people_ids: Only events created by these people. When omitted, the server applies the
+                people filter the caller last saved in the web's activity view, not "everyone". If
+                none of the IDs is a person the caller can see, the response is empty and the server
+                clears that saved filter, so send only IDs the API just returned.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
             max_items: Client-side cap on the number of items collected across pages; None or a
@@ -24,7 +43,16 @@ class ReportsService(BaseService):
         return self._request_paginated(
             OperationInfo(service="reports", operation="progress", is_mutation=False),
             "/reports/progress.json",
-            params=self._compact(page=page),
+            params={
+                k: v
+                for k, v in {
+                    "date": date,
+                    "project_ids[]": project_ids,
+                    "people_ids[]": people_ids,
+                    "page": page,
+                }.items()
+                if v is not None
+            },
             max_items=max_items,
             operation="GetProgressReport",
         )
@@ -104,10 +132,29 @@ class ReportsService(BaseService):
 
 
 class AsyncReportsService(AsyncBaseService):
-    async def progress(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+    async def progress(
+        self,
+        *,
+        date: str | None = None,
+        project_ids: list[int] | None = None,
+        people_ids: list[int] | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
+    ) -> ListResult:
         """Get account-wide activity feed (progress report).
 
         Args:
+            date: The day to read (YYYY-MM-DD). The feed serves one day per request and defaults to
+                today, so step this back a day at a time to read history; `page` pages within the
+                day. The server reads an unparseable date as today.
+            project_ids: Only events in these projects. When omitted, the server applies the project
+                filter the caller last saved in the web's activity view, not "all projects". If none
+                of the IDs is a project the caller can access, the response is empty and the server
+                clears that saved filter, so send only IDs the API just returned.
+            people_ids: Only events created by these people. When omitted, the server applies the
+                people filter the caller last saved in the web's activity view, not "everyone". If
+                none of the IDs is a person the caller can see, the response is empty and the server
+                clears that saved filter, so send only IDs the API just returned.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
             max_items: Client-side cap on the number of items collected across pages; None or a
@@ -117,7 +164,16 @@ class AsyncReportsService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="reports", operation="progress", is_mutation=False),
             "/reports/progress.json",
-            params=self._compact(page=page),
+            params={
+                k: v
+                for k, v in {
+                    "date": date,
+                    "project_ids[]": project_ids,
+                    "people_ids[]": people_ids,
+                    "page": page,
+                }.items()
+                if v is not None
+            },
             max_items=max_items,
             operation="GetProgressReport",
         )

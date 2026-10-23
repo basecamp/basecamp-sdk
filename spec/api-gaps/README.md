@@ -45,6 +45,7 @@ making the absorption journey publicly auditable.
 | [step-top-level](step-top-level.md) | absorbed-in-sdk | 3b | low |
 | [everything-aggregates](everything-aggregates.md) | absorbed-in-sdk | 3c | high |
 | [activity-timeline](activity-timeline.md) | absorbed-in-sdk | 3d | high |
+| [activity-timeline-filters](activity-timeline-filters.md) | absorbed-in-sdk | n/a | high |
 | [recordable-subtypes-doc](recordable-subtypes-doc.md) | partial-coverage | 3a | medium |
 | [stack-doc-and-smithy](stack-doc-and-smithy.md) | confirmed-not-api-resource | 3b | medium |
 | [search-filter-additions](search-filter-additions.md) | absorbed-in-sdk | 3e | medium |

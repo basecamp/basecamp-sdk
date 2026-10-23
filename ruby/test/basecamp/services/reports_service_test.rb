@@ -39,6 +39,39 @@ class ReportsServiceTest < Minitest::Test
   # against a contract that made Swift throw on every populated window (#635).
   # Reading the shared fixture keeps the body honest: it is validated against
   # the generated schema by `make check-fixture-coverage`.
+  def test_progress_sends_date_and_filters_as_bc3_reads_them
+    stub_request(:get, "https://3.basecampapi.com/12345/reports/progress.json")
+      .with(query: {
+        "date" => "2026-08-30",
+        "project_ids" => %w[27 45144734],
+        "people_ids" => %w[49285301],
+        "page" => "2"
+      })
+      .to_return(status: 200, body: [].to_json)
+
+    @account.reports.progress(
+      date: "2026-08-30",
+      project_ids: [ 27, 45144734 ],
+      people_ids: [ 49285301 ],
+      page: 2
+    ).to_a
+
+    assert_requested(:get, %r{/reports/progress\.json}) do |req|
+      pairs = URI.decode_www_form(req.uri.query)
+      assert_equal [ %w[project_ids[] 27], %w[project_ids[] 45144734] ], pairs.select { |k, _| k.start_with?("project_ids") }
+      assert_equal [ %w[people_ids[] 49285301] ], pairs.select { |k, _| k.start_with?("people_ids") }
+    end
+  end
+
+  def test_progress_sends_no_query_when_unfiltered
+    stub_request(:get, "https://3.basecampapi.com/12345/reports/progress.json")
+      .to_return(status: 200, body: [].to_json)
+
+    @account.reports.progress(project_ids: [], people_ids: []).to_a
+
+    assert_requested(:get, "https://3.basecampapi.com/12345/reports/progress.json") { |req| req.uri.query.nil? }
+  end
+
   def test_upcoming
     upcoming = load_fixture("schedules/upcoming.json")
     stub_request(:get, "https://3.basecampapi.com/12345/reports/schedules/upcoming.json")

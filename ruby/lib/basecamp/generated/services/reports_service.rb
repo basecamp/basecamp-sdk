@@ -8,12 +8,15 @@ module Basecamp
     class ReportsService < BaseService
 
       # Get account-wide activity feed (progress report)
+      # @param date [String, nil] The day to read (YYYY-MM-DD). The feed serves one day per request and defaults to today, so step this back a day at a time to read history; `page` pages within the day. The server reads an unparseable date as today.
+      # @param project_ids [Array, nil] Only events in these projects. When omitted, the server applies the project filter the caller last saved in the web's activity view, not "all projects". If none of the IDs is a project the caller can access, the response is empty and the server clears that saved filter, so send only IDs the API just returned.
+      # @param people_ids [Array, nil] Only events created by these people. When omitted, the server applies the people filter the caller last saved in the web's activity view, not "everyone". If none of the IDs is a person the caller can see, the response is empty and the server clears that saved filter, so send only IDs the API just returned.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def progress(page: nil, max_items: nil)
+      def progress(date: nil, project_ids: nil, people_ids: nil, page: nil, max_items: nil)
         wrap_paginated(service: "reports", operation: "progress", is_mutation: false) do
-          params = compact_query_params(page: page)
+          params = compact_query_params(date: date, project_ids: project_ids, people_ids: people_ids, page: page)
           paginate("/reports/progress.json", params: params, operation: "GetProgressReport", max_items: max_items)
         end
       end

@@ -43,6 +43,9 @@ class ReportsService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
+            "date" to options.date,
+            "project_ids[]" to options.projectIds,
+            "people_ids[]" to options.peopleIds,
             "page" to options.page,
         )
         return requestPaginated(info, options.toPaginationOptions(), {

@@ -3,9 +3,12 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -692,7 +695,7 @@ func TestProgress_SinglePage(t *testing.T) {
 	h.serverURL = server.URL
 
 	svc := newTestTimelineService(server.URL)
-	result, err := svc.Progress(t.Context(), &TimelineListOptions{Page: 1})
+	result, err := svc.Progress(t.Context(), &ProgressOptions{Page: 1})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -715,7 +718,7 @@ func TestProgress_WithLimit(t *testing.T) {
 	h.serverURL = server.URL
 
 	svc := newTestTimelineService(server.URL)
-	result, err := svc.Progress(t.Context(), &TimelineListOptions{Limit: 7})
+	result, err := svc.Progress(t.Context(), &ProgressOptions{Limit: 7})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -978,7 +981,7 @@ func TestProgress_ExplicitZeroLimitUsesDefault(t *testing.T) {
 	h.serverURL = server.URL
 
 	svc := newTestTimelineService(server.URL)
-	result, err := svc.Progress(t.Context(), &TimelineListOptions{Limit: 0})
+	result, err := svc.Progress(t.Context(), &ProgressOptions{Limit: 0})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -998,7 +1001,7 @@ func TestProgress_UnlimitedFetchesAll(t *testing.T) {
 	h.serverURL = server.URL
 
 	svc := newTestTimelineService(server.URL)
-	result, err := svc.Progress(t.Context(), &TimelineListOptions{Limit: -1})
+	result, err := svc.Progress(t.Context(), &ProgressOptions{Limit: -1})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1036,7 +1039,7 @@ func TestProgress_VerifyEventIDs(t *testing.T) {
 	h.serverURL = server.URL
 
 	svc := newTestTimelineService(server.URL)
-	result, err := svc.Progress(t.Context(), &TimelineListOptions{Limit: -1})
+	result, err := svc.Progress(t.Context(), &ProgressOptions{Limit: -1})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1071,5 +1074,82 @@ func TestPersonProgress_EmptyEvents(t *testing.T) {
 	}
 	if len(result.Events) != 0 {
 		t.Errorf("expected 0 events, got %d", len(result.Events))
+	}
+}
+
+func TestProgress_SendsDateAndFiltersOnTheWire(t *testing.T) {
+	var query url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("[" + timelineEventJSON(1) + "]"))
+	}))
+	defer server.Close()
+
+	svc := newTestTimelineService(server.URL)
+	_, err := svc.Progress(t.Context(), &ProgressOptions{
+		Date:       Date{Year: 2026, Month: time.August, Day: 30},
+		ProjectIDs: []int64{27, 45144734},
+		PeopleIDs:  []int64{49285301},
+		Page:       2,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := url.Values{
+		"date":          {"2026-08-30"},
+		"project_ids[]": {"27", "45144734"},
+		"people_ids[]":  {"49285301"},
+		"page":          {"2"},
+	}
+	if !reflect.DeepEqual(query, want) {
+		t.Errorf("query = %v, want %v", query, want)
+	}
+}
+
+func TestProgress_UnfilteredSendsNoQuery(t *testing.T) {
+	var rawQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("[]"))
+	}))
+	defer server.Close()
+
+	svc := newTestTimelineService(server.URL)
+	for _, opts := range []*ProgressOptions{nil, {}, {ProjectIDs: []int64{}, PeopleIDs: []int64{}}} {
+		if _, err := svc.Progress(t.Context(), opts); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if rawQuery != "" {
+			t.Errorf("opts %+v sent query %q, want none", opts, rawQuery)
+		}
+	}
+}
+
+func TestProgress_RefusesWhatBasecampWouldMisread(t *testing.T) {
+	var requests int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requests, 1)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("[]"))
+	}))
+	defer server.Close()
+
+	svc := newTestTimelineService(server.URL)
+	for name, opts := range map[string]*ProgressOptions{
+		"impossible date": {Date: Date{Year: 2026, Month: time.February, Day: 30}},
+		"zero project ID": {ProjectIDs: []int64{27, 0}},
+		"negative person": {PeopleIDs: []int64{-1}},
+	} {
+		_, err := svc.Progress(t.Context(), opts)
+		apiErr, ok := errors.AsType[*Error](err)
+		if !ok || apiErr.Code != CodeUsage {
+			t.Errorf("%s: err = %v, want a usage error", name, err)
+		}
+	}
+	if n := atomic.LoadInt32(&requests); n != 0 {
+		t.Errorf("sent %d requests, want none", n)
 	}
 }
