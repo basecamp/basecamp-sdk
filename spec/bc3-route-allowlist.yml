@@ -174,27 +174,24 @@ sdk_routes_absent_from_bc3_docs:
     path: /projects/:id/wallpaper
     reason: >-
       UpdateProjectWallpaper. Served on the API host and documented in
-      doc/api/sections/projects.md ("Update project wallpaper") by bc3 branch
-      card-10434793321-project-wallpaper-api (commits 5dfcd396ce9 and
-      9e31d099b1e), not yet merged and with no PR number yet, so neither bc3
-      master nor the revision spec/api-provenance.json pins describes it. Drawn at
+      doc/api/sections/projects.md ("Update project wallpaper") by bc3 #14062,
+      not yet merged, so neither bc3 master nor the revision
+      spec/api-provenance.json pins describes it. Drawn at
       config/routes.rb:811 (`resource :wallpaper, only: %i[ show update destroy ]`
       inside the projects member scope); Projects::WallpapersController#update
       answers `head :no_content`, so no API view is needed. Covered by
-      test/api/projects/wallpapers_controller_api_test.rb on that branch,
-      including "upload a wallpaper with a mode in the query string". Before the
-      merge the API host answers 404. Replace the branch with its PR number once
-      opened, and delete at the repin past the merge.
+      test/api/projects/wallpapers_controller_api_test.rb in #14062, including
+      "upload a wallpaper with a mode in the query string". Before #14062 the API
+      host answers 404. Delete at the repin past #14062.
 
   - method: DELETE
     path: /projects/:id/wallpaper
     reason: >-
-      RemoveProjectWallpaper. Same bc3 branch, same draw;
+      RemoveProjectWallpaper. Same bc3 PR (#14062), same draw;
       Projects::WallpapersController#destroy answers `head :no_content`, covered
       by "remove a wallpaper" and "removing a wallpaper that isn't there
-      succeeds" in test/api/projects/wallpapers_controller_api_test.rb on that
-      branch. Before the merge the API host answers 404. Delete at the repin past
-      the merge.
+      succeeds" in test/api/projects/wallpapers_controller_api_test.rb. Before
+      #14062 the API host answers 404. Delete at the repin past #14062.
 
 # ---------------------------------------------------------------------------
 # Known-defective SDK routes — bc3 does NOT serve these, and we know it.
