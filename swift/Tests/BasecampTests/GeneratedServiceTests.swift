@@ -987,6 +987,39 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertTrue(sent.url!.absoluteString.hasSuffix("/chats/42/lines/300"))
     }
 
+    // MARK: - Progress report date and filters
+
+    func testProgressSendsDateAndFiltersAsBc3ReadsThem() async throws {
+        let transport = MockTransport(statusCode: 200, data: Data("[]".utf8))
+        let account = makeTestAccountClient(transport: transport)
+
+        _ = try await account.reports.progress(options: ProgressReportOptions(
+            date: "2026-08-30",
+            projectIds: [27, 45144734],
+            peopleIds: [49285301],
+            page: 2
+        ))
+
+        let url = transport.lastRequest!.request.url!
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems ?? []
+        XCTAssertEqual(items.map { "\($0.name)=\($0.value ?? "")" }, [
+            "date=2026-08-30",
+            "project_ids[]=27",
+            "project_ids[]=45144734",
+            "people_ids[]=49285301",
+            "page=2",
+        ])
+    }
+
+    func testProgressSendsNoQueryWhenUnfiltered() async throws {
+        let transport = MockTransport(statusCode: 200, data: Data("[]".utf8))
+        let account = makeTestAccountClient(transport: transport)
+
+        _ = try await account.reports.progress()
+
+        XCTAssertNil(transport.lastRequest!.request.url!.query)
+    }
+
     // MARK: - Search array-filter wire encoding + metadata decode
 
     func testSearchEncodesArrayFiltersAsBracketedKeys() async throws {

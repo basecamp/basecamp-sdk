@@ -127,3 +127,52 @@ class TestAsyncUpcomingSchedule:
         await c.close()
 
         _assert_reduced_projection(result)
+
+
+PROGRESS_URL = "https://3.basecampapi.com/12345/reports/progress.json"
+PROGRESS_FILTERS = {"date": "2026-08-30", "project_ids": [27, 45144734], "people_ids": [49285301], "page": 2}
+
+
+def _assert_progress_filters_on_the_wire(request: httpx.Request) -> None:
+    params = request.url.params
+    assert params.get("date") == "2026-08-30"
+    assert params.get_list("project_ids[]") == ["27", "45144734"]
+    assert params.get_list("people_ids[]") == ["49285301"]
+    assert params.get("page") == "2"
+    assert "project_ids" not in params
+    assert "people_ids" not in params
+
+
+class TestSyncProgress:
+    @respx.mock
+    def test_sends_date_and_filters_as_bc3_reads_them(self):
+        route = respx.get(PROGRESS_URL).mock(return_value=httpx.Response(200, json=[]))
+
+        c = Client(access_token="test-token")
+        list(c.for_account("12345").reports.progress(**PROGRESS_FILTERS))
+        c.close()
+
+        _assert_progress_filters_on_the_wire(route.calls[0].request)
+
+    @respx.mock
+    def test_sends_no_query_when_unfiltered(self):
+        route = respx.get(PROGRESS_URL).mock(return_value=httpx.Response(200, json=[]))
+
+        c = Client(access_token="test-token")
+        list(c.for_account("12345").reports.progress())
+        c.close()
+
+        assert route.calls[0].request.url.query == b""
+
+
+class TestAsyncProgress:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_sends_date_and_filters_as_bc3_reads_them(self):
+        route = respx.get(PROGRESS_URL).mock(return_value=httpx.Response(200, json=[]))
+
+        c = AsyncClient(access_token="test-token")
+        await c.for_account("12345").reports.progress(**PROGRESS_FILTERS)
+        await c.close()
+
+        _assert_progress_filters_on_the_wire(route.calls[0].request)
