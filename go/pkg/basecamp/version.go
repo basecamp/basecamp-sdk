@@ -1,7 +1,7 @@
 package basecamp
 
 // Version is the current version of the Basecamp Go SDK.
-const Version = "0.27.1"
+const Version = "0.28.0"
 
 // APIVersion is the Basecamp API version this SDK targets.
 const APIVersion = "2026-10-19"
