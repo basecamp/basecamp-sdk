@@ -249,6 +249,107 @@ describe("ProjectsService", () => {
     });
   });
 
+  describe("wallpaper", () => {
+    it("should read the wallpaper from a project", async () => {
+      const wallpaper = { url: `${BASE_URL}/projects/42/wallpaper?v=1669139787`, mode: "tile" };
+      server.use(
+        http.get(`${BASE_URL}/projects/42`, () => {
+          return HttpResponse.json({ ...sampleProject(42), wallpaper });
+        })
+      );
+
+      const project = await client.projects.get(42);
+      expect(project.wallpaper).toEqual(wallpaper);
+    });
+
+    it("should send wallpaper_mode on update", async () => {
+      let body: Record<string, unknown> | undefined;
+      server.use(
+        http.put(`${BASE_URL}/projects/42`, async ({ request }) => {
+          body = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(sampleProject(42));
+        })
+      );
+
+      await client.projects.update(42, { name: "My Project", wallpaperMode: "fill" });
+      expect(body?.wallpaper_mode).toBe("fill");
+    });
+
+    it("should upload a wallpaper as multipart with the mode in the query", async () => {
+      let captured: Request | undefined;
+      server.use(
+        http.put(`${BASE_URL}/projects/42/wallpaper.json`, ({ request }) => {
+          captured = request;
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      const blob = new Blob(["fake-webp-data"], { type: "image/webp" });
+      await expect(
+        client.projects.updateProjectWallpaper(42, blob, "beach.webp", { mode: "tile" })
+      ).resolves.toBeUndefined();
+
+      expect(new URL(captured!.url).searchParams.get("mode")).toBe("tile");
+      const file = (await captured!.formData()).get("wallpaper");
+      expect(file).toBeInstanceOf(File);
+      expect((file as File).name).toBe("beach.webp");
+    });
+
+    it("should omit the mode when none is given", async () => {
+      let url: URL | undefined;
+      server.use(
+        http.put(`${BASE_URL}/projects/42/wallpaper.json`, ({ request }) => {
+          url = new URL(request.url);
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await client.projects.updateProjectWallpaper(42, new Blob(["data"]), "beach.png");
+      expect(url?.search).toBe("");
+    });
+
+    it("should surface a refused format as a validation error", async () => {
+      server.use(
+        http.put(`${BASE_URL}/projects/42/wallpaper.json`, () => {
+          return HttpResponse.json(
+            { error: "Wallpaper must be a PNG, JPEG, WebP or AVIF image" },
+            { status: 422 }
+          );
+        })
+      );
+
+      await expect(
+        client.projects.updateProjectWallpaper(42, new Blob(["GIF89a"]), "a.gif")
+      ).rejects.toMatchObject({ code: "validation", httpStatus: 422 });
+    });
+
+    it("should remove the wallpaper", async () => {
+      let method: string | undefined;
+      server.use(
+        http.delete(`${BASE_URL}/projects/42/wallpaper.json`, ({ request }) => {
+          method = request.method;
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(client.projects.removeProjectWallpaper(42)).resolves.toBeUndefined();
+      expect(method).toBe("DELETE");
+    });
+
+    it("should surface a 403 when removing without edit access", async () => {
+      server.use(
+        http.delete(`${BASE_URL}/projects/42/wallpaper.json`, () => {
+          return HttpResponse.json({ error: "Access denied" }, { status: 403 });
+        })
+      );
+
+      await expect(client.projects.removeProjectWallpaper(42)).rejects.toMatchObject({
+        code: "forbidden",
+        httpStatus: 403,
+      });
+    });
+  });
+
   describe("trash", () => {
     it("should trash a project", async () => {
       server.use(

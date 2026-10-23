@@ -197,4 +197,84 @@ class ProjectsServiceTest < Minitest::Test
     assert_equal Basecamp::ErrorCode::LIMIT_EXCEEDED, error.code
     assert_not error.retryable, "an account limit is never retryable"
   end
+
+  def test_get_project_includes_wallpaper
+    wallpaper = { "url" => "https://3.basecampapi.com/12345/projects/123/wallpaper?v=1669139787", "mode" => "tile" }
+    stub_get("/12345/projects/123", response_body: sample_project.merge("wallpaper" => wallpaper))
+
+    project = @account.projects.get(project_id: 123)
+
+    assert_equal wallpaper, project["wallpaper"]
+  end
+
+  def test_update_project_sends_wallpaper_mode
+    stub = stub_request(:put, "#{BASE_URL}/12345/projects/123")
+      .with(body: hash_including("name" => "Test Project", "wallpaper_mode" => "fill"))
+      .to_return(status: 200, body: sample_project.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.projects.update(project_id: 123, name: "Test Project", wallpaper_mode: "fill")
+
+    assert_requested stub
+  end
+
+  def test_update_project_wallpaper_sends_multipart_with_mode
+    stub = stub_request(:put, "#{BASE_URL}/12345/projects/123/wallpaper.json")
+      .with(query: { "mode" => "tile" }) do |request|
+        request.headers["Content-Type"].start_with?("multipart/form-data; boundary=") &&
+          request.body.match?(/name="wallpaper"; filename="beach\.webp".*fake-webp-data/m)
+      end
+      .to_return(status: 204)
+
+    result = @account.projects.update_project_wallpaper(
+      project_id: 123, io: "fake-webp-data", filename: "beach.webp", content_type: "image/webp", mode: "tile"
+    )
+
+    assert_nil result
+    assert_requested stub
+  end
+
+  def test_update_project_wallpaper_omits_mode_when_absent
+    stub = stub_request(:put, "#{BASE_URL}/12345/projects/123/wallpaper.json").to_return(status: 204)
+
+    @account.projects.update_project_wallpaper(
+      project_id: 123, io: StringIO.new("data"), filename: "beach.png", content_type: "image/png"
+    )
+
+    assert_requested stub
+  end
+
+  def test_update_project_wallpaper_refused_format
+    stub_request(:put, "#{BASE_URL}/12345/projects/123/wallpaper.json")
+      .to_return(
+        status: 422,
+        body: { error: "Wallpaper must be a PNG, JPEG, WebP or AVIF image" }.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @account.projects.update_project_wallpaper(
+        project_id: 123, io: "GIF89a", filename: "a.gif", content_type: "image/gif"
+      )
+    end
+
+    assert_equal 422, error.http_status
+  end
+
+  def test_remove_project_wallpaper
+    stub = stub_delete("/12345/projects/123/wallpaper.json")
+
+    assert_nil @account.projects.remove_project_wallpaper(project_id: 123)
+    assert_requested stub
+  end
+
+  def test_remove_project_wallpaper_forbidden
+    stub_request(:delete, "#{BASE_URL}/12345/projects/123/wallpaper.json")
+      .to_return(status: 403, body: { error: "Access denied" }.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.projects.remove_project_wallpaper(project_id: 123)
+    end
+
+    assert_equal 403, error.http_status
+  end
 end
