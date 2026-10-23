@@ -546,6 +546,7 @@ export abstract class BaseService {
     maxPages?: number,
     authenticatedFetch?: (url: string, init: RequestInit) => Promise<Response>,
     baseUrl?: string,
+    private readonly enableRetry = true,
   ) {
     // BaseService is exported, and so is every generated service extending it,
     // so `new ProjectsService(client, hooks, fetchPage, Infinity)` is a
@@ -607,7 +608,7 @@ export abstract class BaseService {
       // Look up retry config from operation metadata
       const opMeta = (metadata as any).operations?.[info.operation];
       const retryConfig = opMeta?.retry ?? { maxAttempts: 1, baseDelayMs: 1000, backoff: "exponential", retryOn: [] };
-      const maxAttempts: number = retryConfig.maxAttempts ?? 1;
+      const maxAttempts: number = this.enableRetry ? (retryConfig.maxAttempts ?? 1) : 1;
       const retryOn: number[] = retryConfig.retryOn ?? [];
 
       let response: Response | undefined;

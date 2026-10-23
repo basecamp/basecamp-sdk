@@ -1,7 +1,7 @@
 /**
  * Tests for the ProjectsService (generated from OpenAPI spec)
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
@@ -308,18 +308,61 @@ describe("ProjectsService", () => {
       expect(url?.search).toBe("");
     });
 
+    it.each([429, 503])("should not retry a %i upload response when retries are disabled", async (status) => {
+      let attempts = 0;
+      const onRetry = vi.fn();
+      const noRetry = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: { onRetry },
+      });
+      server.use(
+        http.put(`${BASE_URL}/projects/42/wallpaper.json`, () => {
+          attempts++;
+          return attempts === 1
+            ? HttpResponse.json({ error: "Try again later" }, { status, headers: { "Retry-After": "1" } })
+            : new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(
+        noRetry.projects.updateProjectWallpaper(42, new Blob(["data"]), "beach.png")
+      ).rejects.toMatchObject({ httpStatus: status });
+      expect(attempts).toBe(1);
+      expect(onRetry).not.toHaveBeenCalled();
+    });
+
+    it.each([true, undefined])("should retain upload retries with enableRetry=%s", async (enableRetry) => {
+      let attempts = 0;
+      const retrying = createBasecampClient({ accountId: "12345", accessToken: "test-token", enableRetry });
+      server.use(
+        http.put(`${BASE_URL}/projects/42/wallpaper.json`, () => {
+          attempts++;
+          return attempts === 1
+            ? HttpResponse.json({ error: "Unavailable" }, { status: 503, headers: { "Retry-After": "1" } })
+            : new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(
+        retrying.projects.updateProjectWallpaper(42, new Blob(["data"]), "beach.png")
+      ).resolves.toBeUndefined();
+      expect(attempts).toBe(2);
+    });
+
     it("should surface a refused format as a validation error", async () => {
       server.use(
         http.put(`${BASE_URL}/projects/42/wallpaper.json`, () => {
           return HttpResponse.json(
-            { error: "Wallpaper must be a PNG, JPEG, WebP or AVIF image" },
+            { error: "Wallpaper is not an allowed image type" },
             { status: 422 }
           );
         })
       );
 
       await expect(
-        client.projects.updateProjectWallpaper(42, new Blob(["GIF89a"]), "a.gif")
+        client.projects.updateProjectWallpaper(42, new Blob(["not an image"]), "a.txt")
       ).rejects.toMatchObject({ code: "validation", httpStatus: 422 });
     });
 

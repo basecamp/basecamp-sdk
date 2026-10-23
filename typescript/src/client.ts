@@ -471,7 +471,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     enumerable: false,
   });
 
-  defineService("projects", () => new ProjectsService(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl));
+  defineService("projects", () => new ProjectsService(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl, enableRetry));
   defineService("todos", () => new TodosService(client, hooks, fetchPage, maxPages));
   defineService("todolists", () => new TodolistsService(client, hooks, fetchPage, maxPages));
   defineService("todosets", () => new TodosetsService(client, hooks, fetchPage, maxPages));
@@ -540,7 +540,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("subtasks", () => new SubtasksService(client, hooks, fetchPage, maxPages));
   defineService("pings", () => new PingsService(client, hooks, fetchPage, maxPages));
   defineService("embeds", () => new EmbedsService(client, hooks, fetchPage, maxPages));
-  defineService("account", () => new AccountService(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl));
+  defineService("account", () => new AccountService(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl, enableRetry));
   defineService("gauges", () => new GaugesService(client, hooks, fetchPage, maxPages));
   defineService("myAssignments", () => new MyAssignmentsService(client, hooks, fetchPage, maxPages));
   defineService("myNotifications", () => new MyNotificationsService(client, hooks, fetchPage, maxPages));
