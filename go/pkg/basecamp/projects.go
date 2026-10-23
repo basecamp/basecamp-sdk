@@ -40,7 +40,8 @@ type Project struct {
 
 // ProjectWallpaper is a project's wallpaper image and how it is laid out.
 type ProjectWallpaper struct {
-	// URL fetches the wallpaper image; it redirects to storage.
+	// URL is an authenticated API-host URL that redirects to storage, not a public image link.
+	// Use AccountClient.DownloadURL to fetch the image; do not use URL directly in an image element.
 	URL string `json:"url"`
 	// Mode is "fill" or "tile".
 	Mode string `json:"mode"`

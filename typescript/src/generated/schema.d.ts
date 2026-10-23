@@ -6574,7 +6574,10 @@ export interface components {
          *     Project lists and home responses omit it.
          */
         ProjectWallpaper: {
-            /** @description Fetches the wallpaper image; it redirects to storage. */
+            /**
+             * @description An authenticated API-host URL that redirects to the wallpaper image in storage, not a public image link.
+             *     Use the SDK's authenticated download helper instead of placing this URL directly in an image element.
+             */
             url: string;
             /** @description fill|tile */
             mode: string;

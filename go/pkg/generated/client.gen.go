@@ -2960,7 +2960,8 @@ type ProjectWallpaper struct {
 	// Mode fill|tile
 	Mode string `json:"mode"`
 
-	// Url Fetches the wallpaper image; it redirects to storage.
+	// Url An authenticated API-host URL that redirects to the wallpaper image in storage, not a public image link.
+	// Use the SDK's authenticated download helper instead of placing this URL directly in an image element.
 	Url string `json:"url"`
 }
 

@@ -37324,7 +37324,7 @@
         "properties": {
           "url": {
             "type": "string",
-            "description": "Fetches the wallpaper image; it redirects to storage."
+            "description": "An authenticated API-host URL that redirects to the wallpaper image in storage, not a public image link.\nUse the SDK's authenticated download helper instead of placing this URL directly in an image element."
           },
           "mode": {
             "type": "string",

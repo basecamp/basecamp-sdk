@@ -1008,7 +1008,8 @@ string WallpaperMode
 /// The project's wallpaper, included only in single-project responses when attached.
 /// Project lists and home responses omit it.
 structure ProjectWallpaper {
-  /// Fetches the wallpaper image; it redirects to storage.
+  /// An authenticated API-host URL that redirects to the wallpaper image in storage, not a public image link.
+  /// Use the SDK's authenticated download helper instead of placing this URL directly in an image element.
   @required
   url: String
   @required
