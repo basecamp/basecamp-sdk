@@ -21,7 +21,7 @@
   "GetMyDueAssignmentsOptions": ["scope"],
   "GetMyNotificationsOptions": ["page", "limitBubbleUps"],
   "GetPersonProgressOptions": ["page", "maxItems"],
-  "GetProgressReportOptions": ["page", "maxItems"],
+  "GetProgressReportOptions": ["page", "maxItems", "date", "projectIds", "peopleIds"],
   "GetProjectTimelineOptions": ["page", "maxItems"],
   "GetProjectTimesheetOptions": ["from", "to", "personId", "maxItems", "page"],
   "GetQuestionRemindersOptions": ["page", "maxItems"],

@@ -22,11 +22,26 @@ public struct PersonProgressReportOptions: Sendable {
 }
 
 public struct ProgressReportOptions: Sendable {
+    /// The day to read (YYYY-MM-DD). The feed serves one day per request and defaults to today, so step this back a day at a time to read history; `page` pages within the day. The server reads an unparseable date as today.
+    public var date: String?
+    /// Only events in these projects. When omitted, the server applies the project filter the caller last saved in the web's activity view, not "all projects". If none of the IDs is a project the caller can access, the response is empty and the server clears that saved filter, so send only IDs the API just returned.
+    public var projectIds: [Int]?
+    /// Only events created by these people. When omitted, the server applies the people filter the caller last saved in the web's activity view, not "everyone". If none of the IDs is a person the caller can see, the response is empty and the server clears that saved filter, so send only IDs the API just returned.
+    public var peopleIds: [Int]?
     /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
-    public init(page: Int? = nil, maxItems: Int? = nil) {
+    public init(
+        date: String? = nil,
+        projectIds: [Int]? = nil,
+        peopleIds: [Int]? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
+        self.date = date
+        self.projectIds = projectIds
+        self.peopleIds = peopleIds
         self.page = page
         self.maxItems = maxItems
     }
@@ -85,6 +100,19 @@ public final class ReportsService: BaseService, @unchecked Sendable {
 
     public func progress(options: ProgressReportOptions? = nil) async throws -> ListResult<TimelineEvent> {
         var queryItems: [URLQueryItem] = []
+        if let date = options?.date {
+            queryItems.append(URLQueryItem(name: "date", value: date))
+        }
+        if let projectIds = options?.projectIds {
+            for item in projectIds {
+                queryItems.append(URLQueryItem(name: "project_ids[]", value: String(item)))
+            }
+        }
+        if let peopleIds = options?.peopleIds {
+            for item in peopleIds {
+                queryItems.append(URLQueryItem(name: "people_ids[]", value: String(item)))
+            }
+        }
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }

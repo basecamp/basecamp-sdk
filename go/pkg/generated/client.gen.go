@@ -5735,6 +5735,15 @@ type ListGaugesParams struct {
 
 // GetProgressReportParams defines parameters for GetProgressReport.
 type GetProgressReportParams struct {
+	// Date The day to read (YYYY-MM-DD). The feed serves one day per request and defaults to today, so step this back a day at a time to read history; `page` pages within the day. The server reads an unparseable date as today.
+	Date *string `form:"date,omitempty" json:"date,omitempty"`
+
+	// ProjectIds Only events in these projects. When omitted, the server applies the project filter the caller last saved in the web's activity view, not "all projects". If none of the IDs is a project the caller can access, the response is empty and the server clears that saved filter, so send only IDs the API just returned.
+	ProjectIds *[]int64 `form:"project_ids[],omitempty" json:"project_ids[],omitempty"`
+
+	// PeopleIds Only events created by these people. When omitted, the server applies the people filter the caller last saved in the web's activity view, not "everyone". If none of the IDs is a person the caller can see, the response is empty and the server clears that saved filter, so send only IDs the API just returned.
+	PeopleIds *[]int64 `form:"people_ids[],omitempty" json:"people_ids[],omitempty"`
+
 	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
@@ -23054,6 +23063,54 @@ func NewGetProgressReportRequest(server string, accountId string, params *GetPro
 
 	if params != nil {
 		queryValues := queryURL.Query()
+
+		if params.Date != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "date", runtime.ParamLocationQuery, *params.Date); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.ProjectIds != nil && len(*params.ProjectIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "project_ids[]", runtime.ParamLocationQuery, *params.ProjectIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.PeopleIds != nil && len(*params.PeopleIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "people_ids[]", runtime.ParamLocationQuery, *params.PeopleIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
 
 		if params.Page != nil {
 
