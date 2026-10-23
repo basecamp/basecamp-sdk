@@ -107,6 +107,16 @@ internal class BasecampHttpClient(
         body: String? = null,
         attempt: Int = 1,
         operationName: String? = null,
+    ): HttpResponse = requestRetrying(method, url, attempt, operationName) {
+        request(method, url, body)
+    }
+
+    private suspend fun requestRetrying(
+        method: HttpMethod,
+        url: String,
+        attempt: Int,
+        operationName: String?,
+        send: suspend () -> HttpResponse,
     ): HttpResponse {
         val info = RequestInfo(method = method.value, url = url, attempt = attempt)
         hooks.safeOnRequestStart(info)
@@ -132,7 +142,7 @@ internal class BasecampHttpClient(
         // CancellationException from the sleep propagates raw and no phantom
         // request events fire for an attempt that already ended.
         val outcome: AttemptOutcome = try {
-            AttemptOutcome.Completed(request(method, url, body))
+            AttemptOutcome.Completed(send())
         } catch (e: CancellationException) {
             throw e
         } catch (e: AuthPhaseFailure) {
@@ -190,7 +200,7 @@ internal class BasecampHttpClient(
                     val delayMs = calculateBackoffDelay(baseDelayMs, attempt)
                     hooks.safeOnRetry(info, attempt + 1, wrapped, delayMs)
                     kotlinx.coroutines.delay(delayMs)
-                    return requestWithRetry(method, url, body, attempt + 1, operationName)
+                    return requestRetrying(method, url, attempt + 1, operationName, send)
                 }
                 throw wrapped
             }
@@ -229,7 +239,7 @@ internal class BasecampHttpClient(
             ), delayMs)
 
             kotlinx.coroutines.delay(delayMs)
-            return requestWithRetry(method, url, body, attempt + 1, operationName)
+            return requestRetrying(method, url, attempt + 1, operationName, send)
         }
 
         return response
@@ -262,7 +272,8 @@ internal class BasecampHttpClient(
     }
 
     /**
-     * Executes a binary upload request with hooks but no retry (POST is not idempotent).
+     * Executes a binary upload with the same hooks and retry policy as JSON requests.
+     * Non-idempotent POST uploads still make only one attempt.
      */
     suspend fun requestBinaryWithRetry(
         method: HttpMethod,
@@ -270,60 +281,9 @@ internal class BasecampHttpClient(
         data: ByteArray,
         contentType: String,
         attempt: Int = 1,
-    ): HttpResponse {
-        val info = RequestInfo(method = method.value, url = url, attempt = attempt)
-        hooks.safeOnRequestStart(info)
-
-        val startTime = currentTimeMillis()
-        val response: HttpResponse
-        try {
-            response = requestBinary(method, url, data, contentType)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: AuthPhaseFailure) {
-            // The auth strategy itself failed — not a transport fault. Surface
-            // the strategy's own exception raw.
-            val duration = currentTimeMillis() - startTime
-            hooks.safeOnRequestEnd(info, RequestResult(
-                statusCode = 0,
-                duration = duration.millisToDuration(),
-                error = e.original,
-            ))
-            throw e.original
-        } catch (e: BasecampException) {
-            // A deliberate SDK error (e.g. the same-origin credential guard) is
-            // already classified — surface it as-is rather than masking it as a
-            // retryable Network error.
-            val duration = currentTimeMillis() - startTime
-            hooks.safeOnRequestEnd(info, RequestResult(
-                statusCode = 0,
-                duration = duration.millisToDuration(),
-                error = e,
-            ))
-            throw e
-        } catch (e: Exception) {
-            // SPEC §9: same projection as the retrying path.
-            val projected = redactTransportError(e, url, config.baseUrl, requestTimeoutMillis, requestTimeoutMillis)
-            val duration = currentTimeMillis() - startTime
-            hooks.safeOnRequestEnd(info, RequestResult(
-                statusCode = 0,
-                duration = duration.millisToDuration(),
-                error = projected,
-            ))
-            throw BasecampException.Network(
-                message = "Network error: ${projected.message}",
-                cause = projected,
-            )
-        }
-
-        val duration = currentTimeMillis() - startTime
-        hooks.safeOnRequestEnd(info, RequestResult(
-            statusCode = response.status.value,
-            duration = duration.millisToDuration(),
-        ))
-
-        // POST is not idempotent, so no retry for binary uploads
-        return response
+        operationName: String? = null,
+    ): HttpResponse = requestRetrying(method, url, attempt, operationName) {
+        requestBinary(method, url, data, contentType)
     }
 
     /**

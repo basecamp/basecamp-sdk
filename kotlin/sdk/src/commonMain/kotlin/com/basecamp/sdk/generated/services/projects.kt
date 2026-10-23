@@ -218,7 +218,7 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
             "mode" to options?.mode,
         )
         request(info, {
-            httpPutMultipart("/projects/${projectId}/wallpaper.json" + qs, "wallpaper", data, filename, contentType)
+            httpPutMultipart("/projects/${projectId}/wallpaper.json" + qs, "wallpaper", data, filename, contentType, operationName = info.operation)
         }) { Unit }
     }
 
