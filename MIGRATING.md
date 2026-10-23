@@ -32,8 +32,13 @@ Go's `TimelineService.Progress` takes `*ProgressOptions` instead of
 `*TimelineListOptions`, which breaks source that passes options. Rename the
 type: `Limit` and `Page` mean what they did. `ProgressOptions` adds `Date`,
 `ProjectIDs` and `PeopleIDs`, and `Progress` refuses an impossible `Date` or
-a non-positive ID with a usage error rather than sending it. The other SDKs
-only gain optional parameters.
+a non-positive ID with a usage error rather than sending it.
+
+Rust's `GetProgressReportParams` gains three public fields, so a struct
+literal that names only `page`, such as `GetProgressReportParams { page:
+Some(2) }`, stops compiling. Add `..Default::default()` or set `date`,
+`project_ids` and `people_ids`. `&Default::default()` is unaffected. The other
+SDKs only gain optional parameters.
 
 ### Rust: card, card step and subtask updates can clear the due date
 
