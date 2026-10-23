@@ -3544,7 +3544,7 @@ pub struct Message {
     pub content_attachments: Vec<RichTextAttachment>,
     /// `category`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub category: Option<MessageType>,
+    pub category: Option<RecordingCategory>,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boosts_count: Option<i32>,

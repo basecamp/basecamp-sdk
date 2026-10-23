@@ -43,7 +43,10 @@ type Message struct {
 	Parent             *Parent              `json:"parent,omitempty"`
 	Bucket             *Bucket              `json:"bucket,omitempty"`
 	Creator            *Person              `json:"creator,omitempty"`
-	Category           *MessageType         `json:"category,omitempty"`
+	// Category is the message's type, when it has one. BC3 embeds only its id,
+	// name and icon, so CreatedAt and UpdatedAt are always zero here; read the
+	// full type through MessageTypesService.Get.
+	Category *MessageType `json:"category,omitempty"`
 }
 
 // CreateMessageRequest specifies the parameters for creating a message.
@@ -557,11 +560,9 @@ func messageFromGenerated(gm generated.Message) Message {
 
 	if gm.Category != nil {
 		m.Category = &MessageType{
-			ID:        gm.Category.Id,
-			Name:      gm.Category.Name,
-			Icon:      gm.Category.Icon,
-			CreatedAt: gm.Category.CreatedAt,
-			UpdatedAt: gm.Category.UpdatedAt,
+			ID:   gm.Category.Id,
+			Name: gm.Category.Name,
+			Icon: deref(gm.Category.Icon),
 		}
 	}
 

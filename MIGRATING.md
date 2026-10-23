@@ -13,6 +13,23 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Messages: `category` is the embedded id, name and icon
+
+Basecamp embeds a message's category as `{id, name, icon}`. The spec typed it
+as the full `MessageType`, whose `created_at` and `updated_at` are required,
+so Rust failed every categorized message read and write with `malformed
+response: missing field 'created_at'`. Swift and Kotlin had the same required
+fields. `Message.category` is now `RecordingCategory`, the shape
+`Recording.category` already uses, where `icon` is optional.
+
+Rust's `Message.category` is `Option<RecordingCategory>`, Swift's and
+Kotlin's are `RecordingCategory?`, Ruby's `Types::Message#category` is a
+`Types::RecordingCategory`, and the TypeScript and Python `Message` types name
+`RecordingCategory`. This breaks code that named `MessageType` there, read
+the category's timestamps, or treated its `icon` as always present. Read a
+type's timestamps with the message types `get`. Go's `Message.Category` stays a
+`*MessageType`, and its `CreatedAt` and `UpdatedAt` are still always zero.
+
 ### Rust: card, card step and subtask updates can clear the due date
 
 `UpdateCardRequestContent.due_on`, `UpdateCardStepRequestContent.due_on` and

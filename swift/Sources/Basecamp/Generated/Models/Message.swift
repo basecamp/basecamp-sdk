@@ -21,7 +21,7 @@ public struct Message: Codable, Sendable {
     public var bookmarkUrl: String?
     public var boostsCount: Int32?
     public var boostsUrl: String?
-    public var category: MessageType?
+    public var category: RecordingCategory?
     public var commentsCount: Int32?
     public var commentsUrl: String?
     public var subscriptionUrl: String?
@@ -46,7 +46,7 @@ public struct Message: Codable, Sendable {
         bookmarkUrl: String? = nil,
         boostsCount: Int32? = nil,
         boostsUrl: String? = nil,
-        category: MessageType? = nil,
+        category: RecordingCategory? = nil,
         commentsCount: Int32? = nil,
         commentsUrl: String? = nil,
         subscriptionUrl: String? = nil

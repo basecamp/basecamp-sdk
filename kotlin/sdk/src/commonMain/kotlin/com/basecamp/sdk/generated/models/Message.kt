@@ -32,7 +32,7 @@ data class Message(
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
     @SerialName("comments_count") val commentsCount: Int? = null,
     @SerialName("comments_url") val commentsUrl: String? = null,
-    val category: MessageType? = null,
+    val category: RecordingCategory? = null,
     @SerialName("boosts_count") val boostsCount: Int? = null,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

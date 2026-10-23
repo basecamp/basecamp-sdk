@@ -740,6 +740,34 @@ async fn messages_list_reaches_the_wire() {
         .unwrap();
 }
 
+/// BC3 embeds a message's category through recordings/_category: id, name and icon, with
+/// none of the timestamps a full message type carries.
+#[tokio::test]
+async fn messages_get_reads_the_embedded_category() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/messages/100"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            include_str!("../../../spec/fixtures/messages/get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let message = account(&server).messages().get(100).await.unwrap();
+    let category = message
+        .category
+        .expect("the fixture's message is categorized");
+    assert_eq!(
+        (
+            category.id,
+            category.name.as_str(),
+            category.icon.as_deref()
+        ),
+        (1_069_479_340, "Announcement", Some("📢"))
+    );
+}
+
 #[tokio::test]
 async fn my_assignments_my_assignments_reaches_the_wire() {
     let server = MockServer::start().await;

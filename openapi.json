@@ -35862,7 +35862,7 @@
             }
           },
           "category": {
-            "$ref": "#/components/schemas/MessageType"
+            "$ref": "#/components/schemas/RecordingCategory"
           },
           "boosts_count": {
             "type": "integer",

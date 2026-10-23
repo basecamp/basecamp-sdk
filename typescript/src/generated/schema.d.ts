@@ -6042,7 +6042,7 @@ export interface components {
             subject: string;
             content: string;
             content_attachments: components["schemas"]["RichTextAttachment"][];
-            category?: components["schemas"]["MessageType"];
+            category?: components["schemas"]["RecordingCategory"];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;

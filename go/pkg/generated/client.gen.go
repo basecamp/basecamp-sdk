@@ -2445,12 +2445,16 @@ type MarkAsReadRequestContent struct {
 
 // Message defines model for Message.
 type Message struct {
-	AppUrl             string               `json:"app_url"`
-	BookmarkUrl        *string              `json:"bookmark_url,omitempty"`
-	BoostsCount        *int32               `json:"boosts_count,omitempty"`
-	BoostsUrl          *string              `json:"boosts_url,omitempty"`
-	Bucket             TodoBucket           `json:"bucket"`
-	Category           *MessageType         `json:"category,omitempty"`
+	AppUrl      string     `json:"app_url"`
+	BookmarkUrl *string    `json:"bookmark_url,omitempty"`
+	BoostsCount *int32     `json:"boosts_count,omitempty"`
+	BoostsUrl   *string    `json:"boosts_url,omitempty"`
+	Bucket      TodoBucket `json:"bucket"`
+
+	// Category A message category (type) as rendered by the shared recordings/_category
+	// partial: id, display name, and icon. Present on categorized Message
+	// recordings.
+	Category           *RecordingCategory   `json:"category,omitempty"`
 	CommentsCount      *int32               `json:"comments_count,omitempty"`
 	CommentsUrl        *string              `json:"comments_url,omitempty"`
 	Content            string               `json:"content"`
