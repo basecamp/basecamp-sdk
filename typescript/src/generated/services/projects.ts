@@ -49,6 +49,17 @@ export interface UpdateProjectRequest {
   admissions?: "invite" | "employee" | "team";
   /** Schedule date range settings */
   scheduleAttributes?: components["schemas"]["ScheduleAttributes"];
+  /** How the project's wallpaper is laid out. Changes only the layout of a
+wallpaper already attached; UpdateProjectWallpaper uploads one. */
+  wallpaperMode?: string;
+}
+
+/**
+ * Options for updateProjectWallpaper.
+ */
+export interface UpdateProjectWallpaperProjectOptions {
+  /** How the wallpaper is laid out. Omitted, the project's current mode is kept. */
+  mode?: string;
 }
 
 
@@ -213,6 +224,7 @@ export class ProjectsService extends BaseService {
             description: req.description,
             admissions: req.admissions,
             schedule_attributes: req.scheduleAttributes,
+            wallpaper_mode: req.wallpaperMode,
           },
         })
     );
@@ -328,6 +340,70 @@ export class ProjectsService extends BaseService {
       },
       () =>
         this.client.PUT("/projects/{projectId}/status/archived.json", {
+          params: {
+            path: { projectId },
+          },
+        })
+    );
+  }
+
+  /**
+   * Upload or replace the project's wallpaper.
+   * @param projectId - The project ID
+   * @param file - File or Blob to upload
+   * @param filename - Display name for the uploaded file
+   * @param options - Optional query parameters
+   * @returns void
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * await client.projects.updateProjectWallpaper(123);
+   * ```
+   */
+  async updateProjectWallpaper(projectId: number, file: Blob | File, filename?: string, options?: UpdateProjectWallpaperProjectOptions): Promise<void> {
+    const url = `${this.baseUrl}` +
+      `/projects/${projectId}/wallpaper.json`;
+    return this.requestMultipartUpload(
+      {
+        service: "Projects",
+        operation: "UpdateProjectWallpaper",
+        resourceType: "project_wallpaper",
+        isMutation: true,
+        projectId,
+      },
+      url,
+      "PUT",
+      file,
+      "wallpaper",
+      filename,
+      { mode: options?.mode },
+    );
+  }
+
+
+  /**
+   * Remove the project's wallpaper.
+   * @param projectId - The project ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.projects.removeProjectWallpaper(123);
+   * ```
+   */
+  async removeProjectWallpaper(projectId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Projects",
+        operation: "RemoveProjectWallpaper",
+        resourceType: "project_wallpaper",
+        isMutation: true,
+        projectId,
+      },
+      () =>
+        this.client.DELETE("/projects/{projectId}/wallpaper.json", {
           params: {
             path: { projectId },
           },

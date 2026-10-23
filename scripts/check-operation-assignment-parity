@@ -161,16 +161,16 @@ SOURCES = [
     class_pattern: /^export class (\w+) extends BaseService\b/,
     calls: [
       { pattern: /this\.client\.(?<method>GET|POST|PUT|DELETE|PATCH)\(\s*"(?<path>[^"]*)"/ },
-      # THE ONE GENERATED METHOD THAT CONCATENATES ITS URL. `updateAccountLogo`
-      # is the only `this.baseUrl` site in the whole generated TypeScript tree
-      # (typescript/src/generated/services/account.ts), and the only one that
-      # does not hand a literal path to openapi-fetch.
+      # THE GENERATED METHODS THAT CONCATENATE THEIR URL. Multipart uploads
+      # (`updateAccountLogo`, `updateProjectWallpaper`) are the only
+      # `this.baseUrl` sites in the generated TypeScript tree, and the only
+      # methods that do not hand a literal path to openapi-fetch.
       #
       # Recorded as an EXTRA PATTERN rather than as an exemption, and the
       # difference is the whole point. Exempting `PUT /account/logo.json` from
       # TypeScript would mean this gate could never see that method move to
       # another service — a hole in exactly the invariant being built. Reading it
-      # instead keeps TypeScript at 250/250. If the generator changes this
+      # instead keeps TypeScript complete. If the generator changes this
       # emission shape the pattern stops matching, and the completeness check
       # below says so by name; it cannot fail silent.
       { pattern: /`\$\{this\.baseUrl\}`\s*\+\s*`(?<path>[^`]*)`;\s*return this\.requestMultipartUpload\(\s*\{.*?\},\s*url,\s*"(?<method>[A-Z]+)"/m },

@@ -66,6 +66,8 @@ service Basecamp {
     UnarchiveProject,
     ListRecentProjects,
     RecordProjectVisit,
+    UpdateProjectWallpaper,
+    RemoveProjectWallpaper,
     ListTodos,
     GetTodo,
     CreateTodo,
@@ -759,6 +761,9 @@ structure UpdateProjectInput {
   description: ProjectDescription
   admissions: AdmissionsPolicy
   schedule_attributes: ScheduleAttributes
+  /// How the project's wallpaper is laid out. Changes only the layout of a
+  /// wallpaper already attached; UpdateProjectWallpaper uploads one.
+  wallpaper_mode: WallpaperMode
 }
 
 structure UpdateProjectOutput {
@@ -890,6 +895,64 @@ structure RecordProjectVisitInput {
 
 structure RecordProjectVisitOutput {}
 
+/// Upload or replace the project's wallpaper (returns 204 No Content).
+/// Accepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.
+/// Only people who can edit the project; agent principals are refused.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@basecampMultipart(field: "wallpaper")
+@http(method: "PUT", uri: "/{accountId}/projects/{projectId}/wallpaper.json", code: 204)
+operation UpdateProjectWallpaper {
+  input: UpdateProjectWallpaperInput
+  output: UpdateProjectWallpaperOutput
+  errors: [ValidationError, NotFoundError, ForbiddenError, UnauthorizedError, RateLimitError, InternalServerError]
+}
+
+structure UpdateProjectWallpaperInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpPayload
+  data: Blob
+
+  /// How the wallpaper is laid out. Omitted, the project's current mode is kept.
+  @httpQuery("mode")
+  mode: WallpaperMode
+}
+
+structure UpdateProjectWallpaperOutput {}
+
+/// Remove the project's wallpaper (returns 204 No Content).
+/// Only people who can edit the project; agent principals are refused.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/projects/{projectId}/wallpaper.json", code: 204)
+operation RemoveProjectWallpaper {
+  input: RemoveProjectWallpaperInput
+  output: RemoveProjectWallpaperOutput
+  errors: [NotFoundError, ForbiddenError, UnauthorizedError, RateLimitError, InternalServerError]
+}
+
+structure RemoveProjectWallpaperInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+}
+
+structure RemoveProjectWallpaperOutput {}
+
 
 // ===== Sensitive Types (PII) =====
 
@@ -939,6 +1002,18 @@ string ProjectStatus
 @documentation("invite|employee|team")
 string AdmissionsPolicy
 
+@documentation("fill|tile")
+string WallpaperMode
+
+/// The project's wallpaper. Absent when the project has none.
+structure ProjectWallpaper {
+  /// Fetches the wallpaper image; it redirects to storage.
+  @required
+  url: String
+  @required
+  mode: WallpaperMode
+}
+
 structure ScheduleAttributes {
   start_date: ISO8601Date
   end_date: ISO8601Date
@@ -981,6 +1056,7 @@ structure Project {
   /// True only when the project carries a star on the current user's home page.
   starred: Boolean
   client_company: ClientCompany
+  wallpaper: ProjectWallpaper
   @deprecated(message: "Use Client Visibility feature instead", since: "2024-01")
   clientside: ClientSide
 }

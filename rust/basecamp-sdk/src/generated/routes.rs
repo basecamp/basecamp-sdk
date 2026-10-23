@@ -4531,6 +4531,26 @@ pub static REMOVE_ACCOUNT_LOGO: Route = Route {
     metadata: &metadata::REMOVE_ACCOUNT_LOGO,
 };
 
+/// `DELETE /projects/{projectId}/wallpaper.json`.
+pub static REMOVE_PROJECT_WALLPAPER: Route = Route {
+    id: "RemoveProjectWallpaper",
+    service: "Projects",
+    method: Method::DELETE,
+    path: "/projects/{projectId}/wallpaper.json",
+    pattern: "/projects/{projectId}/wallpaper",
+    resource_type: "project_wallpaper",
+    params: &[RouteParam {
+        name: "projectId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::REMOVE_PROJECT_WALLPAPER,
+};
+
 /// `POST /my/priority_moves.json`.
 pub static REORDER_UP_NEXT: Route = Route {
     id: "ReorderUpNext",
@@ -5636,6 +5656,26 @@ pub static UPDATE_PROJECT_CLIENT_ACCESS: Route = Route {
     metadata: &metadata::UPDATE_PROJECT_CLIENT_ACCESS,
 };
 
+/// `PUT /projects/{projectId}/wallpaper.json`.
+pub static UPDATE_PROJECT_WALLPAPER: Route = Route {
+    id: "UpdateProjectWallpaper",
+    service: "Projects",
+    method: Method::PUT,
+    path: "/projects/{projectId}/wallpaper.json",
+    pattern: "/projects/{projectId}/wallpaper",
+    resource_type: "project_wallpaper",
+    params: &[RouteParam {
+        name: "projectId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Multipart { field: "wallpaper" },
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::UPDATE_PROJECT_WALLPAPER,
+};
+
 /// `PUT /questions/{questionId}`.
 pub static UPDATE_QUESTION: Route = Route {
     id: "UpdateQuestion",
@@ -6125,6 +6165,7 @@ pub static ROUTES: &[&Route] = &[
     &PRIORITIZE_ASSIGNMENT,
     &RECORD_PROJECT_VISIT,
     &REMOVE_ACCOUNT_LOGO,
+    &REMOVE_PROJECT_WALLPAPER,
     &REORDER_UP_NEXT,
     &REPLACE_DOCUMENT,
     &REPLACE_SCHEDULE_ENTRY,
@@ -6179,6 +6220,7 @@ pub static ROUTES: &[&Route] = &[
     &UPDATE_PROJECT,
     &UPDATE_PROJECT_ACCESS,
     &UPDATE_PROJECT_CLIENT_ACCESS,
+    &UPDATE_PROJECT_WALLPAPER,
     &UPDATE_QUESTION,
     &UPDATE_QUESTION_NOTIFICATION_SETTINGS,
     &UPDATE_SCHEDULE_SETTINGS,

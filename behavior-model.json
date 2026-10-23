@@ -2823,6 +2823,18 @@
         ]
       }
     },
+    "RemoveProjectWallpaper": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "ReorderUpNext": {
       "retry": {
         "max": 3,
@@ -3493,6 +3505,18 @@
         "base_delay_ms": 1000,
         "backoff": "exponential",
         "retry_on": [
+          503
+        ]
+      }
+    },
+    "UpdateProjectWallpaper": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
           503
         ]
       }

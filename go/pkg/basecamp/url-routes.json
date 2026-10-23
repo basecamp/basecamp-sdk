@@ -1865,6 +1865,24 @@
       }
     },
     {
+      "pattern": "/{accountId}/projects/{projectId}/wallpaper",
+      "resource": "Projects",
+      "operations": {
+        "DELETE": "RemoveProjectWallpaper",
+        "PUT": "UpdateProjectWallpaper"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/question_answers/{answerId}",
       "resource": "Checkins",
       "operations": {

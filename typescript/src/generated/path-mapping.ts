@@ -286,6 +286,8 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/{accountId}/projects/{projectId}/status/archived.json": "ArchiveProject",
   "GET:/{accountId}/projects/{projectId}/timeline.json": "GetProjectTimeline",
   "GET:/{accountId}/projects/{projectId}/timesheet.json": "GetProjectTimesheet",
+  "DELETE:/{accountId}/projects/{projectId}/wallpaper.json": "RemoveProjectWallpaper",
+  "PUT:/{accountId}/projects/{projectId}/wallpaper.json": "UpdateProjectWallpaper",
   "GET:/{accountId}/projects/recordings.json": "ListRecordings",
 
   // Search

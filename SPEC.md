@@ -1235,7 +1235,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All `285` operations in `behavior-model.json` use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` and `CreateEmbed` (`[503]` — each one's 429 is a verdict, the seat limit and the hourly new-embed limit, §7 Gate 3). <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
+All `287` operations in `behavior-model.json` use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` and `CreateEmbed` (`[503]` — each one's 429 is a verdict, the seat limit and the hourly new-embed limit, §7 Gate 3). <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -2107,7 +2107,7 @@ END
 
 ### Hop-1 Retry `[conformance]`
 
-The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `285` operations but `UpdateProjectClientAccess` and `CreateEmbed`, and never governing `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `287` operations but `UpdateProjectClientAccess` and `CreateEmbed`, and never governing `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
 
 That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does — `downloads.json` pins all four statuses. The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds, which not every download path yet gives them (#775).
 
@@ -5276,7 +5276,7 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: `285` <!-- @operation-count -->
+- Total operations: `287` <!-- @operation-count -->
 - Idempotent: 98 (flagged with `idempotent: true`)
 - Non-idempotent: 185 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` and `CreateEmbed` (`[503]`)

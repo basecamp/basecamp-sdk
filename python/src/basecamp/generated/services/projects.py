@@ -81,6 +81,7 @@ class ProjectsService(BaseService):
         description: str | None = None,
         admissions: str | None = None,
         schedule_attributes: dict | None = None,
+        wallpaper_mode: str | None = None,
     ) -> dict[str, Any]:
         """Update an existing project.
 
@@ -90,13 +91,19 @@ class ProjectsService(BaseService):
             description: The description.
             admissions: invite|employee|team
             schedule_attributes: The schedule attributes.
+            wallpaper_mode: How the project's wallpaper is laid out. Changes only the layout of a
+                wallpaper already attached; UpdateProjectWallpaper uploads one.
         """
         return self._request(
             OperationInfo(service="projects", operation="update", is_mutation=True, project_id=project_id),
             "PUT",
             f"/projects/{project_id}",
             json_body=self._compact(
-                name=name, description=description, admissions=admissions, schedule_attributes=schedule_attributes
+                name=name,
+                description=description,
+                admissions=admissions,
+                schedule_attributes=schedule_attributes,
+                wallpaper_mode=wallpaper_mode,
             ),
             operation="UpdateProject",
         )
@@ -160,6 +167,50 @@ class ProjectsService(BaseService):
             "PUT",
             f"/projects/{project_id}/status/archived.json",
             operation="ArchiveProject",
+        )
+
+    def update_project_wallpaper(
+        self, *, project_id: int, content: bytes, filename: str, content_type: str, mode: str | None = None
+    ) -> None:
+        """Upload or replace the project's wallpaper (returns 204 No Content).
+        Accepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.
+        Only people who can edit the project; agent principals are refused.
+
+        Args:
+            project_id: The project id.
+            content: Raw bytes of the file to upload.
+            filename: Filename for the uploaded file.
+            content_type: MIME content type of the upload (e.g. "image/png").
+            mode: How the wallpaper is laid out. Omitted, the project's current mode is kept.
+        """
+        self._request_multipart_void(
+            OperationInfo(
+                service="projects", operation="update_project_wallpaper", is_mutation=True, project_id=project_id
+            ),
+            "PUT",
+            f"/projects/{project_id}/wallpaper.json",
+            field="wallpaper",
+            content=content,
+            filename=filename,
+            content_type=content_type,
+            params=self._compact(mode=mode),
+            operation="UpdateProjectWallpaper",
+        )
+
+    def remove_project_wallpaper(self, *, project_id: int) -> None:
+        """Remove the project's wallpaper (returns 204 No Content).
+        Only people who can edit the project; agent principals are refused.
+
+        Args:
+            project_id: The project id.
+        """
+        self._request_void(
+            OperationInfo(
+                service="projects", operation="remove_project_wallpaper", is_mutation=True, project_id=project_id
+            ),
+            "DELETE",
+            f"/projects/{project_id}/wallpaper.json",
+            operation="RemoveProjectWallpaper",
         )
 
 
@@ -236,6 +287,7 @@ class AsyncProjectsService(AsyncBaseService):
         description: str | None = None,
         admissions: str | None = None,
         schedule_attributes: dict | None = None,
+        wallpaper_mode: str | None = None,
     ) -> dict[str, Any]:
         """Update an existing project.
 
@@ -245,13 +297,19 @@ class AsyncProjectsService(AsyncBaseService):
             description: The description.
             admissions: invite|employee|team
             schedule_attributes: The schedule attributes.
+            wallpaper_mode: How the project's wallpaper is laid out. Changes only the layout of a
+                wallpaper already attached; UpdateProjectWallpaper uploads one.
         """
         return await self._request(
             OperationInfo(service="projects", operation="update", is_mutation=True, project_id=project_id),
             "PUT",
             f"/projects/{project_id}",
             json_body=self._compact(
-                name=name, description=description, admissions=admissions, schedule_attributes=schedule_attributes
+                name=name,
+                description=description,
+                admissions=admissions,
+                schedule_attributes=schedule_attributes,
+                wallpaper_mode=wallpaper_mode,
             ),
             operation="UpdateProject",
         )
@@ -315,4 +373,48 @@ class AsyncProjectsService(AsyncBaseService):
             "PUT",
             f"/projects/{project_id}/status/archived.json",
             operation="ArchiveProject",
+        )
+
+    async def update_project_wallpaper(
+        self, *, project_id: int, content: bytes, filename: str, content_type: str, mode: str | None = None
+    ) -> None:
+        """Upload or replace the project's wallpaper (returns 204 No Content).
+        Accepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.
+        Only people who can edit the project; agent principals are refused.
+
+        Args:
+            project_id: The project id.
+            content: Raw bytes of the file to upload.
+            filename: Filename for the uploaded file.
+            content_type: MIME content type of the upload (e.g. "image/png").
+            mode: How the wallpaper is laid out. Omitted, the project's current mode is kept.
+        """
+        await self._request_multipart_void(
+            OperationInfo(
+                service="projects", operation="update_project_wallpaper", is_mutation=True, project_id=project_id
+            ),
+            "PUT",
+            f"/projects/{project_id}/wallpaper.json",
+            field="wallpaper",
+            content=content,
+            filename=filename,
+            content_type=content_type,
+            params=self._compact(mode=mode),
+            operation="UpdateProjectWallpaper",
+        )
+
+    async def remove_project_wallpaper(self, *, project_id: int) -> None:
+        """Remove the project's wallpaper (returns 204 No Content).
+        Only people who can edit the project; agent principals are refused.
+
+        Args:
+            project_id: The project id.
+        """
+        await self._request_void(
+            OperationInfo(
+                service="projects", operation="remove_project_wallpaper", is_mutation=True, project_id=project_id
+            ),
+            "DELETE",
+            f"/projects/{project_id}/wallpaper.json",
+            operation="RemoveProjectWallpaper",
         )

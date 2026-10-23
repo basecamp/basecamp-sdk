@@ -94,12 +94,16 @@ grouped:
       methods: ["ListRecent"]
     - operation: RecordProjectVisit
       methods: ["RecordVisit"]
+    - operation: RemoveProjectWallpaper
+      methods: ["RemoveWallpaper"]
     - operation: TrashProject
       methods: ["Trash"]
     - operation: UnarchiveProject
       methods: ["Unarchive"]
     - operation: UpdateProject
       methods: ["UpdateWithBody", "Update"]
+    - operation: UpdateProjectWallpaper
+      methods: ["UpdateWallpaperWithBody"]
   RecordingsService:
     - operation: ArchiveRecording
       methods: ["Archive"]

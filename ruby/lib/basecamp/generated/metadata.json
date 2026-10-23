@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-10-22T22:35:52Z",
+  "generated": "2026-10-22T23:57:30Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -2067,6 +2067,34 @@
         "style": "link",
         "totalCountHeader": "X-Total-Count",
         "maxPageSize": 50
+      }
+    },
+    "UpdateProjectWallpaper": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "RemoveProjectWallpaper": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "GetAnswer": {

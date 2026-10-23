@@ -11010,6 +11010,46 @@
       ]
     },
     {
+      "operationId": "RemoveProjectWallpaper",
+      "tag": "Projects",
+      "method": "DELETE",
+      "path": "/{accountId}/projects/{projectId}/wallpaper.json",
+      "doc": "Remove the project's wallpaper (returns 204 No Content).\nOnly people who can edit the project; agent principals are refused.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "projectId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "ReorderUpNext",
       "tag": "MyAssignments",
       "method": "POST",
@@ -13914,6 +13954,10 @@
               }
             },
             "type": "object"
+          },
+          "wallpaper_mode": {
+            "description": "How the project's wallpaper is laid out. Changes only the layout of a\nwallpaper already attached; UpdateProjectWallpaper uploads one.",
+            "type": "string"
           }
         },
         "required": [
@@ -14098,6 +14142,57 @@
         },
         "type": "object"
       }
+    },
+    {
+      "operationId": "UpdateProjectWallpaper",
+      "tag": "Projects",
+      "method": "PUT",
+      "path": "/{accountId}/projects/{projectId}/wallpaper.json",
+      "doc": "Upload or replace the project's wallpaper (returns 204 No Content).\nAccepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.\nOnly people who can edit the project; agent principals are refused.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "projectId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "mode",
+          "in": "query",
+          "description": "How the wallpaper is laid out. Omitted, the project's current mode is kept.",
+          "schema": {
+            "description": "How the wallpaper is laid out. Omitted, the project's current mode is kept.",
+            "type": "string"
+          }
+        }
+      ],
+      "bodyMediaType": "multipart/form-data",
+      "bodyRequired": true
     },
     {
       "operationId": "UpdateQuestion",

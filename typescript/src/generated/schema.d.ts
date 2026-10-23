@@ -2454,6 +2454,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/wallpaper.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Upload or replace the project's wallpaper (returns 204 No Content).
+         *     Accepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.
+         *     Only people who can edit the project; agent principals are refused.
+         */
+        put: operations["UpdateProjectWallpaper"];
+        post?: never;
+        /**
+         * @description Remove the project's wallpaper (returns 204 No Content).
+         *     Only people who can edit the project; agent principals are refused.
+         */
+        delete: operations["RemoveProjectWallpaper"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/question_answers/{answerId}": {
         parameters: {
             query?: never;
@@ -6505,6 +6530,7 @@ export interface components {
             /** @description True only when the project carries a star on the current user's home page. */
             starred?: boolean;
             client_company?: components["schemas"]["ClientCompany"];
+            wallpaper?: components["schemas"]["ProjectWallpaper"];
             /** @deprecated */
             clientside?: components["schemas"]["ClientSide"];
         };
@@ -6542,6 +6568,13 @@ export interface components {
         ProjectLimitErrorResponseContent: {
             error: string;
             message?: string;
+        };
+        /** @description The project's wallpaper. Absent when the project has none. */
+        ProjectWallpaper: {
+            /** @description Fetches the wallpaper image; it redirects to storage. */
+            url: string;
+            /** @description fill|tile */
+            mode: string;
         };
         Question: {
             /** Format: int64 */
@@ -8322,8 +8355,14 @@ export interface components {
             /** @description invite|employee|team */
             admissions?: string;
             schedule_attributes?: components["schemas"]["ScheduleAttributes"];
+            /**
+             * @description How the project's wallpaper is laid out. Changes only the layout of a
+             *     wallpaper already attached; UpdateProjectWallpaper uploads one.
+             */
+            wallpaper_mode?: string;
         };
         UpdateProjectResponseContent: components["schemas"]["Project"];
+        UpdateProjectWallpaperInputPayload: string;
         UpdateQuestionNotificationSettingsRequestContent: {
             /**
              * @description Whether the authenticated user is asked this question. Omit to leave it unchanged.
@@ -18884,6 +18923,155 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateProjectWallpaper: {
+        parameters: {
+            query?: {
+                /** @description How the wallpaper is laid out. Omitted, the project's current mode is kept. */
+                mode?: string;
+            };
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    wallpaper: string;
+                };
+            };
+        };
+        responses: {
+            /** @description UpdateProjectWallpaper 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    RemoveProjectWallpaper: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description RemoveProjectWallpaper 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

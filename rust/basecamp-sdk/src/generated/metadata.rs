@@ -659,6 +659,9 @@ pub static RECORD_PROJECT_VISIT: OperationMetadata = OperationMetadata { operati
 /// `RemoveAccountLogo`.
 #[rustfmt::skip]
 pub static REMOVE_ACCOUNT_LOGO: OperationMetadata = OperationMetadata { operation: "RemoveAccountLogo", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `RemoveProjectWallpaper`.
+#[rustfmt::skip]
+pub static REMOVE_PROJECT_WALLPAPER: OperationMetadata = OperationMetadata { operation: "RemoveProjectWallpaper", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `ReorderUpNext`.
 #[rustfmt::skip]
 pub static REORDER_UP_NEXT: OperationMetadata = OperationMetadata { operation: "ReorderUpNext", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -821,6 +824,9 @@ pub static UPDATE_PROJECT_ACCESS: OperationMetadata = OperationMetadata { operat
 /// `UpdateProjectClientAccess`.
 #[rustfmt::skip]
 pub static UPDATE_PROJECT_CLIENT_ACCESS: OperationMetadata = OperationMetadata { operation: "UpdateProjectClientAccess", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[503] } };
+/// `UpdateProjectWallpaper`.
+#[rustfmt::skip]
+pub static UPDATE_PROJECT_WALLPAPER: OperationMetadata = OperationMetadata { operation: "UpdateProjectWallpaper", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `UpdateQuestion`.
 #[rustfmt::skip]
 pub static UPDATE_QUESTION: OperationMetadata = OperationMetadata { operation: "UpdateQuestion", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -1081,6 +1087,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &PRIORITIZE_ASSIGNMENT,
     &RECORD_PROJECT_VISIT,
     &REMOVE_ACCOUNT_LOGO,
+    &REMOVE_PROJECT_WALLPAPER,
     &REORDER_UP_NEXT,
     &REPLACE_DOCUMENT,
     &REPLACE_SCHEDULE_ENTRY,
@@ -1135,6 +1142,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &UPDATE_PROJECT,
     &UPDATE_PROJECT_ACCESS,
     &UPDATE_PROJECT_CLIENT_ACCESS,
+    &UPDATE_PROJECT_WALLPAPER,
     &UPDATE_QUESTION,
     &UPDATE_QUESTION_NOTIFICATION_SETTINGS,
     &UPDATE_SCHEDULE_SETTINGS,

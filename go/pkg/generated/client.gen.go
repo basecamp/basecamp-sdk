@@ -2909,6 +2909,9 @@ type Project struct {
 	TimesheetEnabled *bool     `json:"timesheet_enabled,omitempty"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	Url              string    `json:"url"`
+
+	// Wallpaper The project's wallpaper. Absent when the project has none.
+	Wallpaper *ProjectWallpaper `json:"wallpaper,omitempty"`
 }
 
 // ProjectAccessResult defines model for ProjectAccessResult.
@@ -2948,6 +2951,15 @@ type ProjectConstructionAttributes struct {
 type ProjectLimitErrorResponseContent struct {
 	Error   string  `json:"error"`
 	Message *string `json:"message,omitempty"`
+}
+
+// ProjectWallpaper The project's wallpaper. Absent when the project has none.
+type ProjectWallpaper struct {
+	// Mode fill|tile
+	Mode string `json:"mode"`
+
+	// Url Fetches the wallpaper image; it redirects to storage.
+	Url string `json:"url"`
 }
 
 // Question defines model for Question.
@@ -4866,6 +4878,10 @@ type UpdateProjectRequestContent struct {
 	Description        *string             `json:"description,omitempty"`
 	Name               string              `json:"name"`
 	ScheduleAttributes *ScheduleAttributes `json:"schedule_attributes,omitempty"`
+
+	// WallpaperMode How the project's wallpaper is laid out. Changes only the layout of a
+	// wallpaper already attached; UpdateProjectWallpaper uploads one.
+	WallpaperMode *string `json:"wallpaper_mode,omitempty"`
 }
 
 // UpdateProjectResponseContent defines model for UpdateProjectResponseContent.
@@ -5665,6 +5681,17 @@ type GetProjectTimesheetParams struct {
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
+// UpdateProjectWallpaperMultipartBody defines parameters for UpdateProjectWallpaper.
+type UpdateProjectWallpaperMultipartBody struct {
+	Wallpaper openapi_types.File `json:"wallpaper"`
+}
+
+// UpdateProjectWallpaperParams defines parameters for UpdateProjectWallpaper.
+type UpdateProjectWallpaperParams struct {
+	// Mode How the wallpaper is laid out. Omitted, the project's current mode is kept.
+	Mode *string `form:"mode,omitempty" json:"mode,omitempty"`
+}
+
 // ListQuestionsParams defines parameters for ListQuestions.
 type ListQuestionsParams struct {
 	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
@@ -6097,6 +6124,9 @@ type UpdateProjectClientAccessJSONRequestBody = UpdateProjectClientAccessRequest
 
 // UpdateProjectAccessJSONRequestBody defines body for UpdateProjectAccess for application/json ContentType.
 type UpdateProjectAccessJSONRequestBody = UpdateProjectAccessRequestContent
+
+// UpdateProjectWallpaperMultipartRequestBody defines body for UpdateProjectWallpaper for multipart/form-data ContentType.
+type UpdateProjectWallpaperMultipartRequestBody UpdateProjectWallpaperMultipartBody
 
 // UpdateAnswerJSONRequestBody defines body for UpdateAnswer for application/json ContentType.
 type UpdateAnswerJSONRequestBody = QuestionAnswerUpdatePayload
@@ -7366,6 +7396,12 @@ type ClientInterface interface {
 
 	// GetProjectTimesheet request
 	GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveProjectWallpaper request
+	RemoveProjectWallpaper(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateProjectWallpaperWithBody request with any body
+	UpdateProjectWallpaperWithBody(ctx context.Context, accountId string, projectId int64, params *UpdateProjectWallpaperParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAnswer request
 	GetAnswer(ctx context.Context, accountId string, answerId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -10121,6 +10157,26 @@ func (c *Client) GetProjectTimesheet(ctx context.Context, accountId string, proj
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetProjectTimesheetRequest(c.Server, accountId, projectId, params)
 	}, true, "GetProjectTimesheet", reqEditors...)
+
+}
+
+// RemoveProjectWallpaper is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) RemoveProjectWallpaper(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRemoveProjectWallpaperRequest(c.Server, accountId, projectId)
+	}, true, "RemoveProjectWallpaper", reqEditors...)
+
+}
+
+// UpdateProjectWallpaperWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateProjectWallpaperWithBody(ctx context.Context, accountId string, projectId int64, params *UpdateProjectWallpaperParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateProjectWallpaperRequestWithBody(c.Server, accountId, projectId, params, contentType, body)
+	}, true, "UpdateProjectWallpaper", reqEditors...)
 
 }
 
@@ -20606,6 +20662,112 @@ func NewGetProjectTimesheetRequest(server string, accountId string, projectId in
 	return req, nil
 }
 
+// NewRemoveProjectWallpaperRequest generates requests for RemoveProjectWallpaper
+func NewRemoveProjectWallpaperRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/wallpaper.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateProjectWallpaperRequestWithBody generates requests for UpdateProjectWallpaper with any type of body
+func NewUpdateProjectWallpaperRequestWithBody(server string, accountId string, projectId int64, params *UpdateProjectWallpaperParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/wallpaper.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Mode != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "mode", runtime.ParamLocationQuery, *params.Mode); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetAnswerRequest generates requests for GetAnswer
 func NewGetAnswerRequest(server string, accountId string, answerId int64) (*http.Request, error) {
 	var err error
@@ -27641,6 +27803,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"ArchiveProject":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetProjectTimeline":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetProjectTimesheet":                {Idempotent: true, HasSensitiveParams: false},
+	"RemoveProjectWallpaper":             {Idempotent: true, HasSensitiveParams: false},
+	"UpdateProjectWallpaper":             {Idempotent: true, HasSensitiveParams: false},
 	"GetAnswer":                          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateAnswer":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetQuestionnaire":                   {Idempotent: true, HasSensitiveParams: false},
@@ -27935,6 +28099,8 @@ var operationRetryMax = map[string]int{
 	"ArchiveProject":                     3,
 	"GetProjectTimeline":                 3,
 	"GetProjectTimesheet":                3,
+	"RemoveProjectWallpaper":             3,
+	"UpdateProjectWallpaper":             3,
 	"GetAnswer":                          3,
 	"UpdateAnswer":                       3,
 	"GetQuestionnaire":                   3,
@@ -28227,6 +28393,8 @@ var operationRetryOn = map[string][]int{
 	"ArchiveProject":                     {429, 503},
 	"GetProjectTimeline":                 {429, 503},
 	"GetProjectTimesheet":                {429, 503},
+	"RemoveProjectWallpaper":             {429, 503},
+	"UpdateProjectWallpaper":             {429, 503},
 	"GetAnswer":                          {429, 503},
 	"UpdateAnswer":                       {429, 503},
 	"GetQuestionnaire":                   {429, 503},
@@ -29192,6 +29360,14 @@ func (s *ProjectsService) Archive(ctx context.Context, accountId string, project
 	return s.client.ArchiveProject(ctx, accountId, projectId, reqEditors...)
 }
 
+func (s *ProjectsService) RemoveWallpaper(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.RemoveProjectWallpaper(ctx, accountId, projectId, reqEditors...)
+}
+
+func (s *ProjectsService) UpdateWallpaperWithBody(ctx context.Context, accountId string, projectId int64, params *UpdateProjectWallpaperParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateProjectWallpaperWithBody(ctx, accountId, projectId, params, contentType, body, reqEditors...)
+}
+
 func (s *CommentsService) List(ctx context.Context, accountId string, recordingId int64, params *ListCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.ListComments(ctx, accountId, recordingId, params, reqEditors...)
 }
@@ -30041,6 +30217,12 @@ type ClientWithResponsesInterface interface {
 
 	// GetProjectTimesheetWithResponse request
 	GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
+
+	// RemoveProjectWallpaperWithResponse request
+	RemoveProjectWallpaperWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*RemoveProjectWallpaperResponse, error)
+
+	// UpdateProjectWallpaperWithBodyWithResponse request with any body
+	UpdateProjectWallpaperWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, params *UpdateProjectWallpaperParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectWallpaperResponse, error)
 
 	// GetAnswerWithResponse request
 	GetAnswerWithResponse(ctx context.Context, accountId string, answerId int64, reqEditors ...RequestEditorFn) (*GetAnswerResponse, error)
@@ -35904,6 +36086,75 @@ func (r GetProjectTimesheetResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetProjectTimesheetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveProjectWallpaperResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveProjectWallpaperResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveProjectWallpaperResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveProjectWallpaperResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateProjectWallpaperResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateProjectWallpaperResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateProjectWallpaperResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateProjectWallpaperResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -42146,6 +42397,24 @@ func (c *ClientWithResponses) GetProjectTimesheetWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseGetProjectTimesheetResponse(rsp)
+}
+
+// RemoveProjectWallpaperWithResponse request returning *RemoveProjectWallpaperResponse
+func (c *ClientWithResponses) RemoveProjectWallpaperWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*RemoveProjectWallpaperResponse, error) {
+	rsp, err := c.RemoveProjectWallpaper(ctx, accountId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveProjectWallpaperResponse(rsp)
+}
+
+// UpdateProjectWallpaperWithBodyWithResponse request with arbitrary body returning *UpdateProjectWallpaperResponse
+func (c *ClientWithResponses) UpdateProjectWallpaperWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, params *UpdateProjectWallpaperParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectWallpaperResponse, error) {
+	rsp, err := c.UpdateProjectWallpaperWithBody(ctx, accountId, projectId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateProjectWallpaperResponse(rsp)
 }
 
 // GetAnswerWithResponse request returning *GetAnswerResponse
@@ -51893,6 +52162,116 @@ func ParseGetProjectTimesheetResponse(rsp *http.Response) (*GetProjectTimesheetR
 		var dest NotFoundErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveProjectWallpaperResponse parses an HTTP response from a RemoveProjectWallpaperWithResponse call
+func ParseRemoveProjectWallpaperResponse(rsp *http.Response) (*RemoveProjectWallpaperResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveProjectWallpaperResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateProjectWallpaperResponse parses an HTTP response from a UpdateProjectWallpaperWithResponse call
+func ParseUpdateProjectWallpaperResponse(rsp *http.Response) (*UpdateProjectWallpaperResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateProjectWallpaperResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

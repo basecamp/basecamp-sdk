@@ -16927,6 +16927,241 @@
         }
       }
     },
+    "/{accountId}/projects/{projectId}/wallpaper.json": {
+      "delete": {
+        "description": "Remove the project's wallpaper (returns 204 No Content).\nOnly people who can edit the project; agent principals are refused.",
+        "operationId": "RemoveProjectWallpaper",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "RemoveProjectWallpaper 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Projects"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Upload or replace the project's wallpaper (returns 204 No Content).\nAccepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.\nOnly people who can edit the project; agent principals are refused.",
+        "operationId": "UpdateProjectWallpaper",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "wallpaper": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "wallpaper"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "description": "How the wallpaper is laid out. Omitted, the project's current mode is kept.",
+            "schema": {
+              "type": "string",
+              "description": "How the wallpaper is laid out. Omitted, the project's current mode is kept."
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "UpdateProjectWallpaper 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Projects"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-multipart": {
+          "field": "wallpaper"
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/question_answers/{answerId}": {
       "get": {
         "description": "Get a single answer by id",
@@ -36978,6 +37213,9 @@
           "client_company": {
             "$ref": "#/components/schemas/ClientCompany"
           },
+          "wallpaper": {
+            "$ref": "#/components/schemas/ProjectWallpaper"
+          },
           "clientside": {
             "$ref": "#/components/schemas/ClientSide",
             "deprecated": true,
@@ -37078,6 +37316,24 @@
         },
         "required": [
           "error"
+        ]
+      },
+      "ProjectWallpaper": {
+        "type": "object",
+        "description": "The project's wallpaper. Absent when the project has none.",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Fetches the wallpaper image; it redirects to storage."
+          },
+          "mode": {
+            "type": "string",
+            "description": "fill|tile"
+          }
+        },
+        "required": [
+          "mode",
+          "url"
         ]
       },
       "Question": {
@@ -40750,6 +41006,10 @@
           },
           "schedule_attributes": {
             "$ref": "#/components/schemas/ScheduleAttributes"
+          },
+          "wallpaper_mode": {
+            "type": "string",
+            "description": "How the project's wallpaper is laid out. Changes only the layout of a\nwallpaper already attached; UpdateProjectWallpaper uploads one."
           }
         },
         "required": [
@@ -40758,6 +41018,10 @@
       },
       "UpdateProjectResponseContent": {
         "$ref": "#/components/schemas/Project"
+      },
+      "UpdateProjectWallpaperInputPayload": {
+        "type": "string",
+        "contentEncoding": "byte"
       },
       "UpdateQuestionNotificationSettingsRequestContent": {
         "type": "object",

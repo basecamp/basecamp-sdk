@@ -471,7 +471,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     enumerable: false,
   });
 
-  defineService("projects", () => new ProjectsService(client, hooks, fetchPage, maxPages));
+  defineService("projects", () => new ProjectsService(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl));
   defineService("todos", () => new TodosService(client, hooks, fetchPage, maxPages));
   defineService("todolists", () => new TodolistsService(client, hooks, fetchPage, maxPages));
   defineService("todosets", () => new TodosetsService(client, hooks, fetchPage, maxPages));
