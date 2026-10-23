@@ -109,6 +109,7 @@ class HttpClient:
         content: bytes,
         filename: str,
         content_type: str,
+        params: dict | None = None,
         operation: str | None = None,
     ) -> httpx.Response:
         url = self._build_url(url)
@@ -117,8 +118,8 @@ class HttpClient:
         safe_content_type = content_type.replace("\r", "").replace("\n", "")
         files = {field: (safe_filename, content, safe_content_type)}
         if operation and self._is_retryable_operation(operation):
-            return self._request_with_retry(method, url, files=files, operation=operation)
-        return self._single_request(method, url, files=files)
+            return self._request_with_retry(method, url, params=params, files=files, operation=operation)
+        return self._single_request(method, url, params=params, files=files)
 
     def get_download(self, url: str) -> httpx.Response:
         """Authenticated hop-1 GET for the download flow (SPEC section 14).

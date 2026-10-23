@@ -2,6 +2,7 @@
 
 require "cgi/escape"
 require "securerandom"
+require "uri"
 
 module Basecamp
   module Services
@@ -213,10 +214,13 @@ module Basecamp
       # @param filename [String] display filename
       # @param content_type [String] MIME type
       # @param field [String] form field name
-      def http_put_multipart(path, io:, filename:, content_type:, field: "file")
+      # @param params [Hash] query parameters; nil values are omitted
+      def http_put_multipart(path, io:, filename:, content_type:, field: "file", params: {})
         boundary = "BasecampSDK#{SecureRandom.hex(16)}"
         body = build_multipart_body(boundary: boundary, field: field, io: io, \
           filename: filename, content_type: content_type)
+        query = URI.encode_www_form(params.compact)
+        path = "#{path}?#{query}" unless query.empty?
         http_put_raw(path, body: body, content_type: "multipart/form-data; boundary=#{boundary}")
         nil
       end

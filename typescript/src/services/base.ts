@@ -579,6 +579,7 @@ export abstract class BaseService {
    * @param file - File or Blob to upload
    * @param fieldName - The form field name
    * @param filename - Display name for the uploaded file
+   * @param query - Query parameters; undefined values are omitted
    */
   protected async requestMultipartUpload(
     info: OperationInfo,
@@ -587,7 +588,13 @@ export abstract class BaseService {
     file: Blob | File,
     fieldName: string,
     filename?: string,
+    query?: Record<string, string | number | boolean | undefined>,
   ): Promise<void> {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(query ?? {})) {
+      if (value !== undefined) search.append(key, String(value));
+    }
+    if (search.toString()) url = `${url}?${search}`;
     const start = performance.now();
     let result: OperationResult = { durationMs: 0 };
 

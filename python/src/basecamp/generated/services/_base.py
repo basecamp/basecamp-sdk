@@ -181,6 +181,7 @@ class BaseService:
         content: bytes,
         filename: str,
         content_type: str,
+        params: dict | None = None,
         operation: str | None = None,
     ) -> None:
         start = time.monotonic()
@@ -193,6 +194,7 @@ class BaseService:
                 content=content,
                 filename=filename,
                 content_type=content_type,
+                params=params,
                 operation=operation,
             )
             duration_ms = int((time.monotonic() - start) * 1000)

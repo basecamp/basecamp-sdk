@@ -913,7 +913,8 @@ def generate_method_body(op: dict, service_name: str, *, is_async: bool) -> list
     elif op.get("has_multipart_body"):
         # Multipart form-data upload
         field = op["multipart_field"]
-        lines.append(f'        {_await(is_async)}self._request_multipart_void(OperationInfo({info_kwargs}), "{op["http_method"]}", {path_expr}, field="{field}", content=content, filename=filename, content_type=content_type{operation_kwarg(op)})')
+        params_kwarg = f", params={build_query_params_expr(op)}" if op["query_params"] else ""
+        lines.append(f'        {_await(is_async)}self._request_multipart_void(OperationInfo({info_kwargs}), "{op["http_method"]}", {path_expr}, field="{field}", content=content, filename=filename, content_type=content_type{params_kwarg}{operation_kwarg(op)})')
     elif op["returns_void"]:
         if op["has_body"]:
             lines.append(f"        {_await(is_async)}self._request_void(OperationInfo({info_kwargs}), \"{op['http_method']}\", {path_expr}, json_body={build_body_expr(op)}{operation_kwarg(op)})")
