@@ -33,7 +33,7 @@ type Project struct {
 	Bookmarked       bool           `json:"bookmarked"`
 	Starred          bool           `json:"starred"`
 	ClientCompany    *ClientCompany `json:"client_company,omitempty"`
-	// Wallpaper is nil when the project has no wallpaper.
+	// Wallpaper is present only in single-project responses with an attached wallpaper.
 	Wallpaper  *ProjectWallpaper `json:"wallpaper,omitempty"`
 	Clientside *Clientside       `json:"clientside,omitempty"`
 }
@@ -520,8 +520,8 @@ func (s *ProjectsService) Unarchive(ctx context.Context, id int64) (err error) {
 // UpdateWallpaper uploads or replaces the project's wallpaper.
 // wallpaper is the image data, filename is the file name (e.g., "wallpaper.png"),
 // and contentType is the MIME type (e.g., "image/png").
-// Accepted formats: PNG, JPEG, WebP, AVIF. Maximum 10 MB.
-// Only people who can edit the project can change it.
+// Uses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 10 MB.
+// People and personal assistants follow project-edit permissions; shared agents are refused.
 func (s *ProjectsService) UpdateWallpaper(ctx context.Context, projectID int64, wallpaper io.Reader, filename, contentType string, opts *UpdateProjectWallpaperOptions) (err error) {
 	op := OperationInfo{
 		Service: "Projects", Operation: "UpdateWallpaper",
@@ -575,7 +575,7 @@ func (s *ProjectsService) UpdateWallpaper(ctx context.Context, projectID int64, 
 }
 
 // RemoveWallpaper removes the project's wallpaper.
-// Only people who can edit the project can change it.
+// People and personal assistants follow project-edit permissions; shared agents are refused.
 func (s *ProjectsService) RemoveWallpaper(ctx context.Context, projectID int64) (err error) {
 	op := OperationInfo{
 		Service: "Projects", Operation: "RemoveWallpaper",

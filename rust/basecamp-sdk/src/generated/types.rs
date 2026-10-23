@@ -4334,7 +4334,8 @@ pub struct ProjectLimitErrorResponseContent {
     pub message: Option<String>,
 }
 
-/// The project's wallpaper. Absent when the project has none.
+/// The project's wallpaper, included only in single-project responses when attached.
+/// Project lists and home responses omit it.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ProjectWallpaper {

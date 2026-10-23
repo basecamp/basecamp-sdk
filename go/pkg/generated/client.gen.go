@@ -2910,7 +2910,8 @@ type Project struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 	Url              string    `json:"url"`
 
-	// Wallpaper The project's wallpaper. Absent when the project has none.
+	// Wallpaper The project's wallpaper, included only in single-project responses when attached.
+	// Project lists and home responses omit it.
 	Wallpaper *ProjectWallpaper `json:"wallpaper,omitempty"`
 }
 
@@ -2953,7 +2954,8 @@ type ProjectLimitErrorResponseContent struct {
 	Message *string `json:"message,omitempty"`
 }
 
-// ProjectWallpaper The project's wallpaper. Absent when the project has none.
+// ProjectWallpaper The project's wallpaper, included only in single-project responses when attached.
+// Project lists and home responses omit it.
 type ProjectWallpaper struct {
 	// Mode fill|tile
 	Mode string `json:"mode"`

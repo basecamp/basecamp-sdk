@@ -42,13 +42,13 @@ final class ProjectWallpaperTests: XCTestCase {
     }
 
     func testUpdateProjectWallpaperRefusedFormat() async throws {
-        let body = Data(#"{"error":"Wallpaper must be a PNG, JPEG, WebP, or AVIF image"}"#.utf8)
+        let body = Data(#"{"error":"Wallpaper is not an allowed image type"}"#.utf8)
         let transport = MockTransport(statusCode: 422, data: body)
         let account = makeTestAccountClient(transport: transport)
 
         do {
             try await account.projects.updateProjectWallpaper(
-                projectId: 42, data: Data("GIF89a".utf8), filename: "a.gif", contentType: "image/gif")
+                projectId: 42, data: Data("not an image".utf8), filename: "a.txt", contentType: "text/plain")
             XCTFail("Expected a validation error")
         } catch let error as BasecampError {
             guard case .validation = error else { return XCTFail("Expected .validation, got \(error)") }

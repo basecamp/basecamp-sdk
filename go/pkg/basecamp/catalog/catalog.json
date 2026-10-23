@@ -11014,7 +11014,7 @@
       "tag": "Projects",
       "method": "DELETE",
       "path": "/{accountId}/projects/{projectId}/wallpaper.json",
-      "doc": "Remove the project's wallpaper (returns 204 No Content).\nOnly people who can edit the project; agent principals are refused.",
+      "doc": "Remove the project's wallpaper (returns 204 No Content).\nPeople and personal assistants follow project-edit permissions; shared agents are refused.",
       "readonly": false,
       "idempotent": true,
       "retry": {
@@ -14148,7 +14148,7 @@
       "tag": "Projects",
       "method": "PUT",
       "path": "/{accountId}/projects/{projectId}/wallpaper.json",
-      "doc": "Upload or replace the project's wallpaper (returns 204 No Content).\nAccepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.\nOnly people who can edit the project; agent principals are refused.",
+      "doc": "Upload or replace the project's wallpaper (returns 204 No Content).\nUses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 10 MB.\nPeople and personal assistants follow project-edit permissions; shared agents are refused.",
       "readonly": false,
       "idempotent": true,
       "retry": {

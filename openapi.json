@@ -16929,7 +16929,7 @@
     },
     "/{accountId}/projects/{projectId}/wallpaper.json": {
       "delete": {
-        "description": "Remove the project's wallpaper (returns 204 No Content).\nOnly people who can edit the project; agent principals are refused.",
+        "description": "Remove the project's wallpaper (returns 204 No Content).\nPeople and personal assistants follow project-edit permissions; shared agents are refused.",
         "operationId": "RemoveProjectWallpaper",
         "parameters": [
           {
@@ -17025,7 +17025,7 @@
         }
       },
       "put": {
-        "description": "Upload or replace the project's wallpaper (returns 204 No Content).\nAccepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.\nOnly people who can edit the project; agent principals are refused.",
+        "description": "Upload or replace the project's wallpaper (returns 204 No Content).\nUses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 10 MB.\nPeople and personal assistants follow project-edit permissions; shared agents are refused.",
         "operationId": "UpdateProjectWallpaper",
         "requestBody": {
           "required": true,
@@ -37320,7 +37320,7 @@
       },
       "ProjectWallpaper": {
         "type": "object",
-        "description": "The project's wallpaper. Absent when the project has none.",
+        "description": "The project's wallpaper, included only in single-project responses when attached.\nProject lists and home responses omit it.",
         "properties": {
           "url": {
             "type": "string",

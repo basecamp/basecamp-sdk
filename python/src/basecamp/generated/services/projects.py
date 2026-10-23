@@ -173,8 +173,8 @@ class ProjectsService(BaseService):
         self, *, project_id: int, content: bytes, filename: str, content_type: str, mode: str | None = None
     ) -> None:
         """Upload or replace the project's wallpaper (returns 204 No Content).
-        Accepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.
-        Only people who can edit the project; agent principals are refused.
+        Uses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 10 MB.
+        People and personal assistants follow project-edit permissions; shared agents are refused.
 
         Args:
             project_id: The project id.
@@ -199,7 +199,7 @@ class ProjectsService(BaseService):
 
     def remove_project_wallpaper(self, *, project_id: int) -> None:
         """Remove the project's wallpaper (returns 204 No Content).
-        Only people who can edit the project; agent principals are refused.
+        People and personal assistants follow project-edit permissions; shared agents are refused.
 
         Args:
             project_id: The project id.
@@ -379,8 +379,8 @@ class AsyncProjectsService(AsyncBaseService):
         self, *, project_id: int, content: bytes, filename: str, content_type: str, mode: str | None = None
     ) -> None:
         """Upload or replace the project's wallpaper (returns 204 No Content).
-        Accepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.
-        Only people who can edit the project; agent principals are refused.
+        Uses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 10 MB.
+        People and personal assistants follow project-edit permissions; shared agents are refused.
 
         Args:
             project_id: The project id.
@@ -405,7 +405,7 @@ class AsyncProjectsService(AsyncBaseService):
 
     async def remove_project_wallpaper(self, *, project_id: int) -> None:
         """Remove the project's wallpaper (returns 204 No Content).
-        Only people who can edit the project; agent principals are refused.
+        People and personal assistants follow project-edit permissions; shared agents are refused.
 
         Args:
             project_id: The project id.

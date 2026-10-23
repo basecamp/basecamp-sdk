@@ -2464,14 +2464,14 @@ export interface paths {
         get?: never;
         /**
          * @description Upload or replace the project's wallpaper (returns 204 No Content).
-         *     Accepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.
-         *     Only people who can edit the project; agent principals are refused.
+         *     Uses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 10 MB.
+         *     People and personal assistants follow project-edit permissions; shared agents are refused.
          */
         put: operations["UpdateProjectWallpaper"];
         post?: never;
         /**
          * @description Remove the project's wallpaper (returns 204 No Content).
-         *     Only people who can edit the project; agent principals are refused.
+         *     People and personal assistants follow project-edit permissions; shared agents are refused.
          */
         delete: operations["RemoveProjectWallpaper"];
         options?: never;
@@ -6569,7 +6569,10 @@ export interface components {
             error: string;
             message?: string;
         };
-        /** @description The project's wallpaper. Absent when the project has none. */
+        /**
+         * @description The project's wallpaper, included only in single-project responses when attached.
+         *     Project lists and home responses omit it.
+         */
         ProjectWallpaper: {
             /** @description Fetches the wallpaper image; it redirects to storage. */
             url: string;

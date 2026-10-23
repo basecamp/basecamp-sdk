@@ -535,7 +535,7 @@ class ProjectsServiceTest {
     fun updateProjectWallpaperRefusedFormatThrows() = runTest {
         val client = mockClient { _ ->
             respond(
-                content = """{"error": "Wallpaper must be a PNG, JPEG, WebP or AVIF image"}""",
+                content = """{"error": "Wallpaper is not an allowed image type"}""",
                 status = HttpStatusCode.UnprocessableEntity,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
@@ -544,9 +544,9 @@ class ProjectsServiceTest {
         try {
             client.forAccount("12345").projects.updateProjectWallpaper(
                 projectId = 42,
-                data = "GIF89a".encodeToByteArray(),
-                filename = "a.gif",
-                contentType = "image/gif",
+                data = "not an image".encodeToByteArray(),
+                filename = "a.txt",
+                contentType = "text/plain",
             )
             assertTrue(false, "Should have thrown")
         } catch (e: BasecampException.Validation) {

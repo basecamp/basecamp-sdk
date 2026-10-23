@@ -87,9 +87,8 @@ async fn update_maps_a_refused_format_to_validation() {
     Mock::given(method("PUT"))
         .and(path("/999/projects/42/wallpaper.json"))
         .respond_with(
-            ResponseTemplate::new(422).set_body_json(
-                json!({"error": "Wallpaper must be a PNG, JPEG, WebP or AVIF image"}),
-            ),
+            ResponseTemplate::new(422)
+                .set_body_json(json!({"error": "Wallpaper is not an allowed image type"})),
         )
         .expect(1)
         .mount(&server)
@@ -99,9 +98,9 @@ async fn update_maps_a_refused_format_to_validation() {
         .update_project_wallpaper(
             42,
             &UpdateProjectWallpaperParams::default(),
-            "a.gif",
-            "image/gif",
-            Bytes::from_static(b"GIF89a"),
+            "a.txt",
+            "text/plain",
+            Bytes::from_static(b"not an image"),
         )
         .await
         .unwrap_err();

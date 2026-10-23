@@ -125,7 +125,7 @@ impl<'a> ProjectsService<'a> {
     }
 
     /// Remove the project's wallpaper (returns 204 No Content).
-    /// Only people who can edit the project; agent principals are refused.
+    /// People and personal assistants follow project-edit permissions; shared agents are refused.
     ///
     /// `DELETE /projects/{projectId}/wallpaper.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn remove_project_wallpaper(&self, project_id: i64) -> Result<(), Error> {
@@ -173,8 +173,8 @@ impl<'a> ProjectsService<'a> {
     }
 
     /// Upload or replace the project's wallpaper (returns 204 No Content).
-    /// Accepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.
-    /// Only people who can edit the project; agent principals are refused.
+    /// Uses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 10 MB.
+    /// People and personal assistants follow project-edit permissions; shared agents are refused.
     ///
     /// `PUT /projects/{projectId}/wallpaper.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn update_project_wallpaper(

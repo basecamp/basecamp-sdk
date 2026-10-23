@@ -896,8 +896,8 @@ structure RecordProjectVisitInput {
 structure RecordProjectVisitOutput {}
 
 /// Upload or replace the project's wallpaper (returns 204 No Content).
-/// Accepted formats: PNG, JPEG, WebP, AVIF. GIF, HEIC and HEIF are refused. Maximum 10 MB.
-/// Only people who can edit the project; agent principals are refused.
+/// Uses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 10 MB.
+/// People and personal assistants follow project-edit permissions; shared agents are refused.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -930,7 +930,7 @@ structure UpdateProjectWallpaperInput {
 structure UpdateProjectWallpaperOutput {}
 
 /// Remove the project's wallpaper (returns 204 No Content).
-/// Only people who can edit the project; agent principals are refused.
+/// People and personal assistants follow project-edit permissions; shared agents are refused.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -1005,7 +1005,8 @@ string AdmissionsPolicy
 @documentation("fill|tile")
 string WallpaperMode
 
-/// The project's wallpaper. Absent when the project has none.
+/// The project's wallpaper, included only in single-project responses when attached.
+/// Project lists and home responses omit it.
 structure ProjectWallpaper {
   /// Fetches the wallpaper image; it redirects to storage.
   @required

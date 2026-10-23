@@ -247,13 +247,13 @@ class ProjectsServiceTest < Minitest::Test
     stub_request(:put, "#{BASE_URL}/12345/projects/123/wallpaper.json")
       .to_return(
         status: 422,
-        body: { error: "Wallpaper must be a PNG, JPEG, WebP or AVIF image" }.to_json,
+        body: { error: "Wallpaper is not an allowed image type" }.to_json,
         headers: { "Content-Type" => "application/json" }
       )
 
     error = assert_raises(Basecamp::ValidationError) do
       @account.projects.update_project_wallpaper(
-        project_id: 123, io: "GIF89a", filename: "a.gif", content_type: "image/gif"
+        project_id: 123, io: "not an image", filename: "a.txt", content_type: "text/plain"
       )
     end
 

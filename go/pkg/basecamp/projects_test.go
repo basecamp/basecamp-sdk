@@ -848,15 +848,15 @@ func TestProjectsService_UpdateWallpaperValidationErrors(t *testing.T) {
 	}
 }
 
-// bc3 refuses a format the web picker refuses (GIF, HEIC, HEIF) with 422.
+// bc3 applies the shared model's image validations and refuses non-images with 422.
 func TestProjectsService_UpdateWallpaperRefused(t *testing.T) {
 	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		_, _ = w.Write([]byte(`{"error":"Wallpaper must be a PNG, JPEG, WebP or AVIF image"}`))
+		_, _ = w.Write([]byte(`{"error":"Wallpaper is not an allowed image type"}`))
 	})
 
-	err := svc.UpdateWallpaper(context.Background(), 42, strings.NewReader("GIF89a"), "a.gif", "image/gif", nil)
+	err := svc.UpdateWallpaper(context.Background(), 42, strings.NewReader("not an image"), "a.txt", "text/plain", nil)
 	var bcErr *Error
 	if !errors.As(err, &bcErr) {
 		t.Fatalf("error is not *basecamp.Error: %T (%v)", err, err)

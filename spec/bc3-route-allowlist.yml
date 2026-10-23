@@ -175,8 +175,8 @@ sdk_routes_absent_from_bc3_docs:
     reason: >-
       UpdateProjectWallpaper. Served on the API host and documented in
       doc/api/sections/projects.md ("Update project wallpaper") by bc3 #14062,
-      not yet merged, so neither bc3 master nor the revision
-      spec/api-provenance.json pins describes it. Drawn at
+      merged as 0c09123502a0db476d9395d30c080d87af9ca945. The revision
+      spec/api-provenance.json pins predates it. Drawn at
       config/routes.rb:811 (`resource :wallpaper, only: %i[ show update destroy ]`
       inside the projects member scope); Projects::WallpapersController#update
       answers `head :no_content`, so no API view is needed. Covered by

@@ -318,13 +318,13 @@ class TestProjectWallpaper:
     @respx.mock
     def test_update_project_wallpaper_refused_format(self):
         respx.put(f"{BASE}/projects/42/wallpaper.json").mock(
-            return_value=httpx.Response(422, json={"error": "Wallpaper must be a PNG, JPEG, WebP or AVIF image"})
+            return_value=httpx.Response(422, json={"error": "Wallpaper is not an allowed image type"})
         )
 
         _, account = make_account()
         with pytest.raises(ValidationError) as excinfo:
             account.projects.update_project_wallpaper(
-                project_id=42, content=b"GIF89a", filename="a.gif", content_type="image/gif"
+                project_id=42, content=b"not an image", filename="a.txt", content_type="text/plain"
             )
 
         assert excinfo.value.http_status == 422

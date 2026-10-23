@@ -13,6 +13,16 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Go: generated client interfaces gain project-wallpaper methods
+
+`generated.ClientInterface` now requires `UpdateProjectWallpaperWithBody` and
+`RemoveProjectWallpaper`. `generated.ClientWithResponsesInterface` gains
+`UpdateProjectWallpaperWithBodyWithResponse` and
+`RemoveProjectWallpaperWithResponse`. Custom implementations and test doubles
+of either interface must implement those methods or regenerate their mocks.
+Calls through the concrete generated clients and `basecamp.ProjectsService`
+remain source-compatible.
+
 ### Rust: card, card step and subtask updates can clear the due date
 
 `UpdateCardRequestContent.due_on`, `UpdateCardStepRequestContent.due_on` and
