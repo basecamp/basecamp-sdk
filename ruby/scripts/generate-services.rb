@@ -983,8 +983,13 @@ class ServiceGenerator
 
     if op[:has_multipart_body]
       field = op[:multipart_field] || 'file'
+      params_arg = ''
+      if op[:query_params].any?
+        param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
+        params_arg = ", params: compact_query_params(#{param_names.join(', ')})"
+      end
       lines << "        http_#{http_method}_multipart(#{path_expr}, io: io, filename: filename, " \
-               "content_type: content_type, field: \"#{field}\")"
+               "content_type: content_type, field: \"#{field}\"#{params_arg})"
     elsif op[:has_body]
       body_expr = build_body_expression(op)
       lines << "        http_#{http_method}(#{path_expr}, body: #{body_expr})"

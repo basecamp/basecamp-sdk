@@ -23,6 +23,7 @@ public struct Project: Codable, Sendable {
     public var starred: Bool?
     public var startDate: String?
     public var timesheetEnabled: Bool?
+    public var wallpaper: ProjectWallpaper?
 
     public init(
         appUrl: String,
@@ -44,7 +45,8 @@ public struct Project: Codable, Sendable {
         starUrl: String? = nil,
         starred: Bool? = nil,
         startDate: String? = nil,
-        timesheetEnabled: Bool? = nil
+        timesheetEnabled: Bool? = nil,
+        wallpaper: ProjectWallpaper? = nil
     ) {
         self.appUrl = appUrl
         self.createdAt = createdAt
@@ -66,5 +68,6 @@ public struct Project: Codable, Sendable {
         self.starred = starred
         self.startDate = startDate
         self.timesheetEnabled = timesheetEnabled
+        self.wallpaper = wallpaper
     }
 }

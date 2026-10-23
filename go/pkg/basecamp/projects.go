@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -32,7 +33,18 @@ type Project struct {
 	Bookmarked       bool           `json:"bookmarked"`
 	Starred          bool           `json:"starred"`
 	ClientCompany    *ClientCompany `json:"client_company,omitempty"`
-	Clientside       *Clientside    `json:"clientside,omitempty"`
+	// Wallpaper is present only in single-project responses with an attached wallpaper.
+	Wallpaper  *ProjectWallpaper `json:"wallpaper,omitempty"`
+	Clientside *Clientside       `json:"clientside,omitempty"`
+}
+
+// ProjectWallpaper is a project's wallpaper image and how it is laid out.
+type ProjectWallpaper struct {
+	// URL is an authenticated API-host URL that redirects to storage, not a public image link.
+	// Use AccountClient.DownloadURL to fetch the image; do not use URL directly in an image element.
+	URL string `json:"url"`
+	// Mode is "fill" or "tile".
+	Mode string `json:"mode"`
 }
 
 // DockItem represents a tool in a project's dock.
@@ -110,6 +122,16 @@ type UpdateProjectRequest struct {
 	Admissions string `json:"admissions,omitempty"`
 	// ScheduleAttributes sets project start and end dates.
 	ScheduleAttributes *ScheduleAttributes `json:"schedule_attributes,omitempty"`
+	// WallpaperMode lays out the attached wallpaper ("fill" or "tile").
+	// UpdateWallpaper uploads one.
+	WallpaperMode string `json:"wallpaper_mode,omitempty"`
+}
+
+// UpdateProjectWallpaperOptions specifies optional parameters for UpdateWallpaper.
+type UpdateProjectWallpaperOptions struct {
+	// Mode lays out the wallpaper ("fill" or "tile"). Empty keeps the
+	// project's current mode.
+	Mode string
 }
 
 // ScheduleAttributes specifies project schedule dates.
@@ -389,6 +411,9 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 	if req.Admissions != "" {
 		body.Admissions = &req.Admissions
 	}
+	if req.WallpaperMode != "" {
+		body.WallpaperMode = &req.WallpaperMode
+	}
 	if req.ScheduleAttributes != nil {
 		sa := generated.ScheduleAttributes{}
 		if req.ScheduleAttributes.StartDate != "" {
@@ -493,6 +518,87 @@ func (s *ProjectsService) Unarchive(ctx context.Context, id int64) (err error) {
 	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
+// UpdateWallpaper uploads or replaces the project's wallpaper.
+// wallpaper is the image data, filename is the file name (e.g., "wallpaper.png"),
+// and contentType is the MIME type (e.g., "image/png").
+// Uses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 10 MB.
+// People and personal assistants follow project-edit permissions; shared agents are refused.
+func (s *ProjectsService) UpdateWallpaper(ctx context.Context, projectID int64, wallpaper io.Reader, filename, contentType string, opts *UpdateProjectWallpaperOptions) (err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "UpdateWallpaper",
+		ResourceType: "project_wallpaper", IsMutation: true,
+		ProjectID: projectID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if wallpaper == nil {
+		err = ErrUsage("wallpaper reader is required")
+		return err
+	}
+	if filename == "" {
+		err = ErrUsage("filename is required")
+		return err
+	}
+	if contentType == "" {
+		err = ErrUsage("content type is required")
+		return err
+	}
+
+	body, multipartContentType, err := multipartFileBody("wallpaper", wallpaper, filename, contentType)
+	if err != nil {
+		return err
+	}
+
+	params := &generated.UpdateProjectWallpaperParams{}
+	if opts != nil && opts.Mode != "" {
+		params.Mode = &opts.Mode
+	}
+
+	resp, err := s.client.parent.gen.UpdateProjectWallpaperWithBodyWithResponse(
+		ctx,
+		s.client.accountID,
+		projectID,
+		params,
+		multipartContentType,
+		body,
+	)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// RemoveWallpaper removes the project's wallpaper.
+// People and personal assistants follow project-edit permissions; shared agents are refused.
+func (s *ProjectsService) RemoveWallpaper(ctx context.Context, projectID int64) (err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "RemoveWallpaper",
+		ResourceType: "project_wallpaper", IsMutation: true,
+		ProjectID: projectID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.RemoveProjectWallpaperWithResponse(ctx, s.client.accountID, projectID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
 // projectFromGenerated converts a generated Project to our clean Project type.
 func projectFromGenerated(gp generated.Project) Project {
 	p := Project{
@@ -531,6 +637,13 @@ func projectFromGenerated(gp generated.Project) Project {
 		p.ClientCompany = &ClientCompany{
 			ID:   gp.ClientCompany.Id,
 			Name: gp.ClientCompany.Name,
+		}
+	}
+
+	if gp.Wallpaper != nil {
+		p.Wallpaper = &ProjectWallpaper{
+			URL:  gp.Wallpaper.Url,
+			Mode: gp.Wallpaper.Mode,
 		}
 	}
 

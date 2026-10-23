@@ -118,6 +118,7 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.admissions?.let { put("admissions", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.scheduleAttributes?.let { put("schedule_attributes", it) }
+                body.wallpaperMode?.let { put("wallpaper_mode", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Project>(body)
@@ -193,6 +194,49 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
         )
         request(info, {
             httpPut("/projects/${projectId}/status/archived.json", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Upload or replace the project's wallpaper.
+     * @param projectId The project ID
+     * @param data Raw bytes of the file to upload
+     * @param filename Display name for the uploaded file
+     * @param contentType MIME type of the file (e.g., "image/png")
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun updateProjectWallpaper(projectId: Long, data: ByteArray, filename: String, contentType: String, options: UpdateProjectWallpaperOptions? = null): Unit {
+        val info = OperationInfo(
+            service = "Projects",
+            operation = "UpdateProjectWallpaper",
+            resourceType = "project_wallpaper",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "mode" to options?.mode,
+        )
+        request(info, {
+            httpPutMultipart("/projects/${projectId}/wallpaper.json" + qs, "wallpaper", data, filename, contentType, operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Remove the project's wallpaper.
+     * @param projectId The project ID
+     */
+    suspend fun removeProjectWallpaper(projectId: Long): Unit {
+        val info = OperationInfo(
+            service = "Projects",
+            operation = "RemoveProjectWallpaper",
+            resourceType = "project_wallpaper",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        request(info, {
+            httpDelete("/projects/${projectId}/wallpaper.json", operationName = info.operation)
         }) { Unit }
     }
 }

@@ -1,7 +1,7 @@
 /**
  * Tests for the ProjectsService (generated from OpenAPI spec)
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
@@ -246,6 +246,150 @@ describe("ProjectsService", () => {
         name: "Updated Project",
       });
       expect(project.id).toBe(projectId);
+    });
+  });
+
+  describe("wallpaper", () => {
+    it("should read the wallpaper from a project", async () => {
+      const wallpaper = { url: `${BASE_URL}/projects/42/wallpaper?v=1669139787`, mode: "tile" };
+      server.use(
+        http.get(`${BASE_URL}/projects/42`, () => {
+          return HttpResponse.json({ ...sampleProject(42), wallpaper });
+        })
+      );
+
+      const project = await client.projects.get(42);
+      expect(project.wallpaper).toEqual(wallpaper);
+    });
+
+    it("should send wallpaper_mode on update", async () => {
+      let body: Record<string, unknown> | undefined;
+      server.use(
+        http.put(`${BASE_URL}/projects/42`, async ({ request }) => {
+          body = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(sampleProject(42));
+        })
+      );
+
+      await client.projects.update(42, { name: "My Project", wallpaperMode: "fill" });
+      expect(body?.wallpaper_mode).toBe("fill");
+    });
+
+    it("should upload a wallpaper as multipart with the mode in the query", async () => {
+      let captured: Request | undefined;
+      server.use(
+        http.put(`${BASE_URL}/projects/42/wallpaper.json`, ({ request }) => {
+          captured = request;
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      const blob = new Blob(["fake-webp-data"], { type: "image/webp" });
+      await expect(
+        client.projects.updateProjectWallpaper(42, blob, "beach.webp", { mode: "tile" })
+      ).resolves.toBeUndefined();
+
+      expect(new URL(captured!.url).searchParams.get("mode")).toBe("tile");
+      const file = (await captured!.formData()).get("wallpaper");
+      expect(file).toBeInstanceOf(File);
+      expect((file as File).name).toBe("beach.webp");
+    });
+
+    it("should omit the mode when none is given", async () => {
+      let url: URL | undefined;
+      server.use(
+        http.put(`${BASE_URL}/projects/42/wallpaper.json`, ({ request }) => {
+          url = new URL(request.url);
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await client.projects.updateProjectWallpaper(42, new Blob(["data"]), "beach.png");
+      expect(url?.search).toBe("");
+    });
+
+    it.each([429, 503])("should not retry a %i upload response when retries are disabled", async (status) => {
+      let attempts = 0;
+      const onRetry = vi.fn();
+      const noRetry = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: { onRetry },
+      });
+      server.use(
+        http.put(`${BASE_URL}/projects/42/wallpaper.json`, () => {
+          attempts++;
+          return attempts === 1
+            ? HttpResponse.json({ error: "Try again later" }, { status, headers: { "Retry-After": "1" } })
+            : new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(
+        noRetry.projects.updateProjectWallpaper(42, new Blob(["data"]), "beach.png")
+      ).rejects.toMatchObject({ httpStatus: status });
+      expect(attempts).toBe(1);
+      expect(onRetry).not.toHaveBeenCalled();
+    });
+
+    it.each([true, undefined])("should retain upload retries with enableRetry=%s", async (enableRetry) => {
+      let attempts = 0;
+      const retrying = createBasecampClient({ accountId: "12345", accessToken: "test-token", enableRetry });
+      server.use(
+        http.put(`${BASE_URL}/projects/42/wallpaper.json`, () => {
+          attempts++;
+          return attempts === 1
+            ? HttpResponse.json({ error: "Unavailable" }, { status: 503, headers: { "Retry-After": "1" } })
+            : new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(
+        retrying.projects.updateProjectWallpaper(42, new Blob(["data"]), "beach.png")
+      ).resolves.toBeUndefined();
+      expect(attempts).toBe(2);
+    });
+
+    it("should surface a refused format as a validation error", async () => {
+      server.use(
+        http.put(`${BASE_URL}/projects/42/wallpaper.json`, () => {
+          return HttpResponse.json(
+            { error: "Wallpaper is not an allowed image type" },
+            { status: 422 }
+          );
+        })
+      );
+
+      await expect(
+        client.projects.updateProjectWallpaper(42, new Blob(["not an image"]), "a.txt")
+      ).rejects.toMatchObject({ code: "validation", httpStatus: 422 });
+    });
+
+    it("should remove the wallpaper", async () => {
+      let method: string | undefined;
+      server.use(
+        http.delete(`${BASE_URL}/projects/42/wallpaper.json`, ({ request }) => {
+          method = request.method;
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(client.projects.removeProjectWallpaper(42)).resolves.toBeUndefined();
+      expect(method).toBe("DELETE");
+    });
+
+    it("should surface a 403 when removing without edit access", async () => {
+      server.use(
+        http.delete(`${BASE_URL}/projects/42/wallpaper.json`, () => {
+          return HttpResponse.json({ error: "Access denied" }, { status: 403 });
+        })
+      );
+
+      await expect(client.projects.removeProjectWallpaper(42)).rejects.toMatchObject({
+        code: "forbidden",
+        httpStatus: 403,
+      });
     });
   });
 

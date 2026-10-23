@@ -359,7 +359,7 @@ class ServiceEmitter(private val api: OpenApiParser) {
             "PUT" -> {
                 if (op.bodyContentType == "multipart") {
                     val field = op.multipartFieldName ?: "file"
-                    sb.appendLine("            httpPutMultipart($pathWithQuery, \"$field\", data, filename, contentType)")
+                    sb.appendLine("            httpPutMultipart($pathWithQuery, \"$field\", data, filename, contentType, operationName = info.operation)")
                 } else {
                     val bodyArg = if (op.bodyContentType == "json" && op.bodyProperties.isNotEmpty()) {
                         ", json.encodeToString(${buildBodySerializer(op)})"

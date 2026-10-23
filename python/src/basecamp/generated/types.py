@@ -1447,6 +1447,7 @@ class Project(TypedDict):
     timesheet_enabled: NotRequired[bool]
     updated_at: str
     url: str
+    wallpaper: NotRequired[ProjectWallpaper]
 
 
 class ProjectAccessResult(TypedDict):
@@ -1474,6 +1475,11 @@ class ProjectConstructionAttributes(TypedDict):
 class ProjectLimitErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]
+
+
+class ProjectWallpaper(TypedDict):
+    mode: str
+    url: str
 
 
 class Question(TypedDict):
@@ -2380,6 +2386,7 @@ class UpdateProjectRequestContent(TypedDict):
     description: NotRequired[str]
     name: str
     schedule_attributes: NotRequired[ScheduleAttributes]
+    wallpaper_mode: NotRequired[str]
 
 
 class UpdateQuestionNotificationSettingsRequestContent(TypedDict):

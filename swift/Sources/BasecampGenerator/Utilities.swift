@@ -180,6 +180,10 @@ private let resourceTypeOverrides: [String: String] = [
     "UpdateProjectClientAccess": "project_access",
     "EnableProjectClients": "project",
     "DisableProjectClients": "project",
+    // "Remove" is not a verb pattern, so inference falls through to the generic
+    // "resource" and would split the removal from the upload, which reports
+    // "project_wallpaper".
+    "RemoveProjectWallpaper": "project_wallpaper",
 ]
 
 /// Extracts the resource type from an operationId using verb patterns.

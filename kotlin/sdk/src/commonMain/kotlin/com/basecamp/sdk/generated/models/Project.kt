@@ -32,6 +32,7 @@ data class Project(
     val bookmarked: Boolean? = null,
     val starred: Boolean? = null,
     @SerialName("client_company") val clientCompany: ClientCompany? = null,
+    val wallpaper: ProjectWallpaper? = null,
     @Deprecated("This shape is deprecated since 2024-01: Use Client Visibility feature instead")
     val clientside: ClientSide? = null
 )

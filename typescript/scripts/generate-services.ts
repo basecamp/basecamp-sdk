@@ -330,6 +330,10 @@ const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
   UpdateProjectClientAccess: "project_access",
   EnableProjectClients: "project",
   DisableProjectClients: "project",
+  // "Remove" is not a verb pattern, so inference falls through to the generic
+  // "resource" and would split the removal from the upload, which reports
+  // "project_wallpaper".
+  RemoveProjectWallpaper: "project_wallpaper",
 };
 
 const METHOD_NAME_OVERRIDES: Record<string, string> = {
@@ -1444,6 +1448,9 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   // Method body — use requestPaginated for paginated array responses
   const isPaginated = op.hasPagination && op.returnsArray;
   const isWrappedPaginated = op.hasPagination && !op.returnsArray && !!op.paginationKey;
+  const projectParam = op.pathParams.find((p) => p.name === "projectId" || p.name === "bucketId");
+  const resourceParam = op.pathParams.findLast((p) => p.name !== "projectId" && p.name !== "bucketId" && (p.name.endsWith("Id") || p.name === "id"));
+
   // Multipart uploads use requestMultipartUpload — completely different call path
   if (op.bodyContentType === "multipart") {
     const fieldName = op.multipartField || "file";
@@ -1456,12 +1463,21 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
     lines.push(`        operation: "${op.operationId}",`);
     lines.push(`        resourceType: "${op.resourceType}",`);
     lines.push(`        isMutation: true,`);
+    if (projectParam) {
+      lines.push(projectParam.name === "projectId" ? `        projectId,` : `        projectId: ${projectParam.name},`);
+    }
+    if (resourceParam) {
+      lines.push(`        resourceId: ${resourceParam.name},`);
+    }
     lines.push(`      },`);
     lines.push(`      url,`);
     lines.push(`      "${op.httpMethod.toUpperCase()}",`);
     lines.push(`      file,`);
     lines.push(`      "${fieldName}",`);
     lines.push(`      filename,`);
+    if (op.queryParams.length > 0) {
+      lines.push(`      ${buildQueryObject(op)},`);
+    }
     lines.push(`    );`);
     lines.push(`  }`);
     lines.push(``);
@@ -1485,12 +1501,10 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   lines.push(`        resourceType: "${op.resourceType}",`);
   lines.push(`        isMutation: ${op.isMutation},`);
 
-  const projectParam = op.pathParams.find((p) => p.name === "projectId" || p.name === "bucketId");
   if (projectParam) {
     lines.push(projectParam.name === "projectId" ? `        projectId,` : `        projectId: ${projectParam.name},`);
   }
 
-  const resourceParam = op.pathParams.findLast((p) => p.name !== "projectId" && p.name !== "bucketId" && (p.name.endsWith("Id") || p.name === "id"));
   if (resourceParam) {
     lines.push(`        resourceId: ${resourceParam.name},`);
   }
@@ -1512,19 +1526,7 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
     }
 
     if (hasQueryParams) {
-      const queryParts = op.queryParams.map((q) => {
-        const camelName = toCamelCase(q.name);
-        // Wire key is the raw OpenAPI name (may carry `[]` or `_`); quote unless
-        // it is a bare identifier. openapi-fetch emits `bucket_ids[]=…` literal.
-        const key = /^[A-Za-z][A-Za-z0-9]*$/.test(q.wireName) ? q.wireName : `"${q.wireName}"`;
-        const value = q.required ? camelName : `options?.${camelName}`;
-        // Special-case: bucket param is number[] → join as CSV string
-        if (q.name === "bucket" && !q.required) {
-          return `${key}: options?.${camelName}?.join(",")`;
-        }
-        return `${key}: ${value}`;
-      });
-      lines.push(`            query: { ${queryParts.join(", ")} },`);
+      lines.push(`            query: ${buildQueryObject(op)},`);
     }
 
     if (isOctetStream) {
@@ -1707,6 +1709,22 @@ function buildReturnType(op: ParsedOperation, serviceName: string): string {
 
   if (op.returnsArray) return "unknown[]";
   return "unknown";
+}
+
+function buildQueryObject(op: ParsedOperation): string {
+  const queryParts = op.queryParams.map((q) => {
+    const camelName = toCamelCase(q.name);
+    // Wire key is the raw OpenAPI name (may carry `[]` or `_`); quote unless
+    // it is a bare identifier. openapi-fetch emits `bucket_ids[]=…` literal.
+    const key = /^[A-Za-z][A-Za-z0-9]*$/.test(q.wireName) ? q.wireName : `"${q.wireName}"`;
+    const value = q.required ? camelName : `options?.${camelName}`;
+    // Special-case: bucket param is number[] → join as CSV string
+    if (q.name === "bucket" && !q.required) {
+      return `${key}: options?.${camelName}?.join(",")`;
+    }
+    return `${key}: ${value}`;
+  });
+  return `{ ${queryParts.join(", ")} }`;
 }
 
 function buildBodyMapping(op: ParsedOperation): string {

@@ -52,10 +52,12 @@ module Basecamp
       # @param description [String, nil] description
       # @param admissions [String, nil] invite|employee|team
       # @param schedule_attributes [Hash, nil] schedule attributes
+      # @param wallpaper_mode [String, nil] How the project's wallpaper is laid out. Changes only the layout of a
+      #   wallpaper already attached; UpdateProjectWallpaper uploads one.
       # @return [Hash] response data
-      def update(project_id:, name:, description: nil, admissions: nil, schedule_attributes: nil)
+      def update(project_id:, name:, description: nil, admissions: nil, schedule_attributes: nil, wallpaper_mode: nil)
         with_operation(service: "projects", operation: "update", is_mutation: true, project_id: project_id) do
-          http_put("/projects/#{project_id}", body: compact_params(name: name, description: description, admissions: admissions, schedule_attributes: schedule_attributes)).json(operation: "UpdateProject")
+          http_put("/projects/#{project_id}", body: compact_params(name: name, description: description, admissions: admissions, schedule_attributes: schedule_attributes, wallpaper_mode: wallpaper_mode)).json(operation: "UpdateProject")
         end
       end
 
@@ -95,6 +97,30 @@ module Basecamp
       def archive(project_id:)
         with_operation(service: "projects", operation: "archive", is_mutation: true, project_id: project_id) do
           http_put("/projects/#{project_id}/status/archived.json")
+          nil
+        end
+      end
+
+      # Upload or replace the project's wallpaper (returns 204 No Content).
+      # @param project_id [Integer] project id ID
+      # @param io [IO, String] File data to upload (IO object or string)
+      # @param filename [String] Display name for the uploaded file
+      # @param content_type [String] MIME type of the file (e.g., "image/png")
+      # @param mode [String, nil] How the wallpaper is laid out. Omitted, the project's current mode is kept.
+      # @return [void]
+      def update_project_wallpaper(project_id:, io:, filename:, content_type:, mode: nil)
+        with_operation(service: "projects", operation: "update_project_wallpaper", is_mutation: true, project_id: project_id) do
+          http_put_multipart("/projects/#{project_id}/wallpaper.json", io: io, filename: filename, content_type: content_type, field: "wallpaper", params: compact_query_params(mode: mode))
+          nil
+        end
+      end
+
+      # Remove the project's wallpaper (returns 204 No Content).
+      # @param project_id [Integer] project id ID
+      # @return [void]
+      def remove_project_wallpaper(project_id:)
+        with_operation(service: "projects", operation: "remove_project_wallpaper", is_mutation: true, project_id: project_id) do
+          http_delete("/projects/#{project_id}/wallpaper.json")
           nil
         end
       end

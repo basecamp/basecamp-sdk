@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,6 +69,9 @@ func TestProject_UnmarshalList(t *testing.T) {
 	}
 	if p1.ClientCompany != nil {
 		t.Errorf("expected nil ClientCompany for first project")
+	}
+	if p1.Wallpaper != nil {
+		t.Errorf("expected nil Wallpaper when absent, got %+v", p1.Wallpaper)
 	}
 	if len(p1.Dock) != 8 {
 		t.Errorf("expected 8 dock items, got %d", len(p1.Dock))
@@ -124,6 +130,12 @@ func TestProject_UnmarshalGet(t *testing.T) {
 	}
 	if !project.Bookmarked || !project.Starred {
 		t.Errorf("expected bookmarked=true starred=true, got bookmarked=%v starred=%v", project.Bookmarked, project.Starred)
+	}
+	if project.Wallpaper == nil {
+		t.Fatal("expected Wallpaper")
+	}
+	if project.Wallpaper.Mode != "tile" {
+		t.Errorf("expected wallpaper mode 'tile', got %q", project.Wallpaper.Mode)
 	}
 	if project.CreatedAt.IsZero() {
 		t.Error("expected non-zero CreatedAt")
@@ -728,5 +740,160 @@ func TestProjectFromGenerated_TimesheetEnabled(t *testing.T) {
 	p := projectFromGenerated(generated.Project{Id: 1, Status: "active", Name: "Timesheet", TimesheetEnabled: &enabled})
 	if !p.TimesheetEnabled {
 		t.Error("expected TimesheetEnabled to carry through from the generated project")
+	}
+}
+
+func TestProjectsService_GetWallpaper(t *testing.T) {
+	fixture := loadFixture(t, "get.json")
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(fixture)
+	})
+
+	project, err := svc.Get(context.Background(), 2085958499)
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+	want := ProjectWallpaper{
+		URL:  "https://3.basecampapi.com/195539477/projects/2085958499/wallpaper?v=1669139787",
+		Mode: "tile",
+	}
+	if project.Wallpaper == nil || *project.Wallpaper != want {
+		t.Errorf("Wallpaper = %+v, want %+v", project.Wallpaper, want)
+	}
+}
+
+func TestProjectsService_UpdateWallpaperMode(t *testing.T) {
+	fixture := loadFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(fixture)
+	})
+
+	_, err := svc.Update(context.Background(), 12345, &UpdateProjectRequest{
+		Name:          "My Project",
+		WallpaperMode: "fill",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedBody["wallpaper_mode"] != "fill" {
+		t.Errorf("wallpaper_mode = %v, want fill", receivedBody["wallpaper_mode"])
+	}
+}
+
+func TestProjectsService_UpdateWallpaper(t *testing.T) {
+	tests := []struct {
+		name      string
+		opts      *UpdateProjectWallpaperOptions
+		wantQuery string
+	}{
+		{name: "with mode", opts: &UpdateProjectWallpaperOptions{Mode: "tile"}, wantQuery: "mode=tile"},
+		{name: "empty mode", opts: &UpdateProjectWallpaperOptions{}, wantQuery: ""},
+		{name: "nil options", opts: nil, wantQuery: ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != "PUT" || r.URL.Path != "/99999/projects/42/wallpaper.json" {
+					t.Errorf("request = %s %s, want PUT /99999/projects/42/wallpaper.json", r.Method, r.URL.Path)
+				}
+				if r.URL.RawQuery != tc.wantQuery {
+					t.Errorf("query = %q, want %q", r.URL.RawQuery, tc.wantQuery)
+				}
+				mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+				if err != nil || mediaType != "multipart/form-data" {
+					t.Fatalf("Content-Type = %q, want multipart/form-data", r.Header.Get("Content-Type"))
+				}
+				part, err := multipart.NewReader(r.Body, params["boundary"]).NextPart()
+				if err != nil {
+					t.Fatalf("failed to read multipart part: %v", err)
+				}
+				if part.FormName() != "wallpaper" || part.FileName() != "beach.webp" {
+					t.Errorf("part = %q/%q, want wallpaper/beach.webp", part.FormName(), part.FileName())
+				}
+				if got := part.Header.Get("Content-Type"); got != "image/webp" {
+					t.Errorf("part Content-Type = %q, want image/webp", got)
+				}
+				if body, _ := io.ReadAll(part); string(body) != "fake-webp-data" {
+					t.Errorf("part body = %q, want fake-webp-data", body)
+				}
+				w.WriteHeader(http.StatusNoContent)
+			})
+
+			err := svc.UpdateWallpaper(context.Background(), 42, strings.NewReader("fake-webp-data"), "beach.webp", "image/webp", tc.opts)
+			if err != nil {
+				t.Fatalf("UpdateWallpaper returned error: %v", err)
+			}
+		})
+	}
+}
+
+func TestProjectsService_UpdateWallpaperValidationErrors(t *testing.T) {
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("server should not be called")
+	})
+
+	ctx := context.Background()
+	if err := svc.UpdateWallpaper(ctx, 42, nil, "a.png", "image/png", nil); err == nil {
+		t.Error("expected error for nil wallpaper")
+	}
+	if err := svc.UpdateWallpaper(ctx, 42, strings.NewReader("data"), "", "image/png", nil); err == nil {
+		t.Error("expected error for empty filename")
+	}
+	if err := svc.UpdateWallpaper(ctx, 42, strings.NewReader("data"), "a.png", "", nil); err == nil {
+		t.Error("expected error for empty content type")
+	}
+}
+
+// bc3 applies the shared model's image validations and refuses non-images with 422.
+func TestProjectsService_UpdateWallpaperRefused(t *testing.T) {
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"error":"Wallpaper is not an allowed image type"}`))
+	})
+
+	err := svc.UpdateWallpaper(context.Background(), 42, strings.NewReader("not an image"), "a.txt", "text/plain", nil)
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error is not *basecamp.Error: %T (%v)", err, err)
+	}
+	if bcErr.HTTPStatus != 422 || bcErr.Code != CodeValidation {
+		t.Errorf("error = %d/%q, want 422/%q", bcErr.HTTPStatus, bcErr.Code, CodeValidation)
+	}
+}
+
+func TestProjectsService_RemoveWallpaper(t *testing.T) {
+	var gotMethod, gotPath string
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	if err := svc.RemoveWallpaper(context.Background(), 42); err != nil {
+		t.Fatalf("RemoveWallpaper returned error: %v", err)
+	}
+	if gotMethod != "DELETE" || gotPath != "/99999/projects/42/wallpaper.json" {
+		t.Errorf("request = %s %s, want DELETE /99999/projects/42/wallpaper.json", gotMethod, gotPath)
+	}
+}
+
+func TestProjectsService_RemoveWallpaperForbidden(t *testing.T) {
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"error":"Access denied"}`))
+	})
+
+	err := svc.RemoveWallpaper(context.Background(), 42)
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error is not *basecamp.Error: %T (%v)", err, err)
+	}
+	if bcErr.HTTPStatus != 403 || bcErr.Code != CodeForbidden {
+		t.Errorf("error = %d/%q, want 403/%q", bcErr.HTTPStatus, bcErr.Code, CodeForbidden)
 	}
 }

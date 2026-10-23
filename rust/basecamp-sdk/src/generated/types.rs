@@ -4250,6 +4250,9 @@ pub struct Project {
     /// `client_company`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_company: Option<ClientCompany>,
+    /// `wallpaper`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wallpaper: Option<ProjectWallpaper>,
     /// `clientside`.
     #[deprecated(
         note = "This shape is deprecated since 2024-01: Use Client Visibility feature instead"
@@ -4329,6 +4332,18 @@ pub struct ProjectLimitErrorResponseContent {
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+}
+
+/// The project's wallpaper, included only in single-project responses when attached.
+/// Project lists and home responses omit it.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ProjectWallpaper {
+    /// An authenticated API-host URL that redirects to the wallpaper image in storage, not a public image link.
+    /// Use the SDK's authenticated download helper instead of placing this URL directly in an image element.
+    pub url: String,
+    /// fill|tile
+    pub mode: String,
 }
 
 /// The `Question` shape of the Basecamp API.
@@ -6976,10 +6991,17 @@ pub struct UpdateProjectRequestContent {
     /// `schedule_attributes`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub schedule_attributes: Option<ScheduleAttributes>,
+    /// How the project's wallpaper is laid out. Changes only the layout of a
+    /// wallpaper already attached; UpdateProjectWallpaper uploads one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wallpaper_mode: Option<String>,
 }
 
 /// `UpdateProjectResponseContent`.
 pub type UpdateProjectResponseContent = Project;
+
+/// A raw byte payload, sent as the request body.
+pub type UpdateProjectWallpaperInputPayload = Vec<u8>;
 
 /// The `UpdateQuestionNotificationSettingsRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

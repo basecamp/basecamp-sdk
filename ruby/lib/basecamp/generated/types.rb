@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-22T22:35:52Z
+# Generated: 2026-10-23T22:09:29Z
 
 require "json"
 require "time"
@@ -3420,7 +3420,7 @@ module Basecamp
       include TypeHelpers
       # @!attribute [rw] clientside
       #   @deprecated This shape is deprecated since 2024-01: Use Client Visibility feature instead
-      attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :end_date, :purpose, :star_url, :starred, :start_date, :timesheet_enabled
+      attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :end_date, :purpose, :star_url, :starred, :start_date, :timesheet_enabled, :wallpaper
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3448,6 +3448,7 @@ module Basecamp
         @starred = parse_boolean(data["starred"])
         @start_date = data["start_date"]
         @timesheet_enabled = parse_boolean(data["timesheet_enabled"])
+        @wallpaper = parse_type(data["wallpaper"], "ProjectWallpaper")
       end
 
       def to_h
@@ -3472,6 +3473,7 @@ module Basecamp
           "starred" => @starred,
           "start_date" => @start_date,
           "timesheet_enabled" => @timesheet_enabled,
+          "wallpaper" => @wallpaper,
         }.compact
       end
 
@@ -3579,6 +3581,33 @@ module Basecamp
           "name" => @name,
           "description" => @description,
           "start_date" => @start_date,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # ProjectWallpaper
+    class ProjectWallpaper
+      include TypeHelpers
+      attr_accessor :mode, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[mode url].freeze
+      end
+
+      def initialize(data = {})
+        @mode = data["mode"]
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "mode" => @mode,
+          "url" => @url,
         }.compact
       end
 

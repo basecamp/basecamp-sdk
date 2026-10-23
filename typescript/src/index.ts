@@ -103,6 +103,7 @@ export {
   ProjectsService,
   type Project,
   type ListProjectOptions,
+  type UpdateProjectWallpaperProjectOptions,
   type CreateProjectRequest,
   type UpdateProjectRequest,
 } from "./generated/services/projects.js";

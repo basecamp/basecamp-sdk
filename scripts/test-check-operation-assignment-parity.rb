@@ -232,10 +232,10 @@ def write_file(root, rel, body)
   File.write(path, body)
 end
 
-# The one generated TypeScript method that concatenates its URL instead of
+# A generated TypeScript multipart upload, which concatenates its URL instead of
 # handing a literal to openapi-fetch. Named here for the same reason the checker
-# names it: it is the only such site, and the pattern that reads it can only be
-# pinned by a case that emits it.
+# names the shape: the pattern that reads it can only be pinned by a case that
+# emits it.
 TS_CONCAT_OPS = %w[UpdateAccountLogo].freeze
 
 def ts_method(id, op, index)
@@ -674,8 +674,9 @@ expect_fail_without(failures, "4. an operation one SDK never emits is reported a
 # --- 5. A request-call pattern that stopped matching ----------------------------
 #
 # Specifically the TypeScript baseUrl-concatenation pattern, which is the one
-# recorded oddity in the generated tree — the sole `this.baseUrl` site, and the
-# only generated method that does not hand a literal path to openapi-fetch.
+# recorded oddity in the generated tree — the multipart uploads are the only
+# `this.baseUrl` sites, and the only generated methods that do not hand a
+# literal path to openapi-fetch.
 # Recorded as an extra PATTERN rather than as an exemption precisely so this case
 # can exist: exempting the operation would mean the gate could never see it move.
 # Rewriting the emission shape must be LOUD and must name the operation.

@@ -332,6 +332,10 @@ val RESOURCE_TYPE_OVERRIDES = mapOf(
     "UpdateProjectClientAccess" to "project_access",
     "EnableProjectClients" to "project",
     "DisableProjectClients" to "project",
+    // "Remove" is not a verb pattern, so inference falls through to the generic
+    // "resource" and would split the removal from the upload, which reports
+    // "project_wallpaper".
+    "RemoveProjectWallpaper" to "project_wallpaper",
 )
 
 /**

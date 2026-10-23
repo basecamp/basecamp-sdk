@@ -546,6 +546,7 @@ export abstract class BaseService {
     maxPages?: number,
     authenticatedFetch?: (url: string, init: RequestInit) => Promise<Response>,
     baseUrl?: string,
+    private readonly enableRetry = true,
   ) {
     // BaseService is exported, and so is every generated service extending it,
     // so `new ProjectsService(client, hooks, fetchPage, Infinity)` is a
@@ -579,6 +580,7 @@ export abstract class BaseService {
    * @param file - File or Blob to upload
    * @param fieldName - The form field name
    * @param filename - Display name for the uploaded file
+   * @param query - Query parameters; undefined values are omitted
    */
   protected async requestMultipartUpload(
     info: OperationInfo,
@@ -587,7 +589,13 @@ export abstract class BaseService {
     file: Blob | File,
     fieldName: string,
     filename?: string,
+    query?: Record<string, string | number | boolean | undefined>,
   ): Promise<void> {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(query ?? {})) {
+      if (value !== undefined) search.append(key, String(value));
+    }
+    if (search.toString()) url = `${url}?${search}`;
     const start = performance.now();
     let result: OperationResult = { durationMs: 0 };
 
@@ -600,7 +608,7 @@ export abstract class BaseService {
       // Look up retry config from operation metadata
       const opMeta = (metadata as any).operations?.[info.operation];
       const retryConfig = opMeta?.retry ?? { maxAttempts: 1, baseDelayMs: 1000, backoff: "exponential", retryOn: [] };
-      const maxAttempts: number = retryConfig.maxAttempts ?? 1;
+      const maxAttempts: number = this.enableRetry ? (retryConfig.maxAttempts ?? 1) : 1;
       const retryOn: number[] = retryConfig.retryOn ?? [];
 
       let response: Response | undefined;

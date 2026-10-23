@@ -155,8 +155,11 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # set, which creates one per call, so it is not naturally idempotent.
 # UpdateBoost (+1 op): a PUT that replaces the boost's content, so a replay
 # re-asks the same question and lands in both counts (+1 each).
-expected_idempotent=99
-expected_union=236
+# Project wallpaper (+2 ops): UpdateProjectWallpaper's PUT replaces the
+# attachment whole and RemoveProjectWallpaper's DELETE converges on no
+# wallpaper, so both land in both counts (+2 each). Neither is readonly.
+expected_idempotent=101
+expected_union=238
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"

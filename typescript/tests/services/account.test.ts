@@ -20,6 +20,23 @@ describe("AccountService", () => {
     });
   });
 
+  it("should not retry logo uploads when retries are disabled", async () => {
+    let attempts = 0;
+    server.use(
+      http.put(`${BASE_URL}/account/logo.json`, () => {
+        attempts++;
+        return attempts === 1
+          ? HttpResponse.json({ error: "Unavailable" }, { status: 503, headers: { "Retry-After": "1" } })
+          : new HttpResponse(null, { status: 204 });
+      })
+    );
+
+    await expect(
+      client.account.updateAccountLogo(new Blob(["data"]), "logo.png")
+    ).rejects.toMatchObject({ httpStatus: 503 });
+    expect(attempts).toBe(1);
+  });
+
   describe("account", () => {
     it("should deserialize logo as an object with url", async () => {
       server.use(

@@ -897,8 +897,16 @@ data class UpdateProjectBody(
     val name: String,
     val description: String? = null,
     val admissions: String? = null,
-    val scheduleAttributes: JsonObject? = null
+    val scheduleAttributes: JsonObject? = null,
+    val wallpaperMode: String? = null
 )
+
+/** Options for UpdateProjectWallpaper. */
+data class UpdateProjectWallpaperOptions(
+    /** How the wallpaper is laid out. Omitted, the project's current mode is kept. */
+    val mode: String? = null
+) {
+}
 
 /** Options for ListRecordings. */
 data class ListRecordingsOptions(

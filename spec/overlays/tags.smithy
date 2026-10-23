@@ -13,6 +13,8 @@ apply ArchiveProject @tags(["Projects"])
 apply UnarchiveProject @tags(["Projects"])
 apply ListRecentProjects @tags(["Projects"])
 apply RecordProjectVisit @tags(["Projects"])
+apply UpdateProjectWallpaper @tags(["Projects"])
+apply RemoveProjectWallpaper @tags(["Projects"])
 
 // Todos (includes Todolists, TodolistGroups, Todosets)
 apply ListTodos @tags(["Todos"])

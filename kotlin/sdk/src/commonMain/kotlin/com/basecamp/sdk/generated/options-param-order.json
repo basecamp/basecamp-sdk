@@ -62,5 +62,6 @@
   "ListVaultsOptions": ["page", "maxItems"],
   "PollEventsOptions": ["since", "position", "types", "buckets", "creators", "performers", "excludePerformers", "actorTypes"],
   "PollInboxOptions": ["since", "position", "reasons", "types", "buckets"],
-  "SearchOptions": ["typeNames", "bucketIds", "creatorIds", "fileType", "excludeChat", "since", "sort", "type", "bucketId", "creatorId", "maxItems", "page"]
+  "SearchOptions": ["typeNames", "bucketIds", "creatorIds", "fileType", "excludeChat", "since", "sort", "type", "bucketId", "creatorId", "maxItems", "page"],
+  "UpdateProjectWallpaperOptions": ["mode"]
 }

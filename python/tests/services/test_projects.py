@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 import respx
 
 from basecamp import AsyncClient
 from basecamp.client import Client
-from basecamp.errors import ErrorCode, ForbiddenError, LimitExceededError, NotFoundError
+from basecamp.errors import ErrorCode, ForbiddenError, LimitExceededError, NotFoundError, ValidationError
 
 BASE = "https://3.basecampapi.com/12345"
 
@@ -283,3 +285,128 @@ class TestAsyncStatusTransitions:
         assert excinfo.value.http_status == 507
         assert excinfo.value.code == ErrorCode.LIMIT_EXCEEDED
         assert excinfo.value.retryable is False
+
+
+class TestProjectWallpaper:
+    @respx.mock
+    def test_update_project_wallpaper_sends_multipart_with_mode(self):
+        route = respx.put(f"{BASE}/projects/42/wallpaper.json").mock(return_value=httpx.Response(204))
+
+        _, account = make_account()
+        result = account.projects.update_project_wallpaper(
+            project_id=42, content=b"fake-webp-data", filename="beach.webp", content_type="image/webp", mode="tile"
+        )
+
+        assert result is None
+        request = route.calls[0].request
+        assert request.url.params["mode"] == "tile"
+        assert request.headers["content-type"].startswith("multipart/form-data")
+        assert b'name="wallpaper"; filename="beach.webp"' in request.content
+        assert b"fake-webp-data" in request.content
+
+    @respx.mock
+    def test_update_project_wallpaper_omits_mode_when_absent(self):
+        route = respx.put(f"{BASE}/projects/42/wallpaper.json").mock(return_value=httpx.Response(204))
+
+        _, account = make_account()
+        account.projects.update_project_wallpaper(
+            project_id=42, content=b"data", filename="beach.png", content_type="image/png"
+        )
+
+        assert "mode" not in route.calls[0].request.url.params
+
+    @respx.mock
+    def test_update_project_wallpaper_refused_format(self):
+        respx.put(f"{BASE}/projects/42/wallpaper.json").mock(
+            return_value=httpx.Response(422, json={"error": "Wallpaper is not an allowed image type"})
+        )
+
+        _, account = make_account()
+        with pytest.raises(ValidationError) as excinfo:
+            account.projects.update_project_wallpaper(
+                project_id=42, content=b"not an image", filename="a.txt", content_type="text/plain"
+            )
+
+        assert excinfo.value.http_status == 422
+
+    @respx.mock
+    def test_remove_project_wallpaper(self):
+        route = respx.delete(f"{BASE}/projects/42/wallpaper.json").mock(return_value=httpx.Response(204))
+
+        _, account = make_account()
+        assert account.projects.remove_project_wallpaper(project_id=42) is None
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_remove_project_wallpaper_forbidden(self):
+        respx.delete(f"{BASE}/projects/42/wallpaper.json").mock(return_value=httpx.Response(403))
+
+        _, account = make_account()
+        with pytest.raises(ForbiddenError):
+            account.projects.remove_project_wallpaper(project_id=42)
+
+    @respx.mock
+    def test_get_project_includes_wallpaper(self):
+        wallpaper = {"url": f"{BASE}/projects/42/wallpaper?v=1669139787", "mode": "fill"}
+        respx.get(f"{BASE}/projects/42").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": 42,
+                    "name": "My Project",
+                    "status": "active",
+                    "created_at": "2024-01-15T10:00:00Z",
+                    "updated_at": "2024-01-15T10:00:00Z",
+                    "url": f"{BASE}/projects/42.json",
+                    "app_url": "https://3.basecamp.com/12345/projects/42",
+                    "wallpaper": wallpaper,
+                },
+            )
+        )
+
+        _, account = make_account()
+        assert account.projects.get(project_id=42)["wallpaper"] == wallpaper
+
+    @respx.mock
+    def test_update_project_sends_wallpaper_mode(self):
+        route = respx.put(f"{BASE}/projects/42").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": 42,
+                    "name": "My Project",
+                    "status": "active",
+                    "created_at": "2024-01-15T10:00:00Z",
+                    "updated_at": "2024-01-15T10:00:00Z",
+                    "url": f"{BASE}/projects/42.json",
+                    "app_url": "https://3.basecamp.com/12345/projects/42",
+                },
+            )
+        )
+
+        _, account = make_account()
+        account.projects.update(project_id=42, name="My Project", wallpaper_mode="tile")
+
+        assert json.loads(route.calls[0].request.content)["wallpaper_mode"] == "tile"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_update_project_wallpaper_sends_mode(self):
+        route = respx.put(f"{BASE}/projects/42/wallpaper.json").mock(return_value=httpx.Response(204))
+
+        account = AsyncClient(access_token="test-token").for_account("12345")
+        await account.projects.update_project_wallpaper(
+            project_id=42, content=b"data", filename="beach.avif", content_type="image/avif", mode="fill"
+        )
+
+        assert route.calls[0].request.url.params["mode"] == "fill"
+        assert b'name="wallpaper"' in route.calls[0].request.content
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_remove_project_wallpaper(self):
+        route = respx.delete(f"{BASE}/projects/42/wallpaper.json").mock(return_value=httpx.Response(204))
+
+        account = AsyncClient(access_token="test-token").for_account("12345")
+        assert await account.projects.remove_project_wallpaper(project_id=42) is None
+        assert route.call_count == 1

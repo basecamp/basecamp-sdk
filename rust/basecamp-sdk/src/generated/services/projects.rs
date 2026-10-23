@@ -8,6 +8,8 @@
     clippy::doc_markdown
 )]
 
+use bytes::Bytes;
+
 use crate::client::AccountClient;
 use crate::error::Error;
 use crate::generated::routes;
@@ -22,6 +24,13 @@ pub struct ListProjectsParams {
     pub status: Option<String>,
     /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     pub page: Option<i32>,
+}
+
+/// Optional query parameters for `UpdateProjectWallpaper`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct UpdateProjectWallpaperParams {
+    /// How the wallpaper is laid out. Omitted, the project's current mode is kept.
+    pub mode: Option<String>,
 }
 
 /// `Projects` operations, sent through one [`AccountClient`].
@@ -115,6 +124,17 @@ impl<'a> ProjectsService<'a> {
         self.client.send_unit(operation).await
     }
 
+    /// Remove the project's wallpaper (returns 204 No Content).
+    /// People and personal assistants follow project-edit permissions; shared agents are refused.
+    ///
+    /// `DELETE /projects/{projectId}/wallpaper.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn remove_project_wallpaper(&self, project_id: i64) -> Result<(), Error> {
+        let operation = self
+            .client
+            .operation(&routes::REMOVE_PROJECT_WALLPAPER, &[&project_id]);
+        self.client.send_unit(operation).await
+    }
+
     /// Trash a project (returns 204 No Content)
     ///
     /// `DELETE /projects/{projectId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
@@ -150,5 +170,26 @@ impl<'a> ProjectsService<'a> {
             .operation(&routes::UPDATE_PROJECT, &[&project_id]);
         operation.json(body)?;
         self.client.send(operation).await
+    }
+
+    /// Upload or replace the project's wallpaper (returns 204 No Content).
+    /// Uses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 10 MB.
+    /// People and personal assistants follow project-edit permissions; shared agents are refused.
+    ///
+    /// `PUT /projects/{projectId}/wallpaper.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn update_project_wallpaper(
+        &self,
+        project_id: i64,
+        params: &UpdateProjectWallpaperParams,
+        filename: &str,
+        content_type: &str,
+        body: Bytes,
+    ) -> Result<(), Error> {
+        let mut operation = self
+            .client
+            .operation(&routes::UPDATE_PROJECT_WALLPAPER, &[&project_id]);
+        operation.query_optional("mode", params.mode.as_ref());
+        operation.multipart("wallpaper", filename, content_type, &body);
+        self.client.send_unit(operation).await
     }
 }

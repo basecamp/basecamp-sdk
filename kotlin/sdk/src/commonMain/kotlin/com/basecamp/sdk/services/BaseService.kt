@@ -131,6 +131,7 @@ abstract class BaseService(
         data: ByteArray,
         filename: String,
         contentType: String,
+        operationName: String? = null,
     ): HttpResponse {
         val safeFieldName = fieldName.replace("\r", "").replace("\n", "").replace("\"", "\\\"")
         val safeFilename = filename.replace("\r", "").replace("\n", "").replace("\"", "\\\"")
@@ -156,6 +157,7 @@ abstract class BaseService(
             accountUrl(path),
             body,
             "multipart/form-data; boundary=$boundary",
+            operationName = operationName,
         )
     }
 

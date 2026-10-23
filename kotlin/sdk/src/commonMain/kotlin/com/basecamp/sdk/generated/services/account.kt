@@ -47,7 +47,7 @@ class AccountService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         request(info, {
-            httpPutMultipart("/account/logo.json", "logo", data, filename, contentType)
+            httpPutMultipart("/account/logo.json", "logo", data, filename, contentType, operationName = info.operation)
         }) { Unit }
     }
 
