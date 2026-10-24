@@ -1,11 +1,14 @@
 package basecamp
 
 import (
+	"bufio"
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -34,83 +37,91 @@ func (c *Cache) Key(url, accountID, token string) string {
 	return hex.EncodeToString(h[:])
 }
 
+// Each entry is one file, responses/<key>.entry, holding the ETag, a newline,
+// and the body. It is written to a uniquely named temporary file and renamed
+// into place, so a reader in any process sees a whole entry or none, and two
+// writers racing on one key leave one of their entries intact rather than one
+// response's ETag beside another's body. That pairing would be persistent: the
+// server keeps answering the newer ETag with 304, and the older body is served
+// until the resource changes again. (On Windows os.Rename isn't promised to be
+// atomic, and a rename that fails just leaves the previous entry in place.)
+//
+// Before #1030 the ETags lived together in etags.json and the bodies in
+// responses/<key>.body, published separately. Those files read as misses
+// here, and only Clear removes them: an older SDK sharing the directory still
+// uses them, and deleting one half would leave it an ETag without its body.
+
 // GetETag returns the cached ETag for a key, or empty string if not found.
 func (c *Cache) GetETag(key string) string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	etagsFile := filepath.Join(c.dir, "etags.json")
-	data, err := os.ReadFile(etagsFile) // #nosec G703 -- cache dir is caller-configured
+	// Only the first line: the body can be tens of megabytes.
+	f, err := os.Open(c.entryFile(key)) // #nosec G703 -- cache dir is caller-configured
 	if err != nil {
 		return ""
 	}
-
-	var etags map[string]string
-	if err := json.Unmarshal(data, &etags); err != nil {
+	defer func() { _ = f.Close() }()
+	line, err := bufio.NewReader(f).ReadString('\n')
+	if err != nil || len(line) < 2 {
 		return ""
 	}
-
-	return etags[key]
+	return line[:len(line)-1]
 }
 
 // GetBody returns the cached response body for a key, or nil if not found.
 func (c *Cache) GetBody(key string) []byte {
+	_, body := c.entry(key)
+	return body
+}
+
+// entry returns a key's ETag and body, both from one stored response. Both are
+// empty when the key has no entry.
+func (c *Cache) entry(key string) (etag string, body []byte) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	bodyFile := filepath.Join(c.dir, "responses", key+".body")
-	data, err := os.ReadFile(bodyFile) // #nosec G703 -- cache dir is caller-configured
+	data, err := os.ReadFile(c.entryFile(key)) // #nosec G703 -- cache dir is caller-configured
 	if err != nil {
-		return nil
+		return "", nil
 	}
-	return data
+	i := bytes.IndexByte(data, '\n')
+	if i < 1 {
+		return "", nil
+	}
+	return string(data[:i]), data[i+1:]
 }
 
 // Set stores a response body and ETag for a key.
 func (c *Cache) Set(key string, body []byte, etag string) error {
+	if etag == "" || strings.ContainsAny(etag, "\r\n") {
+		return fmt.Errorf("basecamp: cache: unusable ETag %q", etag)
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Ensure directories exist
 	responsesDir := filepath.Join(c.dir, "responses")
 	if err := os.MkdirAll(responsesDir, 0700); err != nil { // #nosec G703 -- cache dir is caller-configured
 		return err
 	}
 
-	// Write body atomically
-	bodyFile := filepath.Join(responsesDir, key+".body")
-	tmpFile := bodyFile + ".tmp"
-	if err := os.WriteFile(tmpFile, body, 0600); err != nil { // #nosec G703 -- cache dir is caller-configured
-		return err
-	}
-	if err := os.Rename(tmpFile, bodyFile); err != nil { // #nosec G703 -- cache dir is caller-configured
-		_ = os.Remove(tmpFile) // #nosec G703 -- cache dir is caller-configured
-		return err
-	}
-
-	// Update etags.json
-	etagsFile := filepath.Join(c.dir, "etags.json")
-	etags := make(map[string]string)
-
-	// Load existing etags
-	if data, err := os.ReadFile(etagsFile); err == nil { // #nosec G703 -- cache dir is caller-configured
-		_ = json.Unmarshal(data, &etags) // Ignore parse errors, start fresh
-	}
-
-	etags[key] = etag
-
-	// Write etags atomically
-	data, err := json.MarshalIndent(etags, "", "  ")
+	tmp, err := os.CreateTemp(responsesDir, "entry-*.tmp") // 0600; the key may be too long to prefix it
 	if err != nil {
 		return err
 	}
-
-	tmpEtags := etagsFile + ".tmp"
-	if err := os.WriteFile(tmpEtags, data, 0600); err != nil { // #nosec G703 -- cache dir is caller-configured
-		return err
+	_, err = tmp.WriteString(etag + "\n")
+	if err == nil {
+		_, err = tmp.Write(body)
 	}
-	if err := os.Rename(tmpEtags, etagsFile); err != nil { // #nosec G703 -- cache dir is caller-configured
-		_ = os.Remove(tmpEtags) // #nosec G703 -- cache dir is caller-configured
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(tmp.Name(), c.entryFile(key)) // #nosec G703 -- cache dir is caller-configured
+	}
+	if err != nil {
+		_ = os.Remove(tmp.Name()) // #nosec G703 -- cache dir is caller-configured
 		return err
 	}
 
@@ -122,13 +133,10 @@ func (c *Cache) Clear() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	responsesDir := filepath.Join(c.dir, "responses")
-	if err := os.RemoveAll(responsesDir); err != nil {
+	if err := os.RemoveAll(filepath.Join(c.dir, "responses")); err != nil {
 		return err
 	}
-
-	etagsFile := filepath.Join(c.dir, "etags.json")
-	_ = os.Remove(etagsFile)
+	_ = os.Remove(filepath.Join(c.dir, "etags.json")) // the old layout's index
 
 	return nil
 }
@@ -138,24 +146,12 @@ func (c *Cache) Invalidate(key string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Remove body file
-	bodyFile := filepath.Join(c.dir, "responses", key+".body")
-	_ = os.Remove(bodyFile)
-
-	// Remove from etags.json
-	etagsFile := filepath.Join(c.dir, "etags.json")
-	etags := make(map[string]string)
-
-	if data, err := os.ReadFile(etagsFile); err == nil {
-		_ = json.Unmarshal(data, &etags) // Ignore parse errors, start fresh
-	}
-
-	delete(etags, key)
-
-	data, err := json.MarshalIndent(etags, "", "  ")
-	if err != nil {
+	if err := os.Remove(c.entryFile(key)); err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	return nil
+}
 
-	return os.WriteFile(etagsFile, data, 0600)
+func (c *Cache) entryFile(key string) string {
+	return filepath.Join(c.dir, "responses", key+".entry")
 }
