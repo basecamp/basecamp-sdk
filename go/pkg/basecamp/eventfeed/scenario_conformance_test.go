@@ -251,7 +251,7 @@ func (d *driver) stepSatisfiedLocked(step scenarioStep) bool {
 		return len(h.pendingMints) > 0
 	case *expectConnectStep:
 		return len(h.connects) > d.connectsTaken
-	case *expectSubscribeStep, *expectClientCloseStep:
+	case *expectSubscribeStep, *expectRenewStep, *expectClientCloseStep:
 		return d.peer != nil && d.peer.taken < len(d.peer.frames)
 	case *expectPollStep:
 		return len(h.pendingPolls) > 0
@@ -307,6 +307,8 @@ func (d *driver) runStep(step scenarioStep) error {
 		return d.sever()
 	case *expectSubscribeStep:
 		return d.expectSubscribe(payload)
+	case *expectRenewStep:
+		return d.expectRenew(payload)
 	case *expectPollStep:
 		return d.expectPoll(payload)
 	case *expectClientCloseStep:
@@ -395,7 +397,7 @@ func (d *driver) serve(step *serveStep) error {
 	if d.peer == nil {
 		return errors.New("no cable connection is open to serve on")
 	}
-	frame, err := serveFrameBytes(step, d.identifier)
+	frame, err := serveFrameBytes(step, d.identifier, d.h.clock.Now())
 	if err != nil {
 		return err
 	}
@@ -434,7 +436,7 @@ func (d *driver) expectSubscribe(step *expectSubscribeStep) error {
 		return fmt.Errorf("the outbound frame is not a cable command: %w", err)
 	}
 	if command.Command != "subscribe" {
-		return fmt.Errorf("the connector sent a %q command; only `subscribe` is ever sent", command.Command)
+		return fmt.Errorf("the connector sent a %q command where the script expects a subscribe", command.Command)
 	}
 	identifier := map[string]any{}
 	if err := json.Unmarshal([]byte(command.Identifier), &identifier); err != nil {
@@ -458,6 +460,48 @@ func (d *driver) expectSubscribe(step *expectSubscribeStep) error {
 		}
 	}
 	d.identifier = command.Identifier
+	return nil
+}
+
+// expectRenew matches the connector's in-band renew command: exactly the
+// three members, the scripted (freshly minted) ticket, and the subscription's
+// own identifier, byte for byte — the identifier is what a pre-renewal server
+// correlates the command by, so a re-serialized one is a different command.
+func (d *driver) expectRenew(step *expectRenewStep) error {
+	frame, err := d.nextClientFrame("the renew command")
+	if err != nil {
+		return err
+	}
+	if frame.kind != "text" {
+		return fmt.Errorf("the connector closed the socket where the script expects a renew command")
+	}
+	members, err := objectKeys(frame.data)
+	if err != nil {
+		return fmt.Errorf("the outbound frame is not a cable command: %w", err)
+	}
+	if err := allowedKeys("renew command", members, "command", "identifier", "ticket"); err != nil {
+		return err
+	}
+	var command struct {
+		Command    string `json:"command"`
+		Identifier string `json:"identifier"`
+		Ticket     string `json:"ticket"`
+	}
+	if err := json.Unmarshal(frame.data, &command); err != nil {
+		return fmt.Errorf("the outbound frame is not a cable command: %w", err)
+	}
+	if command.Command != "renew" {
+		return fmt.Errorf("the connector sent a %q command where the script expects a renew", command.Command)
+	}
+	if d.identifier == "" {
+		return errors.New("no subscribe identifier has been captured to compare the renew command's against")
+	}
+	if command.Identifier != d.identifier {
+		return fmt.Errorf("the renew command's identifier\n  %s\nis not the subscription's own\n  %s", command.Identifier, d.identifier)
+	}
+	if command.Ticket != step.Ticket {
+		return fmt.Errorf("the renew command carried ticket %q, want the freshly minted %q", command.Ticket, step.Ticket)
+	}
 	return nil
 }
 
@@ -1423,14 +1467,33 @@ func isDigits(value string) bool {
 
 // serveFrameBytes renders one scripted server frame. confirm/reject/message
 // auto-echo the captured subscribe identifier unless the fixture overrides it.
-func serveFrameBytes(step *serveStep, identifier string) ([]byte, error) {
+// A stream deadline is rendered from now — the driver clock's reading as the
+// frame is served — as an RFC 3339 instant in UTC with millisecond precision,
+// the shape a Rails server's JSON encoding gives a time.
+func serveFrameBytes(step *serveStep, identifier string, now time.Time) ([]byte, error) {
 	echo := identifier
 	if step.Identifier != nil {
 		echo = *step.Identifier
 	}
+	deadline := func() string {
+		return now.Add(millis(step.StreamExpiresInMs.v)).UTC().Format("2006-01-02T15:04:05.000Z07:00")
+	}
 	switch step.Frame {
 	case "welcome":
-		return []byte(`{"type":"welcome"}`), nil
+		if !step.StreamExpiresInMs.set {
+			return []byte(`{"type":"welcome"}`), nil
+		}
+		return json.Marshal(map[string]any{"type": "welcome", "stream_expires_at": deadline()})
+	case "renewed", "renew_refused":
+		// Addressed on the subscription's identifier, as the server answers a
+		// renewal; an override exercises the uncorrelated reply.
+		if echo == "" {
+			return nil, fmt.Errorf("no subscribe identifier has been captured to echo")
+		}
+		if step.Frame == "renewed" {
+			return json.Marshal(map[string]any{"identifier": echo, "type": "renewed", "stream_expires_at": deadline()})
+		}
+		return json.Marshal(map[string]any{"identifier": echo, "type": "renew_refused", "reason": step.Reason})
 	case "ping":
 		if step.Message == nil {
 			return []byte(`{"type":"ping"}`), nil

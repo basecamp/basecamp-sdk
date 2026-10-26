@@ -247,6 +247,51 @@ func TestConn_StalledWriteWakesWhenAReadKillsTheConnection(t *testing.T) {
 	}
 }
 
+// TestConn_ReleaseWritesLandsAHeldWrite: a write StallWrites is holding
+// completes the moment ReleaseWrites is called — recorded, or failed by a
+// scripted FailWrites, exactly as an unstalled write would — and later writes
+// no longer stall.
+func TestConn_ReleaseWritesLandsAHeldWrite(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		failErr error
+	}{{"recorded", nil}, {"failed", errors.New("broken pipe")}} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := NewTransport()
+			conn, _ := tr.Dial(context.Background(), "wss://a/cable", 1<<20)
+			c := tr.LastConn()
+			c.StallWrites()
+			wrote := make(chan error, 1)
+			go func() { wrote <- conn.WriteFrame(context.Background(), []byte(`held`)) }()
+			select {
+			case err := <-wrote:
+				t.Fatalf("a stalled write returned %v before its release", err)
+			case <-time.After(50 * time.Millisecond):
+			}
+			if tc.failErr != nil {
+				c.FailWrites(tc.failErr)
+			}
+			c.ReleaseWrites()
+			select {
+			case err := <-wrote:
+				if !errors.Is(err, tc.failErr) {
+					t.Fatalf("released write = %v, want %v", err, tc.failErr)
+				}
+			case <-time.After(2 * time.Second):
+				t.Fatal("ReleaseWrites did not land the held write")
+			}
+			if tc.failErr == nil {
+				if got := c.Writes(); len(got) != 1 || string(got[0]) != "held" {
+					t.Fatalf("writes = %q, want the held write recorded", got)
+				}
+				if err := conn.WriteFrame(context.Background(), []byte(`next`)); err != nil {
+					t.Fatalf("a write after the release = %v, want it unstalled and recorded", err)
+				}
+			}
+		})
+	}
+}
+
 func TestConn_WritesRecordedVerbatimAndCopied(t *testing.T) {
 	tr := NewTransport()
 	conn, _ := tr.Dial(context.Background(), "wss://a/cable", 1<<20)

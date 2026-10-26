@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -83,9 +84,10 @@ func (s connState) String() string {
 	}
 }
 
-// Timer kinds (SPEC.md §23 "Clock, Timers, and Virtual Time": six kinds,
-// kebab-case; the four armed by the lifecycle are here, and `repair-poll`
-// and `poll-retry` are armed by the walk, in catchup.go).
+// Timer kinds (SPEC.md §23 "Clock, Timers, and Virtual Time": eight kinds,
+// kebab-case; the four armed by the lifecycle are here, `repair-poll` and
+// `poll-retry` are armed by the walk, in catchup.go, and `renew-due` and
+// `renew-ack-deadline` by the in-band renewal, in renew.go).
 const (
 	timerHandshakeDeadline    = "handshake-deadline"
 	timerConfirmationDeadline = "confirmation-deadline"
@@ -133,6 +135,9 @@ type attempt struct {
 	// left registered contaminates a product clock indefinitely. Stop is
 	// idempotent, so double-stopping a normally disposed timer is free.
 	phase Timer
+	// renew is the socket's in-band renewal (renew.go), present only when
+	// its welcome advertised a usable stream deadline. Disposal stops it.
+	renew *renewal
 }
 
 // pumpDepth is the frame pump's bounded hand-off queue depth (SPEC.md §23
@@ -146,6 +151,10 @@ const pumpDepth = 256
 type pumpItem struct {
 	data []byte
 	err  error
+	// seq is the frame's place in the socket's read order, stamped by the
+	// pump as it reads — what lets the renewal tell a reply read after its
+	// command went out from one that was already queued (renew.go).
+	seq uint64
 }
 
 // seamPanic is a panic captured on a worker goroutine, carried back to the
@@ -177,6 +186,9 @@ type liveConn struct {
 	frames chan pumpItem
 	stale  *staleHolder
 	hooks  testHooks
+	// read counts the frames the pump has read off the socket; each frame's
+	// seq is the count at its read.
+	read atomic.Uint64
 }
 
 // newLiveConn arms staleness (socket open) and then starts the pump, in that
@@ -207,8 +219,12 @@ func (lc *liveConn) pump(ctx context.Context) {
 			lc.handOff(ctx, pumpItem{err: err})
 			return
 		}
+		// Stamped the moment the read returns, so a frame that was on the
+		// wire before a renewal's command went out carries a place below
+		// that command's cutoff in all but the instant between the two.
+		seq := lc.read.Add(1)
 		lc.stale.reset()
-		if !lc.handOff(ctx, pumpItem{data: data}) {
+		if !lc.handOff(ctx, pumpItem{data: data, seq: seq}) {
 			return
 		}
 	}
@@ -491,10 +507,10 @@ func (h *staleHolder) evaluate(gen int) (time.Duration, bool) {
 // deadline is due, and the immediate firing is the wake that lets the
 // post-select check say so.
 //
-// It arms the same `staleness` kind: SPEC.md §23 pins exactly six timer kinds
-// and every state's exact timer set, both asserted by the cross-SDK fixtures,
-// so a dedicated grace timer would be a spec change across six SDKs. The
-// outstanding set is unchanged — {staleness} stays {staleness}.
+// It arms the same `staleness` kind: SPEC.md §23 pins its closed set of timer
+// kinds and every state's exact timer set, both asserted by the cross-SDK
+// fixtures, so a dedicated grace timer would be a spec change across six
+// SDKs. The outstanding set is unchanged — {staleness} stays {staleness}.
 func (h *staleHolder) graceWake(d time.Duration) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -1494,11 +1510,24 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 			}
 			*deadline = l.cfg.clock.NewTimer(l.cfg.confirmationDeadline, timerConfirmationDeadline)
 			at.phase = *deadline
+			// The FIRST welcome's advert is the socket's renewal offer
+			// (renew.go); a duplicate welcome is liveness and offers nothing.
+			if f.hasExpiresAt {
+				at.renew = l.newRenewal(f.expiresAt)
+			}
 			l.setState(stateAwaitingConfirmation)
+			if at.renew != nil && l.cfg.observer.StreamDeadline != nil {
+				l.cfg.observer.StreamDeadline(f.expiresAt)
+				if l.runCtx.Err() != nil {
+					l.disposeAttempt(at, *deadline)
+					return cycleOutcome{kind: outcomeClosed}, true
+				}
+			}
 		}
 		return cycleOutcome{}, false
-	case framePing, frameUnknown:
-		// Liveness only — the pump already reset staleness.
+	case framePing, frameUnknown, frameRenewed, frameRenewRefused:
+		// Liveness only — the pump already reset staleness. Nothing is
+		// renewed before confirmation, so no reply here answers anything.
 		return cycleOutcome{}, false
 	case frameConfirm:
 		if l.state != stateAwaitingConfirmation || f.identifier != l.identifier {
@@ -1739,6 +1768,9 @@ func (l *loop) disposeAttempt(at *attempt, deadline Timer) {
 	if deadline != nil {
 		deadline.Stop()
 	}
+	if at.renew != nil {
+		at.renew.stop()
+	}
 	if at.lc != nil {
 		at.lc.dispose(at.cancel)
 	} else {
@@ -1921,6 +1953,8 @@ func observableSocketError(err error) error {
 		return nil
 	case errors.Is(err, errStaleConnection):
 		return errStaleConnection
+	case errors.Is(err, errRenewWriteLapsed):
+		return errRenewWriteLapsed
 	case errors.Is(err, errCableConnClosed):
 		return errCableConnClosed
 	case errors.Is(err, ErrFrameOversize):

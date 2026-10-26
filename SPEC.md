@@ -3417,7 +3417,9 @@ Completeness-critical workflows corroborate against canonical resource APIs.
 The SDK ships **one blessed connector** in every language so that six integrations never
 become six divergent reinventions of a subtle stateful protocol: mint → dial the mint's URL
 verbatim → subscribe → await confirmation → catch-up poll → drain the live buffer → stream,
-with the reconnect, backoff, staleness, dedupe, and checkpoint discipline specified below.
+with the reconnect, backoff, staleness, dedupe, and checkpoint discipline specified below —
+and, where the server bounds a stream by its token's expiry, the in-band renewal that keeps
+the socket open past it.
 Connecting the live lane **before** entering the poll lane is load-bearing, not an
 optimization: entry at the present places every already-visible event — and any in-flight
 event that drew a lower id and commits after entry — permanently behind the entry position,
@@ -3704,13 +3706,25 @@ so each is re-verified at the gate as its own row (against the rebased source an
 - the disconnect matrix's completeness at the verified head, including that `unauthorized`
   arrives only pre-welcome.
 
+**The in-band renewal's literals** (In-Band Renewal below) were drafted against bc3's
+renewal design and its open change (bc3 #14143) rather than a merged head, so they sit
+outside both lists until that change merges: class 1 — `stream_expires_at` (an RFC 3339
+instant, millisecond precision) on `welcome` and on `renewed`, the `renew` command with its
+`identifier` and `ticket` members, and the reply types `renewed` and `renew_refused` on the
+subscription's `identifier`; class 2 — the deadline is the redeemed token's expiry, a
+renewal is redeemed exactly as a handshake and must name its token, a refusal leaves the
+deadline where it was, at most one renewal per 30 seconds, the reply goes to the renewing
+socket alone, and the lease's close is the `remote` disconnect. Both are re-verified, row
+by row, when that change merges.
+
 **SDK-owned contract** — normative as written, not gated on bc3: the state inventory and
 transitions, the ownership cut and the conjunctive save-ordering invariant (they *respond
 to* class-2 semantics — the premises re-verify at the gate; the discipline stands), the
 semantic-handler contract, the dedupe rule, timer kinds and the virtual-advance algorithm,
 the checkpoint-identity structure with origin canonicalization and the `srv2-` namespace
 prefix, continuation/resume-URL validation, the staleness detection policy (7500ms), the
-options surface, and the security invariants.
+in-band renewal's schedule, retry and fallback, the options surface, and the security
+invariants.
 
 ### Classification: Infrastructure, Not a Composite `[manual]`
 
@@ -3906,7 +3920,7 @@ Semantic-signal dispositions are an **overlay** on this table, not additional nu
 rows: a `FeedGap` signal arises at transition 17; a `BufferOverflow` signal arises whenever
 the live buffer drops events (any buffer-holding state) and is dispatched synchronously
 before the next Save; a Terminate disposition — or an absent handler — lands in the
-corresponding Terminal state from wherever the signal was dispatched. Seven further edges
+corresponding Terminal state from wherever the signal was dispatched. Eight further edges
 sit outside the 26 numbered rows for the same reason: the Terminal(`checkpoint_load`) edge
 (fires on the first iteration, before the first mint — zero wire attempts); the
 Terminal(`usage`) edge (a re-consumed iterator); the Terminal(`invalid_continuation`) edge
@@ -3918,8 +3932,11 @@ seam call (Continuation and Resume URL Validation); zero requests to the failing
 the generated error); the Terminal(`mint_failed`) edge (an `unrecoverable`-kind mint
 error, from Minting, carrying the generated error); the Terminal(`invalid_cable_url`)
 edge (a policy-refused dial, from Connecting — recurring by construction, so never the
-Backoff path); and the poll transient/throttle
-**self-loop** inside CatchingUp (the `poll-retry` timer — a wait, not a state change).
+Backoff path); the poll transient/throttle
+**self-loop** inside CatchingUp (the `poll-retry` timer — a wait, not a state change); and
+the in-band renewal's **self-loop** inside Streaming (`renew-due` → a fresh mint → the renew
+command → its reply, under `renew-ack-deadline` — a wait, not a state change; In-Band
+Renewal below).
 An `unauthorized`-kind poll error rides the reconnect cycle — full teardown → Backoff with
 a shared-counter increment (the fresh mint/token cycle is its recovery path) — and the
 counter's threshold-3 terminal fires from wherever the third consecutive failure lands.
@@ -3991,7 +4008,7 @@ Per-state invariants (asserted by the tier-2 harness as exact sets):
 | AwaitingConfirmation | open | {`confirmation-deadline`, `staleness`} | **no** | no |
 | CatchingUp | open | {`staleness`} (+ `poll-retry` while a poll wait is pending) | poll pages only | after each page's delivery (held on present-class entry) |
 | Draining | open | {`staleness`} | buffered live, deduped | only per the save-ordering invariant |
-| Streaming | open | {`staleness`, `repair-poll`} | live (deduped) + repair pages | poll positions only — never live ids |
+| Streaming | open | {`staleness`, `repair-poll`} (+ `renew-due` while a renewal is scheduled, or `renew-ack-deadline` while one is in flight — In-Band Renewal; a `repair-poll` that fires during an attempt is held, and so absent, until the attempt ends) | live (deduped) + repair pages | poll positions only — never live ids |
 | Terminal / Closed | closed | **{}** | no | no |
 
 Draining is a bounded, in-memory replay — it performs no polls and takes no wire waits, so
@@ -4042,7 +4059,7 @@ The two intervals bound the whole sequence, and their sum is the worst case:
 
 An implementation may wake as often as it likes and from whatever source it has; wakes may
 be early or late, and the deadline is what decides. In particular this introduces **no new
-timer kind**: the six kinds and the per-state exact timer sets are both unchanged, and an
+timer kind**: the closed set of kinds and the per-state exact timer sets are both unchanged, and an
 implementation that re-arms `staleness` purely to obtain a wake keeps CatchingUp's set at
 {`staleness`}.
 
@@ -4118,6 +4135,18 @@ Two dispatch clarifications, pinned:
 - Ping parsing accepts both `{"type":"ping"}` and `{"type":"ping","message":<epoch>}`.
   Unknown frame types — parseable JSON whose `type` the connector doesn't recognize —
   update liveness and are otherwise ignored.
+- The connection's first `welcome` MAY carry the socket's stream deadline,
+  `"stream_expires_at":"<RFC 3339>"`, which is the server's offer of in-band renewal
+  (In-Band Renewal below). The renewal's members are the ones a selected frame kind reads
+  LENIENTLY — this advert, a `renewed` reply's deadline, and a renewal reply's
+  `identifier`: an absent, `null`, wrong-typed or unparseable value is no advert, no usable
+  deadline, or no correlation, never the invalid-frame class, because not renewing is
+  always correct, an unusable reply leaves the attempt to its own deadline and retry, and a
+  fatal advert would reconnect every client into the same welcome indefinitely. `renewed` and `renew_refused` are recognized
+  types; outside a renewal attempt whose command has been sent they are liveness only. A
+  `reject_subscription` after confirmation is liveness too, save one: on the
+  subscription's own identifier while a renewal's command is out, it is that renewal
+  refused (In-Band Renewal below) — never the subscription.
 - **An invalid inbound frame is a peer protocol violation, dispatched as a socket
   failure** `[conformance]` — three shapes, one disposition: a frame that fails to parse
   as JSON; a frame exceeding `EVENT_FEED_MAX_FRAME_BYTES`; and a correlated `message`
@@ -4248,6 +4277,137 @@ Two dispatch clarifications, pinned:
   signal, never a silent drop.
 - The transport negotiates subprotocol `actioncable-v1-json`, sends no `Origin` header
   (non-browser clients), and passes the mint URL through untouched, query string included.
+
+### In-Band Renewal `[conformance]`
+
+A server MAY bound a ticket stream by the token behind its ticket: the stream's deadline is
+that token's expiry, and at the deadline the server closes the socket with
+`{"type":"disconnect","reason":"remote","reconnect":true}` — the existing `remote` row,
+which the reconnect cycle recovers (re-mint, re-dial, catch-up walk). Such a server
+advertises the deadline in the socket's welcome and lets the client move it without
+reconnecting, by sending a freshly minted ticket over the open socket. The server redeems
+that ticket exactly as a handshake would — same account, person and performer, a ticket
+that names its token — and moves the deadline to the new token's expiry, never to "now
+plus" anything. Renewal is a reconnect that keeps the socket: it grants nothing a reconnect
+would not, so every way it can fail falls back to the path an unrenewed socket already
+takes. That is why nothing in this section is terminal.
+
+**Wire (class 1 — PROVISIONAL until the bc3 renewal change merges; Provenance above):**
+
+- Advert: the first `welcome` carries `"stream_expires_at":"<RFC 3339>"` (Cable Protocol
+  Details, read leniently). A duplicate welcome advertises nothing.
+- Command, hand-built as an exact byte string like the subscribe:
+  `{"command":"renew","identifier":"<json-escaped identifier>","ticket":"<json-escaped ticket>"}`,
+  where the identifier is the subscription's own, byte-identical to the one the subscribe
+  sent. Carrying it is what makes a misrouted renewal harmless: a server that will not
+  take the command — one that predates renewal, or a stream it does not renew —
+  correlates it to the claimed subscription and answers `reject_subscription` for that
+  identifier, which is the renewal refused and never the subscription (Cable Protocol
+  Details), where an uncorrelatable command would draw the protocol-fatal disconnect.
+- Replies, to the renewing socket only, on the subscription's identifier:
+  `{"identifier":"…","type":"renewed","stream_expires_at":"<RFC 3339>"}` or
+  `{"identifier":"…","type":"renew_refused","reason":<server text>}`. A reply on any other
+  identifier answers nothing. The reason is never read: a refusal leaves the deadline where
+  it was whatever it says (bc3 documents `too_soon`, `unauthorized`, `no_token`,
+  `different_principals`, `not_later` and `unavailable`, and every one of them is a
+  refusal this rule set retries once), and the observer is told its kind.
+
+**Rules (SDK-owned):**
+
+1. **Renew only where the welcome advertised.** A socket whose first welcome carried no
+   usable `stream_expires_at` is never renewed. The rule is per socket, so a fleet running
+   mixed server versions is safe socket by socket, and a server that stops advertising
+   (a revert) stops being sent renewals.
+2. **Schedule.** `renew-due` targets the deadline − `EVENT_FEED_RENEW_LEAD` (3 min) +
+   uniform(−`EVENT_FEED_RENEW_JITTER`, +`EVENT_FEED_RENEW_JITTER`) (±30 s), measured
+   against the Clock (Clock, Timers, and Virtual Time: the one absolute comparison the
+   connector makes); a target already behind the clock fires at once. The lead sits
+   inside the 5-minute window in which a host token provider that refreshes lazily ahead
+   of expiry has already replaced the token the stream was opened with
+   (`TOKEN_REFRESH_BUFFER`, Appendix A), so the attempt's mint carries a token whose expiry
+   is later — the one thing the server's renewal requires.
+3. **Streaming only.** `renew-due` is armed only in Streaming: it is stopped when a repair
+   walk leaves Streaming and re-armed for the remainder of the same target when the walk
+   returns (the target is held, never redrawn), so CatchingUp and Draining keep their
+   timer sets.
+4. **One attempt.** When `renew-due` fires — after the same expired-staleness arbitration
+   the repair cadence takes — the connector arms `renew-ack-deadline`
+   (`EVENT_FEED_RENEW_ACK_DEADLINE`, 10 s), mints one ticket through `TicketMinter` (one
+   fully-governed seam call, cancellable; the stream keeps delivering while it is in
+   flight), writes the renew command, and awaits the reply. The deadline bounds all
+   three, and it is AUTHORITATIVE: a mint's ticket, a write's completion or a reply that
+   is ready together with a deadline that has already fired is the deadline's, whichever
+   the implementation happens to observe first — the handshake and confirmation
+   deadlines' ordering rule, applied to the attempt (an implementation whose timers can be
+   stopped decides it by the stop's result). The deadline's own firing is in turn
+   outranked, as every arm is, by Close and by an expired staleness window. While an
+   attempt is in flight the repair cadence is HELD, not stopped: a `repair-poll` that
+   fires meanwhile is taken when the attempt ends, so a reply is only ever awaited from
+   Streaming.
+5. **Outcomes.**
+   - `renewed` carrying a usable deadline later than the current one: the deadline moves,
+     the failure count resets, the next `renew-due` is drawn from the new deadline — never
+     sooner than `EVENT_FEED_RENEW_MIN_INTERVAL` (30 s) from now, the server's own
+     one-renewal-per-30-s floor — and `Observer.renewed(expires_at)` fires.
+   - A failure: `renew_refused`, or `reject_subscription` on the subscription's identifier
+     (`refused`); `renewed` without a usable deadline later than
+     the current one (`invalid_reply`); a mint that fails, of ANY kind, or has not
+     produced a ticket when the deadline lapses (`mint_failed` — the outstanding mint is
+     cancelled and JOINED, so a panic it raises on cancellation reaches the consumer as
+     every seam panic does, and a Close or a staleness expiry during the join still
+     outranks the failure); a command written and unanswered at the deadline
+     (`no_reply`). `Observer.renew_failed(kind, retrying)` fires. The first
+     failure against a deadline is retried once, `EVENT_FEED_RENEW_MIN_INTERVAL` later
+     (`EVENT_FEED_RENEW_ATTEMPTS` = 2); the second gives that deadline up, and the socket
+     runs to the server's lease.
+   - The renew command's write is the socket's: a write that fails takes transition 25's
+     socket-failure edge, and so does a write still outstanding when the deadline lapses —
+     the peer is not reading; the teardown returns that write, which is then joined as the
+     mint is. A write whose completion is merely not yet observed when the deadline is
+     handled is not outstanding: its outcome is taken first.
+6. **Never terminal, never counted.** No renewal outcome ends iteration, and none touches
+   the shared authorization counter — an unauthorized renewal mint is a failed attempt
+   and nothing more. An unrenewed socket closes with `remote`, and the reconnect cycle's
+   own mint is what judges the bearer. Renewal never touches the position, the
+   checkpoint, delivery, or dedupe.
+7. **Replies attach to the attempt in flight, once its command's write has begun** — a
+   server can answer a frame before the client observes its write complete, and that
+   answer is the attempt's. "Once" is judged when the frame is OBSERVED, which is when it
+   is handed to the state machine (State Machine above), not when the state machine
+   dequeues it: a reply already queued when the command went out — a previous attempt's
+   late answer — is not this attempt's. (One read AFTER the command went out cannot be
+   told apart, since the server does not correlate its replies; mistaking it costs at most
+   that deadline, which the lease and the reconnect cycle recover.) It is acted on only
+   once the write's outcome is in: a reply
+   that beats it is PARKED until then, so a write that then fails is still the socket's
+   failure, a write that never completes still meets the deadline, and no attempt ever
+   ends with its write unobserved — the next attempt never writes beside one that did not
+   return. At any other time a reply is liveness: on a socket that advertised nothing,
+   between attempts, before the write, or after the attempt ended. A late `renewed` is NOT
+   adopted — the attempt it answered was already counted, and the worst that follows is
+   the lease closing a socket the connector stopped renewing.
+8. **Timer surgery order.** Ending an attempt that schedules another (a renewal, or a first
+   failure) arms the next `renew-due` BEFORE it stops `renew-ack-deadline`, so the settled
+   set never passes through {`staleness`, `repair-poll`} — the set a renewal that gave up
+   leaves — on the way to a retry.
+9. **Teardown** disposes the renewal with the attempt: both timers stopped, the mint
+   cancelled and a write in flight returned by the socket's close — neither awaited, as a
+   superseded poll seam call and an in-flight subscribe write are not, so a panic either
+   raises on its way out of a disposed attempt is not propagated — and a disposed attempt
+   leaves exactly {`backoff`} (or {} after a terminal) as ever. Only the attempt's own
+   deadline, which ends the attempt but not the run, joins what it cancels (rule 5).
+10. **The command carries a bearer credential.** It is written to the socket and nowhere
+    else: never logged, never rendered into an error, never an observer argument
+    (Security Invariants).
+
+Required tier-2 coverage (fixtures 36–41): a renewal acknowledged twice on one socket with
+no reconnect, `renew-due` stopped across a repair walk and re-armed for its remainder; a
+refusal retried once and then the lease's `remote` close recovered by the reconnect cycle;
+a `reject_subscription` answer (a server that will not take the command) read as the
+renewal refused — never the subscription — retried, and the retry acknowledged; no renewal on a
+socket whose welcome advertised nothing usable, and a `renewed` there treated as liveness;
+an attempt in flight torn down by a severed socket leaving exactly {`backoff`}; and
+unauthorized renewal mints that never reach the shared counter.
 
 ### Entry Boundary and Save Ordering `[conformance]`
 
@@ -4438,8 +4598,9 @@ INTERFACE TicketMinter
   mint_stream_ticket(cancellation) → StreamTicket
   -- One fully-governed generated CreateStreamTicket call. `cancellation` is the same
   -- language-native channel the dial seam takes (Go context, TS AbortSignal, …): the
-  -- connector triggers it on close(), caller cancellation, and any teardown of the
-  -- attempt the call belongs to, and a triggered call MUST
+  -- connector triggers it on close(), caller cancellation, any teardown of the
+  -- attempt the call belongs to, and — for an in-band renewal's mint — the end of the
+  -- renewal attempt (its acknowledgement deadline), and a triggered call MUST
   -- return promptly — the universal edge to Closed cannot wait out a stalled request.
 END
 
@@ -4550,7 +4711,10 @@ INTERFACE CableConn
 END
 
 INTERFACE Clock
-  now() → monotonic reading            -- used ONLY for deltas, never persisted
+  now() → reading                      -- WALL time, comparable with the server's RFC 3339
+                                       -- instants; used for deltas, never persisted; its
+                                       -- one absolute comparison is the in-band renewal's
+                                       -- schedule against the server's deadline
   new_timer(duration, kind) → Timer    -- kind-labelled, cancellable, enumerable
   outstanding() → List<kind>           -- kinds of live (unfired, unstopped) timers
 END
@@ -4664,7 +4828,7 @@ egress against a sentinel listener behind the foreign `Location`
 timer or sleep may bypass it. Delays *inside* a seam call are outside this rule: a
 generated operation's §7 retry backoff is the operation's own machinery (native, as
 shipped), which is exactly why conformance counts seam calls rather than wire attempts —
-scenarios never depend on advancing seam-internal time. There are exactly six timer kinds, kebab-case:
+scenarios never depend on advancing seam-internal time. There are exactly eight timer kinds, kebab-case:
 
 | Kind | Armed | Duration |
 |---|---|---|
@@ -4674,6 +4838,8 @@ scenarios never depend on advancing seam-internal time. There are exactly six ti
 | `staleness` | at socket open; re-armed per inbound frame of any kind | 7500ms |
 | `repair-poll` | on entry to Streaming; re-armed per cycle | 60s ± 20% jitter per cycle |
 | `poll-retry` | on a transient/throttled poll inside CatchingUp | Retry-After when present (exact, cap-exempt per §7); else full-jitter `uniform(0, min(60s, 1s × 2^(k−1)))` on the consecutive-poll-failure index k (reset by a successful poll or socket teardown) |
+| `renew-due` | in Streaming, while an in-band renewal is scheduled — on entry, on return from a repair walk, and when an attempt ends with another scheduled (In-Band Renewal) | the remainder to the target, floored at 0: the deadline − 3 min ± 30 s; after a renewal never under 30 s; a retry exactly 30 s |
+| `renew-ack-deadline` | when `renew-due` fires — it bounds the attempt's mint, write and reply | `EVENT_FEED_RENEW_ACK_DEADLINE` (10s) |
 
 The connector's reconnect backoff is deliberately **not** the §7 per-request formula: it is
 full-jitter delay *selection* over the whole range (the §7 formula saturates its backoff
@@ -4703,6 +4869,17 @@ before evaluating `2^(n−1)`/`2^(k−1)` (for base 1s and cap 60s, any index ab
 saturates the range at 60s). Evaluating the power first overflows fixed-width integers
 after a long genuine outage (~64 consecutive failures), producing exactly the tight-loop
 or crash failure §7's saturation rules exist to prevent.
+
+**The renewal schedule is the Clock's one absolute comparison**, and it is why `now()` must
+read wall time: a custom clock whose epoch is not wall time (one counting from boot) mistimes
+every renewal, harmlessly but uselessly. Every other reading is a delta. `renew-due`'s target is the server's `stream_expires_at` less the lead, so its delay
+is that instant minus `now()`. On the system clock that is wall time, and a host whose clock
+is skewed renews early or late by the skew: early enough that the host has not yet replaced
+its token draws `refused` on the attempt and on the retry, late enough that the lease
+closed the socket first costs a reconnect, and either way the lease and the reconnect cycle
+recover exactly as for a client that never renews. A test clock's reading is its virtual
+time, which is how fixtures pin the schedule: a driver renders every deadline it serves as
+an offset from its clock's reading at the instant it serves the frame.
 
 **Virtual-advance algorithm (normative).** Every language's test clock must honor the same
 semantics, so a tier-2 script means the same thing everywhere: *advancing virtual time
@@ -4897,7 +5074,12 @@ resume_url)`, `position_rejected(kind)`, `filter_conflict(position_digest, filte
 the request's filters hashed to; a `filters_digest` that differs from the SDK's own
 `Filters.digest()` for the same set means the local canonicalization has drifted from the
 server's), `stale_connection(since_last_frame)`,
-`buffer_overflow(dropped_count)`. All are observability-only; none carries a disposition.
+`buffer_overflow(dropped_count)`, and the in-band renewal's three:
+`stream_deadline(expires_at)` (a welcome advertised the socket's deadline),
+`renewed(expires_at)` (a renewal moved it), and `renew_failed(kind, retrying)` (one attempt
+failed — `refused` | `no_reply` | `mint_failed` | `invalid_reply`, a closed vocabulary that
+never carries the server's reason; `retrying` says whether another attempt is scheduled
+against the same deadline). All are observability-only; none carries a disposition.
 
 ### Security Invariants `[static]`
 
@@ -4911,6 +5093,10 @@ server's), `stale_connection(since_last_frame)`,
   `catch_up_started(cursor)` carry them reduced to their origin (a fixed placeholder for a
   cross-origin or unparsable one); the `FeedGap` signal hands the handler the resume URL
   whole, since its disposition is a decision about which URL to follow.
+- **Never log the renew command.** It carries a freshly minted ticket — the same credential
+  class as the mint URL's query string — so it is written to the socket and nowhere else:
+  no error, observer argument or log line renders it, and a renewal failure is reported
+  by kind alone.
 - **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) and
   bound/truncate any error rendering of frame contents (§9's `MAX_ERROR_MESSAGE_LENGTH`
   applies).
@@ -4931,7 +5117,9 @@ heartbeat cadence 3s; staleness 7500ms; authorization-failure threshold 3; dedup
 10,000 ids; live buffer capacity 10,000 events; maximum capacity 1,000,000 (the inclusive
 ceiling both configurable capacities are validated against); ticket TTL ~120s (server-owned —
 `expires_in` is never used for client-side scheduling; expiry is arbitrated by the server
-and the connector always mints fresh); maximum inbound frame 1 MiB.
+and the connector always mints fresh); maximum inbound frame 1 MiB; in-band renewal lead
+3 min, ± 30 s jitter, acknowledgement deadline 10 s, minimum interval (and retry delay)
+30 s, two attempts per deadline.
 
 ### The Inbox Lane `[conformance]`
 
@@ -5066,6 +5254,11 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `EVENT_FEED_MAX_CAPACITY` | 1,000,000 | events / delivered keys | §23 — inclusive ceiling on BOTH configurable capacities, refused at construction with the `usage` code; a resource bound (a capacity may be honored eagerly), not a domain one. Also `conformance/event-feed/schema.json`'s `maximum` for `liveBufferCapacity` and `dedupeCapacity`, and the Go tier-2 loader's bound by declaration |
 | `EVENT_FEED_TICKET_TTL` | ~120 | seconds | server-owned (`expires_in`; provisional until the merge-time gate); never used for client scheduling |
 | `EVENT_FEED_MAX_FRAME_BYTES` | 1,048,576 (1 MiB) | bytes | §23 security invariants |
+| `EVENT_FEED_RENEW_LEAD` | 180 | seconds | §23 In-Band Renewal — `renew-due` targets the advertised deadline less this; inside `TOKEN_REFRESH_BUFFER`'s 300 s window |
+| `EVENT_FEED_RENEW_JITTER` | ± 30 | seconds | §23 In-Band Renewal — uniform jitter on each renewal's target |
+| `EVENT_FEED_RENEW_ACK_DEADLINE` | 10 | seconds | §23 `renew-ack-deadline` — bounds one attempt's mint, write and reply |
+| `EVENT_FEED_RENEW_MIN_INTERVAL` | 30 | seconds | §23 In-Band Renewal — the one retry's delay, and the floor on the next renewal after one; matches the server's one-renewal-per-30-s refusal |
+| `EVENT_FEED_RENEW_ATTEMPTS` | 2 | attempts per deadline | §23 In-Band Renewal — the renewal and one retry |
 
 ---
 

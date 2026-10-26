@@ -1,0 +1,221 @@
+{
+  "name": "38-renew-answered-by-reject-is-retried",
+  "description": "A server that will not take the renew command — one that predates renewal, or a stream it does not renew — answers reject_subscription on the subscription's identifier the command carried. A confirmed stream reads that as the RENEWAL refused, never as transition 12's terminal rejection of the subscription: the live event served behind the reject is delivered, the socket stays open, and the retry comes due 30 seconds later, with no renew-ack-deadline left to wait out. The retry's renewal is acknowledged, and nothing reconnects.",
+  "config": {
+    "position": "{{POS:0}}"
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome",
+        "streamExpiresInMs": 3600000
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-due": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "renew-due",
+        "assertDelayMs": {
+          "min": 3390000,
+          "max": 3450000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:2}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectRenew": {
+        "ticket": "{{TICKET:2}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "reject"
+      }
+    },
+    {
+      "serve": {
+        "frame": "message",
+        "event": {
+          "id": 5,
+          "kind": "message",
+          "event_type": "message.created",
+          "action": "created",
+          "created_at": "2026-08-01T12:00:00Z",
+          "bucket_id": 2,
+          "creator_id": 3,
+          "performed_by_id": null,
+          "actor_type": "person",
+          "recording_id": 900,
+          "visible_to_clients": false
+        }
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [5]
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-due": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "renew-due",
+        "assertDelayMs": {
+          "min": 30000,
+          "max": 30000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:3}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:3}}"
+          }
+        }
+      }
+    },
+    {
+      "expectRenew": {
+        "ticket": "{{TICKET:3}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "renewed",
+        "streamExpiresInMs": 7200000
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-due": 1
+        }
+      }
+    },
+    {
+      "serve": {
+        "frame": "message",
+        "event": {
+          "id": 6,
+          "kind": "message",
+          "event_type": "message.created",
+          "action": "created",
+          "created_at": "2026-08-01T12:00:00Z",
+          "bucket_id": 2,
+          "creator_id": 3,
+          "performed_by_id": null,
+          "actor_type": "person",
+          "recording_id": 900,
+          "visible_to_clients": false
+        }
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [5, 6]
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 3,
+    "connectCount": 1,
+    "delivered": {
+      "exact": [5, 6]
+    },
+    "checkpoints": {
+      "exact": ["{{POS:1}}"]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1,
+        "renew-due": 1
+      }
+    },
+    "socket": "open"
+  }
+}

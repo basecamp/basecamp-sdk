@@ -228,6 +228,17 @@ func (c *Conn) StallWrites() {
 	c.cond.Broadcast()
 }
 
+// ReleaseWrites ends StallWrites: a write it is holding completes as an
+// ordinary write would — recorded, or failed by a scripted FailWrites — and
+// later writes no longer stall. It is how a test holds a write's outcome back
+// and then lets it land at a moment of its choosing.
+func (c *Conn) ReleaseWrites() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.stallWrites = false
+	c.cond.Broadcast()
+}
+
 // ReadFrame implements eventfeed.CableConn: the next queued frame, verbatim.
 // Precedence at each wakeup: context cancellation, local close, a latched
 // frame-size violation, queued frames (checking the cap as each is

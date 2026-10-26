@@ -216,7 +216,8 @@ func WithStart(s Start) Option { return func(c *config) { c.start = s } }
 func WithTransport(t CableTransport) Option { return func(c *config) { c.transport = t } }
 
 // WithClock replaces the system clock — product seam, the extension point
-// for embedded runtimes and deterministic tests.
+// for embedded runtimes and deterministic tests. Its Now must read wall time
+// (Clock.Now): the in-band renewal schedules against the server's deadline.
 func WithClock(cl Clock) Option { return func(c *config) { c.clock = cl } }
 
 // WithCheckpointStore configures durable position persistence (default:
@@ -340,6 +341,12 @@ type testHooks struct {
 	// externally a coin flip between two ready select cases, and the reason
 	// Stop's result must be read rather than discarded.
 	subscribeWritten func()
+	// renewSent fires on the renewal's writer goroutine, after it has taken
+	// the reply cutoff and immediately before the command's write — the
+	// instant from which a frame the pump reads is the attempt's to answer
+	// (renewReply). It is the rendezvous for answering a renewal whose write
+	// has not yet completed.
+	renewSent func()
 	// runContext fires with the active run's context as soon as it exists.
 	// Close's guarantee is a statement ABOUT that context, so a test needs the
 	// context itself; every in-struct proxy for it (a cleared cancel func, the

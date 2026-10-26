@@ -19,6 +19,7 @@ package eventfeed_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -501,12 +502,31 @@ func (h *scenarioHarness) recordClientFrame(peer *cablePeer, frame clientFrame) 
 // arm shares this path because a close observed early is the same defect as a
 // subscribe observed early — the connector acting ahead of the script.
 func (h *scenarioHarness) recordClientFrameLocked(peer *cablePeer, frame clientFrame) {
-	if frame.kind == "close" {
+	switch {
+	case frame.kind == "close":
 		h.arrivalStrictLocked("expectClientClose", "the connector's close of the socket")
-	} else {
+	case outboundCommand(frame.data) == "renew":
+		// The renew command carries a ticket, which the harness's own tickets
+		// are by construction ("ticket-n"), so naming the frame here leaks
+		// nothing.
+		h.arrivalStrictLocked("expectRenew", fmt.Sprintf("the outbound frame %s", frame.data))
+	default:
 		h.arrivalStrictLocked("expectSubscribe", fmt.Sprintf("the outbound frame %s", frame.data))
 	}
 	peer.frames = append(peer.frames, frame)
+}
+
+// outboundCommand names the cable command an outbound text frame carries, or
+// "" when it carries none it can read — judged then as the subscribe it would
+// otherwise have to be.
+func outboundCommand(data []byte) string {
+	var command struct {
+		Command string `json:"command"`
+	}
+	if err := json.Unmarshal(data, &command); err != nil {
+		return ""
+	}
+	return command.Command
 }
 
 // handleAPI is the API origin's sentinel: the connector reaches the mint and

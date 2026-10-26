@@ -785,6 +785,9 @@
         "expectSubscribe": {
           "$ref": "#/$defs/expectSubscribe"
         },
+        "expectRenew": {
+          "$ref": "#/$defs/expectRenew"
+        },
         "expectPoll": {
           "$ref": "#/$defs/expectPoll"
         },
@@ -1017,7 +1020,7 @@
       }
     },
     "serveFrame": {
-      "description": "The loopback cable server sends one frame. Pings are always scripted, never automatic — staleness scenarios depend on ping timing, and auto-pinging under virtual time is circular. confirm/reject/message auto-echo the captured subscribe identifier unless `identifier` overrides it (mismatch cases).",
+      "description": "The loopback cable server sends one frame. Pings are always scripted, never automatic — staleness scenarios depend on ping timing, and auto-pinging under virtual time is circular. confirm/reject/message/renewed/renew_refused auto-echo the captured subscribe identifier unless `identifier` overrides it (mismatch cases). A welcome may advertise the socket's stream deadline (`streamExpiresInMs`), and `renewed` carries the moved one: both are offsets from the driver clock's reading at the instant the frame is served, rendered as RFC 3339 instants (UTC, millisecond precision) in `stream_expires_at`.",
       "oneOf": [
         {
           "type": "object",
@@ -1028,6 +1031,12 @@
           "properties": {
             "frame": {
               "const": "welcome"
+            },
+            "streamExpiresInMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 315576000000,
+              "description": "The stream deadline this welcome advertises — `stream_expires_at`, the server's offer of in-band renewal — as an offset from the driver clock's reading when the frame is served. Absent: the welcome advertises nothing, as a server that does not bound the stream sends it (an UNUSABLE advert is a `raw` frame)."
             }
           }
         },
@@ -1141,6 +1150,52 @@
           "additionalProperties": false,
           "required": [
             "frame",
+            "streamExpiresInMs"
+          ],
+          "description": "The server's acknowledgement of a renewal: {\"identifier\":…,\"type\":\"renewed\",\"stream_expires_at\":…}, sent to the renewing socket alone on the subscription's identifier (auto-echoed). An unusable one is a `raw` frame.",
+          "properties": {
+            "frame": {
+              "const": "renewed"
+            },
+            "streamExpiresInMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 315576000000,
+              "description": "The moved deadline, as an offset from the driver clock's reading when the frame is served."
+            },
+            "identifier": {
+              "type": "string",
+              "description": "Override the auto-echoed subscription identifier the server addresses its answer on (uncorrelated-reply cases)."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frame",
+            "reason"
+          ],
+          "description": "The server's refusal of a renewal: {\"identifier\":…,\"type\":\"renew_refused\",\"reason\":…}, on the subscription's identifier (auto-echoed). The connector never reads the reason — a refusal leaves the deadline where it was whatever it says — so a fixture names one only so the frame is the wire's shape. A server that will not take the command answers `reject` instead, which a renewal in flight reads as the same refusal.",
+          "properties": {
+            "frame": {
+              "const": "renew_refused"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "identifier": {
+              "type": "string",
+              "description": "Override the auto-echoed subscription identifier the server addresses its answer on (uncorrelated-reply cases)."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frame",
             "text"
           ],
           "description": "Escape hatch: raw text sent verbatim (malformed-frame and unknown-type cases).",
@@ -1242,6 +1297,21 @@
         "inbox": {
           "const": true,
           "description": "The inbox lane's subscription: the identifier carries `inbox` as a JSON boolean (not a string param) right after the channel key. Only `true` is valid — absence means the account streams."
+        }
+      }
+    },
+    "expectRenew": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ticket"
+      ],
+      "description": "The connector's in-band renew command on the current socket (SPEC §23 \"In-Band Renewal\"): {\"command\":\"renew\",\"identifier\":…,\"ticket\":…}. Arrival-strict like every outbound frame. `ticket` is the freshly minted ticket the command must carry — {{TICKET:n}} of the mint that preceded it, never the socket's own — and the identifier is compared BYTE-identically to the subscribe's: carrying the subscription's own identifier is what makes a pre-renewal server answer reject_subscription rather than the protocol-fatal disconnect.",
+      "properties": {
+        "ticket": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Use {{TICKET:n}}."
         }
       }
     },
@@ -1809,9 +1879,11 @@
         "backoff",
         "staleness",
         "repair-poll",
-        "poll-retry"
+        "poll-retry",
+        "renew-due",
+        "renew-ack-deadline"
       ],
-      "description": "The six kebab-case timer kinds of SPEC §23 — a closed set."
+      "description": "The eight kebab-case timer kinds of SPEC §23 — a closed set."
     },
     "timerSet": {
       "type": "object",

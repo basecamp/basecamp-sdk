@@ -80,6 +80,15 @@ func newHarness(t *testing.T, opts ...eventfeed.Option) *harness {
 // supplied: it is not what the loop is calling.
 func newHarnessOverPolls(t *testing.T, polls eventfeed.PollSource, opts ...eventfeed.Option) *harness {
 	t.Helper()
+	return newHarnessWithSeams(t, nil, polls, opts...)
+}
+
+// newHarnessWithSeams is newHarnessOverPolls with a caller-supplied
+// TicketMinter too (nil keeps the scripted one), for a test that has to hold a
+// mint's outcome back. h.minter stays the scripted minter, which a supplied
+// one may wrap.
+func newHarnessWithSeams(t *testing.T, minter eventfeed.TicketMinter, polls eventfeed.PollSource, opts ...eventfeed.Option) *harness {
+	t.Helper()
 	h := &harness{
 		t:        t,
 		clock:    feedtest.NewClock(),
@@ -100,7 +109,11 @@ func newHarnessOverPolls(t *testing.T, polls eventfeed.PollSource, opts ...event
 	if polls != nil {
 		source = polls
 	}
-	c, err := eventfeed.New(testOrigin, "5951425", h.minter, source, append(base, opts...)...)
+	mints := eventfeed.TicketMinter(h.minter)
+	if minter != nil {
+		mints = minter
+	}
+	c, err := eventfeed.New(testOrigin, "5951425", mints, source, append(base, opts...)...)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -1988,6 +2001,11 @@ func TestObservableSocketErrorDropsWrapperText(t *testing.T) {
 			"wrapped conn-closed sentinel",
 			fmt.Errorf("read %s: %w", cableURL, eventfeed.ExportCableConnClosedErr()),
 			eventfeed.ExportCableConnClosedErr(),
+		},
+		{
+			"wrapped renew-write-lapsed sentinel",
+			fmt.Errorf("write %s: %w", cableURL, eventfeed.ExportRenewWriteLapsedErr()),
+			eventfeed.ExportRenewWriteLapsedErr(),
 		},
 		{
 			"wrapped CloseError",

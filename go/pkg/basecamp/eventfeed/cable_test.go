@@ -874,3 +874,92 @@ func TestObservableSocketErrorTypedNilInvalidFrame(t *testing.T) {
 		t.Fatalf("observable error = %v, want errSocketFailed by identity", got)
 	}
 }
+
+// TestParseFrame_WelcomeStreamDeadline: a welcome's stream_expires_at is the
+// socket's renewal advert, read LENIENTLY — every shape that is not a usable
+// RFC 3339 instant is no advert and still a welcome, never the invalid-frame
+// class, so a server-side typo in the advert costs renewal and nothing else.
+func TestParseFrame_WelcomeStreamDeadline(t *testing.T) {
+	want := time.Date(2026, 10, 26, 3, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		raw    string
+		usable bool
+	}{
+		{`{"type":"welcome","stream_expires_at":"2026-10-26T03:00:00.000Z"}`, true},
+		{`{"type":"welcome","stream_expires_at":"2026-10-26T03:00:00Z"}`, true},
+		{`{"type":"welcome","reload_window_ms":30000,"stream_expires_at":"2026-10-25T20:00:00-07:00"}`, true},
+		{`{"type":"welcome"}`, false},
+		{`{"type":"welcome","stream_expires_at":null}`, false},
+		{`{"type":"welcome","stream_expires_at":1793070000}`, false},
+		{`{"type":"welcome","stream_expires_at":["2026-10-26T03:00:00Z"]}`, false},
+		{`{"type":"welcome","stream_expires_at":""}`, false},
+		{`{"type":"welcome","stream_expires_at":"tomorrow"}`, false},
+		{`{"type":"welcome","stream_expires_at":"0001-01-01T00:00:00Z"}`, false},
+	} {
+		f, err := parseFrame([]byte(tc.raw))
+		if err != nil {
+			t.Fatalf("parseFrame(%s): %v — an unusable advert must never be the invalid-frame class", tc.raw, err)
+		}
+		if f.kind != frameWelcome {
+			t.Fatalf("parseFrame(%s) kind = %v, want %v", tc.raw, f.kind, frameWelcome)
+		}
+		if f.hasExpiresAt != tc.usable {
+			t.Fatalf("parseFrame(%s) advert usable = %t, want %t", tc.raw, f.hasExpiresAt, tc.usable)
+		}
+		if tc.usable && !f.expiresAt.Equal(want) {
+			t.Fatalf("parseFrame(%s) deadline = %s, want %s", tc.raw, f.expiresAt, want)
+		}
+	}
+}
+
+// TestParseFrame_RenewReplies: the two renewal replies are recognized types —
+// `renewed` with its (leniently read) deadline, `renew_refused` with its
+// reason never read, so no reason shape can fail the frame.
+func TestParseFrame_RenewReplies(t *testing.T) {
+	f, err := parseFrame([]byte(`{"identifier":"{\"channel\":\"EventsChannel\"}","type":"renewed","stream_expires_at":"2026-10-26T04:00:00.000Z"}`))
+	if err != nil || f.kind != frameRenewed || !f.hasExpiresAt || f.identifier != `{"channel":"EventsChannel"}` ||
+		!f.expiresAt.Equal(time.Date(2026, 10, 26, 4, 0, 0, 0, time.UTC)) {
+		t.Fatalf("renewed = %+v, %v; want frameRenewed on the identifier, carrying 04:00Z", f, err)
+	}
+	f, err = parseFrame([]byte(`{"identifier":42,"type":"renew_refused","reason":"not_later"}`))
+	if err != nil || f.kind != frameRenewRefused || f.identifier != "" {
+		t.Fatalf("renew_refused with a wrong-typed identifier = %+v, %v; want a refusal that correlates with nothing", f, err)
+	}
+	f, err = parseFrame([]byte(`{"type":"renewed","stream_expires_at":42}`))
+	if err != nil || f.kind != frameRenewed || f.hasExpiresAt {
+		t.Fatalf("renewed with a numeric deadline = %+v, %v; want frameRenewed with no usable deadline", f, err)
+	}
+	for _, raw := range []string{
+		`{"type":"renew_refused","reason":"expiry_not_later"}`,
+		`{"type":"renew_refused"}`,
+		`{"type":"renew_refused","reason":42}`,
+		`{"type":"renew_refused","reason":{"nested":true}}`,
+	} {
+		f, err := parseFrame([]byte(raw))
+		if err != nil || f.kind != frameRenewRefused {
+			t.Fatalf("parseFrame(%s) = %+v, %v; want frameRenewRefused", raw, f, err)
+		}
+	}
+}
+
+// TestRenewCommandBytes pins the renew command's exact bytes: command, the
+// subscription's own identifier JSON-escaped exactly as the subscribe embeds
+// it, then the ticket — hand-built, so no emitter's HTML escaping or key
+// order is load-bearing.
+func TestRenewCommandBytes(t *testing.T) {
+	identifier := subscribeIdentifier(InboxLane, Filters{Reasons: []string{"mentioned"}})
+	got := string(renewCommand(identifier, `tick<et>&"1"`))
+	want := `{"command":"renew","identifier":"{\"channel\":\"EventsChannel\",\"inbox\":true,\"reasons\":\"mentioned\"}","ticket":"tick<et>&\"1\""}`
+	if got != want {
+		t.Fatalf("renewCommand =\n  %s\nwant\n  %s", got, want)
+	}
+	sub := string(subscribeCommand(identifier))
+	idx := strings.Index(sub, `"identifier":`)
+	if idx < 0 || !strings.Contains(got, sub[idx:len(sub)-1]) {
+		t.Fatalf("the renew command's identifier member is not byte-identical to the subscribe's:\n  %s\n  %s", got, sub)
+	}
+	var decoded map[string]string
+	if err := json.Unmarshal([]byte(got), &decoded); err != nil || decoded["identifier"] != identifier || decoded["ticket"] != `tick<et>&"1"` {
+		t.Fatalf("renewCommand does not decode back to its parts: %v %v", decoded, err)
+	}
+}

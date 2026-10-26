@@ -12,11 +12,19 @@ import (
 // device-flow WithDeviceClock/WithDeviceSleep precedent: monotonic now plus
 // cancellable, NAMED, enumerable timers, so "no timer survives teardown" is
 // an exact-set assertion rather than a test-only artifact. Timer names are
-// §23's six kebab-case kinds: handshake-deadline, confirmation-deadline,
-// backoff, staleness, repair-poll, poll-retry.
+// §23's eight kebab-case kinds: handshake-deadline, confirmation-deadline,
+// backoff, staleness, repair-poll, poll-retry, renew-due, renew-ack-deadline.
 type Clock interface {
-	// Now returns the current time. Monotonic discipline: readings are used
-	// only for deltas, never persisted.
+	// Now returns the current time: WALL time, comparable with the
+	// server's RFC 3339 instants. Readings are used for deltas and never
+	// persisted, with one absolute comparison — the in-band renewal's target,
+	// the server's advertised stream deadline less the lead, is turned into a
+	// delay against Now (SPEC.md §23). A clock whose epoch is not wall time
+	// (one counting from boot, say) mistimes renewal: too early, and the
+	// attempt and its retry draw refusals; too late, and the server's lease
+	// closes the socket first. Neither loses anything — an unrenewed socket
+	// reconnects and catches up — but neither renews. SystemClock and
+	// feedtest.Clock both read wall time, the latter virtual.
 	Now() time.Time
 	// NewTimer arms a one-shot named timer. Firing removes it from the
 	// registry. It is called under the connector's own locks — on every

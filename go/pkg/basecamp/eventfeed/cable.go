@@ -21,23 +21,33 @@ import (
 
 // Wire literals (class-1, SPEC.md §23 "Provenance").
 const (
-	frameTypeWelcome    = "welcome"
-	frameTypePing       = "ping"
-	frameTypeConfirm    = "confirm_subscription"
-	frameTypeReject     = "reject_subscription"
-	frameTypeDisconnect = "disconnect"
+	frameTypeWelcome      = "welcome"
+	frameTypePing         = "ping"
+	frameTypeConfirm      = "confirm_subscription"
+	frameTypeReject       = "reject_subscription"
+	frameTypeDisconnect   = "disconnect"
+	frameTypeRenewed      = "renewed"
+	frameTypeRenewRefused = "renew_refused"
 
 	channelName = "EventsChannel"
 
 	commandSubscribe   = "subscribe"
 	commandUnsubscribe = "unsubscribe"
+	commandRenew       = "renew"
+
+	// streamExpiresAtKey is the member a welcome advertises the socket's
+	// stream deadline in, and a `renewed` reply the moved one (SPEC.md §23
+	// "In-Band Renewal").
+	streamExpiresAtKey = "stream_expires_at"
 )
 
 // frameKind classifies one inbound Action Cable text frame.
 type frameKind int
 
 const (
-	// frameWelcome — {"type":"welcome"}: send subscribe.
+	// frameWelcome — {"type":"welcome"[,"stream_expires_at":<RFC 3339>]}:
+	// send subscribe. A usable stream_expires_at is the socket's renewal
+	// advert.
 	frameWelcome frameKind = iota + 1
 	// framePing — {"type":"ping"} or {"type":"ping","message":<epoch>}:
 	// liveness only.
@@ -56,6 +66,12 @@ const (
 	// frameUnknown — parseable JSON object the connector doesn't recognize:
 	// updates liveness, otherwise ignored.
 	frameUnknown
+	// frameRenewed — {"identifier":…,"type":"renewed","stream_expires_at":<RFC 3339>}:
+	// the server took the renewal in flight and moved the socket's deadline.
+	frameRenewed
+	// frameRenewRefused — {"identifier":…,"type":"renew_refused","reason":…}:
+	// the server refused the renewal in flight; the deadline stands.
+	frameRenewRefused
 )
 
 // String returns the kind's name.
@@ -75,6 +91,10 @@ func (k frameKind) String() string {
 		return "message"
 	case frameUnknown:
 		return "unknown"
+	case frameRenewed:
+		return frameTypeRenewed
+	case frameRenewRefused:
+		return frameTypeRenewRefused
 	default:
 		return fmt.Sprintf("frameKind(%d)", int(k))
 	}
@@ -99,6 +119,10 @@ type frame struct {
 	// (decodeMessageEvent) because only a CORRELATED message frame's decode
 	// failure is an invalid-frame violation.
 	message json.RawMessage
+	// expiresAt is the stream deadline a welcome advertises or a `renewed`
+	// reply carries, valid only when hasExpiresAt (welcome and renewed only).
+	expiresAt    time.Time
+	hasExpiresAt bool
 }
 
 // Invalid-frame shapes the connector detects (SPEC.md §23 "Cable Protocol
@@ -258,7 +282,10 @@ func hexQuad(data []byte, at int) (uint32, bool) {
 // wrong-typed cases that DO matter fatal: `confirm_subscription` and
 // `reject_subscription` read `identifier`, `disconnect` reads `reason` and
 // `reconnect`, and a typeless frame reads both correlation fields, so each is
-// still validated against the kind that consumes it.
+// still validated against the kind that consumes it. The renewal's members are
+// the ones read leniently — the stream deadline `welcome` and `renewed` carry,
+// and a renewal reply's identifier (streamExpiresAt and renewalIdentifier say
+// why).
 func parseFrame(data []byte) (frame, error) {
 	// Gated BEFORE any unmarshal: encoding/json does not refuse invalid
 	// UTF-8, it silently swaps each invalid sequence for U+FFFD. Ungated, a
@@ -325,7 +352,16 @@ func parseFrame(data []byte) (frame, error) {
 		}
 		switch *typ {
 		case frameTypeWelcome:
-			return frame{kind: frameWelcome}, nil
+			expiresAt, ok := streamExpiresAt(env)
+			return frame{kind: frameWelcome, expiresAt: expiresAt, hasExpiresAt: ok}, nil
+		case frameTypeRenewed:
+			expiresAt, ok := streamExpiresAt(env)
+			return frame{kind: frameRenewed, identifier: renewalIdentifier(env), expiresAt: expiresAt, hasExpiresAt: ok}, nil
+		case frameTypeRenewRefused:
+			// The reason is never read: it is peer text, it decides nothing
+			// (any refusal leaves the deadline where it was), and the observer
+			// is told the refusal's KIND alone. Unread, it is never validated.
+			return frame{kind: frameRenewRefused, identifier: renewalIdentifier(env)}, nil
 		case frameTypePing:
 			// The optional epoch `message` is never read (§23: both
 			// {"type":"ping"} and {"type":"ping","message":<epoch>} are
@@ -369,6 +405,50 @@ func parseFrame(data []byte) (frame, error) {
 		return frame{kind: frameMessage, identifier: identifier, message: message}, nil
 	}
 	return frame{kind: frameUnknown}, nil
+}
+
+// streamExpiresAt reads a welcome's or a `renewed` reply's stream deadline,
+// reporting false for anything that is not a usable RFC 3339 instant: an
+// absent member, null, a wrong type, an unparseable string, or the zero time.
+//
+// Deliberately LENIENT, where every other member a selected kind reads is
+// strict, and the asymmetry is the point. A wrong-typed `identifier` or
+// `reason` stops the frame stream meaning anything, so it is the parse shape.
+// The deadline is an ADVERT: its one consequence is whether the connector
+// offers the server a renewal, and not offering one is always correct — the
+// server's lease ends the socket at its deadline and the reconnect cycle
+// recovers, exactly as it does for a client that never renews. Making a bad
+// advert fatal would instead turn a server-side typo into a socket failure on
+// every welcome, so every connected client would reconnect into the same
+// welcome indefinitely. An unusable advert is therefore no advert; an
+// unusable `renewed` is a reply the renewal cannot act on (an invalid reply).
+func streamExpiresAt(env map[string]json.RawMessage) (time.Time, bool) {
+	raw, ok := env[streamExpiresAtKey]
+	if !ok {
+		return time.Time{}, false
+	}
+	var s *string
+	if err := json.Unmarshal(raw, &s); err != nil || s == nil {
+		return time.Time{}, false
+	}
+	at, err := time.Parse(time.RFC3339, *s)
+	if err != nil || at.IsZero() {
+		return time.Time{}, false
+	}
+	return at, true
+}
+
+// renewalIdentifier reads a renewal reply's identifier — the subscription's,
+// which is how the server addresses its answer — leniently, for
+// streamExpiresAt's reason: a reply the connector cannot correlate is one it
+// does not act on, never a socket failure, so a wrong-typed identifier reads
+// as none and correlates with nothing.
+func renewalIdentifier(env map[string]json.RawMessage) string {
+	identifier, err := exactStringField(env, "identifier")
+	if err != nil {
+		return ""
+	}
+	return identifier
 }
 
 // topLevelMemberCount walks data — already known to be a JSON object — with
@@ -729,6 +809,26 @@ func subscribeCommand(identifier string) []byte {
 // {"command":"unsubscribe","identifier":"<json-escaped identifier>"}.
 func unsubscribeCommand(identifier string) []byte {
 	return cableCommand(commandUnsubscribe, identifier)
+}
+
+// renewCommand marshals the in-band renewal command as an exact byte string:
+// {"command":"renew","identifier":"<json-escaped identifier>","ticket":"<json-escaped ticket>"}.
+// The identifier is the subscription's own — the bytes the subscribe sent —
+// so a server that will not take the command correlates it to the claimed
+// subscription and answers `reject_subscription`, which a confirmed stream
+// reads as the renewal refused, instead of the protocol-fatal disconnect an
+// uncorrelatable command draws. The frame carries a bearer credential: it is
+// written to the socket and nowhere else.
+func renewCommand(identifier, ticket string) []byte {
+	var b strings.Builder
+	b.WriteString(`{"command":`)
+	writeJSONString(&b, commandRenew)
+	b.WriteString(`,"identifier":`)
+	writeJSONString(&b, identifier)
+	b.WriteString(`,"ticket":`)
+	writeJSONString(&b, ticket)
+	b.WriteByte('}')
+	return []byte(b.String())
 }
 
 // cableCommand hand-builds one Action Cable command frame. The identifier is
