@@ -282,9 +282,10 @@ func hexQuad(data []byte, at int) (uint32, bool) {
 // wrong-typed cases that DO matter fatal: `confirm_subscription` and
 // `reject_subscription` read `identifier`, `disconnect` reads `reason` and
 // `reconnect`, and a typeless frame reads both correlation fields, so each is
-// still validated against the kind that consumes it. The one member read
-// leniently is the stream deadline `welcome` and `renewed` carry
-// (streamExpiresAt says why).
+// still validated against the kind that consumes it. The renewal's members are
+// the ones read leniently — the stream deadline `welcome` and `renewed` carry,
+// and a renewal reply's identifier (streamExpiresAt and renewalIdentifier say
+// why).
 func parseFrame(data []byte) (frame, error) {
 	// Gated BEFORE any unmarshal: encoding/json does not refuse invalid
 	// UTF-8, it silently swaps each invalid sequence for U+FFFD. Ungated, a

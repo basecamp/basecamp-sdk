@@ -4137,10 +4137,12 @@ Two dispatch clarifications, pinned:
   update liveness and are otherwise ignored.
 - The connection's first `welcome` MAY carry the socket's stream deadline,
   `"stream_expires_at":"<RFC 3339>"`, which is the server's offer of in-band renewal
-  (In-Band Renewal below). It is the one member a selected frame kind reads LENIENTLY: an
-  absent, `null`, wrong-typed or unparseable value is no advert, never the invalid-frame
-  class, because not renewing is always correct and a fatal advert would reconnect every
-  client into the same welcome indefinitely. `renewed` and `renew_refused` are recognized
+  (In-Band Renewal below). The renewal's members are the ones a selected frame kind reads
+  LENIENTLY — this advert, a `renewed` reply's deadline, and a renewal reply's
+  `identifier`: an absent, `null`, wrong-typed or unparseable value is no advert, no usable
+  deadline, or no correlation, never the invalid-frame class, because not renewing is
+  always correct, an unusable reply leaves the attempt to its own deadline and retry, and a
+  fatal advert would reconnect every client into the same welcome indefinitely. `renewed` and `renew_refused` are recognized
   types; outside a renewal attempt whose command has been sent they are liveness only. A
   `reject_subscription` after confirmation is liveness too, save one: on the
   subscription's own identifier while a renewal's command is out, it is that renewal
