@@ -1020,7 +1020,7 @@
       }
     },
     "serveFrame": {
-      "description": "The loopback cable server sends one frame. Pings are always scripted, never automatic — staleness scenarios depend on ping timing, and auto-pinging under virtual time is circular. confirm/reject/message auto-echo the captured subscribe identifier unless `identifier` overrides it (mismatch cases). A welcome may advertise the socket's stream deadline (`streamExpiresInMs`), and `renewed` carries the moved one: both are offsets from the driver clock's reading at the instant the frame is served, rendered as RFC 3339 instants (UTC, millisecond precision) in `stream_expires_at`.",
+      "description": "The loopback cable server sends one frame. Pings are always scripted, never automatic — staleness scenarios depend on ping timing, and auto-pinging under virtual time is circular. confirm/reject/message/renewed/renew_refused auto-echo the captured subscribe identifier unless `identifier` overrides it (mismatch cases). A welcome may advertise the socket's stream deadline (`streamExpiresInMs`), and `renewed` carries the moved one: both are offsets from the driver clock's reading at the instant the frame is served, rendered as RFC 3339 instants (UTC, millisecond precision) in `stream_expires_at`.",
       "oneOf": [
         {
           "type": "object",
@@ -1152,7 +1152,7 @@
             "frame",
             "streamExpiresInMs"
           ],
-          "description": "The server's acknowledgement of a renewal: {\"type\":\"renewed\",\"stream_expires_at\":…}, sent to the renewing socket alone. An unusable one is a `raw` frame.",
+          "description": "The server's acknowledgement of a renewal: {\"identifier\":…,\"type\":\"renewed\",\"stream_expires_at\":…}, sent to the renewing socket alone on the subscription's identifier (auto-echoed). An unusable one is a `raw` frame.",
           "properties": {
             "frame": {
               "const": "renewed"
@@ -1162,6 +1162,10 @@
               "minimum": 0,
               "maximum": 315576000000,
               "description": "The moved deadline, as an offset from the driver clock's reading when the frame is served."
+            },
+            "identifier": {
+              "type": "string",
+              "description": "Override the auto-echoed subscription identifier the server addresses its answer on (uncorrelated-reply cases)."
             }
           }
         },
@@ -1172,7 +1176,7 @@
             "frame",
             "reason"
           ],
-          "description": "The server's refusal of a renewal: {\"type\":\"renew_refused\",\"reason\":…}. The connector never reads the reason — a refusal leaves the deadline where it was whatever it says — so a fixture names one only so the frame is the wire's shape.",
+          "description": "The server's refusal of a renewal: {\"identifier\":…,\"type\":\"renew_refused\",\"reason\":…}, on the subscription's identifier (auto-echoed). The connector never reads the reason — a refusal leaves the deadline where it was whatever it says — so a fixture names one only so the frame is the wire's shape. A server that will not take the command answers `reject` instead, which a renewal in flight reads as the same refusal.",
           "properties": {
             "frame": {
               "const": "renew_refused"
@@ -1180,6 +1184,10 @@
             "reason": {
               "type": "string",
               "minLength": 1
+            },
+            "identifier": {
+              "type": "string",
+              "description": "Override the auto-echoed subscription identifier the server addresses its answer on (uncorrelated-reply cases)."
             }
           }
         },

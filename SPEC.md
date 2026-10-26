@@ -3707,10 +3707,11 @@ so each is re-verified at the gate as its own row (against the rebased source an
   arrives only pre-welcome.
 
 **The in-band renewal's literals** (In-Band Renewal below) were drafted against bc3's
-renewal design rather than a merged head, so they sit outside both lists until that change
-merges: class 1 — `stream_expires_at` (an RFC 3339 instant) on `welcome` and on `renewed`,
-the `renew` command with its `identifier` and `ticket` members, and the reply types
-`renewed` and `renew_refused`; class 2 — the deadline is the redeemed token's expiry, a
+renewal design and its open change (bc3 #14143) rather than a merged head, so they sit
+outside both lists until that change merges: class 1 — `stream_expires_at` (an RFC 3339
+instant, millisecond precision) on `welcome` and on `renewed`, the `renew` command with its
+`identifier` and `ticket` members, and the reply types `renewed` and `renew_refused` on the
+subscription's `identifier`; class 2 — the deadline is the redeemed token's expiry, a
 renewal is redeemed exactly as a handshake and must name its token, a refusal leaves the
 deadline where it was, at most one renewal per 30 seconds, the reply goes to the renewing
 socket alone, and the lease's close is the `remote` disconnect. Both are re-verified, row
@@ -4140,7 +4141,10 @@ Two dispatch clarifications, pinned:
   absent, `null`, wrong-typed or unparseable value is no advert, never the invalid-frame
   class, because not renewing is always correct and a fatal advert would reconnect every
   client into the same welcome indefinitely. `renewed` and `renew_refused` are recognized
-  types; outside a renewal attempt whose command has been sent they are liveness only.
+  types; outside a renewal attempt whose command has been sent they are liveness only. A
+  `reject_subscription` after confirmation is liveness too, save one: on the
+  subscription's own identifier while a renewal's command is out, it is that renewal
+  refused (In-Band Renewal below) — never the subscription.
 - **An invalid inbound frame is a peer protocol violation, dispatched as a socket
   failure** `[conformance]` — three shapes, one disposition: a frame that fails to parse
   as JSON; a frame exceeding `EVENT_FEED_MAX_FRAME_BYTES`; and a correlated `message`
@@ -4293,14 +4297,18 @@ takes. That is why nothing in this section is terminal.
 - Command, hand-built as an exact byte string like the subscribe:
   `{"command":"renew","identifier":"<json-escaped identifier>","ticket":"<json-escaped ticket>"}`,
   where the identifier is the subscription's own, byte-identical to the one the subscribe
-  sent. Carrying it is what makes a misrouted renewal harmless: a server that predates
-  renewal correlates the command to the claimed subscription and answers
-  `reject_subscription` for that identifier — liveness on a confirmed stream (Cable
-  Protocol Details), so the attempt simply goes unanswered — where an uncorrelatable
-  command would draw the protocol-fatal disconnect.
-- Replies, to the renewing socket only: `{"type":"renewed","stream_expires_at":"<RFC 3339>"}`
-  or `{"type":"renew_refused","reason":<server text>}`. The reason is never read: a refusal
-  leaves the deadline where it was whatever it says, and the observer is told its kind.
+  sent. Carrying it is what makes a misrouted renewal harmless: a server that will not
+  take the command — one that predates renewal, or a stream it does not renew —
+  correlates it to the claimed subscription and answers `reject_subscription` for that
+  identifier, which is the renewal refused and never the subscription (Cable Protocol
+  Details), where an uncorrelatable command would draw the protocol-fatal disconnect.
+- Replies, to the renewing socket only, on the subscription's identifier:
+  `{"identifier":"…","type":"renewed","stream_expires_at":"<RFC 3339>"}` or
+  `{"identifier":"…","type":"renew_refused","reason":<server text>}`. A reply on any other
+  identifier answers nothing. The reason is never read: a refusal leaves the deadline where
+  it was whatever it says (bc3 documents `too_soon`, `unauthorized`, `no_token`,
+  `different_principals`, `not_later` and `unavailable`, and every one of them is a
+  refusal this rule set retries once), and the observer is told its kind.
 
 **Rules (SDK-owned):**
 
@@ -4339,7 +4347,8 @@ takes. That is why nothing in this section is terminal.
      the failure count resets, the next `renew-due` is drawn from the new deadline — never
      sooner than `EVENT_FEED_RENEW_MIN_INTERVAL` (30 s) from now, the server's own
      one-renewal-per-30-s floor — and `Observer.renewed(expires_at)` fires.
-   - A failure: `renew_refused` (`refused`); `renewed` without a usable deadline later than
+   - A failure: `renew_refused`, or `reject_subscription` on the subscription's identifier
+     (`refused`); `renewed` without a usable deadline later than
      the current one (`invalid_reply`); a mint that fails, of ANY kind, or has not
      produced a ticket when the deadline lapses (`mint_failed` — the outstanding mint is
      cancelled and JOINED, so a panic it raises on cancellation reaches the consumer as
@@ -4392,8 +4401,8 @@ takes. That is why nothing in this section is terminal.
 Required tier-2 coverage (fixtures 36–41): a renewal acknowledged twice on one socket with
 no reconnect, `renew-due` stopped across a repair walk and re-armed for its remainder; a
 refusal retried once and then the lease's `remote` close recovered by the reconnect cycle;
-a `reject_subscription` answer (a pre-renewal server) treated as liveness, the
-acknowledgement deadline's lapse retried, and the retry acknowledged; no renewal on a
+a `reject_subscription` answer (a server that will not take the command) read as the
+renewal refused — never the subscription — retried, and the retry acknowledged; no renewal on a
 socket whose welcome advertised nothing usable, and a `renewed` there treated as liveness;
 an attempt in flight torn down by a severed socket leaving exactly {`backoff`}; and
 unauthorized renewal mints that never reach the shared counter.

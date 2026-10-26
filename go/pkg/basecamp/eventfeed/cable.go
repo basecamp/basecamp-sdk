@@ -66,11 +66,11 @@ const (
 	// frameUnknown — parseable JSON object the connector doesn't recognize:
 	// updates liveness, otherwise ignored.
 	frameUnknown
-	// frameRenewed — {"type":"renewed","stream_expires_at":<RFC 3339>}: the
-	// server took the renewal in flight and moved the socket's deadline.
+	// frameRenewed — {"identifier":…,"type":"renewed","stream_expires_at":<RFC 3339>}:
+	// the server took the renewal in flight and moved the socket's deadline.
 	frameRenewed
-	// frameRenewRefused — {"type":"renew_refused","reason":…}: the server
-	// refused the renewal in flight; the deadline stands.
+	// frameRenewRefused — {"identifier":…,"type":"renew_refused","reason":…}:
+	// the server refused the renewal in flight; the deadline stands.
 	frameRenewRefused
 )
 
@@ -355,12 +355,12 @@ func parseFrame(data []byte) (frame, error) {
 			return frame{kind: frameWelcome, expiresAt: expiresAt, hasExpiresAt: ok}, nil
 		case frameTypeRenewed:
 			expiresAt, ok := streamExpiresAt(env)
-			return frame{kind: frameRenewed, expiresAt: expiresAt, hasExpiresAt: ok}, nil
+			return frame{kind: frameRenewed, identifier: renewalIdentifier(env), expiresAt: expiresAt, hasExpiresAt: ok}, nil
 		case frameTypeRenewRefused:
 			// The reason is never read: it is peer text, it decides nothing
 			// (any refusal leaves the deadline where it was), and the observer
 			// is told the refusal's KIND alone. Unread, it is never validated.
-			return frame{kind: frameRenewRefused}, nil
+			return frame{kind: frameRenewRefused, identifier: renewalIdentifier(env)}, nil
 		case frameTypePing:
 			// The optional epoch `message` is never read (§23: both
 			// {"type":"ping"} and {"type":"ping","message":<epoch>} are
@@ -435,6 +435,19 @@ func streamExpiresAt(env map[string]json.RawMessage) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return at, true
+}
+
+// renewalIdentifier reads a renewal reply's identifier — the subscription's,
+// which is how the server addresses its answer — leniently, for
+// streamExpiresAt's reason: a reply the connector cannot correlate is one it
+// does not act on, never a socket failure, so a wrong-typed identifier reads
+// as none and correlates with nothing.
+func renewalIdentifier(env map[string]json.RawMessage) string {
+	identifier, err := exactStringField(env, "identifier")
+	if err != nil {
+		return ""
+	}
+	return identifier
 }
 
 // topLevelMemberCount walks data — already known to be a JSON object — with
@@ -800,9 +813,9 @@ func unsubscribeCommand(identifier string) []byte {
 // renewCommand marshals the in-band renewal command as an exact byte string:
 // {"command":"renew","identifier":"<json-escaped identifier>","ticket":"<json-escaped ticket>"}.
 // The identifier is the subscription's own — the bytes the subscribe sent —
-// so a server that predates renewal correlates the command to the claimed
+// so a server that will not take the command correlates it to the claimed
 // subscription and answers `reject_subscription`, which a confirmed stream
-// reads as liveness, instead of the protocol-fatal disconnect an
+// reads as the renewal refused, instead of the protocol-fatal disconnect an
 // uncorrelatable command draws. The frame carries a bearer credential: it is
 // written to the socket and nowhere else.
 func renewCommand(identifier, ticket string) []byte {

@@ -17,10 +17,14 @@ import (
 //	{"command":"renew","identifier":<the subscription's identifier>,"ticket":<fresh ticket>}
 //
 // The server redeems the ticket exactly as a handshake would and answers the
-// renewing socket alone, {"type":"renewed","stream_expires_at":…} with the new
-// token's expiry or {"type":"renew_refused","reason":…}. Renewal is therefore a
-// reconnect that keeps the socket: it grants nothing a reconnect would not, and
-// a renewal that fails costs nothing a reconnect does not already pay — the
+// renewing socket alone, on the subscription's identifier:
+// {"identifier":…,"type":"renewed","stream_expires_at":…} with the new token's
+// expiry, or {"identifier":…,"type":"renew_refused","reason":…}. A server that
+// will not take the command — one that predates renewal, or a stream it does
+// not renew — answers reject_subscription on that identifier, which is the
+// renewal refused, not the subscription. Renewal is therefore a reconnect
+// that keeps the socket: it grants nothing a reconnect would not, and a
+// renewal that fails costs nothing a reconnect does not already pay — the
 // lease closes the socket, the reconnect cycle re-mints and re-dials, and the
 // catch-up walk repairs the gap. That is what lets every failure here be
 // non-terminal and uncounted.
@@ -30,8 +34,8 @@ import (
 // and the repair cadence waits while an exchange is in flight, so CatchingUp
 // and Draining keep the timer sets they always had and a reply is never
 // awaited from inside a walk. A socket whose welcome advertised nothing is
-// never renewed: an old server would answer the command, and a server that
-// does not bound the stream has nothing to renew.
+// never renewed: a server that does not bound the stream has nothing to
+// renew.
 
 // Timer kinds the renewal arms (SPEC.md §23 "Clock, Timers, and Virtual
 // Time").
@@ -79,7 +83,8 @@ type RenewFailure int
 
 const (
 	// RenewRefused — the server answered renew_refused (for instance, the
-	// fresh ticket's token expires no later than the one the stream holds).
+	// fresh ticket's token expires no later than the one the stream holds),
+	// or declined the command with reject_subscription.
 	RenewRefused RenewFailure = iota + 1
 	// RenewNoReply — the renew command was sent and nothing answered it
 	// within the acknowledgement deadline.
@@ -485,18 +490,20 @@ func (l *loop) ackFired(ex *renewExchange) bool {
 	return false
 }
 
-// renewReply takes a `renewed` or `renew_refused` frame. Only an attempt
-// whose command has been sent can be answered, and only by a frame the pump
-// read after it went out; any other reply — on a socket that advertised
-// nothing, between attempts, after an attempt already ended, or read before
-// this attempt's command was sent — is liveness, as an unknown frame type is. A late `renewed` is not adopted:
+// renewReply takes a `renewed` or `renew_refused` frame — or a correlated
+// reject_subscription, which answers a renew command as a refusal. Only an
+// attempt whose command has been sent can be answered, only by a frame the
+// pump read after it went out, and only on the subscription's own identifier;
+// any other reply — on a socket that advertised nothing, between attempts,
+// after an attempt already ended, read before this attempt's command was sent,
+// or on another identifier — is liveness, as an unknown frame type is. A late `renewed` is not adopted:
 // the attempt it answered was already counted, and the worst that follows is
 // the lease closing a socket the connector stopped renewing, which the
 // reconnect cycle recovers. A reply that beats its own write's outcome is
 // parked until that outcome is in (renewExchange).
 func (l *loop) renewReply(at *attempt, pending Timer, f frame, seq uint64) (cycleOutcome, bool) {
 	rn := at.renew
-	if rn == nil || rn.ex == nil || !rn.ex.sent || seq <= rn.ex.sentSeq.Load() {
+	if rn == nil || rn.ex == nil || !rn.ex.sent || seq <= rn.ex.sentSeq.Load() || f.identifier != l.identifier {
 		return cycleOutcome{}, false
 	}
 	if ex := rn.ex; ex.written != nil {

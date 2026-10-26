@@ -1484,10 +1484,16 @@ func serveFrameBytes(step *serveStep, identifier string, now time.Time) ([]byte,
 			return []byte(`{"type":"welcome"}`), nil
 		}
 		return json.Marshal(map[string]any{"type": "welcome", "stream_expires_at": deadline()})
-	case "renewed":
-		return json.Marshal(map[string]any{"type": "renewed", "stream_expires_at": deadline()})
-	case "renew_refused":
-		return json.Marshal(map[string]any{"type": "renew_refused", "reason": step.Reason})
+	case "renewed", "renew_refused":
+		// Addressed on the subscription's identifier, as the server answers a
+		// renewal; an override exercises the uncorrelated reply.
+		if echo == "" {
+			return nil, fmt.Errorf("no subscribe identifier has been captured to echo")
+		}
+		if step.Frame == "renewed" {
+			return json.Marshal(map[string]any{"identifier": echo, "type": "renewed", "stream_expires_at": deadline()})
+		}
+		return json.Marshal(map[string]any{"identifier": echo, "type": "renew_refused", "reason": step.Reason})
 	case "ping":
 		if step.Message == nil {
 			return []byte(`{"type":"ping"}`), nil

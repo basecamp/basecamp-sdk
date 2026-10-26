@@ -32,12 +32,14 @@ func welcomeAdvertising(deadline time.Time) []byte {
 	return mustJSON(map[string]any{"type": "welcome", "stream_expires_at": deadline.UTC().Format(time.RFC3339Nano)})
 }
 
+// frameRenewed is the server's acknowledgement, on the subscription's own
+// identifier as bc3 sends it.
 func frameRenewed(deadline time.Time) []byte {
-	return mustJSON(map[string]any{"type": "renewed", "stream_expires_at": deadline.UTC().Format(time.RFC3339Nano)})
+	return mustJSON(map[string]any{"identifier": noFilterIdentifier, "type": "renewed", "stream_expires_at": deadline.UTC().Format(time.RFC3339Nano)})
 }
 
 func frameRenewRefused() []byte {
-	return mustJSON(map[string]any{"type": "renew_refused", "reason": "expiry_not_later"})
+	return mustJSON(map[string]any{"identifier": noFilterIdentifier, "type": "renew_refused", "reason": "not_later"})
 }
 
 func mustJSON(v any) []byte {
@@ -247,11 +249,19 @@ func TestRenewalFailuresRetryOnceThenGiveUp(t *testing.T) {
 			},
 		},
 		{
+			name: "declined with reject_subscription", kind: "refused",
+			script: func(h *harness, n int) { h.minter.ScriptTicket(ticket(n)) },
+			answer: func(t *testing.T, h *harness, conn *feedtest.Conn, _ time.Time, writes int) {
+				awaitWrite(t, h, conn, writes)
+				conn.Serve(frameReject(noFilterIdentifier))
+			},
+		},
+		{
 			name: "renewed without a usable deadline", kind: "invalid_reply",
 			script: func(h *harness, n int) { h.minter.ScriptTicket(ticket(n)) },
 			answer: func(t *testing.T, h *harness, conn *feedtest.Conn, _ time.Time, writes int) {
 				awaitWrite(t, h, conn, writes)
-				conn.Serve([]byte(`{"type":"renewed","stream_expires_at":1793070000}`))
+				conn.Serve(mustJSON(map[string]any{"identifier": noFilterIdentifier, "type": "renewed", "stream_expires_at": 1793070000}))
 			},
 		},
 		{
@@ -1107,4 +1117,38 @@ func TestRenewalWritePanicOnTeardownPropagates(t *testing.T) {
 		t.Fatal("the iteration neither panicked nor returned")
 	}
 	assertTimers(t, h.clock, map[string]int{})
+}
+
+// TestRenewalReplyOnAnotherIdentifierAnswersNothing: the server answers a
+// renewal on the subscription's own identifier, so a reply — or a reject — on
+// any other is liveness, and the attempt runs on to its deadline.
+func TestRenewalReplyOnAnotherIdentifierAnswersNothing(t *testing.T) {
+	foreign := eventfeed.ExportSubscribeIdentifier(eventfeed.Filters{Types: []string{"todo.created"}})
+	for _, reply := range [][]byte{
+		mustJSON(map[string]any{"identifier": foreign, "type": "renewed", "stream_expires_at": "2026-01-01T03:00:00.000Z"}),
+		mustJSON(map[string]any{"type": "renewed", "stream_expires_at": "2026-01-01T03:00:00.000Z"}),
+		mustJSON(map[string]any{"identifier": 42, "type": "renewed", "stream_expires_at": "2026-01-01T03:00:00.000Z"}),
+		mustJSON(map[string]any{"identifier": foreign, "type": "renew_refused", "reason": "not_later"}),
+		frameReject(foreign),
+	} {
+		t.Run(string(reply), func(t *testing.T) {
+			log := newRenewLog()
+			h := newHarness(t, eventfeed.WithObserver(log.observer()))
+			conn := streamAdvertised(t, h, h.clock.Now().Add(time.Hour))
+			h.minter.ScriptTicket(ticket(2))
+			renewOnce(t, h, conn)
+			conn.Serve(reply)
+			h.serveSettled(conn)
+			h.awaitFrameHandled("ping")
+			if got := log.snapshot(); len(got) != 1 {
+				t.Fatalf("a reply on another identifier answered the renewal: %v", got)
+			}
+			assertTimers(t, h.clock, map[string]int{timerStaleness: 1, timerRepairPoll: 1, timerRenewAckDeadline: 1})
+			h.fireTimer(timerRenewAckDeadline)
+			log.await(t, "renew_failed no_reply true")
+			if conn.Closed() {
+				t.Fatal("a reply on another identifier must not tear the socket down")
+			}
+		})
+	}
 }

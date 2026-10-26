@@ -1,6 +1,6 @@
 {
   "name": "39-no-renewal-without-a-usable-advert",
-  "description": "Renewal is offered per socket by the welcome, and only a usable advert offers it. A welcome whose stream_expires_at is not an RFC 3339 string (here a number) is NO advert — read leniently, never the invalid-frame class, so the handshake proceeds and the socket is not torn down — and Streaming's exact set stays {staleness, repair-poll}: no renew-due, ever. A `renewed` frame on that socket answers nothing and is liveness, never adopted as a deadline. A live event is delivered on the same socket.",
+  "description": "Renewal is offered per socket by the welcome, and only a usable advert offers it. A welcome whose stream_expires_at is not an RFC 3339 string (here a number) is NO advert — read leniently, never the invalid-frame class, so the handshake proceeds and the socket is not torn down — and Streaming's exact set stays {staleness, repair-poll}: no renew-due, ever. A `renewed` frame on that socket, on the subscription's own identifier, answers nothing and is liveness, never adopted as a deadline. A live event is delivered on the same socket.",
   "config": {
     "position": "{{POS:0}}"
   },
@@ -72,8 +72,8 @@
     },
     {
       "serve": {
-        "frame": "raw",
-        "text": "{\"type\":\"renewed\",\"stream_expires_at\":\"2026-01-01T02:00:00.000Z\"}"
+        "frame": "renewed",
+        "streamExpiresInMs": 7200000
       }
     },
     {

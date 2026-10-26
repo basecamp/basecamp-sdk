@@ -1,6 +1,6 @@
 {
   "name": "38-renew-answered-by-reject-is-retried",
-  "description": "A server that predates renewal correlates the renew command by the subscription's identifier it carries and answers reject_subscription — which a confirmed stream reads as liveness, never as transition 12's terminal rejection — the live event served behind the reject is delivered, so the reject was dispatched first and ended nothing. The attempt therefore goes unanswered: its renew-ack-deadline (10 s) lapses, the retry is scheduled 30 seconds out, and the retry's renewal is acknowledged. The socket keeps streaming throughout, and nothing reconnects.",
+  "description": "A server that will not take the renew command — one that predates renewal, or a stream it does not renew — answers reject_subscription on the subscription's identifier the command carried. A confirmed stream reads that as the RENEWAL refused, never as transition 12's terminal rejection of the subscription: the live event served behind the reject is delivered, the socket stays open, and the retry comes due 30 seconds later, with no renew-ack-deadline left to wait out. The retry's renewal is acknowledged, and nothing reconnects.",
   "config": {
     "position": "{{POS:0}}"
   },
@@ -123,24 +123,6 @@
     {
       "expectDelivered": {
         "exact": [5]
-      }
-    },
-    {
-      "expectTimers": {
-        "exact": {
-          "staleness": 1,
-          "repair-poll": 1,
-          "renew-ack-deadline": 1
-        }
-      }
-    },
-    {
-      "fireTimer": {
-        "kind": "renew-ack-deadline",
-        "assertDelayMs": {
-          "min": 10000,
-          "max": 10000
-        }
       }
     },
     {

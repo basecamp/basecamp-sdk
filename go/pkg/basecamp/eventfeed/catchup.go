@@ -1359,12 +1359,20 @@ func (l *loop) handleLiveFrame(at *attempt, pending Timer, item pumpItem, delive
 		// The answer to a renewal in flight — or liveness, when nothing is
 		// (renewReply).
 		return l.renewReply(at, pending, f, item.seq)
+	case frameReject:
+		// A post-confirmation reject is liveness, with one exception: on the
+		// subscription's own identifier, read after a renewal's command went
+		// out, it is the server declining a command it does not take — a
+		// server that predates renewal, or a stream it will not renew — and
+		// the renewal is refused, not the subscription (renewReply judges the
+		// attribution and treats it as liveness otherwise).
+		if f.identifier != l.identifier {
+			return cycleOutcome{}, false
+		}
+		return l.renewReply(at, pending, frame{kind: frameRenewRefused, identifier: f.identifier}, item.seq)
 	default:
-		// welcome, ping, unknown types, and a post-confirmation confirm or
-		// reject: liveness only — the pump already reset staleness. A
-		// correlated reject is what a server that predates renewal answers a
-		// renew command with; it is liveness here like any other, and the
-		// attempt's acknowledgement deadline is what ends it.
+		// welcome, ping, unknown types, and a post-confirmation confirm:
+		// liveness only — the pump already reset staleness.
 		return cycleOutcome{}, false
 	}
 }

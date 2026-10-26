@@ -916,10 +916,14 @@ func TestParseFrame_WelcomeStreamDeadline(t *testing.T) {
 // `renewed` with its (leniently read) deadline, `renew_refused` with its
 // reason never read, so no reason shape can fail the frame.
 func TestParseFrame_RenewReplies(t *testing.T) {
-	f, err := parseFrame([]byte(`{"type":"renewed","stream_expires_at":"2026-10-26T04:00:00.000Z"}`))
-	if err != nil || f.kind != frameRenewed || !f.hasExpiresAt ||
+	f, err := parseFrame([]byte(`{"identifier":"{\"channel\":\"EventsChannel\"}","type":"renewed","stream_expires_at":"2026-10-26T04:00:00.000Z"}`))
+	if err != nil || f.kind != frameRenewed || !f.hasExpiresAt || f.identifier != `{"channel":"EventsChannel"}` ||
 		!f.expiresAt.Equal(time.Date(2026, 10, 26, 4, 0, 0, 0, time.UTC)) {
-		t.Fatalf("renewed = %+v, %v; want frameRenewed carrying 04:00Z", f, err)
+		t.Fatalf("renewed = %+v, %v; want frameRenewed on the identifier, carrying 04:00Z", f, err)
+	}
+	f, err = parseFrame([]byte(`{"identifier":42,"type":"renew_refused","reason":"not_later"}`))
+	if err != nil || f.kind != frameRenewRefused || f.identifier != "" {
+		t.Fatalf("renew_refused with a wrong-typed identifier = %+v, %v; want a refusal that correlates with nothing", f, err)
 	}
 	f, err = parseFrame([]byte(`{"type":"renewed","stream_expires_at":42}`))
 	if err != nil || f.kind != frameRenewed || f.hasExpiresAt {
