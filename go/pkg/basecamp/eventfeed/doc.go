@@ -8,8 +8,10 @@
 // still change. The run loop has landed: Connector, Events, Close and Wait
 // play the protocol described below — the first mint through the catch-up
 // walk, the entry boundary, the drain, streaming delivery, the repair poll,
-// and the recovery matrix a poll's 410, 400-position, or 409 re-enters
-// through — alongside the event and filter models, the seam interfaces and
+// the recovery matrix a poll's 410, 400-position, or 409 re-enters through,
+// and the in-band renewal that keeps a stream open past its token's expiry
+// where the server advertises one — alongside the event and filter models,
+// the seam interfaces and
 // their error taxonomies, the Action Cable frame codecs, deduplication, the
 // backoff and repair-jitter envelopes, the checkpoint store, the cable-URL
 // policy and its WebSocket transport, and the deterministic fakes the

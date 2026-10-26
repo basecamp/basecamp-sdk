@@ -896,6 +896,16 @@ attempts.
 
 `Events` is single-shot: consuming it twice yields one `ReasonUsage` error element.
 
+**In-band renewal.** A server that bounds a ticket stream by its token's expiry
+advertises that deadline in the socket's welcome, and the connector then renews the
+stream in band about three minutes before it: a fresh ticket, minted with your
+`TokenProvider`'s current token, sent over the open socket. There is nothing to
+configure. A provider that refreshes at least five minutes ahead of expiry supplies the
+later token a renewal needs; a failed renewal is retried once; and a socket that is not
+renewed is closed by the server at its deadline, then reconnected and caught up as after
+any disconnect. `Observer.StreamDeadline`, `Observer.Renewed` and `Observer.RenewFailed`
+report it.
+
 A second binding consumes the principal's **inbox** — the low-noise lane of items that
 addressed the agent (mentions, assignments, subscriptions, watches, pings, boosts):
 `eventfeed.NewLive(cfg, tokenProvider, "5951425", eventfeed.InboxLane)` binds the seams

@@ -115,6 +115,27 @@ func TestScenarioDriverRejectsMutatedFixtures(t *testing.T) {
 			value:   2,
 			wants:   "live buffer occupancy",
 		},
+		{
+			name:    "renew command ticket",
+			fixture: "36-renew-extends-the-stream-in-band.json",
+			path:    "steps.20.expectRenew.ticket",
+			value:   "{{TICKET:1}}",
+			wants:   "renew command carried ticket",
+		},
+		{
+			name:    "renew-due remainder after a repair walk",
+			fixture: "36-renew-extends-the-stream-in-band.json",
+			path:    "steps.17.fireTimer.assertDelayMs",
+			value:   map[string]any{"min": 3390000, "max": 3450000},
+			wants:   "renew-due timer was armed for",
+		},
+		{
+			name:    "renewal advert absent from the timer set",
+			fixture: "39-no-renewal-without-a-usable-advert.json",
+			path:    "steps.8.expectTimers.exact",
+			value:   map[string]any{"staleness": 1, "repair-poll": 1, "renew-due": 1},
+			wants:   "outstanding timers",
+		},
 	} {
 		t.Run(probe.name, func(t *testing.T) {
 			control := readFixture(t, probe.fixture)
@@ -297,6 +318,27 @@ func TestScenarioDriverIsArrivalStrict(t *testing.T) {
 		subscribe(h, peer)
 		requireNoViolation(t, h)
 	})
+
+	// The renew command is judged against expectRenew, not expectSubscribe: it
+	// is an outbound frame like the subscribe, and one that arrives ahead of
+	// its step — a renewal sent before the script's mint released it, say —
+	// must not be absorbed by a subscribe step it happens to precede.
+	renew := func(h *scenarioHarness, peer *cablePeer) {
+		h.recordClientFrame(peer, clientFrame{kind: "text", data: []byte(`{"command":"renew","identifier":"{}","ticket":"ticket-2"}`)})
+	}
+	t.Run("a renew at its expectRenew step is legal", func(t *testing.T) {
+		h, d := arrivalProgram(t, 0, stepExpectConnect(), stepExpectRenew())
+		peer := recordDial(h, d)
+		renew(h, peer)
+		requireNoViolation(t, h)
+	})
+
+	t.Run("a renew at a subscribe step is an early arrival", func(t *testing.T) {
+		h, d := arrivalProgram(t, 0, stepExpectConnect(), stepExpectSubscribe(), stepExpectRenew())
+		peer := recordDial(h, d)
+		renew(h, peer)
+		requireViolation(t, h, "step 2 (expectSubscribe)", "expectRenew")
+	})
 }
 
 // arrivalPosition is the checkpoint position every case above saves.
@@ -357,6 +399,10 @@ func stepExpectConnect() scenarioStep {
 
 func stepExpectSubscribe() scenarioStep {
 	return scenarioStep{Kind: "expectSubscribe", Payload: &expectSubscribeStep{Channel: "EventsChannel"}}
+}
+
+func stepExpectRenew() scenarioStep {
+	return scenarioStep{Kind: "expectRenew", Payload: &expectRenewStep{Ticket: "ticket-2"}}
 }
 
 func stepExpectClientClose() scenarioStep {

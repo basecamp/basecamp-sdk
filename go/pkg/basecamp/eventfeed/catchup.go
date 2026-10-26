@@ -642,8 +642,8 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 // the verdict stays with the deadline.
 //
 // A dedicated timer would express this more directly, and is deliberately not
-// used: SPEC.md §23 pins exactly six timer kinds AND every state's exact
-// timer set, both asserted by the cross-SDK fixtures, so a seventh kind is a
+// used: SPEC.md §23 pins a closed set of timer kinds AND every state's exact
+// timer set, both asserted by the cross-SDK fixtures, so another kind is a
 // spec change across six SDKs rather than a fix to the Go reference.
 //
 // # The published bound: detection window + grace phase
@@ -750,8 +750,11 @@ func (l *loop) admitDuringPoll(at *attempt, item pumpItem) (handled bool, out cy
 		ev, admit = e, true
 	case frameDisconnect:
 		return false, cycleOutcome{}, false
-	case frameWelcome, framePing, frameConfirm, frameReject, frameUnknown:
-		// Liveness only in a post-confirmation state.
+	case frameWelcome, framePing, frameConfirm, frameReject, frameUnknown,
+		frameRenewed, frameRenewRefused:
+		// Liveness only in a post-confirmation state. A renewal reply is too:
+		// an attempt is only ever in flight in Streaming, whose own dispatch
+		// takes its reply (renewReply), so none reaching here answers one.
 	}
 	if l.hooks.frameHandled != nil {
 		l.hooks.frameHandled(f.kind)
@@ -1161,18 +1164,42 @@ func protocolFatalFrame(item pumpItem) (frame, bool) {
 // as they arrive, deduped, and never save — live ids do not advance the
 // durable position. The jittered repair-poll timer is armed BEFORE the state
 // is announced, so Streaming's exact timer set is {staleness, repair-poll}
-// from the first instant an observer can see the state.
+// from the first instant an observer can see the state — plus renew-due when
+// the socket's welcome advertised a renewable deadline (renew.go), armed
+// before the announcement for the same reason.
+//
+// The in-band renewal runs here and only here: renew-due starts an attempt,
+// whose mint, write and reply are further arms of this select, and the repair
+// cadence waits while one is in flight.
 func (l *loop) stream(at *attempt) cycleOutcome {
 	repair := l.cfg.clock.NewTimer(repairJitter(l.cfg.repairInterval, l.cfg.rand), timerRepairPoll)
 	at.phase = repair
+	l.armRenewDue(at)
 	l.setState(stateStreaming)
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
+		rs := l.renewChannels(at, repair)
 		select {
 		case <-l.runCtx.Done():
 			l.disposeAttempt(at, repair)
 			return cycleOutcome{kind: outcomeClosed}
-		case <-repair.C():
+		case <-rs.due:
+			if out, done := l.renewDue(at, repair); done {
+				return out
+			}
+		case r := <-rs.minted:
+			if out, done := l.renewMinted(at, repair, r); done {
+				return out
+			}
+		case w := <-rs.written:
+			if out, done := l.renewWritten(at, repair, w); done {
+				return out
+			}
+		case <-rs.ack:
+			if out, done := l.renewLapsed(at, repair); done {
+				return out
+			}
+		case <-rs.repair:
 			// The expired window outranks a ready repair cadence, as it does
 			// the poll-retry and live-frame arms: entering the walk makes the
 			// already-rendered stale verdict look in-flight — pollPage defers
@@ -1186,13 +1213,17 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 			// Transition 24 → CatchingUp: one repair walk from the connector's
 			// current position, returning here through Draining. The next
 			// cadence is armed before Streaming is re-announced, for the same
-			// reason it is on first entry.
+			// reason it is on first entry. renew-due is Streaming's alone, so
+			// it is stopped for the walk and re-armed for its remainder after
+			// it — CatchingUp and Draining keep their own timer sets.
+			l.stopRenewDue(at)
 			out, done := l.repairWalk(at)
 			if done {
 				return out
 			}
 			repair = l.cfg.clock.NewTimer(repairJitter(l.cfg.repairInterval, l.cfg.rand), timerRepairPoll)
 			at.phase = repair
+			l.armRenewDue(at)
 			l.setState(stateStreaming)
 		case <-at.lc.stale.rearmed():
 			continue
@@ -1324,9 +1355,16 @@ func (l *loop) handleLiveFrame(at *attempt, pending Timer, item pumpItem, delive
 			return cycleOutcome{kind: outcomeClosed}, true
 		}
 		return cycleOutcome{}, false
+	case frameRenewed, frameRenewRefused:
+		// The answer to a renewal in flight — or liveness, when nothing is
+		// (renewReply).
+		return l.renewReply(at, pending, f)
 	default:
 		// welcome, ping, unknown types, and a post-confirmation confirm or
-		// reject: liveness only — the pump already reset staleness.
+		// reject: liveness only — the pump already reset staleness. A
+		// correlated reject is what a server that predates renewal answers a
+		// renew command with; it is liveness here like any other, and the
+		// attempt's acknowledgement deadline is what ends it.
 		return cycleOutcome{}, false
 	}
 }

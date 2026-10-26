@@ -1,0 +1,260 @@
+{
+  "name": "41-renew-mint-failures-never-count-toward-authorization",
+  "description": "An unauthorized renewal mint is a failed renewal attempt and nothing more: it is retried once, gives the deadline up on the second, and never reaches the shared connection-level authorization counter. The lease's `remote` close then sends the feed through the reconnect cycle, whose own unauthorized mint is the FIRST consecutive failure — Backoff, not Terminal(authorization_failed), which a connector counting the two renewal mints would have reached — and the next cycle recovers.",
+  "config": {
+    "position": "{{POS:0}}"
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome",
+        "streamExpiresInMs": 3600000
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-due": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "renew-due",
+        "assertDelayMs": {
+          "min": 3390000,
+          "max": 3450000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-due": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "renew-due",
+        "assertDelayMs": {
+          "min": 30000,
+          "max": 30000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1
+        }
+      }
+    },
+    {
+      "serve": {
+        "frame": "disconnect",
+        "reason": "remote",
+        "reconnect": true
+      }
+    },
+    {
+      "expectClientClose": {}
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "backoff": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "backoff",
+        "assertDelayMs": {
+          "min": 0,
+          "max": 1000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "expectState": {
+        "is": "backoff"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "backoff": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "backoff",
+        "assertDelayMs": {
+          "min": 0,
+          "max": 2000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:5}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:5}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:5}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:1}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:2}}"
+      }
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1
+        }
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 5,
+    "connectCount": 2,
+    "delivered": {
+      "exact": []
+    },
+    "checkpoints": {
+      "exact": ["{{POS:1}}", "{{POS:2}}"]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open"
+  }
+}

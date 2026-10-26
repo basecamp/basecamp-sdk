@@ -196,11 +196,22 @@ type serveStep struct {
 	Event      json.RawMessage `json:"event"`
 	Item       json.RawMessage `json:"item"`
 	Text       string          `json:"text"`
+	// StreamExpiresInMs is the stream deadline a welcome advertises or a
+	// `renewed` reply carries, as an offset from the driver clock's reading
+	// when the frame is served — three-state like every optional integer.
+	StreamExpiresInMs optionalInt `json:"streamExpiresInMs"`
 }
 
 type serverCloseStep struct {
 	Code   int64  `json:"code"`
 	Reason string `json:"reason"`
+}
+
+// expectRenewStep is the connector's in-band renew command: the freshly
+// minted ticket it must carry. The identifier is pinned against the
+// subscribe's, byte for byte, by the executor.
+type expectRenewStep struct {
+	Ticket string `json:"ticket"`
 }
 
 type expectSubscribeStep struct {
@@ -566,6 +577,15 @@ func decodeDirective(kind string, body json.RawMessage) (any, error) {
 			return nil, fmt.Errorf("channel %q is not EventsChannel", step.Channel)
 		}
 		return step, nil
+	case "expectRenew":
+		step := &expectRenewStep{}
+		if err := decodeStrict(body, step); err != nil {
+			return nil, err
+		}
+		if step.Ticket == "" {
+			return nil, fmt.Errorf("a renew expectation needs the ticket the command must carry")
+		}
+		return step, nil
 	case "expectPoll":
 		step := &expectPollStep{}
 		if err := decodeStrict(body, step); err != nil {
@@ -842,8 +862,18 @@ func validateConnectOutcome(o *connectOutcome) error {
 }
 
 func validateServe(s *serveStep) error {
+	if err := validateStreamExpiry(s); err != nil {
+		return err
+	}
 	switch s.Frame {
 	case "welcome", "ping", "confirm", "reject":
+		return nil
+	case "renewed":
+		return nil
+	case "renew_refused":
+		if s.Reason == "" {
+			return fmt.Errorf("a renew_refused frame needs a reason")
+		}
 		return nil
 	case "disconnect":
 		if s.Reason == "" || s.Reconnect == nil {
@@ -865,6 +895,33 @@ func validateServe(s *serveStep) error {
 		return nil
 	default:
 		return fmt.Errorf("unknown frame %q", s.Frame)
+	}
+}
+
+// validateStreamExpiry judges streamExpiresInMs where it may appear: optional
+// on a welcome (absent is a welcome that advertises nothing), required on
+// `renewed`, and refused on every other frame, in the schema's own range.
+func validateStreamExpiry(s *serveStep) error {
+	o := s.StreamExpiresInMs
+	switch s.Frame {
+	case "welcome":
+	case "renewed":
+		if !o.set {
+			return fmt.Errorf("a renewed frame needs streamExpiresInMs")
+		}
+	default:
+		if o.set {
+			return fmt.Errorf("a %s frame carries no streamExpiresInMs", s.Frame)
+		}
+		return nil
+	}
+	switch {
+	case !o.set:
+		return nil
+	case o.null:
+		return fmt.Errorf("streamExpiresInMs supplied as JSON null: the schema's type is integer and null is not one")
+	default:
+		return checkScenarioMs("streamExpiresInMs", o.v, 0)
 	}
 }
 
@@ -966,7 +1023,7 @@ func decodePollQuery(step *expectPollStep) error {
 func validateTimerKind(kind string) error {
 	switch kind {
 	case "handshake-deadline", "confirmation-deadline", "backoff",
-		"staleness", "repair-poll", "poll-retry":
+		"staleness", "repair-poll", "poll-retry", "renew-due", "renew-ack-deadline":
 		return nil
 	default:
 		return fmt.Errorf("unknown timer kind %q", kind)

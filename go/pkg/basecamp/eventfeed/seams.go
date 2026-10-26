@@ -533,9 +533,10 @@ type Observer struct {
 	// actually acts on are named exactly, an absent reason stays empty, and
 	// every other peer-supplied string — however short — becomes "other". err
 	// goes through observableSocketError, whose vocabulary is CLOSED and
-	// short: the staleness, conn-closed, and frame-oversize sentinels (the
-	// last being ErrFrameOversize, the invalid-frame class's one
-	// transport-decided shape), the two context sentinels, *CloseError (which
+	// short: the staleness, renew-write-lapsed, conn-closed, and
+	// frame-oversize sentinels (the last being ErrFrameOversize, the
+	// invalid-frame class's one transport-decided shape), the two context
+	// sentinels, *CloseError (which
 	// renders its integer code alone), and
 	// *invalidFrameError (which renders one of two shape constants). ANY other
 	// error — including a *DialError or *TerminalError, both of which a seam
@@ -599,4 +600,20 @@ type Observer struct {
 	// BufferOverflow fires when the live buffer drops events — observability
 	// only; the disposition lives in the SignalHandler.
 	BufferOverflow func(droppedCount int)
+	// StreamDeadline fires when a socket's welcome advertises its stream
+	// deadline: the instant the server's lease closes the socket unless it is
+	// renewed in band first (SPEC.md §23 "In-Band Renewal"). A server that
+	// does not bound the stream advertises none, and the socket is never
+	// renewed.
+	StreamDeadline func(expiresAt time.Time)
+	// Renewed fires when the server acknowledges a renewal: the socket's
+	// stream deadline moved to expiresAt.
+	Renewed func(expiresAt time.Time)
+	// RenewFailed fires when one renewal attempt fails. retrying reports
+	// whether another attempt is scheduled against the same deadline; when it
+	// is false the socket runs to the server's lease, which closes it, and
+	// the connector reconnects and catches up exactly as after any `remote`
+	// disconnect. Never terminal, and never counted toward the shared
+	// authorization counter.
+	RenewFailed func(kind RenewFailure, retrying bool)
 }

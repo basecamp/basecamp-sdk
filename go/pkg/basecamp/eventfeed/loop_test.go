@@ -1990,6 +1990,11 @@ func TestObservableSocketErrorDropsWrapperText(t *testing.T) {
 			eventfeed.ExportCableConnClosedErr(),
 		},
 		{
+			"wrapped renew-write-lapsed sentinel",
+			fmt.Errorf("write %s: %w", cableURL, eventfeed.ExportRenewWriteLapsedErr()),
+			eventfeed.ExportRenewWriteLapsedErr(),
+		},
+		{
 			"wrapped CloseError",
 			fmt.Errorf("read %s: %w", cableURL, &eventfeed.CloseError{Code: 1011, Reason: cableURL}),
 			nil, // typed arm: identity is not pinned, only the absence of the canary

@@ -208,3 +208,16 @@ func (c *Connector) OnRunContext(f func(context.Context)) { c.hooks.runContext =
 func ExportCheckContinuation(baseOrigin, pageURL string) *TerminalError {
 	return checkContinuation(baseOrigin, pageURL)
 }
+
+// ExportRenewCommand is the in-band renew command's exact bytes for an
+// identifier and a ticket.
+func ExportRenewCommand(identifier, ticket string) []byte { return renewCommand(identifier, ticket) }
+
+// ExportRenewWriteLapsedErr is the teardown cause a renew write still
+// outstanding at its acknowledgement deadline reports.
+func ExportRenewWriteLapsedErr() error { return errRenewWriteLapsed }
+
+// OnRenewSent registers a hook fired once a renewal attempt's command write
+// has begun — from which instant a reply is the attempt's, whether or not the
+// write has completed.
+func (c *Connector) OnRenewSent(f func()) { c.hooks.renewSent = f }

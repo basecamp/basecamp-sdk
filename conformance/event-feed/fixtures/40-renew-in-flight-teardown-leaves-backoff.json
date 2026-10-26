@@ -1,0 +1,139 @@
+{
+  "name": "40-renew-in-flight-teardown-leaves-backoff",
+  "description": "Teardown disposes a renewal with its attempt. A renew command is in flight — written, renew-ack-deadline outstanding — when the TCP connection is severed: the socket-failure edge leaves exactly {backoff}, with no renew-ack-deadline or renew-due surviving into the reconnect cycle.",
+  "config": {
+    "position": "{{POS:0}}"
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome",
+        "streamExpiresInMs": 3600000
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-due": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "renew-due",
+        "assertDelayMs": {
+          "min": 3390000,
+          "max": 3450000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:2}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectRenew": {
+        "ticket": "{{TICKET:2}}"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-ack-deadline": 1
+        }
+      }
+    },
+    {
+      "sever": true
+    },
+    {
+      "expectState": {
+        "is": "backoff"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "backoff": 1
+        }
+      }
+    }
+  ],
+  "finally": {
+    "state": "backoff",
+    "mintCount": 2,
+    "connectCount": 1,
+    "checkpoints": {
+      "exact": ["{{POS:1}}"]
+    },
+    "timers": {
+      "exact": {
+        "backoff": 1
+      }
+    },
+    "socket": "closed"
+  }
+}

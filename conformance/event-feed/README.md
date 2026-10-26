@@ -33,7 +33,7 @@ satisfied fails hard — nothing here passes vacuously.
 The strict-match rule splits by action class; every driver implements exactly this:
 
 - **Arrival-strict — checkpoint saves and outbound frames** (the subscribe command,
-  the client close): observed while the current step is anything other than their
+  the renew command, the client close): observed while the current step is anything other than their
   matching expect step, the scenario fails immediately. Rendezvous steps advance
   atomically on satisfaction, so an action that becomes legal the instant a
   rendezvous is satisfied matches the next step rather than failing against the
@@ -121,6 +121,18 @@ converted — fixture 30's redirect `Location`, which the driver reduces to an
 origin before the connector sees anything — there is no egress for a harness to
 observe, and asserting its absence would be a statement about the driver rather
 than about the connector. See the row-15 note under the mutation kill matrix.
+
+## Stream deadlines are offsets from the driver's clock
+
+A served `welcome` may advertise the socket's stream deadline and a served
+`renewed` carries the moved one (SPEC §23 "In-Band Renewal"). Neither is spelled
+as an instant in a fixture: `streamExpiresInMs` is an offset from the driver
+clock's reading at the instant the frame is served, and the driver renders
+`stream_expires_at` from it as an RFC 3339 instant in UTC with millisecond
+precision. That is what keeps a renewal script portable across test clocks with
+different epochs, and what makes its `renew-due` envelopes exact: the connector
+measures the target against the same clock. A malformed advert or reply is a
+`raw` frame.
 
 ## Count semantics: seam calls, never wire attempts
 
@@ -326,6 +338,12 @@ revoked-mint threshold).
 | 33 | `33-inbox-gap-410-retention-resume.json` | the inbox's 410 is the retention window: accepted, the resume URL (`since=0`, the earliest retained item) is followed as a position-resume entry and its page saves on acceptance |
 | 34 | `34-filter-changed-409-reenters-at-the-present.json` | 409 with both digests → `Observer.filterConflict` (digests pinned) before `Observer.positionRejected(filter_changed)`; the held position is discarded and the walk re-enters at `since=now` (present-class, no poll-served id) |
 | 35 | `35-srv2-dimensions-carry-through-the-epoch-resume.json` | the srv2 dimensions `performers` / `exclude_performers` / `actor_types` ride the subscription identifier and the entry poll's exact query, comma-joined; a 410 epoch gap under that filter set, accepted, follows the served `since=<epoch_after_id>` resume verbatim — filters and all, never `since=now` — as a position-resume entry whose first page delivers and saves |
+| 36 | `36-renew-extends-the-stream-in-band.json` | in-band renewal (SPEC §23 "In-Band Renewal"): an advertising welcome adds `renew-due` to Streaming's set; a repair walk runs with CatchingUp's own set and `renew-due` comes back armed for the REMAINDER of its target, measured against the clock; firing it arms `renew-ack-deadline`, mints a fresh ticket, and writes the renew command with that ticket and the subscription's own identifier; `renewed` moves the deadline and the next `renew-due` is drawn from it — twice, on one socket, with no second dial |
+| 37 | `37-renew-refused-retries-once-then-the-lease-reconnects.json` | a refusal is retried exactly once, 30 s later, with a newly minted ticket; the second refusal gives the deadline up (exact set back to {`staleness`, `repair-poll`}), nothing is terminal, and the lease's `remote` close is recovered by the ordinary reconnect cycle into a socket that advertises again |
+| 38 | `38-renew-answered-by-reject-is-retried.json` | a pre-renewal server's `reject_subscription` answer to the renew command is liveness on a confirmed stream — the live event served behind it is delivered — so the attempt goes unanswered, `renew-ack-deadline` (10 s) lapses, and the retry 30 s later is acknowledged |
+| 39 | `39-no-renewal-without-a-usable-advert.json` | a welcome whose `stream_expires_at` is unusable (a number) is no advert, read leniently and never the invalid-frame class: the handshake proceeds, Streaming's set stays {`staleness`, `repair-poll`}, and a `renewed` frame on that socket is liveness, never adopted |
+| 40 | `40-renew-in-flight-teardown-leaves-backoff.json` | a socket severed with a renewal in flight leaves exactly {`backoff`}: the attempt's `renew-ack-deadline` is disposed with it |
+| 41 | `41-renew-mint-failures-never-count-toward-authorization.json` | unauthorized renewal mints are failed attempts only — retried once, then given up — and never reach the shared authorization counter: the reconnect cycle's own 401 after the lease closes is the FIRST consecutive failure (Backoff, not Terminal), and the next cycle recovers |
 
 **Hostile-URL coverage note (stated author's choice, per the PR-1 review):** the
 downgrade (HTTPS→HTTP) variant is deliberately not a separate fixture here. Tier-2
@@ -373,6 +391,12 @@ reason via a constant, not the literal.
 | 3-second server heartbeat cadence (input to the 7500ms staleness policy) | 2 | no PR-2 fixture — PR 4 (staleness fixture 08) |
 | Subscribe retransmit contract (identical absorbed, different rejected) | 2 | no PR-2 fixture — PR 4 (fixture 15) |
 | Push payload 11-key shape — the poll row's nine (`performed_by_id` present, null for a direct action) plus the transport-only `actor_type` and `visible_to_clients` (push carries them, poll rows omit them), and an optional `details` object for the types that publish one | 2 | schema-enforced on every `serve message` (11 keys) and every poll row on either lane (9 keys, `actor_type` and `visible_to_clients` forbidden — an inbox item's event included, since the generated `FeedEvent` carries neither and an adapter over the generated operation could not deliver them); an inbox item FRAME's event is push-shaped: the two transport keys are accepted when present and may be absent, never a present null |
+| In-band renewal advert: `stream_expires_at`, an RFC 3339 instant, on the connection's first `welcome` | 1 — **PROVISIONAL until the bc3 renewal change merges** (drafted against its design, not a merged head) | 36, 37, 38, 40, 41 (served); 39 (an unusable value is no advert) |
+| Renew command `{"command":"renew","identifier":<the subscription's own>,"ticket":<fresh ticket>}` | 1 — provisional, as above | 36, 37, 38, 40 (`expectRenew`: the ticket and the identifier, byte-identical, pinned) |
+| Renewal replies `{"type":"renewed","stream_expires_at":…}` / `{"type":"renew_refused","reason":…}`, to the renewing socket alone | 1 (shapes) / 2 (addressing) — provisional, as above | 36, 38 (`renewed`); 37 (`renew_refused`); the reason is never read, so its vocabulary is unpinned |
+| A server that predates renewal answers the correlated renew command with `reject_subscription` for that identifier | 2 | 38 |
+| The renewed deadline is the fresh token's expiry; a refusal leaves the deadline where it was; at most one renewal per 30 s | 2 — provisional, as above | premise of 36/37 (the schedule and the 30 s retry); not observable client-side beyond the replies |
+| The lease closes an unrenewed socket at its deadline with the `remote` disconnect | 2 — provisional, as above | 37, 41 |
 
 ## Deliberate tier-2 slack (tier-3/PR-4 ownership)
 
@@ -412,12 +436,13 @@ when every line is done:
 7. Any drifted row: fix fixtures, schema, and SPEC §23 together in the true-up PR —
    never fixture-only.
 
-## Mutation kill matrix (sixteen)
+## Mutation kill matrix (twenty-eight)
 
-Fifteen of the sixteen mutations are shown red against at least one fixture in
-the reference implementation PR's body before they count. Row 15 is the
-recorded exception — not killed at tier 2; killed by the Layer-1 adapters' own 302
-test — and the note below is its account.
+Twenty-seven of the twenty-eight mutations are shown red against at least one
+fixture in the reference implementation PR's body before they count — rows 17–28,
+the in-band renewal's, in the PR that added them, each red on five of five runs.
+Row 15 is the recorded exception — not killed at tier 2; killed by the Layer-1
+adapters' own 302 test — and the note below is its account.
 
 **One row is an exception, and it is the reason this heading is worth reading
 twice.** Row 15's mutation is **not killed at tier 2 at all** — it lives below
@@ -445,6 +470,18 @@ exactly the class of claim this family exists to check.
 | 14 | `collapse-load-error-to-missing` | 28 |
 | 15 | `follow-cross-origin-redirect` (follows a 302 to a foreign Location) | **not killed at tier 2** — below the poll seam; killed at Layer 1 by the Go adapters' `TestLivePolls_RefusesACrossOriginRedirectWithZeroEgress` (a real generated `PollEvents` call meets a real 302, the hop is refused before any request, and a sentinel listener behind the foreign Location records zero hits). Fixture 30 pins a different fault class above the seam. See the note under this table. |
 | 16 | `discard-live-id-at-or-below-served-id` (streaming lane orders live ids against the highest poll-served id) | 31 — and 31 alone: verified to pass all of 01–30, because every other straggler either arrives with nothing yet served (20) or is buffered pre-cut (01, 12, 19) |
+| 17 | `renew-without-advert` (schedules a renewal on a socket whose welcome advertised nothing) | 39 |
+| 18 | `fatal-unusable-advert` (an unusable `stream_expires_at` fails the welcome as an invalid frame) | 39 |
+| 19 | `renew-with-the-sockets-own-ticket` (the renew command carries the ticket the socket was opened with, not a fresh mint's) | 36 |
+| 20 | `renew-by-redialing` (renew-due tears the socket down and reconnects instead of renewing in band) | 36 |
+| 21 | `retry-renewal-without-limit` (keeps retrying a refused renewal past the one retry) | 37 |
+| 22 | `give-up-without-a-retry` (the first failed attempt gives the deadline up) | 37 |
+| 23 | `terminal-on-a-renewals-reject` (a correlated `reject_subscription` during a renewal is transition 12's terminal) | 38 |
+| 24 | `leak-renewal-timers-on-teardown` (disposal leaves `renew-ack-deadline` or `renew-due` armed) | 40 |
+| 25 | `count-renewal-mints-toward-authorization` (an unauthorized renewal mint increments the shared counter) | 41 |
+| 26 | `rearm-the-welcomes-delay-after-a-repair-walk` (renew-due's delay is not measured against the clock when it is re-armed) | 36 |
+| 27 | `keep-renew-due-armed-through-a-repair-walk` (CatchingUp carries `renew-due`) | 36 |
+| 28 | `adopt-an-unsolicited-renewed` (a `renewed` on a socket that advertised nothing starts a renewal) | 39 |
 
 **Row 15 is not killed at tier 2, and the reason is structural.** In tier 2 the
 poll lane is a SEAM. The driver receives the fixture's scripted 302, reduces

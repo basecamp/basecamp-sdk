@@ -1,0 +1,265 @@
+{
+  "name": "36-renew-extends-the-stream-in-band",
+  "description": "In-band renewal on one socket, twice, with no reconnect. The welcome advertises the socket's stream deadline (stream_expires_at, one hour out), so Streaming's exact set gains renew-due. Ten virtual minutes later a repair walk takes the feed through CatchingUp, whose set stays {staleness} — renew-due is Streaming's alone — and back, where renew-due is re-armed for what REMAINS of its target, measured against the clock (46.5–47.5 min, not the 56.5–57.5 drawn at the welcome). Firing it arms renew-ack-deadline and mints a fresh ticket, which the renew command carries beside the subscription's own identifier — never the ticket the socket was opened with, and never a second dial. `renewed` moves the deadline, and the next renew-due is drawn from it (deadline − 3 min ± 30 s); a second renewal is acknowledged the same way, and a live event still arrives on the same socket. Staleness and the repair cadence are configured long so the advance fires nothing.",
+  "config": {
+    "position": "{{POS:0}}",
+    "stalenessMs": 86400000,
+    "repairPollBaseMs": 86400000
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome",
+        "streamExpiresInMs": 3600000
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-due": 1
+        }
+      }
+    },
+    {
+      "advance": {
+        "ms": 600000
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "repair-poll"
+      }
+    },
+    {
+      "expectState": {
+        "is": "catching_up"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1
+        }
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:1}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:2}}"
+      }
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-due": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "renew-due",
+        "assertDelayMs": {
+          "min": 2790000,
+          "max": 2850000
+        }
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-ack-deadline": 1
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:2}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectRenew": {
+        "ticket": "{{TICKET:2}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "renewed",
+        "streamExpiresInMs": 3600000
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-due": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "renew-due",
+        "assertDelayMs": {
+          "min": 3390000,
+          "max": 3450000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:3}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:3}}"
+          }
+        }
+      }
+    },
+    {
+      "expectRenew": {
+        "ticket": "{{TICKET:3}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "renewed",
+        "streamExpiresInMs": 7200000
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1,
+          "renew-due": 1
+        }
+      }
+    },
+    {
+      "serve": {
+        "frame": "message",
+        "event": {
+          "id": 7,
+          "kind": "message",
+          "event_type": "message.created",
+          "action": "created",
+          "created_at": "2026-08-01T12:00:00Z",
+          "bucket_id": 2,
+          "creator_id": 3,
+          "performed_by_id": null,
+          "actor_type": "person",
+          "recording_id": 900,
+          "visible_to_clients": false
+        }
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [7]
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 3,
+    "connectCount": 1,
+    "delivered": {
+      "exact": [7]
+    },
+    "checkpoints": {
+      "exact": ["{{POS:1}}", "{{POS:2}}"]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1,
+        "renew-due": 1
+      }
+    },
+    "socket": "open"
+  }
+}

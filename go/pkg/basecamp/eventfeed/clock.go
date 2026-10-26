@@ -12,8 +12,8 @@ import (
 // device-flow WithDeviceClock/WithDeviceSleep precedent: monotonic now plus
 // cancellable, NAMED, enumerable timers, so "no timer survives teardown" is
 // an exact-set assertion rather than a test-only artifact. Timer names are
-// §23's six kebab-case kinds: handshake-deadline, confirmation-deadline,
-// backoff, staleness, repair-poll, poll-retry.
+// §23's eight kebab-case kinds: handshake-deadline, confirmation-deadline,
+// backoff, staleness, repair-poll, poll-retry, renew-due, renew-ack-deadline.
 type Clock interface {
 	// Now returns the current time. Monotonic discipline: readings are used
 	// only for deltas, never persisted.
