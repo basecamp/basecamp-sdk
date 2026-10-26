@@ -4364,8 +4364,10 @@ takes. That is why nothing in this section is terminal.
    answer is the attempt's. "Once" is judged when the frame is OBSERVED, which is when it
    is handed to the state machine (State Machine above), not when the state machine
    dequeues it: a reply already queued when the command went out — a previous attempt's
-   late answer — is not this attempt's. It is acted on only once the write's outcome is
-   in: a reply
+   late answer — is not this attempt's. (One read AFTER the command went out cannot be
+   told apart, since the server does not correlate its replies; mistaking it costs at most
+   that deadline, which the lease and the reconnect cycle recover.) It is acted on only
+   once the write's outcome is in: a reply
    that beats it is PARKED until then, so a write that then fails is still the socket's
    failure, a write that never completes still meets the deadline, and no attempt ever
    ends with its write unobserved — the next attempt never writes beside one that did not

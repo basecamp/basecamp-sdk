@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"sync/atomic"
 	"time"
 )
 
@@ -160,14 +162,19 @@ type renewExchange struct {
 	// written carries the write's outcome; nil until the write starts and
 	// once consumed.
 	written chan renewWrite
-	// sent reports that the renew command's write has started, and sentSeq
-	// how many frames the pump had read off the socket when it did. A reply
-	// is the attempt's only when the pump read it AFTER that — a frame read
-	// before the command went out cannot answer it, however late the state
-	// machine dequeues it (SPEC.md §23: a frame is observed when it is handed
-	// to the state machine, not when it is taken off the queue).
+	// sent reports that the renew command's write has been launched, and
+	// sentSeq how many frames the pump had read off the socket when the
+	// writer began it — stored by the writer itself, immediately before the
+	// write, and math.MaxUint64 until then. A reply is the attempt's only when
+	// the pump read it AFTER that — a frame read before the command went out
+	// cannot answer it, however late the state machine dequeues it (SPEC.md
+	// §23: a frame is observed when it is handed to the state machine, not
+	// when it is taken off the queue). What no client can tell apart is a
+	// previous attempt's answer read after this command went out; the server
+	// does not correlate its replies, and the cost of mistaking one is this
+	// deadline given up — the lease and the reconnect recover it.
 	sent    bool
-	sentSeq uint64
+	sentSeq atomic.Uint64
 	// reply is a reply that arrived while the write's outcome was still out,
 	// parked until it is in. The first one is kept: there is one renewal in
 	// flight, so a second reply answers nothing.
@@ -344,10 +351,11 @@ func (l *loop) renewMinted(at *attempt, pending Timer, r renewMint) (cycleOutcom
 	command := renewCommand(l.identifier, r.ticket.Ticket)
 	written := make(chan renewWrite, 1)
 	ex.written = written
+	ex.sentSeq.Store(math.MaxUint64)
 	ex.sent = true
-	ex.sentSeq = at.lc.read.Load()
 	go func() {
 		var w renewWrite
+		ex.sentSeq.Store(at.lc.read.Load())
 		w.panicked = capturePanic(func() { w.err = at.lc.conn.WriteFrame(at.ctx, command) })
 		written <- w
 	}()
@@ -487,7 +495,7 @@ func (l *loop) ackFired(ex *renewExchange) bool {
 // parked until that outcome is in (renewExchange).
 func (l *loop) renewReply(at *attempt, pending Timer, f frame, seq uint64) (cycleOutcome, bool) {
 	rn := at.renew
-	if rn == nil || rn.ex == nil || !rn.ex.sent || seq <= rn.ex.sentSeq {
+	if rn == nil || rn.ex == nil || !rn.ex.sent || seq <= rn.ex.sentSeq.Load() {
 		return cycleOutcome{}, false
 	}
 	if ex := rn.ex; ex.written != nil {
