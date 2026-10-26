@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -150,6 +151,10 @@ const pumpDepth = 256
 type pumpItem struct {
 	data []byte
 	err  error
+	// seq is the frame's place in the socket's read order, stamped by the
+	// pump as it reads — what lets the renewal tell a reply read after its
+	// command went out from one that was already queued (renew.go).
+	seq uint64
 }
 
 // seamPanic is a panic captured on a worker goroutine, carried back to the
@@ -181,6 +186,9 @@ type liveConn struct {
 	frames chan pumpItem
 	stale  *staleHolder
 	hooks  testHooks
+	// read counts the frames the pump has read off the socket; each frame's
+	// seq is the count at its read.
+	read atomic.Uint64
 }
 
 // newLiveConn arms staleness (socket open) and then starts the pump, in that
@@ -212,7 +220,7 @@ func (lc *liveConn) pump(ctx context.Context) {
 			return
 		}
 		lc.stale.reset()
-		if !lc.handOff(ctx, pumpItem{data: data}) {
+		if !lc.handOff(ctx, pumpItem{data: data, seq: lc.read.Add(1)}) {
 			return
 		}
 	}

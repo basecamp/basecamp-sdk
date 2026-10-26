@@ -4343,15 +4343,17 @@ takes. That is why nothing in this section is terminal.
      the current one (`invalid_reply`); a mint that fails, of ANY kind, or has not
      produced a ticket when the deadline lapses (`mint_failed` — the outstanding mint is
      cancelled and JOINED, so a panic it raises on cancellation reaches the consumer as
-     every seam panic does); a command written and unanswered at the deadline
+     every seam panic does, and a Close or a staleness expiry during the join still
+     outranks the failure); a command written and unanswered at the deadline
      (`no_reply`). `Observer.renew_failed(kind, retrying)` fires. The first
      failure against a deadline is retried once, `EVENT_FEED_RENEW_MIN_INTERVAL` later
      (`EVENT_FEED_RENEW_ATTEMPTS` = 2); the second gives that deadline up, and the socket
      runs to the server's lease.
    - The renew command's write is the socket's: a write that fails takes transition 25's
      socket-failure edge, and so does a write still outstanding when the deadline lapses —
-     the peer is not reading. A write whose completion is merely not yet observed when the
-     deadline is handled is not outstanding: its outcome is taken first.
+     the peer is not reading; the teardown returns that write, which is then joined as the
+     mint is. A write whose completion is merely not yet observed when the deadline is
+     handled is not outstanding: its outcome is taken first.
 6. **Never terminal, never counted.** No renewal outcome ends iteration, and none touches
    the shared authorization counter — an unauthorized renewal mint is a failed attempt
    and nothing more. An unrenewed socket closes with `remote`, and the reconnect cycle's
@@ -4359,7 +4361,11 @@ takes. That is why nothing in this section is terminal.
    checkpoint, delivery, or dedupe.
 7. **Replies attach to the attempt in flight, once its command's write has begun** — a
    server can answer a frame before the client observes its write complete, and that
-   answer is the attempt's. It is acted on only once the write's outcome is in: a reply
+   answer is the attempt's. "Once" is judged when the frame is OBSERVED, which is when it
+   is handed to the state machine (State Machine above), not when the state machine
+   dequeues it: a reply already queued when the command went out — a previous attempt's
+   late answer — is not this attempt's. It is acted on only once the write's outcome is
+   in: a reply
    that beats it is PARKED until then, so a write that then fails is still the socket's
    failure, a write that never completes still meets the deadline, and no attempt ever
    ends with its write unobserved — the next attempt never writes beside one that did not

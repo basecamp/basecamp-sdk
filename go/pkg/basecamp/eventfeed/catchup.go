@@ -1358,7 +1358,7 @@ func (l *loop) handleLiveFrame(at *attempt, pending Timer, item pumpItem, delive
 	case frameRenewed, frameRenewRefused:
 		// The answer to a renewal in flight — or liveness, when nothing is
 		// (renewReply).
-		return l.renewReply(at, pending, f)
+		return l.renewReply(at, pending, f, item.seq)
 	default:
 		// welcome, ping, unknown types, and a post-confirmation confirm or
 		// reject: liveness only — the pump already reset staleness. A

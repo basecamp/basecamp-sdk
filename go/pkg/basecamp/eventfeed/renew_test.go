@@ -942,3 +942,169 @@ func renewalMintPanicPropagates(t *testing.T, onCancel bool) {
 	}
 	assertTimers(t, clock, map[string]int{})
 }
+
+// TestRenewalReplyReadBeforeTheCommandIsNotItsAnswer: a reply the pump read
+// before an attempt's command went out cannot answer that attempt, however
+// late the state machine dequeues it. Here the first attempt goes unanswered
+// and its refusal arrives late: read while the consumer is held, with the
+// retry's mint finished behind it, so the select can start the retry's write
+// before it dequeues the refusal. The retry's own acknowledgement must still
+// count — judged at dequeue, the stale refusal would be the retry's second
+// failure, and the deadline would be given up on a renewal the server granted.
+func TestRenewalReplyReadBeforeTheCommandIsNotItsAnswer(t *testing.T) {
+	for run := range 8 {
+		t.Run(fmt.Sprint(run), func(t *testing.T) {
+			log := newRenewLog()
+			h, gm := newGatedHarness(t, eventfeed.WithObserver(log.observer()))
+			deadline := h.clock.Now().Add(time.Hour)
+			conn := streamAdvertised(t, h, deadline)
+			h.minter.ScriptTicket(ticket(2))
+			renewOnce(t, h, conn)
+			h.fireTimer(timerRenewAckDeadline)
+			log.await(t, "renew_failed no_reply true")
+
+			h.minter.ScriptTicket(ticket(3))
+			open := gm.hold(3)
+			h.fireTimer(timerRenewDue)
+			h.waitUntil("the retry's mint to be in flight", func() bool { return gm.calls() == 3 })
+			parkInDelivery(t, h, conn, 1)
+			conn.Serve(frameRenewRefused())
+			h.serveSettled(conn)
+			open()
+			h.waitUntil("the retry's mint to finish", func() bool { return gm.returned() == 3 })
+			h.resume()
+
+			awaitWrite(t, h, conn, 3)
+			conn.Serve(frameRenewed(deadline.Add(time.Hour)))
+			log.await(t, "renewed")
+			if got := log.count("renew_failed"); got != 1 {
+				t.Fatalf("renew_failed records = %d, want only the first attempt's: %v", got, log.snapshot())
+			}
+		})
+	}
+}
+
+// closingRenewalMinter answers the first mint, and closes the connector from
+// inside the second — the renewal's — once the acknowledgement deadline
+// cancels it: a Close taken while the lapse joins the mint.
+type closingRenewalMinter struct {
+	conn *eventfeed.Connector
+
+	mu    sync.Mutex
+	calls int
+}
+
+func (m *closingRenewalMinter) MintStreamTicket(ctx context.Context) (eventfeed.StreamTicket, error) {
+	m.mu.Lock()
+	m.calls++
+	n := m.calls
+	m.mu.Unlock()
+	if n == 1 {
+		return ticket(1), nil
+	}
+	<-ctx.Done()
+	m.conn.Close()
+	return eventfeed.StreamTicket{}, ctx.Err()
+}
+
+// TestRenewalCloseDuringTheMintJoinOutranksTheFailure: the lapse joins a
+// cancelled mint, and the join is host code's time — a Close taken during it
+// ends the run, and no failure or retry is reported for the feed it ended.
+func TestRenewalCloseDuringTheMintJoinOutranksTheFailure(t *testing.T) {
+	log := newRenewLog()
+	minter := &closingRenewalMinter{}
+	h := newHarnessWithSeams(t, minter, nil, eventfeed.WithObserver(log.observer()))
+	minter.conn = h.conn
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+	conn := h.liveConn()
+	conn.Serve(welcomeAdvertising(h.clock.Now().Add(time.Hour)))
+	h.awaitTimer(timerConfirmationDeadline)
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitStreaming()
+
+	h.fireTimer(timerRenewDue)
+	h.fireTimer(timerRenewAckDeadline)
+	h.join()
+	if got := log.count("renew_failed"); got != 0 {
+		t.Fatalf("a renewal failure was reported after Close: %v", log.snapshot())
+	}
+	assertTimers(t, h.clock, map[string]int{})
+}
+
+// cancelPanickingWriteTransport hands out conns whose renew write blocks
+// until it is cancelled or the conn is closed, and then panics.
+type cancelPanickingWriteTransport struct{ inner *feedtest.Transport }
+
+func (p *cancelPanickingWriteTransport) Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (eventfeed.CableConn, error) {
+	conn, err := p.inner.Dial(ctx, wsURL, maxFrameBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &cancelPanickingWriteConn{CableConn: conn, closed: make(chan struct{})}, nil
+}
+
+type cancelPanickingWriteConn struct {
+	eventfeed.CableConn
+	once   sync.Once
+	closed chan struct{}
+}
+
+func (c *cancelPanickingWriteConn) WriteFrame(ctx context.Context, data []byte) error {
+	if !strings.Contains(string(data), `"command":"renew"`) {
+		return c.CableConn.WriteFrame(ctx, data)
+	}
+	select {
+	case <-ctx.Done():
+	case <-c.closed:
+	}
+	panic("host connection panicked as its renew write was abandoned")
+}
+
+func (c *cancelPanickingWriteConn) Close(code int, reason string) error {
+	c.once.Do(func() { close(c.closed) })
+	return c.CableConn.Close(code, reason)
+}
+
+// TestRenewalWritePanicOnTeardownPropagates: a renew write still blocked at
+// the deadline is the socket's failure, and the teardown that returns it is
+// followed by a join — a panic the write raised on the way out reaches the
+// consumer, as the mint's does.
+func TestRenewalWritePanicOnTeardownPropagates(t *testing.T) {
+	base := newHarness(t)
+	h := newHarness(t, eventfeed.WithTransport(&cancelPanickingWriteTransport{inner: base.tr}))
+	h.tr = base.tr
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptTicket(ticket(2))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	sent := make(chan struct{}, 1)
+	h.conn.OnRenewSent(func() { sent <- struct{}{} })
+	recovered := make(chan any, 1)
+	go func() {
+		defer func() { recovered <- recover() }()
+		for range h.conn.Events(context.Background()) {
+		}
+	}()
+	h.awaitTimer(timerStaleness)
+	conn := h.tr.LastConn()
+	conn.Serve(welcomeAdvertising(h.clock.Now().Add(time.Hour)))
+	h.awaitTimer(timerConfirmationDeadline)
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitTimer(timerRenewDue)
+	h.fireTimer(timerRenewDue)
+	select {
+	case <-sent:
+	case <-time.After(watchdog):
+		t.Fatal("the renew write did not begin")
+	}
+	h.fireTimer(timerRenewAckDeadline)
+	select {
+	case r := <-recovered:
+		if s, _ := r.(string); s != "host connection panicked as its renew write was abandoned" {
+			t.Fatalf("recovered %v, want the write's own panic value", r)
+		}
+	case <-time.After(watchdog):
+		t.Fatal("the iteration neither panicked nor returned")
+	}
+	assertTimers(t, h.clock, map[string]int{})
+}

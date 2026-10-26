@@ -160,9 +160,14 @@ type renewExchange struct {
 	// written carries the write's outcome; nil until the write starts and
 	// once consumed.
 	written chan renewWrite
-	// sent reports that the renew command's write has started. From then on
-	// a reply is the attempt's.
-	sent bool
+	// sent reports that the renew command's write has started, and sentSeq
+	// how many frames the pump had read off the socket when it did. A reply
+	// is the attempt's only when the pump read it AFTER that — a frame read
+	// before the command went out cannot answer it, however late the state
+	// machine dequeues it (SPEC.md §23: a frame is observed when it is handed
+	// to the state machine, not when it is taken off the queue).
+	sent    bool
+	sentSeq uint64
 	// reply is a reply that arrived while the write's outcome was still out,
 	// parked until it is in. The first one is kept: there is one renewal in
 	// flight, so a second reply answers nothing.
@@ -283,15 +288,16 @@ func (l *loop) renewChannels(at *attempt, repair Timer) renewSelect {
 func (l *loop) renewDue(at *attempt, pending Timer) (cycleOutcome, bool) {
 	rn := at.renew
 	rn.due = nil
-	// The expired window outranks the renewal exactly as it outranks the
+	// Close outranks everything, the staleness teardown's reports included;
+	// then the expired window outranks the renewal exactly as it outranks the
 	// repair cadence: a mint for a socket whose staleness verdict is already
 	// in is a renewal of a socket about to be torn down.
-	if out, done := l.expiredStaleness(at, pending); done {
-		return out, true
-	}
 	if l.runCtx.Err() != nil {
 		l.disposeAttempt(at, pending)
 		return cycleOutcome{kind: outcomeClosed}, true
+	}
+	if out, done := l.expiredStaleness(at, pending); done {
+		return out, true
 	}
 	rn.scheduled = false
 	ctx, cancel := context.WithCancel(at.ctx)
@@ -339,6 +345,7 @@ func (l *loop) renewMinted(at *attempt, pending Timer, r renewMint) (cycleOutcom
 	written := make(chan renewWrite, 1)
 	ex.written = written
 	ex.sent = true
+	ex.sentSeq = at.lc.read.Load()
 	go func() {
 		var w renewWrite
 		w.panicked = capturePanic(func() { w.err = at.lc.conn.WriteFrame(at.ctx, command) })
@@ -413,11 +420,20 @@ func (l *loop) renewExpired(at *attempt, pending Timer) (cycleOutcome, bool) {
 		if r.panicked != nil {
 			panic(r.panicked.value)
 		}
+		// The join is host code's time: a Close taken during it, or a window
+		// that expired across it, outranks the failure it was about to report.
+		if l.runCtx.Err() != nil {
+			l.disposeAttempt(at, pending)
+			return cycleOutcome{kind: outcomeClosed}, true
+		}
+		if out, done := l.expiredStaleness(at, pending); done {
+			return out, true
+		}
 		return l.renewFailed(at, pending, RenewMintFailed)
 	}
-	if ex.written != nil {
+	if written := ex.written; written != nil {
 		select {
-		case w := <-ex.written:
+		case w := <-written:
 			ex.written = nil
 			if w.panicked != nil {
 				panic(w.panicked.value)
@@ -426,7 +442,15 @@ func (l *loop) renewExpired(at *attempt, pending Timer) (cycleOutcome, bool) {
 				return l.failSocket(at, pending, w.err), true
 			}
 		default:
-			return l.failSocket(at, pending, errRenewWriteLapsed), true
+			// The teardown closes the socket and cancels the attempt, which
+			// returns the blocked write promptly (CableConn), and the write is
+			// then JOINED as the mint is: a panic it raised on the way out is
+			// the host's, and reaches the consumer.
+			out := l.failSocket(at, pending, errRenewWriteLapsed)
+			if w := <-written; w.panicked != nil {
+				panic(w.panicked.value)
+			}
+			return out, true
 		}
 	}
 	return l.renewFailed(at, pending, RenewNoReply)
@@ -453,16 +477,17 @@ func (l *loop) ackFired(ex *renewExchange) bool {
 }
 
 // renewReply takes a `renewed` or `renew_refused` frame. Only an attempt
-// whose command has been sent can be answered; any other reply — on a socket
-// that advertised nothing, between attempts, after an attempt already ended —
-// is liveness, as an unknown frame type is. A late `renewed` is not adopted:
+// whose command has been sent can be answered, and only by a frame the pump
+// read after it went out; any other reply — on a socket that advertised
+// nothing, between attempts, after an attempt already ended, or read before
+// this attempt's command was sent — is liveness, as an unknown frame type is. A late `renewed` is not adopted:
 // the attempt it answered was already counted, and the worst that follows is
 // the lease closing a socket the connector stopped renewing, which the
 // reconnect cycle recovers. A reply that beats its own write's outcome is
 // parked until that outcome is in (renewExchange).
-func (l *loop) renewReply(at *attempt, pending Timer, f frame) (cycleOutcome, bool) {
+func (l *loop) renewReply(at *attempt, pending Timer, f frame, seq uint64) (cycleOutcome, bool) {
 	rn := at.renew
-	if rn == nil || rn.ex == nil || !rn.ex.sent {
+	if rn == nil || rn.ex == nil || !rn.ex.sent || seq <= rn.ex.sentSeq {
 		return cycleOutcome{}, false
 	}
 	if ex := rn.ex; ex.written != nil {
