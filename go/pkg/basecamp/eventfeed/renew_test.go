@@ -393,31 +393,264 @@ func TestRenewalWriteOutstandingAtTheDeadlineIsASocketFailure(t *testing.T) {
 }
 
 // TestRenewalReplyBeforeTheWriteCompletes: the server can answer a frame
-// before the client observes its write complete, and that answer is the
-// attempt's — attributing it only after the write's completion would discard
-// a renewal the server granted.
+// before the client observes its write complete. That answer is the
+// attempt's, but the attempt is not over until the write's outcome is in, so
+// the reply is parked behind it: taken once the write lands, discarded when the
+// write fails — the socket's failure, whatever the reply said — and when the
+// write never lands, the deadline finds a socket that is not reading.
 func TestRenewalReplyBeforeTheWriteCompletes(t *testing.T) {
-	log := newRenewLog()
-	h := newHarness(t, eventfeed.WithObserver(log.observer()))
-	sent := make(chan struct{}, 1)
-	h.conn.OnRenewSent(func() { sent <- struct{}{} })
-	deadline := h.clock.Now().Add(time.Hour)
-	conn := streamAdvertised(t, h, deadline)
-	h.minter.ScriptTicket(ticket(2))
-	conn.StallWrites()
+	for _, tc := range []struct {
+		name string
+		// land settles the held write, after the reply was parked.
+		land func(h *harness, conn *feedtest.Conn)
+		// renewed is whether the parked reply is taken.
+		renewed bool
+		// cause is the teardown cause, when the socket goes down.
+		cause error
+	}{
+		{"the write lands", func(_ *harness, conn *feedtest.Conn) { conn.ReleaseWrites() }, true, nil},
+		{"the write fails", func(_ *harness, conn *feedtest.Conn) {
+			conn.FailWrites(errors.New("broken pipe"))
+			conn.ReleaseWrites()
+		}, false, eventfeed.ExportSocketFailedErr()},
+		{"the write never lands", func(h *harness, _ *feedtest.Conn) {
+			h.fireTimer(timerRenewAckDeadline)
+		}, false, eventfeed.ExportRenewWriteLapsedErr()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			log := newRenewLog()
+			var mu sync.Mutex
+			var causes []error
+			obs := log.observer()
+			obs.Disconnected = func(_ string, err error) { mu.Lock(); causes = append(causes, err); mu.Unlock() }
+			h := newHarness(t, eventfeed.WithObserver(obs))
+			sent := make(chan struct{}, 1)
+			h.conn.OnRenewSent(func() { sent <- struct{}{} })
+			deadline := h.clock.Now().Add(time.Hour)
+			conn := streamAdvertised(t, h, deadline)
+			h.minter.ScriptTicket(ticket(2))
+			conn.StallWrites()
 
-	h.fireTimer(timerRenewDue)
-	select {
-	case <-sent:
-	case <-time.After(watchdog):
-		t.Fatal("the renew write did not begin")
+			h.fireTimer(timerRenewDue)
+			select {
+			case <-sent:
+			case <-time.After(watchdog):
+				t.Fatal("the renew write did not begin")
+			}
+			conn.Serve(frameRenewed(deadline.Add(time.Hour)))
+			h.serveSettled(conn)
+			h.awaitFrameHandled("renewed")
+			h.awaitFrameHandled("ping")
+			if got := log.count("renewed"); got != 0 {
+				t.Fatalf("a reply was taken before its write's outcome was in: %v", log.snapshot())
+			}
+			assertTimers(t, h.clock, map[string]int{timerStaleness: 1, timerRepairPoll: 1, timerRenewAckDeadline: 1})
+
+			tc.land(h, conn)
+			if tc.renewed {
+				log.await(t, "renewed")
+				h.awaitTimer(timerRenewDue)
+				assertTimers(t, h.clock, map[string]int{timerStaleness: 1, timerRepairPoll: 1, timerRenewDue: 1})
+				if conn.Closed() {
+					t.Fatal("an acknowledged renewal must leave the socket open")
+				}
+				return
+			}
+			h.awaitTimer(timerBackoff)
+			assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
+			if got := log.count("renewed"); got != 0 {
+				t.Fatalf("a parked reply was taken over the write's failure: %v", log.snapshot())
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if len(causes) != 1 || !errors.Is(causes[0], tc.cause) {
+				t.Fatalf("disconnect causes = %v, want exactly %v", causes, tc.cause)
+			}
+		})
 	}
-	conn.Serve(frameRenewed(deadline.Add(time.Hour)))
-	log.await(t, "renewed")
-	h.awaitTimer(timerRenewDue)
-	assertTimers(t, h.clock, map[string]int{timerStaleness: 1, timerRepairPoll: 1, timerRenewDue: 1})
-	if conn.Closed() {
-		t.Fatal("an acknowledged renewal must leave the socket open")
+}
+
+// parkInDelivery serves one live event with the collector set to park inside
+// its delivery, and returns once it has: the state machine is then held, so
+// whatever the test makes ready next is ready TOGETHER when resume lets the
+// select run again — the both-ready interleavings no other ordering can force.
+func parkInDelivery(t *testing.T, h *harness, conn *feedtest.Conn, id int64) {
+	t.Helper()
+	h.mu.Lock()
+	h.pauseAfter = len(h.events) + 1
+	h.mu.Unlock()
+	conn.Serve(frameMessage(noFilterIdentifier, id))
+	h.waitUntil("the consumer to park in its delivery", func() bool {
+		events, _, _ := h.snapshot()
+		return len(events) == int(id)
+	})
+}
+
+// gatedMinter answers through the harness's scripted minter, holding one call
+// of the test's choosing until the test opens its gate — how a mint's outcome
+// is made ready at a moment the test picks.
+type gatedMinter struct {
+	inner *feedtest.Minter
+
+	mu       sync.Mutex
+	n, done  int
+	gateCall int
+	gate     chan struct{}
+}
+
+// newGatedHarness is newHarness over a gatedMinter wrapping its scripted
+// minter.
+func newGatedHarness(t *testing.T, opts ...eventfeed.Option) (*harness, *gatedMinter) {
+	t.Helper()
+	gm := &gatedMinter{}
+	h := newHarnessWithSeams(t, gm, nil, opts...)
+	gm.inner = h.minter
+	return h, gm
+}
+
+// hold gates the nth mint call (1-based) and returns the function that opens
+// the gate.
+func (m *gatedMinter) hold(n int) func() {
+	gate := make(chan struct{})
+	m.mu.Lock()
+	m.gateCall, m.gate = n, gate
+	m.mu.Unlock()
+	return func() { close(gate) }
+}
+
+func (m *gatedMinter) calls() int    { m.mu.Lock(); defer m.mu.Unlock(); return m.n }
+func (m *gatedMinter) returned() int { m.mu.Lock(); defer m.mu.Unlock(); return m.done }
+
+func (m *gatedMinter) MintStreamTicket(ctx context.Context) (eventfeed.StreamTicket, error) {
+	m.mu.Lock()
+	m.n++
+	gated := m.n == m.gateCall
+	gate := m.gate
+	m.mu.Unlock()
+	if gated {
+		select {
+		case <-gate:
+		case <-ctx.Done():
+		}
+	}
+	ticket, err := m.inner.MintStreamTicket(ctx)
+	m.mu.Lock()
+	m.done++
+	m.mu.Unlock()
+	return ticket, err
+}
+
+// TestRenewalDeadlineOutranksWhatIsReadyWithIt: when the acknowledgement
+// deadline and an attempt's next step are ready together, the select picks one
+// at random, and the deadline must win either way — a reply, a mint's ticket
+// or a write's completion that the deadline fired ahead of is the deadline's.
+// Each case is run repeatedly, so an implementation that lets the select
+// decide fails on most runs rather than half of one.
+func TestRenewalDeadlineOutranksWhatIsReadyWithIt(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		// arrange starts the attempt and holds its next step back.
+		arrange func(t *testing.T, h *harness, gm *gatedMinter, conn *feedtest.Conn, sent <-chan struct{}) (release func())
+		want    string
+	}{
+		{
+			name: "a reply",
+			arrange: func(t *testing.T, h *harness, _ *gatedMinter, conn *feedtest.Conn, _ <-chan struct{}) func() {
+				h.minter.ScriptTicket(ticket(2))
+				renewOnce(t, h, conn)
+				return func() { conn.Serve(frameRenewed(h.clock.Now().Add(2 * time.Hour))); h.serveSettled(conn) }
+			},
+			want: "renew_failed no_reply true",
+		},
+		{
+			name: "a minted ticket",
+			arrange: func(t *testing.T, h *harness, gm *gatedMinter, _ *feedtest.Conn, _ <-chan struct{}) func() {
+				h.minter.ScriptTicket(ticket(2))
+				open := gm.hold(2)
+				h.fireTimer(timerRenewDue)
+				h.waitUntil("the renewal mint to be in flight", func() bool { return gm.calls() == 2 })
+				return func() {
+					open()
+					h.waitUntil("the mint's outcome to be ready", func() bool { return gm.returned() == 2 })
+				}
+			},
+			want: "renew_failed mint_failed true",
+		},
+		{
+			name: "a completed write",
+			arrange: func(t *testing.T, h *harness, _ *gatedMinter, conn *feedtest.Conn, sent <-chan struct{}) func() {
+				h.minter.ScriptTicket(ticket(2))
+				conn.StallWrites()
+				h.fireTimer(timerRenewDue)
+				select {
+				case <-sent:
+				case <-time.After(watchdog):
+					t.Fatal("the renew write did not begin")
+				}
+				return func() {
+					conn.ReleaseWrites()
+					h.waitUntil("the write to land", func() bool { return len(conn.Writes()) == 2 })
+				}
+			},
+			want: "renew_failed no_reply true",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for run := range 8 {
+				t.Run(fmt.Sprint(run), func(t *testing.T) {
+					log := newRenewLog()
+					h, gm := newGatedHarness(t, eventfeed.WithObserver(log.observer()))
+					sent := make(chan struct{}, 1)
+					h.conn.OnRenewSent(func() { sent <- struct{}{} })
+					conn := streamAdvertised(t, h, h.clock.Now().Add(time.Hour))
+					release := tc.arrange(t, h, gm, conn, sent)
+
+					parkInDelivery(t, h, conn, 1)
+					release()
+					h.fireTimer(timerRenewAckDeadline)
+					h.resume()
+
+					log.await(t, "renew_failed")
+					if got := log.snapshot(); got[len(got)-1] != tc.want {
+						t.Fatalf("observer records = %v, want the deadline's %q last", got, tc.want)
+					}
+					if got := log.count("renewed"); got != 0 {
+						t.Fatalf("the deadline lost to what was ready with it: %v", log.snapshot())
+					}
+					if conn.Closed() {
+						t.Fatal("a lapsed renewal must leave a healthy socket open")
+					}
+					if got := len(conn.Writes()); tc.name == "a minted ticket" && got != 1 {
+						t.Fatalf("writes = %d, want only the subscribe — a mint the deadline fired ahead of starts no write", got)
+					}
+				})
+			}
+		})
+	}
+}
+
+// TestRenewalCloseOutranksTheDeadline: a Close taken while the deadline's
+// firing is ready ends the run with no renewal reported — no failure, no
+// retry scheduled for a feed the consumer ended.
+func TestRenewalCloseOutranksTheDeadline(t *testing.T) {
+	for run := range 8 {
+		t.Run(fmt.Sprint(run), func(t *testing.T) {
+			log := newRenewLog()
+			h := newHarness(t, eventfeed.WithObserver(log.observer()))
+			conn := streamAdvertised(t, h, h.clock.Now().Add(time.Hour))
+			h.minter.ScriptTicket(ticket(2))
+			renewOnce(t, h, conn)
+
+			parkInDelivery(t, h, conn, 1)
+			h.fireTimer(timerRenewAckDeadline)
+			h.conn.Close()
+			h.resume()
+			h.join()
+			if got := log.count("renew_failed"); got != 0 {
+				t.Fatalf("a renewal failure was reported after Close: %v", log.snapshot())
+			}
+			assertTimers(t, h.clock, map[string]int{})
+		})
 	}
 }
 
@@ -618,13 +851,15 @@ func TestRenewalScheduleSurvivesARepairWalk(t *testing.T) {
 }
 
 // panickingRenewalMinter answers the first mint and panics on the second —
-// the renewal's.
+// the renewal's — at once, or only once its context is cancelled.
 type panickingRenewalMinter struct {
+	onCancel bool
+
 	mu    sync.Mutex
 	calls int
 }
 
-func (m *panickingRenewalMinter) MintStreamTicket(context.Context) (eventfeed.StreamTicket, error) {
+func (m *panickingRenewalMinter) MintStreamTicket(ctx context.Context) (eventfeed.StreamTicket, error) {
 	m.mu.Lock()
 	m.calls++
 	n := m.calls
@@ -632,18 +867,32 @@ func (m *panickingRenewalMinter) MintStreamTicket(context.Context) (eventfeed.St
 	if n == 1 {
 		return ticket(1), nil
 	}
+	if m.onCancel {
+		<-ctx.Done()
+	}
 	panic("host minter panicked during a renewal")
 }
 
 // TestRenewalMintPanicPropagates: the renewal's mint runs on its own
 // goroutine, and a panic there is re-raised on the consumer's, as every other
 // seam's is — with the attempt, renewal timers included, disposed on the way.
+// That holds for a mint that panics only when the acknowledgement deadline
+// cancels it, too: the lapse joins the cancelled mint rather than abandoning
+// it.
 func TestRenewalMintPanicPropagates(t *testing.T) {
+	for _, onCancel := range []bool{false, true} {
+		t.Run(fmt.Sprintf("on cancellation %t", onCancel), func(t *testing.T) {
+			renewalMintPanicPropagates(t, onCancel)
+		})
+	}
+}
+
+func renewalMintPanicPropagates(t *testing.T, onCancel bool) {
 	clock := feedtest.NewClock()
 	tr := feedtest.NewTransport()
 	polls := feedtest.NewPolls()
 	polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
-	c, err := eventfeed.New(testOrigin, "5951425", &panickingRenewalMinter{}, polls,
+	c, err := eventfeed.New(testOrigin, "5951425", &panickingRenewalMinter{onCancel: onCancel}, polls,
 		eventfeed.WithTransport(tr), eventfeed.WithClock(clock))
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -676,6 +925,10 @@ func TestRenewalMintPanicPropagates(t *testing.T) {
 	}
 	clock.AwaitTimer(timerRenewDue)
 	clock.FireTimer(timerRenewDue)
+	if onCancel {
+		clock.AwaitTimer(timerRenewAckDeadline)
+		clock.FireTimer(timerRenewAckDeadline)
+	}
 	select {
 	case r := <-recovered:
 		if s, _ := r.(string); s != "host minter panicked during a renewal" {

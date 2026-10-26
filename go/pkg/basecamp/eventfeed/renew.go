@@ -131,23 +131,42 @@ type renewal struct {
 
 // renewExchange is one renewal attempt in flight: the mint, then the write,
 // then the wait for the reply, all under one acknowledgement deadline.
+//
+// The deadline is AUTHORITATIVE. When it and a mint's result, a write's
+// result or a reply are ready together, the select picks one at random, so
+// every arm that would move the attempt forward first asks whether the
+// deadline has already fired — Stop's result is the ordering discriminator,
+// as it is for the handshake and confirmation deadlines — and an attempt the
+// deadline has fired on fails as the deadline says.
+//
+// An attempt also never ends with its write unobserved. A reply can beat the
+// write's completion to the state machine (the server answers a frame the
+// moment it has it), so a reply that arrives while the write's outcome is
+// still out is PARKED, and taken once that outcome is in: a failed write is
+// then the socket's failure whatever the reply said, a write still blocked at
+// the deadline is a socket that is not reading, and no second attempt can
+// start a write beside one that never returned.
 type renewExchange struct {
 	// cancel cancels the mint. The write rides the attempt's own context and
 	// is never cancelled on its own: a cancelled write may abort the socket
-	// it is writing to, and a write in flight is what a reply answers.
+	// it is writing to.
 	cancel context.CancelFunc
-	// ack is the renew-ack-deadline timer, nil once fired.
-	ack Timer
+	// ack is the renew-ack-deadline timer, nil once fired. deadline is the
+	// instant it was armed for, so a re-arm keeps the attempt's one bound.
+	ack      Timer
+	deadline time.Time
 	// minted carries the mint's outcome; nil once consumed.
 	minted chan renewMint
 	// written carries the write's outcome; nil until the write starts and
 	// once consumed.
 	written chan renewWrite
 	// sent reports that the renew command's write has started. From then on
-	// a reply is attributable to it — including one that arrives before the
-	// write's own completion is observed, since the server can only answer a
-	// frame it has received.
+	// a reply is the attempt's.
 	sent bool
+	// reply is a reply that arrived while the write's outcome was still out,
+	// parked until it is in. The first one is kept: there is one renewal in
+	// flight, so a second reply answers nothing.
+	reply *frame
 }
 
 type renewMint struct {
@@ -211,8 +230,8 @@ func (rn *renewal) stop() {
 }
 
 // endExchange retires the attempt in flight, if any: its deadline stopped and
-// its mint cancelled. A write still in flight is left to finish on the
-// attempt's context.
+// its mint cancelled. Outside a teardown it is only ever reached with the
+// write's outcome in (renewExchange), so no write is left behind it.
 func (rn *renewal) endExchange() {
 	ex := rn.ex
 	if ex == nil {
@@ -278,9 +297,10 @@ func (l *loop) renewDue(at *attempt, pending Timer) (cycleOutcome, bool) {
 	ctx, cancel := context.WithCancel(at.ctx)
 	minted := make(chan renewMint, 1)
 	rn.ex = &renewExchange{
-		cancel: cancel,
-		ack:    l.cfg.clock.NewTimer(renewAckDeadline, timerRenewAckDeadline),
-		minted: minted,
+		cancel:   cancel,
+		deadline: l.cfg.clock.Now().Add(renewAckDeadline),
+		ack:      l.cfg.clock.NewTimer(renewAckDeadline, timerRenewAckDeadline),
+		minted:   minted,
 	}
 	go func() {
 		var r renewMint
@@ -304,11 +324,16 @@ func (l *loop) renewMinted(at *attempt, pending Timer, r renewMint) (cycleOutcom
 		l.disposeAttempt(at, pending)
 		return cycleOutcome{kind: outcomeClosed}, true
 	}
-	if r.err != nil || r.ticket.Ticket == "" {
-		return l.renewFailed(at, pending, RenewMintFailed)
-	}
 	if out, done := l.expiredStaleness(at, pending); done {
 		return out, true
+	}
+	// A mint that finished behind its deadline starts no write: the deadline
+	// had fired, and the attempt is the deadline's.
+	if l.ackFired(ex) {
+		return l.renewFailed(at, pending, RenewMintFailed)
+	}
+	if r.err != nil || r.ticket.Ticket == "" {
+		return l.renewFailed(at, pending, RenewMintFailed)
 	}
 	command := renewCommand(l.identifier, r.ticket.Ticket)
 	written := make(chan renewWrite, 1)
@@ -327,10 +352,12 @@ func (l *loop) renewMinted(at *attempt, pending Timer, r renewMint) (cycleOutcom
 
 // renewWritten takes the write's outcome. A failed write is the socket's
 // failure (CableConn: "a write failure takes the current state's
-// socket-failure path"); a completed one leaves the attempt awaiting its
-// reply.
+// socket-failure path"), whatever reply may be parked behind it; a completed
+// one takes the parked reply, if there is one, or leaves the attempt awaiting
+// it.
 func (l *loop) renewWritten(at *attempt, pending Timer, w renewWrite) (cycleOutcome, bool) {
-	at.renew.ex.written = nil
+	ex := at.renew.ex
+	ex.written = nil
 	if w.panicked != nil {
 		panic(w.panicked.value)
 	}
@@ -344,24 +371,85 @@ func (l *loop) renewWritten(at *attempt, pending Timer, w renewWrite) (cycleOutc
 	if w.err != nil {
 		return l.failSocket(at, pending, w.err), true
 	}
+	if parked := ex.reply; parked != nil {
+		ex.reply = nil
+		return l.resolveRenewal(at, pending, *parked)
+	}
 	return cycleOutcome{}, false
 }
 
-// renewLapsed is the acknowledgement deadline firing. What it means depends
-// on how far the attempt got: a mint still outstanding is a failed mint, a
-// write still outstanding is a socket that is not reading, and a command
-// written and unanswered is no reply.
+// renewLapsed is the acknowledgement deadline's arm. Close and an expired
+// staleness window outrank it as they outrank every other arm of the select —
+// a lapse taken after Close would report a failed renewal and schedule a
+// retry for a feed the consumer ended, and one taken over a dead socket's
+// verdict would report the wrong one.
 func (l *loop) renewLapsed(at *attempt, pending Timer) (cycleOutcome, bool) {
-	ex := at.renew.ex
-	ex.ack = nil
-	switch {
-	case ex.minted != nil:
-		return l.renewFailed(at, pending, RenewMintFailed)
-	case ex.written != nil:
-		return l.failSocket(at, pending, errRenewWriteLapsed), true
-	default:
-		return l.renewFailed(at, pending, RenewNoReply)
+	if l.runCtx.Err() != nil {
+		l.disposeAttempt(at, pending)
+		return cycleOutcome{kind: outcomeClosed}, true
 	}
+	if out, done := l.expiredStaleness(at, pending); done {
+		return out, true
+	}
+	at.renew.ex.ack = nil
+	return l.renewExpired(at, pending)
+}
+
+// renewExpired fails an attempt whose deadline has fired, by how far it got. A
+// mint still outstanding is cancelled and JOINED — the seam returns promptly
+// on cancellation, and a panic it raised there is re-raised on this goroutine
+// as every seam's is — and fails as mint_failed. A write still outstanding is
+// a socket that is not reading, unless its outcome is already waiting, in
+// which case that outcome is taken first: a write that completed is not a
+// stalled socket, and one that failed is the socket's failure. A command
+// written and unanswered by the deadline is no_reply, and a reply parked
+// behind the write is the deadline's too.
+func (l *loop) renewExpired(at *attempt, pending Timer) (cycleOutcome, bool) {
+	ex := at.renew.ex
+	if ex.minted != nil {
+		ex.cancel()
+		r := <-ex.minted
+		ex.minted = nil
+		if r.panicked != nil {
+			panic(r.panicked.value)
+		}
+		return l.renewFailed(at, pending, RenewMintFailed)
+	}
+	if ex.written != nil {
+		select {
+		case w := <-ex.written:
+			ex.written = nil
+			if w.panicked != nil {
+				panic(w.panicked.value)
+			}
+			if w.err != nil {
+				return l.failSocket(at, pending, w.err), true
+			}
+		default:
+			return l.failSocket(at, pending, errRenewWriteLapsed), true
+		}
+	}
+	return l.renewFailed(at, pending, RenewNoReply)
+}
+
+// ackFired reports whether the attempt's deadline has already fired, taking
+// the verdict: Stop's result is the discriminator, not the channel, which a
+// real clock fills a moment after Stop starts reporting false. A deadline that
+// has not fired is re-armed for what remains of it — the attempt keeps the one
+// bound it started with — the new timer armed before the old one is stopped,
+// so the set never passes through one without it.
+func (l *loop) ackFired(ex *renewExchange) bool {
+	if ex.ack == nil {
+		return true
+	}
+	next := l.cfg.clock.NewTimer(max(ex.deadline.Sub(l.cfg.clock.Now()), 0), timerRenewAckDeadline)
+	if !ex.ack.Stop() {
+		next.Stop()
+		ex.ack = nil
+		return true
+	}
+	ex.ack = next
+	return false
 }
 
 // renewReply takes a `renewed` or `renew_refused` frame. Only an attempt
@@ -370,11 +458,32 @@ func (l *loop) renewLapsed(at *attempt, pending Timer) (cycleOutcome, bool) {
 // is liveness, as an unknown frame type is. A late `renewed` is not adopted:
 // the attempt it answered was already counted, and the worst that follows is
 // the lease closing a socket the connector stopped renewing, which the
-// reconnect cycle recovers.
+// reconnect cycle recovers. A reply that beats its own write's outcome is
+// parked until that outcome is in (renewExchange).
 func (l *loop) renewReply(at *attempt, pending Timer, f frame) (cycleOutcome, bool) {
 	rn := at.renew
 	if rn == nil || rn.ex == nil || !rn.ex.sent {
 		return cycleOutcome{}, false
+	}
+	if ex := rn.ex; ex.written != nil {
+		if ex.reply == nil {
+			ex.reply = &f
+		}
+		return cycleOutcome{}, false
+	}
+	return l.resolveRenewal(at, pending, f)
+}
+
+// resolveRenewal ends an attempt on its reply, its write's outcome in — unless
+// the deadline fired first, in which case the attempt is the deadline's and
+// the reply answered nothing.
+func (l *loop) resolveRenewal(at *attempt, pending Timer, f frame) (cycleOutcome, bool) {
+	rn := at.renew
+	// Re-armed rather than merely stopped when it has not fired: the attempt's
+	// end below arms the next renew-due before it stops the deadline, and a
+	// deadline already stopped here would leave a moment with neither.
+	if l.ackFired(rn.ex) {
+		return l.renewFailed(at, pending, RenewNoReply)
 	}
 	switch {
 	case f.kind == frameRenewRefused:

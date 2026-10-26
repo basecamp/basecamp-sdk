@@ -4325,24 +4325,33 @@ takes. That is why nothing in this section is terminal.
    (`EVENT_FEED_RENEW_ACK_DEADLINE`, 10 s), mints one ticket through `TicketMinter` (one
    fully-governed seam call, cancellable; the stream keeps delivering while it is in
    flight), writes the renew command, and awaits the reply. The deadline bounds all
-   three. While an attempt is in flight the repair cadence is HELD, not stopped: a
-   `repair-poll` that fires meanwhile is taken when the attempt ends, so a reply is only
-   ever awaited from Streaming.
+   three, and it is AUTHORITATIVE: a mint's ticket, a write's completion or a reply that
+   is ready together with a deadline that has already fired is the deadline's, whichever
+   the implementation happens to observe first — the handshake and confirmation
+   deadlines' ordering rule, applied to the attempt (an implementation whose timers can be
+   stopped decides it by the stop's result). The deadline's own firing is in turn
+   outranked, as every arm is, by Close and by an expired staleness window. While an
+   attempt is in flight the repair cadence is HELD, not stopped: a `repair-poll` that
+   fires meanwhile is taken when the attempt ends, so a reply is only ever awaited from
+   Streaming.
 5. **Outcomes.**
    - `renewed` carrying a usable deadline later than the current one: the deadline moves,
      the failure count resets, the next `renew-due` is drawn from the new deadline — never
      sooner than `EVENT_FEED_RENEW_MIN_INTERVAL` (30 s) from now, the server's own
      one-renewal-per-30-s floor — and `Observer.renewed(expires_at)` fires.
    - A failure: `renew_refused` (`refused`); `renewed` without a usable deadline later than
-     the current one (`invalid_reply`); a mint that fails, of ANY kind, or is still in
-     flight when the deadline lapses (`mint_failed`); a command written and unanswered at
-     the deadline (`no_reply`). `Observer.renew_failed(kind, retrying)` fires. The first
+     the current one (`invalid_reply`); a mint that fails, of ANY kind, or has not
+     produced a ticket when the deadline lapses (`mint_failed` — the outstanding mint is
+     cancelled and JOINED, so a panic it raises on cancellation reaches the consumer as
+     every seam panic does); a command written and unanswered at the deadline
+     (`no_reply`). `Observer.renew_failed(kind, retrying)` fires. The first
      failure against a deadline is retried once, `EVENT_FEED_RENEW_MIN_INTERVAL` later
      (`EVENT_FEED_RENEW_ATTEMPTS` = 2); the second gives that deadline up, and the socket
      runs to the server's lease.
    - The renew command's write is the socket's: a write that fails takes transition 25's
      socket-failure edge, and so does a write still outstanding when the deadline lapses —
-     the peer is not reading.
+     the peer is not reading. A write whose completion is merely not yet observed when the
+     deadline is handled is not outstanding: its outcome is taken first.
 6. **Never terminal, never counted.** No renewal outcome ends iteration, and none touches
    the shared authorization counter — an unauthorized renewal mint is a failed attempt
    and nothing more. An unrenewed socket closes with `remote`, and the reconnect cycle's
@@ -4350,17 +4359,21 @@ takes. That is why nothing in this section is terminal.
    checkpoint, delivery, or dedupe.
 7. **Replies attach to the attempt in flight, once its command's write has begun** — a
    server can answer a frame before the client observes its write complete, and that
-   answer is the attempt's. At any other time a reply is liveness: on a socket that
-   advertised nothing, between attempts, before the write, or after the attempt ended. A
-   late `renewed` is NOT adopted — the attempt it answered was already counted, and the
-   worst that follows is the lease closing a socket the connector stopped renewing.
+   answer is the attempt's. It is acted on only once the write's outcome is in: a reply
+   that beats it is PARKED until then, so a write that then fails is still the socket's
+   failure, a write that never completes still meets the deadline, and no attempt ever
+   ends with its write unobserved — the next attempt never writes beside one that did not
+   return. At any other time a reply is liveness: on a socket that advertised nothing,
+   between attempts, before the write, or after the attempt ended. A late `renewed` is NOT
+   adopted — the attempt it answered was already counted, and the worst that follows is
+   the lease closing a socket the connector stopped renewing.
 8. **Timer surgery order.** Ending an attempt that schedules another (a renewal, or a first
    failure) arms the next `renew-due` BEFORE it stops `renew-ack-deadline`, so the settled
    set never passes through {`staleness`, `repair-poll`} — the set a renewal that gave up
    leaves — on the way to a retry.
 9. **Teardown** disposes the renewal with the attempt: both timers stopped and the mint
-   cancelled, so a disposed attempt leaves exactly {`backoff`} (or {} after a terminal) as
-   ever.
+   cancelled — and not awaited, as a superseded poll seam call is not — so a disposed
+   attempt leaves exactly {`backoff`} (or {} after a terminal) as ever.
 10. **The command carries a bearer credential.** It is written to the socket and nowhere
     else: never logged, never rendered into an error, never an observer argument
     (Security Invariants).
