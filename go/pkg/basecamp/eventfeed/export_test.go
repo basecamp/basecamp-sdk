@@ -217,7 +217,8 @@ func ExportRenewCommand(identifier, ticket string) []byte { return renewCommand(
 // outstanding at its acknowledgement deadline reports.
 func ExportRenewWriteLapsedErr() error { return errRenewWriteLapsed }
 
-// OnRenewSent registers a hook fired once a renewal attempt's command write
-// has begun — from which instant a reply is the attempt's, whether or not the
-// write has completed.
+// OnRenewSent registers a hook fired on the renewal's writer goroutine once it
+// has taken the reply cutoff, immediately before the command's write — from
+// which instant a frame the pump reads is the attempt's to answer, whether or
+// not the write has completed.
 func (c *Connector) OnRenewSent(f func()) { c.hooks.renewSent = f }

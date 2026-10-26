@@ -353,15 +353,16 @@ func (l *loop) renewMinted(at *attempt, pending Timer, r renewMint) (cycleOutcom
 	ex.written = written
 	ex.sentSeq.Store(math.MaxUint64)
 	ex.sent = true
+	renewSent := l.hooks.renewSent
 	go func() {
 		var w renewWrite
 		ex.sentSeq.Store(at.lc.read.Load())
+		if renewSent != nil {
+			renewSent()
+		}
 		w.panicked = capturePanic(func() { w.err = at.lc.conn.WriteFrame(at.ctx, command) })
 		written <- w
 	}()
-	if l.hooks.renewSent != nil {
-		l.hooks.renewSent()
-	}
 	return cycleOutcome{}, false
 }
 

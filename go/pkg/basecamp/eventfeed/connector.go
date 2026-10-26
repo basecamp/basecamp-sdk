@@ -340,9 +340,11 @@ type testHooks struct {
 	// externally a coin flip between two ready select cases, and the reason
 	// Stop's result must be read rather than discarded.
 	subscribeWritten func()
-	// renewSent fires once a renewal attempt's command write has begun — the
-	// instant from which a reply is the attempt's (renewReply). It is the
-	// rendezvous for answering a renewal whose write has not yet completed.
+	// renewSent fires on the renewal's writer goroutine, after it has taken
+	// the reply cutoff and immediately before the command's write — the
+	// instant from which a frame the pump reads is the attempt's to answer
+	// (renewReply). It is the rendezvous for answering a renewal whose write
+	// has not yet completed.
 	renewSent func()
 	// runContext fires with the active run's context as soon as it exists.
 	// Close's guarantee is a statement ABOUT that context, so a test needs the
