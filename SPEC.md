@@ -4697,8 +4697,9 @@ INTERFACE CableConn
 END
 
 INTERFACE Clock
-  now() → reading                      -- used for deltas, never persisted; its one
-                                       -- absolute comparison is the in-band renewal's
+  now() → reading                      -- WALL time, comparable with the server's RFC 3339
+                                       -- instants; used for deltas, never persisted; its
+                                       -- one absolute comparison is the in-band renewal's
                                        -- schedule against the server's deadline
   new_timer(duration, kind) → Timer    -- kind-labelled, cancellable, enumerable
   outstanding() → List<kind>           -- kinds of live (unfired, unstopped) timers
@@ -4855,8 +4856,9 @@ saturates the range at 60s). Evaluating the power first overflows fixed-width in
 after a long genuine outage (~64 consecutive failures), producing exactly the tight-loop
 or crash failure §7's saturation rules exist to prevent.
 
-**The renewal schedule is the Clock's one absolute comparison.** Every other reading is a
-delta. `renew-due`'s target is the server's `stream_expires_at` less the lead, so its delay
+**The renewal schedule is the Clock's one absolute comparison**, and it is why `now()` must
+read wall time: a custom clock whose epoch is not wall time (one counting from boot) mistimes
+every renewal, harmlessly but uselessly. Every other reading is a delta. `renew-due`'s target is the server's `stream_expires_at` less the lead, so its delay
 is that instant minus `now()`. On the system clock that is wall time, and a host whose clock
 is skewed renews early or late by the skew: early enough that the host has not yet replaced
 its token draws `refused` on the attempt and on the retry, late enough that the lease

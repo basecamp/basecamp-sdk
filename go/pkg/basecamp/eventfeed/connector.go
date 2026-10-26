@@ -216,7 +216,8 @@ func WithStart(s Start) Option { return func(c *config) { c.start = s } }
 func WithTransport(t CableTransport) Option { return func(c *config) { c.transport = t } }
 
 // WithClock replaces the system clock — product seam, the extension point
-// for embedded runtimes and deterministic tests.
+// for embedded runtimes and deterministic tests. Its Now must read wall time
+// (Clock.Now): the in-band renewal schedules against the server's deadline.
 func WithClock(cl Clock) Option { return func(c *config) { c.clock = cl } }
 
 // WithCheckpointStore configures durable position persistence (default:

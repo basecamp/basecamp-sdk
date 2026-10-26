@@ -219,8 +219,12 @@ func (lc *liveConn) pump(ctx context.Context) {
 			lc.handOff(ctx, pumpItem{err: err})
 			return
 		}
+		// Stamped the moment the read returns, so a frame that was on the
+		// wire before a renewal's command went out carries a place below
+		// that command's cutoff in all but the instant between the two.
+		seq := lc.read.Add(1)
 		lc.stale.reset()
-		if !lc.handOff(ctx, pumpItem{data: data, seq: lc.read.Add(1)}) {
+		if !lc.handOff(ctx, pumpItem{data: data, seq: seq}) {
 			return
 		}
 	}
