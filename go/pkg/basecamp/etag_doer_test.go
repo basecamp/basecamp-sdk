@@ -332,31 +332,36 @@ func TestCache_EntryNeverPairsOneResponsesETagWithAnothersBody(t *testing.T) {
 		}()
 	}
 
-	// Read only once both writers are publishing, and check that each kept
-	// publishing while the reads ran.
+	// Read only once both writers are publishing, and keep reading past 2000
+	// reads until each has published twice more, so at least one of its Sets
+	// began and ended while the reads ran. A fixed number of reads promises no
+	// overlap: on a runner slowed by the race detector, one writer published
+	// nothing during all 2000 of them.
 	deadline := time.Now().Add(10 * time.Second)
 	for (writes[0].Load() == 0 || writes[1].Load() == 0) && time.Now().Before(deadline) {
 		runtime.Gosched()
 	}
-	before := [2]int64{writes[0].Load(), writes[1].Load()}
 
 	reader := NewCache(dir)
-	torn := 0
-	for range 2000 {
+	before := [2]int64{writes[0].Load(), writes[1].Load()}
+	var during [2]int64
+	reads, torn := 0, 0
+	for reads < 2000 || (during[0] < 2 || during[1] < 2) && time.Now().Before(deadline) {
 		etag, body := reader.entry(key)
 		if string(body) != "body-"+etag {
 			torn++
 		}
+		reads++
+		during = [2]int64{writes[0].Load() - before[0], writes[1].Load() - before[1]}
 	}
-	during := [2]int64{writes[0].Load() - before[0], writes[1].Load() - before[1]}
 	close(stop)
 	wg.Wait()
 
-	if during[0] == 0 || during[1] == 0 {
-		t.Fatalf("writes during the reads = %v, want both writers publishing", during)
+	if during[0] < 2 || during[1] < 2 {
+		t.Fatalf("writes during %d reads = %v, want each writer to publish twice", reads, during)
 	}
 	if torn > 0 {
-		t.Errorf("%d of 2000 reads paired an ETag with another response's body", torn)
+		t.Errorf("%d of %d reads paired an ETag with another response's body", torn, reads)
 	}
 	if etag, body := reader.entry(key); string(body) != "body-"+etag {
 		t.Errorf("the writers left %q beside %q", etag, body)
