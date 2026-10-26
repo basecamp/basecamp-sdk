@@ -4379,9 +4379,12 @@ takes. That is why nothing in this section is terminal.
    failure) arms the next `renew-due` BEFORE it stops `renew-ack-deadline`, so the settled
    set never passes through {`staleness`, `repair-poll`} — the set a renewal that gave up
    leaves — on the way to a retry.
-9. **Teardown** disposes the renewal with the attempt: both timers stopped and the mint
-   cancelled — and not awaited, as a superseded poll seam call is not — so a disposed
-   attempt leaves exactly {`backoff`} (or {} after a terminal) as ever.
+9. **Teardown** disposes the renewal with the attempt: both timers stopped, the mint
+   cancelled and a write in flight returned by the socket's close — neither awaited, as a
+   superseded poll seam call and an in-flight subscribe write are not, so a panic either
+   raises on its way out of a disposed attempt is not propagated — and a disposed attempt
+   leaves exactly {`backoff`} (or {} after a terminal) as ever. Only the attempt's own
+   deadline, which ends the attempt but not the run, joins what it cancels (rule 5).
 10. **The command carries a bearer credential.** It is written to the socket and nowhere
     else: never logged, never rendered into an error, never an observer argument
     (Security Invariants).
