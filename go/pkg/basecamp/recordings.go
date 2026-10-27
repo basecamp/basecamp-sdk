@@ -522,7 +522,8 @@ type FilingDestinationRecording struct {
 // or DestinationProjectID for a dock tool.
 type MoveRecordingRequest struct {
 	// FilingDestinationID is the container to move into, of the kind the
-	// recording sits in now: a card table for a card, a message board for a
+	// recording sits in now: a card table for a card or a card table column you
+	// added (not Triage, Not now, Done or On hold), a message board for a
 	// message, a vault for a document, upload, cloud file, Google document or
 	// folder, a schedule for a schedule entry, a questionnaire for a check-in
 	// question, an inbox for an email forward, a to-do set for a to-do list, and
