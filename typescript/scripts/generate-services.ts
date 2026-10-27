@@ -336,6 +336,7 @@ const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
   // "resource" and would split the removal from the upload, which reports
   // "project_wallpaper".
   RemoveProjectWallpaper: "project_wallpaper",
+  RemoveProjectLogo: "project_logo",
 };
 
 const METHOD_NAME_OVERRIDES: Record<string, string> = {

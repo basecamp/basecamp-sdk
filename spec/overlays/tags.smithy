@@ -15,6 +15,8 @@ apply ListRecentProjects @tags(["Projects"])
 apply RecordProjectVisit @tags(["Projects"])
 apply UpdateProjectWallpaper @tags(["Projects"])
 apply RemoveProjectWallpaper @tags(["Projects"])
+apply UpdateProjectLogo @tags(["Projects"])
+apply RemoveProjectLogo @tags(["Projects"])
 
 // Todos (includes Todolists, TodolistGroups, Todosets)
 apply ListTodos @tags(["Todos"])

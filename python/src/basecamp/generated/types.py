@@ -1467,6 +1467,7 @@ class Project(TypedDict):
     dock: NotRequired[list[DockItem]]
     end_date: NotRequired[str]
     id: int
+    logo: NotRequired[ProjectLogo]
     name: str
     purpose: NotRequired[str]
     star_url: NotRequired[str]
@@ -1504,6 +1505,10 @@ class ProjectConstructionAttributes(TypedDict):
 class ProjectLimitErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]
+
+
+class ProjectLogo(TypedDict):
+    url: str
 
 
 class ProjectWallpaper(TypedDict):

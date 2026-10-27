@@ -340,6 +340,7 @@ val RESOURCE_TYPE_OVERRIDES = mapOf(
     // "resource" and would split the removal from the upload, which reports
     // "project_wallpaper".
     "RemoveProjectWallpaper" to "project_wallpaper",
+    "RemoveProjectLogo" to "project_logo",
 )
 
 /**

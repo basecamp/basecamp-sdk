@@ -412,7 +412,7 @@ The SDK provides typed services for the complete Basecamp API:
 
 | Service | Methods |
 |---------|---------|
-| `projects` | list, get, create, update, trash, archive, unarchive |
+| `projects` | list, get, create, update, trash, archive, unarchive, [updateProjectLogo, removeProjectLogo](../PROJECT-LOGOS.md) |
 | `templates` | list, get, createProject |
 | `tools` | list, get, update |
 | `people` | list, get, me, listPingable |

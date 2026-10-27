@@ -13,6 +13,29 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Go: generated client interfaces gain project-logo methods
+
+`generated.ClientInterface` now requires `UpdateProjectLogoWithBody` and
+`RemoveProjectLogo`. `generated.ClientWithResponsesInterface` gains
+`UpdateProjectLogoWithBodyWithResponse` and `RemoveProjectLogoWithResponse`.
+Custom implementations and test doubles of either interface must implement
+those methods or regenerate their mocks. Calls through the concrete generated
+clients and `basecamp.ProjectsService` remain source-compatible.
+
+### Go and Kotlin: Project gains an optional logo
+
+Adding `Logo` to both `basecamp.Project` and `generated.Project` breaks Go
+unkeyed struct literals. Switch to keyed literals (for example,
+`basecamp.Project{ID: id, Name: name}`) so new optional fields do not depend on
+field order.
+
+Kotlin's generated `Project` adds `logo` before `clientside`. Positional
+constructor and `copy` arguments for `clientside` must become named arguments;
+use property access instead of destructuring that component, whose index now
+refers to `logo`. Recompile Kotlin consumers: the data-class constructor and
+`copy` signatures also change at the binary level. Named calls that omit the
+optional logo and existing property reads need no source changes.
+
 ### Recordings: moving and copying a recording to another project
 
 `MoveRecording`, `CopyRecording` and `GetFiling` are new operations, and

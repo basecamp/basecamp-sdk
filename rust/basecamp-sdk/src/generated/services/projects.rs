@@ -124,6 +124,17 @@ impl<'a> ProjectsService<'a> {
         self.client.send_unit(operation).await
     }
 
+    /// Remove the project's logo (returns 204 even when absent). Wallpaper is unchanged.
+    /// People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+    ///
+    /// `DELETE /projects/{projectId}/logo.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn remove_project_logo(&self, project_id: i64) -> Result<(), Error> {
+        let operation = self
+            .client
+            .operation(&routes::REMOVE_PROJECT_LOGO, &[&project_id]);
+        self.client.send_unit(operation).await
+    }
+
     /// Remove the project's wallpaper (returns 204 No Content).
     /// People and personal assistants follow project-edit permissions; shared agents are refused.
     ///
@@ -170,6 +181,25 @@ impl<'a> ProjectsService<'a> {
             .operation(&routes::UPDATE_PROJECT, &[&project_id]);
         operation.json(body)?;
         self.client.send(operation).await
+    }
+
+    /// Upload or replace the project's logo (returns 204 No Content).
+    /// Uses the existing project image formats; maximum 5 MiB. Wallpaper is unchanged.
+    /// People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+    ///
+    /// `PUT /projects/{projectId}/logo.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn update_project_logo(
+        &self,
+        project_id: i64,
+        filename: &str,
+        content_type: &str,
+        body: Bytes,
+    ) -> Result<(), Error> {
+        let mut operation = self
+            .client
+            .operation(&routes::UPDATE_PROJECT_LOGO, &[&project_id]);
+        operation.multipart("logo", filename, content_type, &body);
+        self.client.send_unit(operation).await
     }
 
     /// Upload or replace the project's wallpaper (returns 204 No Content).

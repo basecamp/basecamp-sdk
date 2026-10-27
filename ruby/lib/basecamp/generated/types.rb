@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-27T15:35:58Z
+# Generated: 2026-10-27T18:50:42Z
 
 require "json"
 require "time"
@@ -3486,7 +3486,7 @@ module Basecamp
       include TypeHelpers
       # @!attribute [rw] clientside
       #   @deprecated This shape is deprecated since 2024-01: Use Client Visibility feature instead
-      attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :end_date, :purpose, :star_url, :starred, :start_date, :timesheet_enabled, :wallpaper
+      attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :end_date, :logo, :purpose, :star_url, :starred, :start_date, :timesheet_enabled, :wallpaper
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3509,6 +3509,7 @@ module Basecamp
         @description = data["description"]
         @dock = parse_array(data["dock"], "DockItem")
         @end_date = data["end_date"]
+        @logo = parse_type(data["logo"], "ProjectLogo")
         @purpose = data["purpose"]
         @star_url = data["star_url"]
         @starred = parse_boolean(data["starred"])
@@ -3534,6 +3535,7 @@ module Basecamp
           "description" => @description,
           "dock" => @dock,
           "end_date" => @end_date,
+          "logo" => @logo,
           "purpose" => @purpose,
           "star_url" => @star_url,
           "starred" => @starred,
@@ -3647,6 +3649,31 @@ module Basecamp
           "name" => @name,
           "description" => @description,
           "start_date" => @start_date,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # ProjectLogo
+    class ProjectLogo
+      include TypeHelpers
+      attr_accessor :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[url].freeze
+      end
+
+      def initialize(data = {})
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "url" => @url,
         }.compact
       end
 

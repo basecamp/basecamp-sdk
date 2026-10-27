@@ -593,4 +593,113 @@ class ProjectsServiceTest {
 
         client.close()
     }
+    @Test
+    fun updateProjectLogoSendsMultipartWithMode() = runTest {
+        var capturedMethod: HttpMethod? = null
+        var capturedUrl: Url? = null
+        var capturedBody: String? = null
+        val client = mockClient { request ->
+            capturedMethod = request.method
+            capturedUrl = request.url
+            capturedBody = request.body.toByteArray().decodeToString()
+            respond(content = "", status = HttpStatusCode.NoContent)
+        }
+
+        client.forAccount("12345").projects.updateProjectLogo(
+            projectId = 42,
+            data = "fake-webp-data".encodeToByteArray(),
+            filename = "beach.webp",
+            contentType = "image/webp",
+        )
+
+        assertEquals(HttpMethod.Put, capturedMethod)
+        assertTrue(capturedUrl!!.encodedPath.endsWith("/projects/42/logo.json"))
+        assertTrue(capturedBody!!.contains("name=\"logo\"; filename=\"beach.webp\""), capturedBody)
+        assertTrue(capturedBody!!.contains("fake-webp-data"), capturedBody)
+
+        client.close()
+    }
+
+    @Test
+    fun updateProjectLogoOmitsModeWhenAbsent() = runTest {
+        var capturedUrl: Url? = null
+        val client = mockClient { request ->
+            capturedUrl = request.url
+            respond(content = "", status = HttpStatusCode.NoContent)
+        }
+
+        client.forAccount("12345").projects.updateProjectLogo(
+            projectId = 42,
+            data = "data".encodeToByteArray(),
+            filename = "beach.png",
+            contentType = "image/png",
+        )
+
+        assertEquals(null, capturedUrl!!.parameters["mode"])
+
+        client.close()
+    }
+
+    @Test
+    fun updateProjectLogoRefusedFormatThrows() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = """{"error": "Logo is not an allowed image type"}""",
+                status = HttpStatusCode.UnprocessableEntity,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        try {
+            client.forAccount("12345").projects.updateProjectLogo(
+                projectId = 42,
+                data = "not an image".encodeToByteArray(),
+                filename = "a.txt",
+                contentType = "text/plain",
+            )
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Validation) {
+            assertEquals(422, e.httpStatus)
+        }
+
+        client.close()
+    }
+
+    @Test
+    fun removeProjectLogo() = runTest {
+        var capturedMethod: HttpMethod? = null
+        var capturedPath: String? = null
+        val client = mockClient { request ->
+            capturedMethod = request.method
+            capturedPath = request.url.encodedPath
+            respond(content = "", status = HttpStatusCode.NoContent)
+        }
+
+        client.forAccount("12345").projects.removeProjectLogo(projectId = 42)
+
+        assertEquals(HttpMethod.Delete, capturedMethod)
+        assertTrue(capturedPath!!.endsWith("/projects/42/logo.json"))
+
+        client.close()
+    }
+
+    @Test
+    fun removeProjectLogoForbiddenThrows() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = """{"error": "Access denied"}""",
+                status = HttpStatusCode.Forbidden,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        try {
+            client.forAccount("12345").projects.removeProjectLogo(projectId = 42)
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Forbidden) {
+            assertEquals(403, e.httpStatus)
+        }
+
+        client.close()
+    }
 }

@@ -94,6 +94,8 @@ grouped:
       methods: ["ListRecent"]
     - operation: RecordProjectVisit
       methods: ["RecordVisit"]
+    - operation: RemoveProjectLogo
+      methods: ["RemoveLogo"]
     - operation: RemoveProjectWallpaper
       methods: ["RemoveWallpaper"]
     - operation: TrashProject
@@ -102,6 +104,8 @@ grouped:
       methods: ["Unarchive"]
     - operation: UpdateProject
       methods: ["UpdateWithBody", "Update"]
+    - operation: UpdateProjectLogo
+      methods: ["UpdateLogoWithBody"]
     - operation: UpdateProjectWallpaper
       methods: ["UpdateWallpaperWithBody"]
   RecordingsService:

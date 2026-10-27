@@ -4591,6 +4591,26 @@ pub static REMOVE_ACCOUNT_LOGO: Route = Route {
     metadata: &metadata::REMOVE_ACCOUNT_LOGO,
 };
 
+/// `DELETE /projects/{projectId}/logo.json`.
+pub static REMOVE_PROJECT_LOGO: Route = Route {
+    id: "RemoveProjectLogo",
+    service: "Projects",
+    method: Method::DELETE,
+    path: "/projects/{projectId}/logo.json",
+    pattern: "/projects/{projectId}/logo",
+    resource_type: "project_logo",
+    params: &[RouteParam {
+        name: "projectId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::REMOVE_PROJECT_LOGO,
+};
+
 /// `DELETE /projects/{projectId}/wallpaper.json`.
 pub static REMOVE_PROJECT_WALLPAPER: Route = Route {
     id: "RemoveProjectWallpaper",
@@ -5716,6 +5736,26 @@ pub static UPDATE_PROJECT_CLIENT_ACCESS: Route = Route {
     metadata: &metadata::UPDATE_PROJECT_CLIENT_ACCESS,
 };
 
+/// `PUT /projects/{projectId}/logo.json`.
+pub static UPDATE_PROJECT_LOGO: Route = Route {
+    id: "UpdateProjectLogo",
+    service: "Projects",
+    method: Method::PUT,
+    path: "/projects/{projectId}/logo.json",
+    pattern: "/projects/{projectId}/logo",
+    resource_type: "project_logo",
+    params: &[RouteParam {
+        name: "projectId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Multipart { field: "logo" },
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::UPDATE_PROJECT_LOGO,
+};
+
 /// `PUT /projects/{projectId}/wallpaper.json`.
 pub static UPDATE_PROJECT_WALLPAPER: Route = Route {
     id: "UpdateProjectWallpaper",
@@ -6228,6 +6268,7 @@ pub static ROUTES: &[&Route] = &[
     &PRIORITIZE_ASSIGNMENT,
     &RECORD_PROJECT_VISIT,
     &REMOVE_ACCOUNT_LOGO,
+    &REMOVE_PROJECT_LOGO,
     &REMOVE_PROJECT_WALLPAPER,
     &REORDER_UP_NEXT,
     &REPLACE_DOCUMENT,
@@ -6283,6 +6324,7 @@ pub static ROUTES: &[&Route] = &[
     &UPDATE_PROJECT,
     &UPDATE_PROJECT_ACCESS,
     &UPDATE_PROJECT_CLIENT_ACCESS,
+    &UPDATE_PROJECT_LOGO,
     &UPDATE_PROJECT_WALLPAPER,
     &UPDATE_QUESTION,
     &UPDATE_QUESTION_NOTIFICATION_SETTINGS,

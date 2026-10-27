@@ -1746,6 +1746,24 @@
       }
     },
     {
+      "pattern": "/{accountId}/projects/{projectId}/logo",
+      "resource": "Projects",
+      "operations": {
+        "DELETE": "RemoveProjectLogo",
+        "PUT": "UpdateProjectLogo"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/projects/{projectId}/people",
       "resource": "People",
       "operations": {

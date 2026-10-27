@@ -71,6 +71,29 @@ module Basecamp
         end
       end
 
+      # Upload or replace the project's logo (returns 204 No Content).
+      # @param project_id [Integer] project id ID
+      # @param io [IO, String] File data to upload (IO object or string)
+      # @param filename [String] Display name for the uploaded file
+      # @param content_type [String] MIME type of the file (e.g., "image/png")
+      # @return [void]
+      def update_project_logo(project_id:, io:, filename:, content_type:)
+        with_operation(service: "projects", operation: "update_project_logo", is_mutation: true, project_id: project_id) do
+          http_put_multipart("/projects/#{project_id}/logo.json", io: io, filename: filename, content_type: content_type, field: "logo")
+          nil
+        end
+      end
+
+      # Remove the project's logo (returns 204 even when absent). Wallpaper is unchanged.
+      # @param project_id [Integer] project id ID
+      # @return [void]
+      def remove_project_logo(project_id:)
+        with_operation(service: "projects", operation: "remove_project_logo", is_mutation: true, project_id: project_id) do
+          http_delete("/projects/#{project_id}/logo.json")
+          nil
+        end
+      end
+
       # Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
       # @param project_id [Integer] project id ID
       # @return [void]

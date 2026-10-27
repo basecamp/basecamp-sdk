@@ -410,3 +410,82 @@ class TestProjectWallpaper:
         account = AsyncClient(access_token="test-token").for_account("12345")
         assert await account.projects.remove_project_wallpaper(project_id=42) is None
         assert route.call_count == 1
+
+
+class TestProjectLogo:
+    @respx.mock
+    def test_update_project_logo_sends_multipart(self):
+        route = respx.put(f"{BASE}/projects/42/logo.json").mock(return_value=httpx.Response(204))
+
+        _, account = make_account()
+        result = account.projects.update_project_logo(
+            project_id=42, content=b"fake-webp-data", filename="beach.webp", content_type="image/webp"
+        )
+
+        assert result is None
+        request = route.calls[0].request
+        assert request.headers["content-type"].startswith("multipart/form-data")
+        assert b'name="logo"; filename="beach.webp"' in request.content
+        assert b"fake-webp-data" in request.content
+
+    @respx.mock
+    def test_update_project_logo_omits_mode_when_absent(self):
+        route = respx.put(f"{BASE}/projects/42/logo.json").mock(return_value=httpx.Response(204))
+
+        _, account = make_account()
+        account.projects.update_project_logo(
+            project_id=42, content=b"data", filename="beach.png", content_type="image/png"
+        )
+
+        assert "mode" not in route.calls[0].request.url.params
+
+    @respx.mock
+    def test_update_project_logo_refused_format(self):
+        respx.put(f"{BASE}/projects/42/logo.json").mock(
+            return_value=httpx.Response(422, json={"error": "Logo is not an allowed image type"})
+        )
+
+        _, account = make_account()
+        with pytest.raises(ValidationError) as excinfo:
+            account.projects.update_project_logo(
+                project_id=42, content=b"not an image", filename="a.txt", content_type="text/plain"
+            )
+
+        assert excinfo.value.http_status == 422
+
+    @respx.mock
+    def test_remove_project_logo(self):
+        route = respx.delete(f"{BASE}/projects/42/logo.json").mock(return_value=httpx.Response(204))
+
+        _, account = make_account()
+        assert account.projects.remove_project_logo(project_id=42) is None
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_remove_project_logo_forbidden(self):
+        respx.delete(f"{BASE}/projects/42/logo.json").mock(return_value=httpx.Response(403))
+
+        _, account = make_account()
+        with pytest.raises(ForbiddenError):
+            account.projects.remove_project_logo(project_id=42)
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_update_project_logo(self):
+        route = respx.put(f"{BASE}/projects/42/logo.json").mock(return_value=httpx.Response(204))
+
+        account = AsyncClient(access_token="test-token").for_account("12345")
+        await account.projects.update_project_logo(
+            project_id=42, content=b"data", filename="beach.avif", content_type="image/avif"
+        )
+
+        assert b'name="logo"' in route.calls[0].request.content
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_remove_project_logo(self):
+        route = respx.delete(f"{BASE}/projects/42/logo.json").mock(return_value=httpx.Response(204))
+
+        account = AsyncClient(access_token="test-token").for_account("12345")
+        assert await account.projects.remove_project_logo(project_id=42) is None
+        assert route.call_count == 1

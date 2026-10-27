@@ -249,6 +249,138 @@ describe("ProjectsService", () => {
     });
   });
 
+  describe("logo", () => {
+    it("reports project_logo for removal hooks", async () => {
+      const onOperationStart = vi.fn();
+      const observed = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: { onOperationStart },
+      });
+      server.use(http.delete(`${BASE_URL}/projects/42/logo.json`, () =>
+        new HttpResponse(null, { status: 204 })
+      ));
+
+      await observed.projects.removeProjectLogo(42);
+
+      expect(onOperationStart).toHaveBeenCalledWith(expect.objectContaining({
+        operation: "RemoveProjectLogo",
+        resourceType: "project_logo",
+        isMutation: true,
+      }));
+    });
+    it("removes the logo idempotently and returns void", async () => {
+      let calls = 0;
+      server.use(http.delete(`${BASE_URL}/projects/42/logo.json`, () => {
+        calls++;
+        return new HttpResponse(null, { status: 204 });
+      }));
+      await expect(client.projects.removeProjectLogo(42)).resolves.toBeUndefined();
+      await expect(client.projects.removeProjectLogo(42)).resolves.toBeUndefined();
+      expect(calls).toBe(2);
+    });
+    it.each([429, 503])("should not retry a %i upload response when retries are disabled", async (status) => {
+      let attempts = 0;
+      const onRetry = vi.fn();
+      const noRetry = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: { onRetry },
+      });
+      server.use(
+        http.put(`${BASE_URL}/projects/42/logo.json`, () => {
+          attempts++;
+          return attempts === 1
+            ? HttpResponse.json({ error: "Try again later" }, { status, headers: { "Retry-After": "1" } })
+            : new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(
+        noRetry.projects.updateProjectLogo(42, new Blob(["data"]), "beach.png")
+      ).rejects.toMatchObject({ httpStatus: status });
+      expect(attempts).toBe(1);
+      expect(onRetry).not.toHaveBeenCalled();
+    });
+
+    it.each([true, undefined])("should retain upload retries with enableRetry=%s", async (enableRetry) => {
+      let attempts = 0;
+      const retrying = createBasecampClient({ accountId: "12345", accessToken: "test-token", enableRetry });
+      server.use(
+        http.put(`${BASE_URL}/projects/42/logo.json`, () => {
+          attempts++;
+          return attempts === 1
+            ? HttpResponse.json({ error: "Unavailable" }, { status: 503, headers: { "Retry-After": "1" } })
+            : new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(
+        retrying.projects.updateProjectLogo(42, new Blob(["data"]), "beach.png")
+      ).resolves.toBeUndefined();
+      expect(attempts).toBe(2);
+    });
+
+    it("should surface a refused format as a validation error", async () => {
+      server.use(
+        http.put(`${BASE_URL}/projects/42/logo.json`, () => {
+          return HttpResponse.json(
+            { error: "Logo is not an allowed image type" },
+            { status: 422 }
+          );
+        })
+      );
+
+      await expect(
+        client.projects.updateProjectLogo(42, new Blob(["not an image"]), "a.txt")
+      ).rejects.toMatchObject({ code: "validation", httpStatus: 422 });
+    });
+
+    it("should remove the logo", async () => {
+      let method: string | undefined;
+      server.use(
+        http.delete(`${BASE_URL}/projects/42/logo.json`, ({ request }) => {
+          method = request.method;
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(client.projects.removeProjectLogo(42)).resolves.toBeUndefined();
+      expect(method).toBe("DELETE");
+    });
+
+    it("should surface a 403 when removing without edit access", async () => {
+      server.use(
+        http.delete(`${BASE_URL}/projects/42/logo.json`, () => {
+          return HttpResponse.json({ error: "Access denied" }, { status: 403 });
+        })
+      );
+
+      await expect(client.projects.removeProjectLogo(42)).rejects.toMatchObject({
+        code: "forbidden",
+        httpStatus: 403,
+      });
+    });
+
+    it("uploads exact bytes in the logo multipart field and returns void", async () => {
+      let captured: Request | undefined;
+      server.use(http.put(`${BASE_URL}/projects/42/logo.json`, ({ request }) => {
+        captured = request;
+        return new HttpResponse(null, { status: 204 });
+      }));
+      await expect(client.projects.updateProjectLogo(42, new Blob(["logo-bytes"], { type: "image/png" }), "logo.png")).resolves.toBeUndefined();
+      const form = await captured!.formData();
+      const file = form.get("logo") as File;
+      expect(file.name).toBe("logo.png");
+      expect(file.type).toBe("image/png");
+      expect(await file.text()).toBe("logo-bytes");
+      expect([...form.keys()]).toEqual(["logo"]);
+      expect(new URL(captured!.url).search).toBe("");
+    });
+  });
+
   describe("wallpaper", () => {
     it("should read the wallpaper from a project", async () => {
       const wallpaper = { url: `${BASE_URL}/projects/42/wallpaper?v=1669139787`, mode: "tile" };

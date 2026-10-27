@@ -4335,6 +4335,9 @@ pub struct Project {
     /// `wallpaper`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wallpaper: Option<ProjectWallpaper>,
+    /// `logo`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logo: Option<ProjectLogo>,
     /// `clientside`.
     #[deprecated(
         note = "This shape is deprecated since 2024-01: Use Client Visibility feature instead"
@@ -4414,6 +4417,16 @@ pub struct ProjectLimitErrorResponseContent {
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+}
+
+/// The project's logo, included only in single-project responses when attached.
+/// Project lists and home responses omit it. Absent logos omit this member, not null.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ProjectLogo {
+    /// An authenticated API-host URL that redirects to storage, not a public image link.
+    /// Use the SDK's authenticated download helper rather than an image element.
+    pub url: String,
 }
 
 /// The project's wallpaper, included only in single-project responses when attached.
@@ -7058,6 +7071,9 @@ pub struct UpdateProjectClientAccessRequestContent {
 
 /// `UpdateProjectClientAccessResponseContent`.
 pub type UpdateProjectClientAccessResponseContent = ProjectAccessResult;
+
+/// A raw byte payload, sent as the request body.
+pub type UpdateProjectLogoInputPayload = Vec<u8>;
 
 /// The `UpdateProjectRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

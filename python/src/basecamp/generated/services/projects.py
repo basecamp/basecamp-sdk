@@ -121,6 +121,42 @@ class ProjectsService(BaseService):
             operation="TrashProject",
         )
 
+    def update_project_logo(self, *, project_id: int, content: bytes, filename: str, content_type: str) -> None:
+        """Upload or replace the project's logo (returns 204 No Content).
+        Uses the existing project image formats; maximum 5 MiB. Wallpaper is unchanged.
+        People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+
+        Args:
+            project_id: The project id.
+            content: Raw bytes of the file to upload.
+            filename: Filename for the uploaded file.
+            content_type: MIME content type of the upload (e.g. "image/png").
+        """
+        self._request_multipart_void(
+            OperationInfo(service="projects", operation="update_project_logo", is_mutation=True, project_id=project_id),
+            "PUT",
+            f"/projects/{project_id}/logo.json",
+            field="logo",
+            content=content,
+            filename=filename,
+            content_type=content_type,
+            operation="UpdateProjectLogo",
+        )
+
+    def remove_project_logo(self, *, project_id: int) -> None:
+        """Remove the project's logo (returns 204 even when absent). Wallpaper is unchanged.
+        People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+
+        Args:
+            project_id: The project id.
+        """
+        self._request_void(
+            OperationInfo(service="projects", operation="remove_project_logo", is_mutation=True, project_id=project_id),
+            "DELETE",
+            f"/projects/{project_id}/logo.json",
+            operation="RemoveProjectLogo",
+        )
+
     def record_project_visit(self, *, project_id: int) -> None:
         """Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
         Idempotent: re-recording a visit refreshes the same entry. Visits to
@@ -325,6 +361,42 @@ class AsyncProjectsService(AsyncBaseService):
             "DELETE",
             f"/projects/{project_id}",
             operation="TrashProject",
+        )
+
+    async def update_project_logo(self, *, project_id: int, content: bytes, filename: str, content_type: str) -> None:
+        """Upload or replace the project's logo (returns 204 No Content).
+        Uses the existing project image formats; maximum 5 MiB. Wallpaper is unchanged.
+        People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+
+        Args:
+            project_id: The project id.
+            content: Raw bytes of the file to upload.
+            filename: Filename for the uploaded file.
+            content_type: MIME content type of the upload (e.g. "image/png").
+        """
+        await self._request_multipart_void(
+            OperationInfo(service="projects", operation="update_project_logo", is_mutation=True, project_id=project_id),
+            "PUT",
+            f"/projects/{project_id}/logo.json",
+            field="logo",
+            content=content,
+            filename=filename,
+            content_type=content_type,
+            operation="UpdateProjectLogo",
+        )
+
+    async def remove_project_logo(self, *, project_id: int) -> None:
+        """Remove the project's logo (returns 204 even when absent). Wallpaper is unchanged.
+        People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+
+        Args:
+            project_id: The project id.
+        """
+        await self._request_void(
+            OperationInfo(service="projects", operation="remove_project_logo", is_mutation=True, project_id=project_id),
+            "DELETE",
+            f"/projects/{project_id}/logo.json",
+            operation="RemoveProjectLogo",
         )
 
     async def record_project_visit(self, *, project_id: int) -> None:
