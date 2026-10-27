@@ -924,10 +924,25 @@ data class ListRecordingsOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
+/** Request body for CopyRecording. */
+data class CopyRecordingBody(
+    val filingDestinationId: Long? = null,
+    val destinationProjectId: Long? = null,
+    val parentId: Long? = null,
+    val includeComments: Boolean? = null
+)
+
 /** Request body for MoveRecordingToVault. */
 data class MoveRecordingToVaultBody(
     val parentId: Long,
     val position: Int? = null
+)
+
+/** Request body for MoveRecording. */
+data class MoveRecordingBody(
+    val filingDestinationId: Long? = null,
+    val destinationProjectId: Long? = null,
+    val parentId: Long? = null
 )
 
 /** Options for GetProgressReport. */

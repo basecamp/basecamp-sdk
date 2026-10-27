@@ -428,6 +428,13 @@ class Comment(TypedDict):
     visible_to_clients: bool
 
 
+class CopyRecordingRequestContent(TypedDict):
+    destination_project_id: NotRequired[int]
+    filing_destination_id: NotRequired[int]
+    include_comments: NotRequired[bool]
+    parent_id: NotRequired[int]
+
+
 class CreateAttachmentResponseContent(TypedDict):
     attachable_sgid: NotRequired[str]
 
@@ -868,6 +875,22 @@ class FieldKeyedErrors(TypedDict):
     errors: FieldErrorMap
 
 
+class Filing(TypedDict):
+    destination_recording: NotRequired[FilingDestinationRecording]
+    id: int
+    source_recording_id: int
+    status: str
+    type: str
+    url: str
+
+
+class FilingDestinationRecording(TypedDict):
+    app_url: str
+    id: int
+    type: str
+    url: str
+
+
 class Folder(TypedDict):
     bucket_ids: list[int]
     color: str | None
@@ -1210,6 +1233,12 @@ class MoveCardColumnRequestContent(TypedDict):
 class MoveCardRequestContent(TypedDict):
     column_id: int
     position: NotRequired[int]
+
+
+class MoveRecordingRequestContent(TypedDict):
+    destination_project_id: NotRequired[int]
+    filing_destination_id: NotRequired[int]
+    parent_id: NotRequired[int]
 
 
 class MoveRecordingToVaultRequestContent(TypedDict):

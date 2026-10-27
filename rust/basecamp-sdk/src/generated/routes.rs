@@ -89,6 +89,26 @@ pub static COMPLETE_TODO: Route = Route {
     metadata: &metadata::COMPLETE_TODO,
 };
 
+/// `POST /recordings/{recordingId}/copies.json`.
+pub static COPY_RECORDING: Route = Route {
+    id: "CopyRecording",
+    service: "Recordings",
+    method: Method::POST,
+    path: "/recordings/{recordingId}/copies.json",
+    pattern: "/recordings/{recordingId}/copies",
+    resource_type: "recording",
+    params: &[RouteParam {
+        name: "recordingId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::COPY_RECORDING,
+};
+
 /// `POST /questions/{questionId}/answers.json`.
 pub static CREATE_ANSWER: Route = Route {
     id: "CreateAnswer",
@@ -2304,6 +2324,26 @@ pub static GET_EVERYTHING_UNASSIGNED_TODOS: Route = Route {
     metadata: &metadata::GET_EVERYTHING_UNASSIGNED_TODOS,
 };
 
+/// `GET /filings/{filingId}`.
+pub static GET_FILING: Route = Route {
+    id: "GetFiling",
+    service: "Recordings",
+    method: Method::GET,
+    path: "/filings/{filingId}",
+    pattern: "/filings/{filingId}",
+    resource_type: "filing",
+    params: &[RouteParam {
+        name: "filingId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::GET_FILING,
+};
+
 /// `GET /stacks/{folderId}`.
 pub static GET_FOLDER: Route = Route {
     id: "GetFolder",
@@ -4381,6 +4421,26 @@ pub static MOVE_CARD_COLUMN: Route = Route {
     metadata: &metadata::MOVE_CARD_COLUMN,
 };
 
+/// `POST /recordings/{recordingId}/moves.json`.
+pub static MOVE_RECORDING: Route = Route {
+    id: "MoveRecording",
+    service: "Recordings",
+    method: Method::POST,
+    path: "/recordings/{recordingId}/moves.json",
+    pattern: "/recordings/{recordingId}/moves",
+    resource_type: "recording",
+    params: &[RouteParam {
+        name: "recordingId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::MOVE_RECORDING,
+};
+
 /// `POST /recordings/{recordingId}/filing.json`.
 pub static MOVE_RECORDING_TO_VAULT: Route = Route {
     id: "MoveRecordingToVault",
@@ -5951,6 +6011,7 @@ pub static ROUTES: &[&Route] = &[
     &ARCHIVE_RECORDING,
     &COMPLETE_SUBTASK,
     &COMPLETE_TODO,
+    &COPY_RECORDING,
     &CREATE_ANSWER,
     &CREATE_ATTACHMENT,
     &CREATE_BOOKMARK,
@@ -6058,6 +6119,7 @@ pub static ROUTES: &[&Route] = &[
     &GET_EVERYTHING_OVERDUE_TODOS,
     &GET_EVERYTHING_UNASSIGNED_CARDS,
     &GET_EVERYTHING_UNASSIGNED_TODOS,
+    &GET_FILING,
     &GET_FOLDER,
     &GET_FORWARD,
     &GET_FORWARD_REPLY,
@@ -6157,6 +6219,7 @@ pub static ROUTES: &[&Route] = &[
     &MARK_AS_READ,
     &MOVE_CARD,
     &MOVE_CARD_COLUMN,
+    &MOVE_RECORDING,
     &MOVE_RECORDING_TO_VAULT,
     &PAUSE_QUESTION,
     &PIN_MESSAGE,

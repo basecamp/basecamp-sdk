@@ -13,6 +13,26 @@ import kotlinx.serialization.json.JsonElement
 open class RecordingsService(client: AccountClient) : BaseService(client) {
 
     /**
+     * Get the state of a move or copy started by MoveRecording or CopyRecording.
+     * @param filingId The filing ID
+     */
+    suspend fun getFiling(filingId: Long): Filing {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "GetFiling",
+            resourceType = "filing",
+            isMutation = false,
+            projectId = null,
+            resourceId = filingId,
+        )
+        return request(info, {
+            httpGet("/filings/${filingId}", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Filing>(body)
+        }
+    }
+
+    /**
      * List recordings of a given type across projects
      * @param type Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
      * @param options Optional query parameters and pagination control
@@ -42,6 +62,32 @@ open class RecordingsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Start copying a recording into another project; poll GetFiling for the result.
+     * @param recordingId The recording ID
+     * @param body Request body
+     */
+    suspend fun copy(recordingId: Long, body: CopyRecordingBody): Filing {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "CopyRecording",
+            resourceType = "recording",
+            isMutation = true,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        return request(info, {
+            httpPost("/recordings/${recordingId}/copies.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                body.filingDestinationId?.let { put("filing_destination_id", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.destinationProjectId?.let { put("destination_project_id", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.parentId?.let { put("parent_id", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.includeComments?.let { put("include_comments", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Filing>(body)
+        }
+    }
+
+    /**
      * Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
      * @param recordingId The recording ID
      * @param body Request body
@@ -61,6 +107,31 @@ open class RecordingsService(client: AccountClient) : BaseService(client) {
                 body.position?.let { put("position", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { Unit }
+    }
+
+    /**
+     * Start moving a recording into another project; poll GetFiling for the result.
+     * @param recordingId The recording ID
+     * @param body Request body
+     */
+    suspend fun move(recordingId: Long, body: MoveRecordingBody): Filing {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "MoveRecording",
+            resourceType = "recording",
+            isMutation = true,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        return request(info, {
+            httpPost("/recordings/${recordingId}/moves.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                body.filingDestinationId?.let { put("filing_destination_id", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.destinationProjectId?.let { put("destination_project_id", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.parentId?.let { put("parent_id", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Filing>(body)
+        }
     }
 
     /**

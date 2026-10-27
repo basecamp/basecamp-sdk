@@ -47,6 +47,17 @@
       ]
     }
   },
+  "CopyRecording": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "CreateAnswer": {
     "retry": {
       "backoff": "exponential",
@@ -1249,6 +1260,17 @@
       ]
     }
   },
+  "GetFiling": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "GetFolder": {
     "retry": {
       "backoff": "exponential",
@@ -2329,6 +2351,17 @@
     }
   },
   "MoveCardColumn": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "MoveRecording": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,

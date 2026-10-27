@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-23T22:09:29Z
+# Generated: 2026-10-27T15:35:58Z
 
 require "json"
 require "time"
@@ -1935,6 +1935,72 @@ module Basecamp
       def to_h
         {
           "errors" => @errors,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Filing
+    class Filing
+      include TypeHelpers
+      attr_accessor :id, :source_recording_id, :status, :type, :url, :destination_recording
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id source_recording_id status type url].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @source_recording_id = parse_integer(data["source_recording_id"])
+        @status = data["status"]
+        @type = data["type"]
+        @url = data["url"]
+        @destination_recording = parse_type(data["destination_recording"], "FilingDestinationRecording")
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "source_recording_id" => @source_recording_id,
+          "status" => @status,
+          "type" => @type,
+          "url" => @url,
+          "destination_recording" => @destination_recording,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # FilingDestinationRecording
+    class FilingDestinationRecording
+      include TypeHelpers
+      attr_accessor :app_url, :id, :type, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url id type url].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @id = parse_integer(data["id"])
+        @type = data["type"]
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "id" => @id,
+          "type" => @type,
+          "url" => @url,
         }.compact
       end
 

@@ -17,6 +17,9 @@ pub static COMPLETE_SUBTASK: OperationMetadata = OperationMetadata { operation: 
 /// `CompleteTodo`.
 #[rustfmt::skip]
 pub static COMPLETE_TODO: OperationMetadata = OperationMetadata { operation: "CompleteTodo", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `CopyRecording`.
+#[rustfmt::skip]
+pub static COPY_RECORDING: OperationMetadata = OperationMetadata { operation: "CopyRecording", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `CreateAnswer`.
 #[rustfmt::skip]
 pub static CREATE_ANSWER: OperationMetadata = OperationMetadata { operation: "CreateAnswer", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -338,6 +341,9 @@ pub static GET_EVERYTHING_UNASSIGNED_CARDS: OperationMetadata = OperationMetadat
 /// `GetEverythingUnassignedTodos`.
 #[rustfmt::skip]
 pub static GET_EVERYTHING_UNASSIGNED_TODOS: OperationMetadata = OperationMetadata { operation: "GetEverythingUnassignedTodos", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `GetFiling`.
+#[rustfmt::skip]
+pub static GET_FILING: OperationMetadata = OperationMetadata { operation: "GetFiling", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `GetFolder`.
 #[rustfmt::skip]
 pub static GET_FOLDER: OperationMetadata = OperationMetadata { operation: "GetFolder", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -635,6 +641,9 @@ pub static MOVE_CARD: OperationMetadata = OperationMetadata { operation: "MoveCa
 /// `MoveCardColumn`.
 #[rustfmt::skip]
 pub static MOVE_CARD_COLUMN: OperationMetadata = OperationMetadata { operation: "MoveCardColumn", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `MoveRecording`.
+#[rustfmt::skip]
+pub static MOVE_RECORDING: OperationMetadata = OperationMetadata { operation: "MoveRecording", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `MoveRecordingToVault`.
 #[rustfmt::skip]
 pub static MOVE_RECORDING_TO_VAULT: OperationMetadata = OperationMetadata { operation: "MoveRecordingToVault", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -873,6 +882,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &ARCHIVE_RECORDING,
     &COMPLETE_SUBTASK,
     &COMPLETE_TODO,
+    &COPY_RECORDING,
     &CREATE_ANSWER,
     &CREATE_ATTACHMENT,
     &CREATE_BOOKMARK,
@@ -980,6 +990,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &GET_EVERYTHING_OVERDUE_TODOS,
     &GET_EVERYTHING_UNASSIGNED_CARDS,
     &GET_EVERYTHING_UNASSIGNED_TODOS,
+    &GET_FILING,
     &GET_FOLDER,
     &GET_FORWARD,
     &GET_FORWARD_REPLY,
@@ -1079,6 +1090,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &MARK_AS_READ,
     &MOVE_CARD,
     &MOVE_CARD_COLUMN,
+    &MOVE_RECORDING,
     &MOVE_RECORDING_TO_VAULT,
     &PAUSE_QUESTION,
     &PIN_MESSAGE,

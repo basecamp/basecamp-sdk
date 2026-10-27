@@ -33,6 +33,24 @@ export interface ListRecordingOptions extends PaginationOptions {
 }
 
 /**
+ * Request parameters for copy.
+ */
+export interface CopyRecordingRequest {
+  /** The container to copy into, from the destination project's dock: a card
+table for a card, a message board for a message, a vault for a document,
+upload or folder, a schedule for a schedule entry. Give this or
+destination_project_id. */
+  filingDestinationId?: number;
+  /** The project to copy a dock tool to. Applies to tools only, and wins over
+filing_destination_id when a request for a tool gives both. */
+  destinationProjectId?: number;
+  /** When copying into a vault, a folder inside it to put the copy in. */
+  parentId?: number;
+  /** Copy the recording's comments too. Defaults to false. */
+  includeComments?: boolean;
+}
+
+/**
  * Request parameters for moveToVault.
  */
 export interface MoveToVaultRecordingRequest {
@@ -44,6 +62,22 @@ position past the end places it last. */
   position?: number;
 }
 
+/**
+ * Request parameters for move.
+ */
+export interface MoveRecordingRequest {
+  /** The container to move into, from the destination project's dock: a card
+table for a card, a message board for a message, a vault for a document,
+upload or folder, a schedule for a schedule entry. Give this or
+destination_project_id. */
+  filingDestinationId?: number;
+  /** The project to move a dock tool to. Applies to tools only, and wins over
+filing_destination_id when a request for a tool gives both. */
+  destinationProjectId?: number;
+  /** When moving into a vault, a folder inside it to put the recording in. */
+  parentId?: number;
+}
+
 
 // =============================================================================
 // Service
@@ -53,6 +87,36 @@ position past the end places it last. */
  * Service for Recordings operations.
  */
 export class RecordingsService extends BaseService {
+
+  /**
+   * Get the state of a move or copy started by MoveRecording or CopyRecording.
+   * @param filingId - The filing ID
+   * @returns The filing
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.recordings.getFiling(123);
+   * ```
+   */
+  async getFiling(filingId: number): Promise<components["schemas"]["GetFilingResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Recordings",
+        operation: "GetFiling",
+        resourceType: "filing",
+        isMutation: false,
+        resourceId: filingId,
+      },
+      () =>
+        this.client.GET("/filings/{filingId}", {
+          params: {
+            path: { filingId },
+          },
+        })
+    );
+    return response;
+  }
 
   /**
    * List recordings of a given type across projects
@@ -87,6 +151,43 @@ export class RecordingsService extends BaseService {
   }
 
   /**
+   * Start copying a recording into another project; poll GetFiling for the result.
+   * @param recordingId - The recording ID
+   * @param req - Recording request parameters
+   * @returns The recording
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.recordings.copy(123, { });
+   * ```
+   */
+  async copy(recordingId: number, req: CopyRecordingRequest): Promise<components["schemas"]["CopyRecordingResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Recordings",
+        operation: "CopyRecording",
+        resourceType: "recording",
+        isMutation: true,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.POST("/recordings/{recordingId}/copies.json", {
+          params: {
+            path: { recordingId },
+          },
+          body: {
+            filing_destination_id: req.filingDestinationId,
+            destination_project_id: req.destinationProjectId,
+            parent_id: req.parentId,
+            include_comments: req.includeComments,
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
    * Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
    * @param recordingId - The recording ID
    * @param req - Recording request parameters
@@ -118,6 +219,42 @@ export class RecordingsService extends BaseService {
           },
         })
     );
+  }
+
+  /**
+   * Start moving a recording into another project; poll GetFiling for the result.
+   * @param recordingId - The recording ID
+   * @param req - Recording request parameters
+   * @returns The recording
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.recordings.move(123, { });
+   * ```
+   */
+  async move(recordingId: number, req: MoveRecordingRequest): Promise<components["schemas"]["MoveRecordingResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Recordings",
+        operation: "MoveRecording",
+        resourceType: "recording",
+        isMutation: true,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.POST("/recordings/{recordingId}/moves.json", {
+          params: {
+            path: { recordingId },
+          },
+          body: {
+            filing_destination_id: req.filingDestinationId,
+            destination_project_id: req.destinationProjectId,
+            parent_id: req.parentId,
+          },
+        })
+    );
+    return response;
   }
 
   /**
