@@ -1392,7 +1392,12 @@ structure UncompleteTodoInput {
 
 structure UncompleteTodoOutput {}
 
-/// Reposition a todo within its todolist
+/// Reposition a todo within its todolist, or move it into another list or the to-do set in the same project.
+///
+/// `parent_id` names a to-do list, or the project's to-do set, to move the todo
+/// into; the todo keeps its id. It must be in the same project: anything else
+/// answers 422. To move a todo into a list in another project, use
+/// MoveRecording.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -1415,7 +1420,8 @@ structure RepositionTodoInput {
   @required
   position: Integer
 
-  /// Optional todolist ID to move the todo to a different parent
+  /// A to-do list, or the project's to-do set, in the same project, to move the
+  /// todo into instead of its current parent. 422 when it is neither.
   parent_id: TodolistId
 }
 
@@ -5722,6 +5728,11 @@ structure UpdateCardOutput {
 /// A move through a wormhole is queued: the card arrives under a new id and its
 /// old id then returns not found. `position` does not control where it lands,
 /// but if supplied it must still be a positive integer.
+///
+/// No wormhole is needed to move a card to another project's card table either:
+/// MoveRecording with that card table as `filing_destination_id` moves it, and
+/// the card lands in Triage, or in Done if it is completed. Create a wormhole
+/// only when the card table should keep that shortcut.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/card_tables/cards/{cardId}/moves.json", code: 204)
 operation MoveCard {
@@ -6163,10 +6174,11 @@ structure RepositionCardStepOutput {}
 
 /// Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.
 ///
-/// A wormhole is the only mechanism for moving a card to a different project: its
-/// id is a valid `column_id` for MoveCard, teleporting the card there. It is not
-/// needed for a one-off move within a project; MoveCard goes to any column there
-/// directly. A card table holds at most four wormholes.
+/// A wormhole's id is a valid `column_id` for MoveCard, teleporting the card to
+/// its destination column. It is not needed for a one-off move: MoveCard goes to
+/// any column in the card's project directly, and MoveRecording moves a card to
+/// another project's card table. Create one only when the card table should keep
+/// that shortcut. A card table holds at most four wormholes.
 /// `destinationRecordingId` is the id of a column on another accessible card table.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json", code: 201)
@@ -8193,23 +8205,42 @@ structure MoveRecordingToVaultOutput {}
 /// GetFiling with its id until `status` leaves `pending` and `processing`. Once
 /// the move completes, the recording lives in the destination project under a
 /// new id, the completed filing's `destination_recording.id`; its old id no
-/// longer reaches it.
+/// longer reaches it. A move always gives the recording a new id, even within
+/// its project. To move a to-do into another list in its own project and keep
+/// its id, use RepositionTodo with `parent_id` instead.
 ///
 /// Name the destination with `filing_destination_id`: the container the
-/// recording moves into, of the same kind it sits in now, found in the
-/// destination project's `dock` (GetProject). A card moves into a card table
-/// (`kanban_board`) and lands in Triage, or in Done if it is completed; a card
-/// table column moves into a card table too. A message moves into a
-/// `message_board`; a document, upload or folder into a `vault`; a schedule
-/// entry into a `schedule`. A dock tool itself (a message board, card table,
-/// Docs & Files, schedule) is moved by `destination_project_id` instead.
+/// recording moves into, of the same kind it sits in now. Find tools in the
+/// destination project's `dock` (GetProject). A message moves into a
+/// `message_board`. A card moves into a card table (`kanban_board`) and lands
+/// in Triage, or in Done if it is completed; a card table column moves into a
+/// card table too. A document, upload, cloud file, Google document or folder
+/// moves into a `vault` (Docs & Files). A schedule entry moves into a
+/// `schedule`, a check-in question into a `questionnaire` (Automatic
+/// Check-ins), an email forward into an `inbox` (Email Forwards), and a to-do
+/// list into a `todoset` (To-dos). A to-do, or a to-do list group, moves into a
+/// to-do list, found with ListTodolists. The list may be in the to-do's own
+/// project or another one, but it can't be a group, an archived or trashed
+/// list, or the list the to-do is already in. A group moved into a list
+/// becomes a group in that list.
 ///
-/// 400 when neither destination is given. 403 when the recording only moves
-/// along with its parent, or the caller may not move it. 404 when the
-/// destination is not one the caller can move it into. 422 when the move
-/// cannot start, such as when the recording is already being moved or the
-/// destination cannot take it. A repeated move is harmless: while the first is
-/// pending it is 422, and once it is done, 404, because the recording has moved.
+/// A dock tool itself (a message board, card table, Docs & Files, schedule, and
+/// so on) has no container to name. Move it by `destination_project_id`, or
+/// name the destination project's dock as `filing_destination_id`.
+///
+/// Only the recordings above, and the dock tools, move on their own. Everything
+/// else moves only along with its parent and answers 403: comments,
+/// attachments, card steps, check-in answers, hill chart updates, external
+/// links, the card table columns every card table has (Triage, Not now, Done
+/// and On hold), and anything outside a tool, such as client correspondence and
+/// approvals. To move one, move the recording or tool it belongs to.
+///
+/// 400 when neither destination is given. 403 when the recording can't be
+/// moved on its own, or the caller may not move it. 404 when the destination
+/// is not one the caller can move it into. 422 when the move cannot start,
+/// such as when the recording is already being moved or the destination
+/// cannot take it. A repeated move is harmless: while the first is pending it
+/// is 422, and once it is done, 404, because the recording has moved.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/moves.json", code: 201)
 operation MoveRecording {
@@ -8227,10 +8258,13 @@ structure MoveRecordingInput {
   @httpLabel
   recordingId: RecordingId
 
-  /// The container to move into, from the destination project's dock: a card
+  /// The container to move into, of the kind the recording sits in now: a card
   /// table for a card, a message board for a message, a vault for a document,
-  /// upload or folder, a schedule for a schedule entry. Give this or
-  /// destination_project_id.
+  /// upload, cloud file, Google document or folder, a schedule for a schedule
+  /// entry, a questionnaire for a check-in question, an inbox for an email
+  /// forward, a to-do set for a to-do list, and a to-do list, in this project
+  /// or another, for a to-do or to-do list group. For a dock tool, the
+  /// destination project's dock. Give this or destination_project_id.
   filing_destination_id: RecordingId
 
   /// The project to move a dock tool to. Applies to tools only, and wins over
@@ -8247,22 +8281,31 @@ structure MoveRecordingOutput {
 
 /// Start copying a recording into another project; poll GetFiling for the result.
 ///
-/// Works like MoveRecording, except the original stays where it is. Name the
-/// destination with `filing_destination_id`, a container of the kind the
-/// recording sits in now, from the destination project's `dock` (GetProject): a
-/// card copies into a card table (`kanban_board`) and lands in Triage, or in
-/// Done if it is completed. A dock tool is copied by `destination_project_id`
-/// instead. Poll GetFiling with the returned filing's id until `status` leaves
-/// `pending` and `processing`; a completed filing's `destination_recording.id`
-/// is the copy.
+/// Works like MoveRecording, and takes the same destinations, except the
+/// original stays where it is. Name the destination with
+/// `filing_destination_id`, a container of the kind the recording sits in now,
+/// chosen as for MoveRecording. A copied card lands in Triage, or in Done if it
+/// is completed, as a moved one does. A to-do or to-do list group copies into a
+/// to-do list in its own project or another one. A dock tool is copied by
+/// `destination_project_id`, or by naming the destination project's dock as
+/// `filing_destination_id`. Poll GetFiling with the returned filing's id until
+/// `status` leaves `pending` and `processing`; a completed filing's
+/// `destination_recording.id` is the copy.
+///
+/// The same recordings copy on their own as move on their own, except the
+/// Email Forwards tool, which can't be copied. Everything else copies only
+/// along with its parent and answers 403, as for MoveRecording: comments,
+/// attachments, card steps, check-in answers, hill chart updates, external
+/// links, the card table columns every card table has, and anything outside a
+/// tool, such as client correspondence and approvals.
 ///
 /// Not safe to retry blindly: each request makes another copy. Check the first
 /// filing's status before trying again.
 ///
-/// 400 when neither destination is given. 403 when the recording only copies
-/// along with its parent. 404 when the destination is not one the caller can
-/// copy it into. 422 when the copy cannot start, such as when the recording is
-/// being moved or the destination cannot take it.
+/// 400 when neither destination is given. 403 when the recording can't be
+/// copied on its own. 404 when the destination is not one the caller can copy
+/// it into. 422 when the copy cannot start, such as when the recording is being
+/// moved or the destination cannot take it.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/copies.json", code: 201)
 operation CopyRecording {
@@ -8280,10 +8323,10 @@ structure CopyRecordingInput {
   @httpLabel
   recordingId: RecordingId
 
-  /// The container to copy into, from the destination project's dock: a card
-  /// table for a card, a message board for a message, a vault for a document,
-  /// upload or folder, a schedule for a schedule entry. Give this or
-  /// destination_project_id.
+  /// The container to copy into, chosen as for MoveRecording's
+  /// filing_destination_id: a container of the kind the recording sits in now,
+  /// such as a to-do list, in this project or another, for a to-do. For a dock
+  /// tool, the destination project's dock. Give this or destination_project_id.
   filing_destination_id: RecordingId
 
   /// The project to copy a dock tool to. Applies to tools only, and wins over

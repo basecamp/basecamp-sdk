@@ -62,6 +62,11 @@ class CardsService(BaseService):
         old id then returns not found. `position` does not control where it lands,
         but if supplied it must still be a positive integer.
 
+        No wormhole is needed to move a card to another project's card table either:
+        MoveRecording with that card table as `filing_destination_id` moves it, and
+        the card lands in Triage, or in Done if it is completed. Create a wormhole
+        only when the card table should keep that shortcut.
+
         Args:
             card_id: The card id.
             column_id: Any column in the card's project, on this or another card table, or a
@@ -173,6 +178,11 @@ class AsyncCardsService(AsyncBaseService):
         A move through a wormhole is queued: the card arrives under a new id and its
         old id then returns not found. `position` does not control where it lands,
         but if supplied it must still be a positive integer.
+
+        No wormhole is needed to move a card to another project's card table either:
+        MoveRecording with that card table as `filing_destination_id` moves it, and
+        the card lands in Triage, or in Done if it is completed. Create a wormhole
+        only when the card table should keep that shortcut.
 
         Args:
             card_id: The card id.

@@ -130,7 +130,12 @@ impl<'a> TodosService<'a> {
         self.client.send(operation).await
     }
 
-    /// Reposition a todo within its todolist
+    /// Reposition a todo within its todolist, or move it into another list or the to-do set in the same project.
+    ///
+    /// `parent_id` names a to-do list, or the project's to-do set, to move the todo
+    /// into; the todo keeps its id. It must be in the same project: anything else
+    /// answers 422. To move a todo into a list in another project, use
+    /// MoveRecording.
     ///
     /// `PUT /todos/{todoId}/position.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn reposition(

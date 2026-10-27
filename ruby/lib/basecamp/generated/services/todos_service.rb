@@ -99,10 +99,11 @@ module Basecamp
         end
       end
 
-      # Reposition a todo within its todolist
+      # Reposition a todo within its todolist, or move it into another list or the to-do set in the same project.
       # @param todo_id [Integer] todo id ID
       # @param position [Integer] position
-      # @param parent_id [Integer, nil] Optional todolist ID to move the todo to a different parent
+      # @param parent_id [Integer, nil] A to-do list, or the project's to-do set, in the same project, to move the
+      #   todo into instead of its current parent. 422 when it is neither.
       # @return [void]
       def reposition(todo_id:, position:, parent_id: nil)
         with_operation(service: "todos", operation: "reposition", is_mutation: true, resource_id: todo_id) do

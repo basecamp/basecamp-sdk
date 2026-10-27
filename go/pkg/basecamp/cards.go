@@ -662,6 +662,10 @@ type MoveCardOptions struct {
 // through a wormhole is queued: the card arrives under a new id and its old id
 // then returns not found. opts.Position does not control where it lands, but if
 // set it must still be positive. Manage wormholes with Wormholes().
+//
+// No wormhole is needed to move a card to another project's card table either:
+// Recordings().Move with the card table as FilingDestinationID moves it, and it
+// lands in Triage, or in Done if it is completed.
 func (s *CardsService) Move(ctx context.Context, cardID, columnID int64, opts *MoveCardOptions) (err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Move",

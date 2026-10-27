@@ -95,7 +95,8 @@ export interface ReplaceTodoRequest {
 export interface RepositionTodoRequest {
   /** Position for ordering (1-based) */
   position: number;
-  /** Optional todolist ID to move the todo to a different parent */
+  /** A to-do list, or the project's to-do set, in the same project, to move the
+todo into instead of its current parent. 422 when it is neither. */
   parentId?: number;
 }
 
@@ -381,7 +382,7 @@ export class TodosService extends BaseService {
   }
 
   /**
-   * Reposition a todo within its todolist
+   * Reposition a todo within its todolist, or move it into another list or the to-do set in the same project.
    * @param todoId - The todo ID
    * @param req - Todo request parameters
    * @returns void

@@ -9,10 +9,11 @@ import (
 )
 
 // Wormhole is a standing shortcut from a card table to a column on another card
-// table, usually in another project, and the only way to move a card across
-// projects. A wormhole's id is a valid columnID for CardsService.Move: moving a
-// card onto a wormhole teleports it to the destination column. Within a project,
-// CardsService.Move reaches any column directly, so no wormhole is needed.
+// table, usually in another project. A wormhole's id is a valid columnID for
+// CardsService.Move: moving a card onto a wormhole teleports it to the
+// destination column. Within a project, CardsService.Move reaches any column
+// directly, and RecordingsService.Move takes a card to another project's card
+// table, so neither needs a wormhole.
 //
 // The wormhole carries the full recording representation of its source board, so
 // URL, AppURL, and Parent point at the source. DestinationURL is the only field

@@ -58,22 +58,31 @@ impl<'a> RecordingsService<'a> {
 
     /// Start copying a recording into another project; poll GetFiling for the result.
     ///
-    /// Works like MoveRecording, except the original stays where it is. Name the
-    /// destination with `filing_destination_id`, a container of the kind the
-    /// recording sits in now, from the destination project's `dock` (GetProject): a
-    /// card copies into a card table (`kanban_board`) and lands in Triage, or in
-    /// Done if it is completed. A dock tool is copied by `destination_project_id`
-    /// instead. Poll GetFiling with the returned filing's id until `status` leaves
-    /// `pending` and `processing`; a completed filing's `destination_recording.id`
-    /// is the copy.
+    /// Works like MoveRecording, and takes the same destinations, except the
+    /// original stays where it is. Name the destination with
+    /// `filing_destination_id`, a container of the kind the recording sits in now,
+    /// chosen as for MoveRecording. A copied card lands in Triage, or in Done if it
+    /// is completed, as a moved one does. A to-do or to-do list group copies into a
+    /// to-do list in its own project or another one. A dock tool is copied by
+    /// `destination_project_id`, or by naming the destination project's dock as
+    /// `filing_destination_id`. Poll GetFiling with the returned filing's id until
+    /// `status` leaves `pending` and `processing`; a completed filing's
+    /// `destination_recording.id` is the copy.
+    ///
+    /// The same recordings copy on their own as move on their own, except the
+    /// Email Forwards tool, which can't be copied. Everything else copies only
+    /// along with its parent and answers 403, as for MoveRecording: comments,
+    /// attachments, card steps, check-in answers, hill chart updates, external
+    /// links, the card table columns every card table has, and anything outside a
+    /// tool, such as client correspondence and approvals.
     ///
     /// Not safe to retry blindly: each request makes another copy. Check the first
     /// filing's status before trying again.
     ///
-    /// 400 when neither destination is given. 403 when the recording only copies
-    /// along with its parent. 404 when the destination is not one the caller can
-    /// copy it into. 422 when the copy cannot start, such as when the recording is
-    /// being moved or the destination cannot take it.
+    /// 400 when neither destination is given. 403 when the recording can't be
+    /// copied on its own. 404 when the destination is not one the caller can copy
+    /// it into. 422 when the copy cannot start, such as when the recording is being
+    /// moved or the destination cannot take it.
     ///
     /// `POST /recordings/{recordingId}/copies.json` — not idempotent, sent exactly once.
     pub async fn copy(
@@ -130,23 +139,42 @@ impl<'a> RecordingsService<'a> {
     /// GetFiling with its id until `status` leaves `pending` and `processing`. Once
     /// the move completes, the recording lives in the destination project under a
     /// new id, the completed filing's `destination_recording.id`; its old id no
-    /// longer reaches it.
+    /// longer reaches it. A move always gives the recording a new id, even within
+    /// its project. To move a to-do into another list in its own project and keep
+    /// its id, use RepositionTodo with `parent_id` instead.
     ///
     /// Name the destination with `filing_destination_id`: the container the
-    /// recording moves into, of the same kind it sits in now, found in the
-    /// destination project's `dock` (GetProject). A card moves into a card table
-    /// (`kanban_board`) and lands in Triage, or in Done if it is completed; a card
-    /// table column moves into a card table too. A message moves into a
-    /// `message_board`; a document, upload or folder into a `vault`; a schedule
-    /// entry into a `schedule`. A dock tool itself (a message board, card table,
-    /// Docs & Files, schedule) is moved by `destination_project_id` instead.
+    /// recording moves into, of the same kind it sits in now. Find tools in the
+    /// destination project's `dock` (GetProject). A message moves into a
+    /// `message_board`. A card moves into a card table (`kanban_board`) and lands
+    /// in Triage, or in Done if it is completed; a card table column moves into a
+    /// card table too. A document, upload, cloud file, Google document or folder
+    /// moves into a `vault` (Docs & Files). A schedule entry moves into a
+    /// `schedule`, a check-in question into a `questionnaire` (Automatic
+    /// Check-ins), an email forward into an `inbox` (Email Forwards), and a to-do
+    /// list into a `todoset` (To-dos). A to-do, or a to-do list group, moves into a
+    /// to-do list, found with ListTodolists. The list may be in the to-do's own
+    /// project or another one, but it can't be a group, an archived or trashed
+    /// list, or the list the to-do is already in. A group moved into a list
+    /// becomes a group in that list.
     ///
-    /// 400 when neither destination is given. 403 when the recording only moves
-    /// along with its parent, or the caller may not move it. 404 when the
-    /// destination is not one the caller can move it into. 422 when the move
-    /// cannot start, such as when the recording is already being moved or the
-    /// destination cannot take it. A repeated move is harmless: while the first is
-    /// pending it is 422, and once it is done, 404, because the recording has moved.
+    /// A dock tool itself (a message board, card table, Docs & Files, schedule, and
+    /// so on) has no container to name. Move it by `destination_project_id`, or
+    /// name the destination project's dock as `filing_destination_id`.
+    ///
+    /// Only the recordings above, and the dock tools, move on their own. Everything
+    /// else moves only along with its parent and answers 403: comments,
+    /// attachments, card steps, check-in answers, hill chart updates, external
+    /// links, the card table columns every card table has (Triage, Not now, Done
+    /// and On hold), and anything outside a tool, such as client correspondence and
+    /// approvals. To move one, move the recording or tool it belongs to.
+    ///
+    /// 400 when neither destination is given. 403 when the recording can't be
+    /// moved on its own, or the caller may not move it. 404 when the destination
+    /// is not one the caller can move it into. 422 when the move cannot start,
+    /// such as when the recording is already being moved or the destination
+    /// cannot take it. A repeated move is harmless: while the first is pending it
+    /// is 422, and once it is done, 404, because the recording has moved.
     ///
     /// `POST /recordings/{recordingId}/moves.json` — not idempotent, sent exactly once.
     pub async fn move_recording(

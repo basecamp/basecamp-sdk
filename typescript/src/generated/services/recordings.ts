@@ -36,10 +36,10 @@ export interface ListRecordingOptions extends PaginationOptions {
  * Request parameters for copy.
  */
 export interface CopyRecordingRequest {
-  /** The container to copy into, from the destination project's dock: a card
-table for a card, a message board for a message, a vault for a document,
-upload or folder, a schedule for a schedule entry. Give this or
-destination_project_id. */
+  /** The container to copy into, chosen as for MoveRecording's
+filing_destination_id: a container of the kind the recording sits in now,
+such as a to-do list, in this project or another, for a to-do. For a dock
+tool, the destination project's dock. Give this or destination_project_id. */
   filingDestinationId?: number;
   /** The project to copy a dock tool to. Applies to tools only, and wins over
 filing_destination_id when a request for a tool gives both. */
@@ -66,10 +66,13 @@ position past the end places it last. */
  * Request parameters for move.
  */
 export interface MoveRecordingRequest {
-  /** The container to move into, from the destination project's dock: a card
+  /** The container to move into, of the kind the recording sits in now: a card
 table for a card, a message board for a message, a vault for a document,
-upload or folder, a schedule for a schedule entry. Give this or
-destination_project_id. */
+upload, cloud file, Google document or folder, a schedule for a schedule
+entry, a questionnaire for a check-in question, an inbox for an email
+forward, a to-do set for a to-do list, and a to-do list, in this project
+or another, for a to-do or to-do list group. For a dock tool, the
+destination project's dock. Give this or destination_project_id. */
   filingDestinationId?: number;
   /** The project to move a dock tool to. Applies to tools only, and wins over
 filing_destination_id when a request for a tool gives both. */
