@@ -150,107 +150,6 @@ sdk_routes_absent_from_bc3_docs:
       so no API view is needed; covered by the "destroy json" case in
       test/controllers/recordings/bubble_ups_controller_test.rb.
 
-  - method: POST
-    path: /embeds
-    reason: >-
-      CreateEmbed. Served on the API host and documented in
-      doc/api/sections/embeds.md ("Create an embed") by bc3 #13962 (branch
-      api-create-embeds), not yet merged, so neither bc3 master nor
-      the revision spec/api-provenance.json pins describes it. Drawn at
-      config/routes.rb:1464 (`resources :embeds, only: %i[ create show ]`);
-      EmbedsController#create renders app/views/api/embeds/show.json.jbuilder and
-      is covered by test/api/embeds_controller_api_test.rb on that branch. Before
-      #13962 the API host answers 404. Delete at the repin past #13962.
-
-  - method: GET
-    path: /embeds/:id
-    reason: >-
-      GetEmbed. Same bc3 #13962 ("Get an embed"), same draw; EmbedsController#show
-      renders app/views/api/embeds/show.json.jbuilder, covered by the "show" cases
-      of test/api/embeds_controller_api_test.rb on that branch. Before #13962 the
-      API host has no template and answers 500. Delete at the repin past #13962.
-
-  - method: PUT
-    path: /projects/:id/wallpaper
-    reason: >-
-      UpdateProjectWallpaper. Served on the API host and documented in
-      doc/api/sections/projects.md ("Update project wallpaper") by bc3 #14062,
-      merged as 0c09123502a0db476d9395d30c080d87af9ca945. The revision
-      spec/api-provenance.json pins predates it. Drawn at
-      config/routes.rb:811 (`resource :wallpaper, only: %i[ show update destroy ]`
-      inside the projects member scope); Projects::WallpapersController#update
-      answers `head :no_content`, so no API view is needed. Covered by
-      test/api/projects/wallpapers_controller_api_test.rb in #14062, including
-      "upload a wallpaper with a mode in the query string". Before #14062 the API
-      host answers 404. Delete at the repin past #14062.
-
-  - method: DELETE
-    path: /projects/:id/wallpaper
-    reason: >-
-      RemoveProjectWallpaper. Same bc3 PR (#14062), same draw;
-      Projects::WallpapersController#destroy answers `head :no_content`, covered
-      by "remove a wallpaper" and "removing a wallpaper that isn't there
-      succeeds" in test/api/projects/wallpapers_controller_api_test.rb. Before
-      #14062 the API host answers 404. Delete at the repin past #14062.
-
-  - method: POST
-    path: /recordings/:id/moves
-    reason: >-
-      MoveRecording. Documented in doc/api/sections/recordings.md ("Move a
-      recording to another project") by bc3 #14136, merged as
-      4e3b68921c39ff033edf14bc802d08830b23efee (2026-10-26). The revision
-      spec/api-provenance.json pins predates it. `resources :moves, only: %i[ new
-      create ]` (config/routes.rb:245) sits in `concern :filable` (:244), which
-      `concern :recording_actions` includes at :266, drawn flat at :320 inside
-      `resources :recordings, only: :show` (:304, commented "CANONICAL: Top-level
-      unscoped routes for recording actions"). Recordings::MovesController#create
-      renders app/views/api/filings/show.json.jbuilder with 201; covered by
-      test/api/recordings/moves_controller_api_test.rb ("move a card to another
-      project's card table"). Delete at the repin past #14136.
-
-  - method: POST
-    path: /recordings/:id/copies
-    reason: >-
-      CopyRecording. Same bc3 PR (#14136, "Copy a recording to another
-      project"), same concern: `resources :copies, only: %i[ new create ]`
-      (config/routes.rb:246). Recordings::CopiesController#create renders
-      app/views/api/filings/show.json.jbuilder with 201; covered by
-      test/api/recordings/copies_controller_api_test.rb ("copy a message to
-      another project's message board"). Delete at the repin past #14136.
-
-  - method: GET
-    path: /filings/:id
-    reason: >-
-      GetFiling. Same bc3 PR (#14136, "Get a filing"). Drawn flat at
-      config/routes.rb:219 (`resources :filings, only: :show`); FilingsController
-      answers JSON on the API host and renders
-      app/views/api/filings/show.json.jbuilder, covered by
-      test/api/filings_controller_api_test.rb ("show a completed move with the
-      recording it made", "a filing someone else started is not found"). Delete
-      at the repin past #14136.
-
-  - method: PUT
-    path: /projects/:id/logo
-    reason: >-
-      UpdateProjectLogo. Served on the API host by bc3 #14174, merged as
-      87d66c9730b4b14d7845e69851e467300ed3a257 (implementation head
-      b5eaa72970f4d733aa5585802ca27339140c52df). The revision
-      spec/api-provenance.json pins predates it. Drawn in config/routes.rb
-      as the projects member resource :logo; Projects::LogosController#update
-      accepts multipart logo and returns 204. Documented in
-      doc/api/sections/projects.md and covered by
-      test/api/projects/logos_controller_api_test.rb at that merged revision.
-      Production smoke verified upload, exact download, replacement, version URL
-      change and invalid replacement preservation. Delete at the repin past #14174.
-
-  - method: DELETE
-    path: /projects/:id/logo
-    reason: >-
-      RemoveProjectLogo. Same merged bc3 #14174 and draw;
-      Projects::LogosController#destroy returns 204, including when absent.
-      Covered by test/api/projects/logos_controller_api_test.rb and production
-      smoke verified repeated deletion. Delete at the repin past #14174.
-
 # ---------------------------------------------------------------------------
 # Known-defective SDK routes — bc3 does NOT serve these, and we know it.
 #
@@ -372,6 +271,33 @@ bc3_routes_not_modeled:
   - method: POST
     path: /dock/doors
     registry: spec/api-gaps/external-links-doors.md
+
+  # -- project logo and wallpaper reads: redirectors to the image, reached
+  #    through the URL a project read already carries. Documented by bc3 #14174
+  #    (logo) and #14062 (wallpaper). --
+
+  - method: GET
+    path: /projects/:id/logo
+    out_of_scope: >-
+      A redirector, not a JSON resource. Projects::LogosController#show is
+      `redirect_to_storage @project.image.url`, or `head :not_found` without a
+      logo, and projects.md ("Get project logo") documents a 302 with the image
+      URL in Location. The same API-host URL is GetProject's `logo.url`, which
+      PROJECT-LOGOS.md has every SDK fetch with its authenticated download
+      helper (DownloadURL and its per-SDK spellings). A separate operation would
+      return no representation and duplicate that helper; the upload and
+      removal routes are modelled as UpdateProjectLogo and RemoveProjectLogo.
+
+  - method: GET
+    path: /projects/:id/wallpaper
+    out_of_scope: >-
+      A redirector, not a JSON resource, for the same reason as the logo read
+      above. Projects::WallpapersController#show is `redirect_to_storage
+      @project.wallpaper.url`, or `head :not_found` without a wallpaper, and
+      projects.md ("Get project wallpaper") documents a 302 with the image URL
+      in Location. GetProject's `wallpaper.url` is that API-host URL, fetched
+      with the same authenticated download helper; the upload and removal
+      routes are modelled as UpdateProjectWallpaper and RemoveProjectWallpaper.
 
   # -- gauge needle show/update/destroy (#581) --
   #
