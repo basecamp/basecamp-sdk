@@ -288,6 +288,19 @@ targets:
     fixture: recordings/list.json
     pointer: "/3"
     schema: Recording
+  # Both are bc3's documented examples (doc/api/sections/recordings.md): a
+  # filing omits destination_recording until it completes.
+  - id: filing-pending
+    operation: MoveRecording
+    fixture: recordings/filing_pending.json
+  - id: filing-completed
+    fixture: recordings/filing_completed.json
+    pointer: ""
+    schema: Filing
+  - id: filing-destination-recording
+    fixture: recordings/filing_completed.json
+    pointer: "/destination_recording"
+    schema: FilingDestinationRecording
   - id: todo-get
     fixture: todos/get.json
     pointer: ""
@@ -482,6 +495,8 @@ covered_schemas:
   GaugeNeedle: [gauge-needle-get]
   Chatbot: [chatbot-get, chatbot-get-nonadmin]
   Tool: [tool-get, tool-create, tool-update, tool-disabled, tool-nested-vault]
+  Filing: [filing-completed]
+  FilingDestinationRecording: [filing-destination-recording]
 
 excluded_schemas:
   TimelineAttachment:

@@ -1,0 +1,13 @@
+{
+  "id": 4,
+  "status": "completed",
+  "type": "Move",
+  "source_recording_id": 1069479351,
+  "url": "https://3.basecampapi.com/195539477/filings/4.json",
+  "destination_recording": {
+    "id": 1069480270,
+    "type": "Message",
+    "url": "https://3.basecampapi.com/195539477/buckets/2085958505/messages/1069480270.json",
+    "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/messages/1069480270"
+  }
+}
