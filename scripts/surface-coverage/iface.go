@@ -3,6 +3,7 @@ package main
 import (
 	"go/ast"
 	"go/types"
+	"strings"
 )
 
 // ifaceBindings records which SDK types the repository hands to which of its
@@ -15,29 +16,47 @@ import (
 //	client.Create(ctx, url)                       // reaches EmbedsService.Create
 //
 // A binding is recorded wherever a value of an SDK type meets an interface
-// type declared in the repository: a call argument, an assignment, a typed
-// var, a return, a composite-literal element or a conversion. It follows the
-// value one step; an SDK value first wrapped in a struct of the repository's
-// own is not followed.
+// the repository declares, or writes inline: a call argument, an assignment,
+// a typed var, a return, a composite-literal element or a conversion. It
+// follows the value one step; an SDK value first wrapped in a struct of the
+// repository's own is not followed.
 //
-// A named interface is keyed by its declaration; an unnamed one, written
-// inline as a parameter or field type, by the *types.Interface itself, which
-// is also the receiver of the methods called through it.
-type ifaceBindings map[any]map[types.Type]bool
+// Bindings are per interface, not per call, so a call through an interface
+// that more than one SDK method could answer is not credited to any of them
+// (see expand): which one a given call reaches is beyond what this sees, and
+// crediting both would hide a gap.
+type ifaceBindings struct {
+	mod string // the repository's module path
+	// m is keyed by a named interface's declaration, or for an interface
+	// written inline by the *types.Interface itself, which is also the
+	// receiver of the methods called through it.
+	m map[any]map[string]types.Type
+}
 
-func ifaceKey(t types.Type) (any, *types.Interface) {
+func newIfaceBindings(mod string) *ifaceBindings {
+	return &ifaceBindings{mod: mod, m: map[any]map[string]types.Type{}}
+}
+
+// ifaceKey identifies an interface the repository owns: one declared in its
+// module, or one written inline. Others (error, the SDK's own interfaces,
+// another module's) and the empty interface are not seams.
+func (b *ifaceBindings) ifaceKey(t types.Type) (any, *types.Interface) {
 	switch x := types.Unalias(t).(type) {
 	case *types.Named:
-		if it, ok := x.Underlying().(*types.Interface); ok {
+		it, ok := x.Underlying().(*types.Interface)
+		pkg := x.Obj().Pkg()
+		if ok && it.NumMethods() > 0 && pkg != nil && (pkg.Path() == b.mod || strings.HasPrefix(pkg.Path(), b.mod+"/")) {
 			return x.Origin().Obj(), it
 		}
 	case *types.Interface:
-		return x, x
+		if x.NumMethods() > 0 {
+			return x, x
+		}
 	}
 	return nil, nil
 }
 
-func (b ifaceBindings) collect(file *ast.File, info *types.Info) {
+func (b *ifaceBindings) collect(file *ast.File, info *types.Info) {
 	var sigs []*types.Signature
 	var visit func(n ast.Node) bool
 	visit = func(n ast.Node) bool {
@@ -115,7 +134,7 @@ func (b ifaceBindings) collect(file *ast.File, info *types.Info) {
 	ast.Inspect(file, visit)
 }
 
-func (b ifaceBindings) bindComposite(lit *ast.CompositeLit, info *types.Info) {
+func (b *ifaceBindings) bindComposite(lit *ast.CompositeLit, info *types.Info) {
 	tv, ok := info.Types[lit]
 	if !ok {
 		return
@@ -152,8 +171,8 @@ func (b ifaceBindings) bindComposite(lit *ast.CompositeLit, info *types.Info) {
 
 // bind records src flowing into dst when dst is a named interface and src's
 // type is declared in the SDK.
-func (b ifaceBindings) bind(dst types.Type, src ast.Expr, info *types.Info) {
-	if key, _ := ifaceKey(dst); key == nil {
+func (b *ifaceBindings) bind(dst types.Type, src ast.Expr, info *types.Info) {
+	if key, _ := b.ifaceKey(dst); key == nil {
 		return
 	}
 	tv, ok := info.Types[src]
@@ -163,18 +182,19 @@ func (b ifaceBindings) bind(dst types.Type, src ast.Expr, info *types.Info) {
 	b.add(dst, tv.Type)
 }
 
-func (b ifaceBindings) add(iface types.Type, t types.Type) {
-	key, it := ifaceKey(iface)
+func (b *ifaceBindings) add(iface types.Type, t types.Type) {
+	key, it := b.ifaceKey(iface)
 	if key == nil {
 		return
 	}
-	if b[key] == nil {
-		b[key] = map[types.Type]bool{}
+	if b.m[key] == nil {
+		b.m[key] = map[string]types.Type{}
 	}
-	if b[key][t] {
+	id := types.TypeString(t, nil)
+	if _, seen := b.m[key][id]; seen {
 		return
 	}
-	b[key][t] = true
+	b.m[key][id] = t
 	// A method of an embedded interface is called with that interface as its
 	// receiver, so bind the embedded interfaces too.
 	for i := 0; i < it.NumEmbeddeds(); i++ {
@@ -183,30 +203,39 @@ func (b ifaceBindings) add(iface types.Type, t types.Type) {
 }
 
 func sdkType(t types.Type) bool {
+	t = types.Unalias(t)
 	if p, ok := t.(*types.Pointer); ok {
-		t = p.Elem()
+		t = types.Unalias(p.Elem())
 	}
-	n, ok := types.Unalias(t).(*types.Named)
+	n, ok := t.(*types.Named)
 	return ok && n.Obj().Pkg() != nil && inSDK(n.Obj().Pkg().Path())
 }
 
-// expand returns, for a reference to an interface method the repository
-// declares, the SDK methods it dispatches to.
-func (b ifaceBindings) expand(fn *types.Func) []*types.Func {
+// expand returns, for a reference to a method of an interface the
+// repository owns, the SDK method it dispatches to. ambiguous is true when
+// the SDK values handed to the interface answer the call with more than one
+// SDK method; then none is returned.
+func (b *ifaceBindings) expand(fn *types.Func) (m *types.Func, ambiguous bool) {
 	recv := fn.Signature().Recv()
 	if recv == nil {
-		return nil
+		return nil, false
 	}
-	key, _ := ifaceKey(recv.Type())
+	key, _ := b.ifaceKey(recv.Type())
 	if key == nil {
-		return nil
+		return nil, false
 	}
-	var out []*types.Func
-	for t := range b[key] {
+	found := map[string]*types.Func{}
+	for _, t := range b.m[key] {
 		obj, _, _ := types.LookupFieldOrMethod(t, true, fn.Pkg(), fn.Name())
-		if m, ok := obj.(*types.Func); ok && m.Pkg() != nil && inSDK(m.Pkg().Path()) {
-			out = append(out, m)
+		if sm, ok := obj.(*types.Func); ok && sm.Pkg() != nil && inSDK(sm.Pkg().Path()) {
+			found[funcKey(sm)] = sm
 		}
 	}
-	return out
+	if len(found) > 1 {
+		return nil, true
+	}
+	for _, sm := range found {
+		return sm, false
+	}
+	return nil, false
 }

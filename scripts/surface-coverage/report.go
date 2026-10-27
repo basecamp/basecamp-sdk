@@ -22,6 +22,7 @@ type Report struct {
 	Uncovered  []Operation `json:"uncovered"`
 	Stale      []StaleRef  `json:"stale"`
 	Missing    []site      `json:"missing_symbols,omitempty"`
+	Ambiguous  []site      `json:"ambiguous_interface_calls,omitempty"`
 	RawCalls   []RawCall   `json:"unmatched_raw_calls,omitempty"`
 	Delta      *Delta      `json:"delta,omitempty"`
 }
@@ -101,6 +102,7 @@ func buildReport(sdk, prev, pinned *SDK, repo *Repo) *Report {
 		TypeErrors: repo.TypeErrors,
 		Operations: len(sdk.Operations),
 		Missing:    repo.Missing,
+		Ambiguous:  repo.Ambiguous,
 		// Empty lists, not null, so a JSON reader can take len() of each.
 		Covered:   []CoveredOp{},
 		Uncovered: []Operation{},
@@ -119,11 +121,18 @@ func buildReport(sdk, prev, pinned *SDK, repo *Repo) *Report {
 	// operations (in the pinned SDK) this SDK no longer has.
 	for _, key := range sortedKeys(keysOf(undeclared)) {
 		st := StaleRef{Symbol: shortSymbol(key), Reason: "not in SDK " + sdk.Version}
-		if pinned != nil && pinned != sdk {
-			st.Operations, _ = pinned.opsFor(undeclared[key][0].ref)
-		}
+		ops := map[string]bool{}
 		for _, r := range undeclared[key] {
 			st.Sites = append(st.Sites, r.Site)
+			if pinned != nil && pinned != sdk {
+				performed, _ := pinned.opsFor(r.ref)
+				for _, op := range performed {
+					ops[op] = true
+				}
+			}
+		}
+		if len(ops) > 0 {
+			st.Operations = sortedKeys(ops)
 		}
 		rep.Stale = append(rep.Stale, st)
 	}

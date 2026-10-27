@@ -119,16 +119,21 @@ func TestCoverageAgainstPinnedRelease(t *testing.T) {
 	r := buildReport(v1, nil, v1, repo)
 
 	assertIDs(t, "covered", coveredIDs(r), []string{
-		"CountThings",  // through an interface written inline
-		"CreateThing",  // a method value
-		"DeleteGadget", // through an interface embedded in the repository's own
-		"DeleteThing",  // a direct call
-		"GetMyProfile", // a raw GET of a literal path
-		"GetPerson",    // a raw GET of a concatenated path
-		"GetThing",     // a direct call
-		"ListThings",   // through the repository's own interface
-		"ListWidgets",  // the generated client, called directly
+		"CountThings",   // through an interface written inline
+		"CreateThing",   // a method value
+		"DeleteGadget",  // through an interface embedded in the repository's own
+		"DeleteThing",   // a direct call
+		"GetMyProfile",  // a raw GET of a literal path
+		"GetPerson",     // a raw GET of a concatenated path
+		"GetThing",      // a direct call
+		"ListSprockets", // the generated client, through a seam
+		"ListThings",    // through the repository's own interface
+		"ListWidgets",   // the generated client, called directly
 	})
+	// GetGadget is also behind getter, which a ThingsService is handed too.
+	if len(r.Ambiguous) != 1 || r.Ambiguous[0].File != "internal/cmds/cmds.go" {
+		t.Errorf("ambiguous = %+v, want the one call through getter", r.Ambiguous)
+	}
 	// GetGadget is reached only through a composite and a test file;
 	// ReplaceThing only from a package the shipped binary does not import.
 	assertIDs(t, "uncovered", ids(r.Uncovered), []string{"GetGadget", "ReplaceThing"})
@@ -157,7 +162,7 @@ func TestDeltaAgainstPreviousRelease(t *testing.T) {
 	v1, v2 := fixtureSDKs(t)
 	r := buildReport(v2, v1, v1, fixtureRepo(t))
 
-	assertIDs(t, "covered", coveredIDs(r), []string{"CountThings", "CreateThing", "DeleteGadget", "FetchThing", "GetMyProfile", "GetPerson", "ListThings"})
+	assertIDs(t, "covered", coveredIDs(r), []string{"CountThings", "CreateThing", "DeleteGadget", "FetchThing", "GetMyProfile", "GetPerson", "ListSprockets", "ListThings"})
 	assertIDs(t, "uncovered", ids(r.Uncovered), []string{"ArchiveThing", "GetGadget", "GetThing", "ListGadgets", "ListWidgets", "ReplaceThing"})
 
 	d := r.Delta
@@ -198,8 +203,8 @@ func TestMarkdown(t *testing.T) {
 	md := buf.String()
 	for _, want := range []string{
 		"### SDK operation coverage: downstream at `abc123` against SDK v2.0.0",
-		"| SDK v2.0.0 operations | 13 |",
-		"| Reached by downstream | 7 (53%) |",
+		"| SDK v2.0.0 operations | 14 |",
+		"| Reached by downstream | 8 (57%) |",
 		"| Not reached | 6 |",
 		"| New since v1.0.0 | 3, 2 not reached |",
 		"| Removed since v1.0.0 | 1 |",
@@ -225,5 +230,31 @@ func TestPctNeverRoundsUpToComplete(t *testing.T) {
 		if got := pct(c.n, c.d); got != c.want {
 			t.Errorf("pct(%d, %d) = %s, want %s", c.n, c.d, got, c.want)
 		}
+	}
+}
+
+// TestStaleRawHelperUnionsItsCalls: when a raw helper disappears, its stale
+// entry names every operation its calls performed, not the first call's.
+func TestStaleRawHelperUnionsItsCalls(t *testing.T) {
+	v1, v2 := fixtureSDKs(t)
+	gone := *v2
+	gone.declared = map[string]bool{}
+	for k := range v2.declared {
+		gone.declared[k] = true
+	}
+	get := "(*" + sdkPkgPath + ".AccountClient).Get"
+	delete(gone.declared, get)
+	repo := &Repo{Module: "example.com/x", Refs: []siteRef{
+		{ref: ref{Key: get, Raw: "GET", Pattern: "/my/profile.json", Resolved: true}, Site: site{File: "a.go", Line: 1}},
+		{ref: ref{Key: get, Raw: "GET", Pattern: "/people/" + wild + ".json", Resolved: true}, Site: site{File: "a.go", Line: 2}},
+		{ref: ref{Key: get, Raw: "GET"}, Site: site{File: "a.go", Line: 3}},
+	}}
+	r := buildReport(&gone, nil, v1, repo)
+	if len(r.Stale) != 1 {
+		t.Fatalf("stale = %+v, want AccountClient.Get alone", r.Stale)
+	}
+	assertIDs(t, "operations of the removed helper", r.Stale[0].Operations, []string{"GetMyProfile", "GetPerson"})
+	if len(r.Stale[0].Sites) != 3 {
+		t.Errorf("sites = %+v, want all three calls", r.Stale[0].Sites)
 	}
 }

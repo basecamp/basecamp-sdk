@@ -70,6 +70,13 @@ func renderMarkdown(w io.Writer, r *Report) {
 		}
 		fmt.Fprintf(w, "\n</details>\n\n")
 	}
+	if len(r.Ambiguous) > 0 {
+		fmt.Fprintf(w, "<details><summary>%s through an interface more than one SDK method could answer, not counted</summary>\n\n", plural(len(r.Ambiguous), "call"))
+		for _, a := range r.Ambiguous {
+			fmt.Fprintf(w, "- `%s` at `%s:%d`\n", a.Text, a.File, a.Line)
+		}
+		fmt.Fprintf(w, "\n</details>\n\n")
+	}
 	if len(r.RawCalls) > 0 {
 		fmt.Fprintf(w, "<details><summary>%d raw HTTP calls not matched to an operation</summary>\n\n", len(r.RawCalls))
 		for _, c := range r.RawCalls {

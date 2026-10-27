@@ -24,4 +24,8 @@ func (c *ClientWithResponses) ListWidgetsWithResponse(ctx context.Context) error
 
 func (c *ClientWithResponses) CountThingsWithResponse(ctx context.Context) error { return nil }
 
+// ListSprocketsWithResponse has no wrapper either; the downstream reaches it
+// through an interface of its own.
+func (c *ClientWithResponses) ListSprocketsWithResponse(ctx context.Context) error { return nil }
+
 func NewClientWithResponses() *ClientWithResponses { return &ClientWithResponses{} }

@@ -25,6 +25,9 @@ type Repo struct {
 	// Missing are type errors naming an SDK symbol that does not exist — a
 	// call into an SDK the code was not written against.
 	Missing []site
+	// Ambiguous are calls through an interface of the repository's that
+	// more than one SDK method could answer, credited to none of them.
+	Ambiguous []site
 }
 
 type siteRef struct {
@@ -117,7 +120,7 @@ func loadRepo(dir string, patterns []string) (*Repo, error) {
 		checked = append(checked, c)
 	}
 
-	bindings := ifaceBindings{}
+	bindings := newIfaceBindings(mod)
 	for _, c := range checked {
 		for _, f := range c.Files {
 			bindings.collect(f, c.Info)
@@ -134,17 +137,32 @@ func loadRepo(dir string, patterns []string) (*Repo, error) {
 			if !ok || fn.Pkg() == nil || inSDK(fn.Pkg().Path()) {
 				continue
 			}
-			for _, m := range bindings.expand(fn) {
-				key := funcKey(m)
+			m, ambiguous := bindings.expand(fn)
+			if ambiguous {
+				pos := l.fset.Position(id.Pos())
+				r.Ambiguous = append(r.Ambiguous, site{File: rel(r.Dir, pos.Filename), Line: pos.Line, Text: fn.FullName()})
+				continue
+			}
+			if m == nil {
+				continue
+			}
+			key := funcKey(m)
+			rf := ref{Key: key, Pos: id.Pos(), Recv: recvName(m), Exported: m.Exported()}
+			switch {
+			case rawMethods[key] != "":
 				// A raw HTTP method behind an interface: its path is the
 				// interface caller's, so it is unreadable here.
-				r.add(l, ref{Key: key, Pos: id.Pos(), Recv: recvName(m), Exported: m.Exported(), Raw: rawMethods[key]})
+				rf.Raw = rawMethods[key]
+			case m.Pkg().Path() == generatedPkgPath:
+				rf.Generated = m.Name()
 			}
+			r.add(l, rf)
 		}
 	}
 	if len(r.Packages) == 0 {
 		return nil, fmt.Errorf("no packages of %s matched %s", mod, strings.Join(patterns, " "))
 	}
+	sortSites(r.Ambiguous)
 	sort.Slice(r.Refs, func(i, j int) bool {
 		a, b := r.Refs[i].Site, r.Refs[j].Site
 		if a.File != b.File {
@@ -153,6 +171,15 @@ func loadRepo(dir string, patterns []string) (*Repo, error) {
 		return a.Line < b.Line
 	})
 	return r, nil
+}
+
+func sortSites(ss []site) {
+	sort.Slice(ss, func(i, j int) bool {
+		if ss[i].File != ss[j].File {
+			return ss[i].File < ss[j].File
+		}
+		return ss[i].Line < ss[j].Line
+	})
 }
 
 func (r *Repo) add(l *loader, rf ref) {
