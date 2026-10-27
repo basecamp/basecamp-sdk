@@ -106,6 +106,11 @@ func newRouteTable(ops []Operation) *routeTable {
 // splitPath normalizes a path for matching: no scheme, host, query or
 // fragment, no ".json" suffix, and no leading or trailing slash.
 func splitPath(p string) []string {
+	// The query and fragment go first: a URL inside a query value is not the
+	// request's host.
+	if i := strings.IndexAny(p, "?#"); i >= 0 {
+		p = p[:i]
+	}
 	if i := strings.Index(p, "://"); i >= 0 {
 		p = p[i+3:]
 		if j := strings.Index(p, "/"); j >= 0 {
@@ -113,9 +118,6 @@ func splitPath(p string) []string {
 		} else {
 			p = "/"
 		}
-	}
-	if i := strings.IndexAny(p, "?#"); i >= 0 {
-		p = p[:i]
 	}
 	p = strings.TrimSuffix(strings.Trim(p, "/"), ".json")
 	if p == "" {

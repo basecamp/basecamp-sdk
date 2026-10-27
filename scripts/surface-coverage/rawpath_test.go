@@ -89,6 +89,8 @@ func TestRouteMatch(t *testing.T) {
 		{"GET", "/my/settings.json", "GetMyThing"},
 		{"GET", "/embeds/" + wild, "GetEmbed"},
 		{"GET", "/projects/" + wild + ".json?page=2", "GetProject"},
+		// A URL in the query is not the request's host.
+		{"GET", "/projects/" + wild + ".json?next=https://example.com/x", "GetProject"},
 		{"GET", "https://3.basecampapi.com/" + wild + "/projects/" + wild + ".json", "GetProject"},
 		{"GET", "/" + wild + "/projects/" + wild + ".json", "GetProject"},
 		// A literal account ID, which AccountClient accepts too.
