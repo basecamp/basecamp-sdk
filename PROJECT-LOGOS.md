@@ -49,7 +49,8 @@ if project.Logo != nil {
 return account.Projects().RemoveLogo(ctx, projectID)
 ```
 
-This adds API coverage, but Go custom generated-client interface implementations
-must add the new methods or regenerate mocks. See [MIGRATING.md](MIGRATING.md#unreleased)
-for the source-compatibility note before upgrading. Release notes belong in
-**Breaking Changes** (`breaking`), with `enhancement` also describing the new coverage.
+Before upgrading, see the migration notes for
+[Go generated-client interfaces](MIGRATING.md#go-generated-client-interfaces-gain-project-logo-methods)
+and [Go/Kotlin Project models](MIGRATING.md#go-and-kotlin-project-gains-an-optional-logo).
+Custom Go interface implementations must add the new methods or regenerate
+mocks; unkeyed Go literals and positional Kotlin model calls also need attention.
