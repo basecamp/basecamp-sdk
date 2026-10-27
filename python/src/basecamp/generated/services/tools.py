@@ -66,13 +66,15 @@ class ToolsService(BaseService):
     def delete(self, *, tool_id: int) -> None:
         """Remove a tool from the dock: deletes an external link or an empty extra tool, and disables any other tool (returns 204 No Content either way).
         Deleted: an external link, or a tool that is empty while the project has another
-        tool of the same type, enabled or disabled. Empty means nothing inside it is still
-        in place: items already in the trash don't count, archived and draft items do, and
-        for a Card Table only cards count, not columns. A deleted tool does not go to the
-        trash: Basecamp permanently destroys it, with everything inside it, about five days
-        later. Until then, a deleted external link can be restored in the Basecamp web app.
+        tool of the same type, enabled or disabled. Empty means nothing inside it at all,
+        not even in the trash; for a Card Table only cards count, not columns. A deleted
+        tool does not go to the trash: Basecamp permanently destroys it, with everything
+        inside it, about five days later. Until then, a deleted external link can be
+        restored in the Basecamp web app.
         Disabled: every other tool, such as the only tool of its type or a tool with
-        content, exactly as DisableTool does. It keeps its content, and EnableTool restores it.
+        anything inside it, archived, draft and trashed items included, exactly as
+        DisableTool does. It keeps its content, and EnableTool restores it. Items already
+        in the trash stay there and can still be restored for the rest of their 25 days.
         To tell which happened, get the tool afterwards: a deleted tool has status "deleted",
         while a disabled one keeps its status and has no position.
 
@@ -184,13 +186,15 @@ class AsyncToolsService(AsyncBaseService):
     async def delete(self, *, tool_id: int) -> None:
         """Remove a tool from the dock: deletes an external link or an empty extra tool, and disables any other tool (returns 204 No Content either way).
         Deleted: an external link, or a tool that is empty while the project has another
-        tool of the same type, enabled or disabled. Empty means nothing inside it is still
-        in place: items already in the trash don't count, archived and draft items do, and
-        for a Card Table only cards count, not columns. A deleted tool does not go to the
-        trash: Basecamp permanently destroys it, with everything inside it, about five days
-        later. Until then, a deleted external link can be restored in the Basecamp web app.
+        tool of the same type, enabled or disabled. Empty means nothing inside it at all,
+        not even in the trash; for a Card Table only cards count, not columns. A deleted
+        tool does not go to the trash: Basecamp permanently destroys it, with everything
+        inside it, about five days later. Until then, a deleted external link can be
+        restored in the Basecamp web app.
         Disabled: every other tool, such as the only tool of its type or a tool with
-        content, exactly as DisableTool does. It keeps its content, and EnableTool restores it.
+        anything inside it, archived, draft and trashed items included, exactly as
+        DisableTool does. It keeps its content, and EnableTool restores it. Items already
+        in the trash stay there and can still be restored for the rest of their 25 days.
         To tell which happened, get the tool afterwards: a deleted tool has status "deleted",
         while a disabled one keeps its status and has no position.
 
