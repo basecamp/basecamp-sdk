@@ -91,6 +91,7 @@ making the absorption journey publicly auditable.
 | [project-join-admission](project-join-admission.md) | addressed-in-bc3-pr-13623 | master | medium |
 | [vault-view-preference](vault-view-preference.md) | addressed-in-bc3-pr-13372 | master | low |
 | [embeds](embeds.md) | absorbed-in-sdk | master | medium |
+| [account-limits-archive-trash](account-limits-archive-trash.md) | addressed-in-bc3-pr-14076 | master | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
@@ -118,12 +119,91 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `4958288166a` (2026-10-19). <!-- @bc3-pin -->
+> The provenance pin is `2a47a419594` (2026-10-27). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
+>
+> The `4958288166a..2a47a419594` range is **962 commits** (202 merges) by
+> `git log`, read from a local bc3 checkout. Fifteen files under `doc/api`
+> change, and the vendored route table moves from 417 routes across 72 sections
+> to 430 across 73. The thirteen new routes, every one accounted for:
+>
+> - BC3 **#14136** (`4e3b68921c3`) — `POST /recordings/:id/moves.json`,
+>   `POST /recordings/:id/copies.json`, their two bucket-scoped aliases, and
+>   `GET /filings/:id.json`. **Absorbed** ahead of this repin as
+>   `MoveRecording`, `CopyRecording` and `GetFiling` (#1053). Their three
+>   direction 1 waivers are deleted. BC3 **#14188** (`2a47a419594`) then files
+>   to-dos and to-do list groups through the same routes, answers `403` for
+>   recordings that only move with their parent, and documents both in
+>   `recordings.md`, `todos.md`, `card_table_cards.md` and
+>   `card_table_wormholes.md`. **Absorbed** in this change as documentation on
+>   `MoveRecording`, `CopyRecording`, `MoveCard` and `RepositionTodo`; no
+>   operation or shape changes.
+> - BC3 **#13962** (`c329da98a81`) — `POST /embeds.json` and
+>   `GET /embeds/:sgid.json`, a new `embeds.md` section. **Absorbed** ahead of
+>   this repin as `CreateEmbed` and `GetEmbed` ([`embeds.md`](embeds.md)).
+>   Their two direction 1 waivers are deleted.
+> - BC3 **#14062** (`0c09123502a`) — project wallpaper, three routes. `PUT` and
+>   `DELETE` were **absorbed** ahead of this repin as `UpdateProjectWallpaper`
+>   and `RemoveProjectWallpaper`; their two waivers are deleted.
+> - BC3 **#14174** (`87d66c9730b`) — project logo, three routes. `PUT` and
+>   `DELETE` were **absorbed** ahead of this repin as `UpdateProjectLogo` and
+>   `RemoveProjectLogo` (#1057); their two waivers are deleted.
+> - The two `GET`s, `/projects/:id/logo` and `/projects/:id/wallpaper`, are
+>   302 redirectors to the image in storage. They are `out_of_scope` in
+>   `spec/bc3-route-allowlist.yml`, not registered: `GetProject` already
+>   carries the same URLs as `logo.url` and `wallpaper.url`, and
+>   `PROJECT-LOGOS.md` has every SDK fetch them with its authenticated download
+>   helper.
+>
+> One doc change is a field the SDK does not model. BC3 **#14076**
+> (`587912956e4`) adds `limits.can_archive_and_trash_projects` to the account,
+> and documents that when it is `false`, archiving a project answers `403` and
+> trashing one deletes it permanently. **Registered**:
+> [`account-limits-archive-trash.md`](account-limits-archive-trash.md),
+> `addressed-in-bc3-pr-14076`.
+>
+> One is a behavior change the SDK had documented the other way. BC3
+> **#14122** (`dae0c00d9b9`) counts trashed items as content before deleting a
+> spare dock tool, so such a tool is now disabled and its trashed items stay
+> restorable. `DeleteTool` said trashed items don't count; **absorbed** in this
+> change as a correction to that doc.
+>
+> The event feed's in-band renewal, BC3 **#14143** (`453d1c7e365`), merged in
+> this range. The Go connector absorbed it ahead of the merge (#1044). The
+> merged `event_feed.md` carries the class 1 literals SPEC §23 drafted against
+> the open change: `stream_expires_at` on `welcome` and `renewed`, the `renew`
+> command with `identifier` and `ticket`, and `renewed` and `renew_refused` on
+> the subscription's identifier. It does not name the disconnect reason a
+> lease's end sends, saying only that it is "the same `"reconnect":true`
+> disconnect as a drop". The row-by-row re-verification SPEC §23 promises at
+> the merge, and moving those literals into its verified lists, is its own
+> PR. The same file's notes that a ticket is bound to the token that minted it
+> (BC3 #14107), that an agent's stream re-checks its token as it delivers
+> (#14113), and that revoking a token drops its person's live streams while a
+> connection authenticated by a token directly is leased to it (#14126), are
+> behavior the connector already meets by reconnecting on `"reconnect":true`.
+>
+> The remaining doc changes add no route and no field and are **recorded, not
+> registered**. A Ping's Campfire and its lines answer `403` to the generic
+> recording, subscription and tool-position writes, and `404` on the dock tool
+> routes (BC3 #14171, in `recordings.md`, `pings.md`, `subscriptions.md` and
+> `tools.md`). An agent's own token joins a project as a person does
+> (`people.md`). Deleting an external link does not trash it and destroys it
+> about five days later, which `DeleteTool` already says
+> (`external_links.md`). `rich_text.md` adds inserting an embed by its `sgid`,
+> which the embeds absorption covers. The API README rewrites the agent section
+> from a list of permitted endpoints to team-member parity with stated
+> exceptions, and indexes Embeds. Under `app/views/api`, list pages answer
+> `304` before rendering (BC3 #13979), remote images carry `alt`, and the
+> project's dock leaves out a tool that moved to another project (#14188);
+> none changes a modelled shape. Controllers added without a `doc/api` section,
+> such as agent installations, are undocumented and outside the modelled
+> surface; a documented contract is the trigger. The `bc3-four` compatibility
+> pin does not move: this sync re-verifies only `master`.
 >
 > The `b1f18fd182b..4958288166a` range is two files under `doc/api` and one new
 > route. BC3 **#13945** documents `PUT /boosts/:id.json` in
