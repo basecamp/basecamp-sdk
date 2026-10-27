@@ -34,8 +34,10 @@ type Project struct {
 	Starred          bool           `json:"starred"`
 	ClientCompany    *ClientCompany `json:"client_company,omitempty"`
 	// Wallpaper is present only in single-project responses with an attached wallpaper.
-	Wallpaper  *ProjectWallpaper `json:"wallpaper,omitempty"`
-	Clientside *Clientside       `json:"clientside,omitempty"`
+	Wallpaper *ProjectWallpaper `json:"wallpaper,omitempty"`
+	// Logo is present only in single-project responses with an attached logo.
+	Logo       *ProjectLogo `json:"logo,omitempty"`
+	Clientside *Clientside  `json:"clientside,omitempty"`
 }
 
 // ProjectWallpaper is a project's wallpaper image and how it is laid out.
@@ -45,6 +47,12 @@ type ProjectWallpaper struct {
 	URL string `json:"url"`
 	// Mode is "fill" or "tile".
 	Mode string `json:"mode"`
+}
+
+// ProjectLogo is a project's logo image.
+type ProjectLogo struct {
+	// URL requires authentication. Use AccountClient.DownloadURL, not an image element.
+	URL string `json:"url"`
 }
 
 // DockItem represents a tool in a project's dock.
@@ -599,6 +607,81 @@ func (s *ProjectsService) RemoveWallpaper(ctx context.Context, projectID int64) 
 	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
+// UpdateLogo uploads or replaces the project's logo.
+// logo is the image data, filename is the file name (e.g., "logo.png"),
+// and contentType is the MIME type (e.g., "image/png").
+// Uses the project's existing image validations, including GIF, HEIC and HEIF. Maximum 5 MiB.
+// People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+func (s *ProjectsService) UpdateLogo(ctx context.Context, projectID int64, logo io.Reader, filename, contentType string) (err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "UpdateLogo",
+		ResourceType: "project_logo", IsMutation: true,
+		ProjectID: projectID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if logo == nil {
+		err = ErrUsage("logo reader is required")
+		return err
+	}
+	if filename == "" {
+		err = ErrUsage("filename is required")
+		return err
+	}
+	if contentType == "" {
+		err = ErrUsage("content type is required")
+		return err
+	}
+
+	body, multipartContentType, err := multipartFileBody("logo", logo, filename, contentType)
+	if err != nil {
+		return err
+	}
+
+	resp, err := s.client.parent.gen.UpdateProjectLogoWithBodyWithResponse(
+		ctx,
+		s.client.accountID,
+		projectID,
+		multipartContentType,
+		body,
+	)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// RemoveLogo removes the project's logo.
+// People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+func (s *ProjectsService) RemoveLogo(ctx context.Context, projectID int64) (err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "RemoveLogo",
+		ResourceType: "project_logo", IsMutation: true,
+		ProjectID: projectID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.RemoveProjectLogoWithResponse(ctx, s.client.accountID, projectID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
 // projectFromGenerated converts a generated Project to our clean Project type.
 func projectFromGenerated(gp generated.Project) Project {
 	p := Project{
@@ -645,6 +728,9 @@ func projectFromGenerated(gp generated.Project) Project {
 			URL:  gp.Wallpaper.Url,
 			Mode: gp.Wallpaper.Mode,
 		}
+	}
+	if gp.Logo != nil {
+		p.Logo = &ProjectLogo{URL: gp.Logo.Url}
 	}
 
 	// Convert clientside

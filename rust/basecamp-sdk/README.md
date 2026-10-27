@@ -7,6 +7,8 @@ response shape, and every operation's retry, idempotency and pagination behaviou
 authentication, retries, pagination, the two-hop download, OAuth — and the SPEC §18
 merge-safe composites.
 
+Project detail includes the optional logo; see [project logo upload, removal and authenticated download](../../PROJECT-LOGOS.md).
+
 ```toml
 [dependencies]
 basecamp-sdk = "0.18"

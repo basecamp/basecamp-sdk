@@ -169,7 +169,7 @@ The SDK exposes `57` account-scoped services. <!-- @service-count --> The tables
 
 | Service | Description |
 |---------|-------------|
-| `projects` | Project management |
+| `projects` | Project management, [logo upload and removal](../PROJECT-LOGOS.md) |
 | `templates` | Project templates |
 | `tools` | Project dock tools |
 | `people` | People and users |

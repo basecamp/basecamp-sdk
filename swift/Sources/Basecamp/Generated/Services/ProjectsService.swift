@@ -89,6 +89,15 @@ public final class ProjectsService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func removeProjectLogo(projectId: Int) async throws {
+        try await requestVoid(
+            OperationInfo(service: "Projects", operation: "RemoveProjectLogo", resourceType: "project_logo", isMutation: true, projectId: projectId),
+            method: "DELETE",
+            path: "/projects/\(projectId)/logo.json",
+            retryConfig: Metadata.retryConfig(for: "RemoveProjectLogo")
+        )
+    }
+
     public func removeProjectWallpaper(projectId: Int) async throws {
         try await requestVoid(
             OperationInfo(service: "Projects", operation: "RemoveProjectWallpaper", resourceType: "project_wallpaper", isMutation: true, projectId: projectId),
@@ -123,6 +132,29 @@ public final class ProjectsService: BaseService, @unchecked Sendable {
             path: "/projects/\(projectId)",
             body: req,
             retryConfig: Metadata.retryConfig(for: "UpdateProject")
+        )
+    }
+
+    public func updateProjectLogo(projectId: Int, data: Data, filename: String, contentType: String) async throws {
+        let boundary = UUID().uuidString
+        let multipartContentType = "multipart/form-data; boundary=\(boundary)"
+        // Sanitize user-provided values to prevent CRLF injection / quote breakout
+        let safeFilename = filename.replacingOccurrences(of: "\r", with: "").replacingOccurrences(of: "\n", with: "").replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        let safeContentType = contentType.replacingOccurrences(of: "\r", with: "").replacingOccurrences(of: "\n", with: "")
+        var body = Data()
+        body.append(contentsOf: "--\(boundary)\r\n".utf8)
+        body.append(contentsOf: "Content-Disposition: form-data; name=\"logo\"; filename=\"\(safeFilename)\"\r\n".utf8)
+        body.append(contentsOf: "Content-Type: \(safeContentType)\r\n\r\n".utf8)
+        body.append(data)
+        body.append(contentsOf: "\r\n--\(boundary)--\r\n".utf8)
+        let multipartBody = body
+        try await requestVoid(
+            OperationInfo(service: "Projects", operation: "UpdateProjectLogo", resourceType: "project_logo", isMutation: true, projectId: projectId),
+            method: "PUT",
+            path: "/projects/\(projectId)/logo.json",
+            body: multipartBody,
+            contentType: multipartContentType,
+            retryConfig: Metadata.retryConfig(for: "UpdateProjectLogo")
         )
     }
 

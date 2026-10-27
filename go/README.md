@@ -507,7 +507,7 @@ sent as empty versus a field it omitted — compare against nil instead.
 
 | Service | Methods |
 |---------|---------|
-| `Projects()` | List, Get, Create, Update, Trash, Archive, Unarchive |
+| `Projects()` | List, Get, Create, Update, Trash, Archive, Unarchive, [UpdateLogo, RemoveLogo](../PROJECT-LOGOS.md) |
 | `Templates()` | List, Get, CreateProject |
 | `Tools()` | Get, Create, Update, Delete, Enable, Disable, Reposition (dock tools) |
 | `People()` | List, Get, ListPingable, Me, ListProjectPeople |

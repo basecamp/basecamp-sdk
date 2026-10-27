@@ -320,7 +320,7 @@ The SDK provides the full account-scoped service set documented in SPEC §5. The
 
 | Service | Description |
 |---------|-------------|
-| `projects` | Project management |
+| `projects` | Project management, [logo upload and removal](../PROJECT-LOGOS.md) |
 | `todos` | Todo items |
 | `todolists` | Todo lists |
 | `todosets` | Todo set containers |

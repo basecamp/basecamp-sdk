@@ -261,6 +261,68 @@ export class ProjectsService extends BaseService {
   }
 
   /**
+   * Upload or replace the project's logo.
+   * @param projectId - The project ID
+   * @param file - File or Blob to upload
+   * @param filename - Display name for the uploaded file
+   * @returns void
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * await client.projects.updateProjectLogo(123);
+   * ```
+   */
+  async updateProjectLogo(projectId: number, file: Blob | File, filename?: string): Promise<void> {
+    const url = `${this.baseUrl}` +
+      `/projects/${projectId}/logo.json`;
+    return this.requestMultipartUpload(
+      {
+        service: "Projects",
+        operation: "UpdateProjectLogo",
+        resourceType: "project_logo",
+        isMutation: true,
+        projectId,
+      },
+      url,
+      "PUT",
+      file,
+      "logo",
+      filename,
+    );
+  }
+
+
+  /**
+   * Remove the project's logo. Wallpaper is unchanged.
+   * @param projectId - The project ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.projects.removeProjectLogo(123);
+   * ```
+   */
+  async removeProjectLogo(projectId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Projects",
+        operation: "RemoveProjectLogo",
+        resourceType: "project_logo",
+        isMutation: true,
+        projectId,
+      },
+      () =>
+        this.client.DELETE("/projects/{projectId}/logo.json", {
+          params: {
+            path: { projectId },
+          },
+        })
+    );
+  }
+
+  /**
    * Record that the current user visited a project, moving it to the front of ListRecentProjects.
    * @param projectId - The project ID
    * @returns void

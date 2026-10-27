@@ -459,7 +459,7 @@ All services are constructed from an `AccountClient`, obtained via `client.for_a
 
 | Category | Service | Accessor |
 |----------|---------|----------|
-| **Projects** | Projects | `account.projects` |
+| **Projects** | Projects, [logo upload and removal](../PROJECT-LOGOS.md) | `account.projects` |
 | | Templates | `account.templates` |
 | | Tools | `account.tools` |
 | | People | `account.people` |

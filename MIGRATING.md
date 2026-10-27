@@ -13,6 +13,15 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Go: generated client interfaces gain project-logo methods
+
+`generated.ClientInterface` now requires `UpdateProjectLogoWithBody` and
+`RemoveProjectLogo`. `generated.ClientWithResponsesInterface` gains
+`UpdateProjectLogoWithBodyWithResponse` and `RemoveProjectLogoWithResponse`.
+Custom implementations and test doubles of either interface must implement
+those methods or regenerate their mocks. Calls through the concrete generated
+clients and `basecamp.ProjectsService` remain source-compatible.
+
 ### Recordings: moving and copying a recording to another project
 
 `MoveRecording`, `CopyRecording` and `GetFiling` are new operations, and

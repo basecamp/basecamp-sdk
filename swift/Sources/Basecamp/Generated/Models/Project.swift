@@ -18,6 +18,7 @@ public struct Project: Codable, Sendable {
     public var description: String?
     public var dock: [DockItem]?
     public var endDate: String?
+    public var logo: ProjectLogo?
     public var purpose: String?
     public var starUrl: String?
     public var starred: Bool?
@@ -41,6 +42,7 @@ public struct Project: Codable, Sendable {
         description: String? = nil,
         dock: [DockItem]? = nil,
         endDate: String? = nil,
+        logo: ProjectLogo? = nil,
         purpose: String? = nil,
         starUrl: String? = nil,
         starred: Bool? = nil,
@@ -63,6 +65,7 @@ public struct Project: Codable, Sendable {
         self.description = description
         self.dock = dock
         self.endDate = endDate
+        self.logo = logo
         self.purpose = purpose
         self.starUrl = starUrl
         self.starred = starred

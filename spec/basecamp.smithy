@@ -68,6 +68,8 @@ service Basecamp {
     RecordProjectVisit,
     UpdateProjectWallpaper,
     RemoveProjectWallpaper,
+    UpdateProjectLogo,
+    RemoveProjectLogo,
     ListTodos,
     GetTodo,
     CreateTodo,
@@ -956,6 +958,60 @@ structure RemoveProjectWallpaperInput {
 
 structure RemoveProjectWallpaperOutput {}
 
+/// Upload or replace the project's logo (returns 204 No Content).
+/// Uses the existing project image formats; maximum 5 MiB. Wallpaper is unchanged.
+/// People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@basecampMultipart(field: "logo")
+@http(method: "PUT", uri: "/{accountId}/projects/{projectId}/logo.json", code: 204)
+operation UpdateProjectLogo {
+  input: UpdateProjectLogoInput
+  output: UpdateProjectLogoOutput
+  errors: [ValidationError, NotFoundError, ForbiddenError, UnauthorizedError, RateLimitError, InternalServerError]
+}
+
+structure UpdateProjectLogoInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  @required
+  @httpPayload
+  data: Blob
+}
+
+structure UpdateProjectLogoOutput {}
+
+/// Remove the project's logo (returns 204 even when absent). Wallpaper is unchanged.
+/// People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/projects/{projectId}/logo.json", code: 204)
+operation RemoveProjectLogo {
+  input: RemoveProjectLogoInput
+  output: RemoveProjectLogoOutput
+  errors: [NotFoundError, ForbiddenError, UnauthorizedError, RateLimitError, InternalServerError]
+}
+
+structure RemoveProjectLogoInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+}
+
+structure RemoveProjectLogoOutput {}
+
 
 // ===== Sensitive Types (PII) =====
 
@@ -1019,6 +1075,15 @@ structure ProjectWallpaper {
   mode: WallpaperMode
 }
 
+/// The project's logo, included only in single-project responses when attached.
+/// Project lists and home responses omit it. Absent logos omit this member, not null.
+structure ProjectLogo {
+  /// An authenticated API-host URL that redirects to storage, not a public image link.
+  /// Use the SDK's authenticated download helper rather than an image element.
+  @required
+  url: String
+}
+
 structure ScheduleAttributes {
   start_date: ISO8601Date
   end_date: ISO8601Date
@@ -1062,6 +1127,7 @@ structure Project {
   starred: Boolean
   client_company: ClientCompany
   wallpaper: ProjectWallpaper
+  logo: ProjectLogo
   @deprecated(message: "Use Client Visibility feature instead", since: "2024-01")
   clientside: ClientSide
 }

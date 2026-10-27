@@ -2965,8 +2965,12 @@ type Project struct {
 	Dock        []DockItem  `json:"dock,omitempty"`
 	EndDate     *string     `json:"end_date,omitempty"`
 	Id          int64       `json:"id"`
-	Name        string      `json:"name"`
-	Purpose     *string     `json:"purpose,omitempty"`
+
+	// Logo The project's logo, included only in single-project responses when attached.
+	// Project lists and home responses omit it. Absent logos omit this member, not null.
+	Logo    *ProjectLogo `json:"logo,omitempty"`
+	Name    string       `json:"name"`
+	Purpose *string      `json:"purpose,omitempty"`
 
 	// StarUrl Bucket stars collection for this project (`/buckets/{id}/stars.json`).
 	StarUrl *string `json:"star_url,omitempty"`
@@ -3026,6 +3030,14 @@ type ProjectConstructionAttributes struct {
 type ProjectLimitErrorResponseContent struct {
 	Error   string  `json:"error"`
 	Message *string `json:"message,omitempty"`
+}
+
+// ProjectLogo The project's logo, included only in single-project responses when attached.
+// Project lists and home responses omit it. Absent logos omit this member, not null.
+type ProjectLogo struct {
+	// Url An authenticated API-host URL that redirects to storage, not a public image link.
+	// Use the SDK's authenticated download helper rather than an image element.
+	Url string `json:"url"`
 }
 
 // ProjectWallpaper The project's wallpaper, included only in single-project responses when attached.
@@ -5736,6 +5748,11 @@ type ListGaugeNeedlesParams struct {
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
+// UpdateProjectLogoMultipartBody defines parameters for UpdateProjectLogo.
+type UpdateProjectLogoMultipartBody struct {
+	Logo openapi_types.File `json:"logo"`
+}
+
 // ListProjectPeopleParams defines parameters for ListProjectPeople.
 type ListProjectPeopleParams struct {
 	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
@@ -6195,6 +6212,9 @@ type ToggleGaugeJSONRequestBody = ToggleGaugeRequestContent
 
 // CreateGaugeNeedleJSONRequestBody defines body for CreateGaugeNeedle for application/json ContentType.
 type CreateGaugeNeedleJSONRequestBody = CreateGaugeNeedleRequestContent
+
+// UpdateProjectLogoMultipartRequestBody defines body for UpdateProjectLogo for multipart/form-data ContentType.
+type UpdateProjectLogoMultipartRequestBody UpdateProjectLogoMultipartBody
 
 // UpdateProjectClientAccessJSONRequestBody defines body for UpdateProjectClientAccess for application/json ContentType.
 type UpdateProjectClientAccessJSONRequestBody = UpdateProjectClientAccessRequestContent
@@ -7454,6 +7474,12 @@ type ClientInterface interface {
 	CreateGaugeNeedleWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateGaugeNeedle(ctx context.Context, accountId string, projectId int64, body CreateGaugeNeedleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveProjectLogo request
+	RemoveProjectLogo(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateProjectLogoWithBody request with any body
+	UpdateProjectLogoWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjectPeople request
 	ListProjectPeople(ctx context.Context, accountId string, projectId int64, params *ListProjectPeopleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -10167,6 +10193,26 @@ func (c *Client) CreateGaugeNeedle(ctx context.Context, accountId string, projec
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// RemoveProjectLogo is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) RemoveProjectLogo(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRemoveProjectLogoRequest(c.Server, accountId, projectId)
+	}, true, "RemoveProjectLogo", reqEditors...)
+
+}
+
+// UpdateProjectLogoWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateProjectLogoWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateProjectLogoRequestWithBody(c.Server, accountId, projectId, contentType, body)
+	}, true, "UpdateProjectLogo", reqEditors...)
 
 }
 
@@ -20401,6 +20447,90 @@ func NewCreateGaugeNeedleRequestWithBody(server string, accountId string, projec
 	return req, nil
 }
 
+// NewRemoveProjectLogoRequest generates requests for RemoveProjectLogo
+func NewRemoveProjectLogoRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/logo.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateProjectLogoRequestWithBody generates requests for UpdateProjectLogo with any type of body
+func NewUpdateProjectLogoRequestWithBody(server string, accountId string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/logo.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListProjectPeopleRequest generates requests for ListProjectPeople
 func NewListProjectPeopleRequest(server string, accountId string, projectId int64, params *ListProjectPeopleParams) (*http.Request, error) {
 	var err error
@@ -28111,6 +28241,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"ToggleGauge":                        {Idempotent: true, HasSensitiveParams: false},
 	"ListGaugeNeedles":                   {Idempotent: true, HasSensitiveParams: false},
 	"CreateGaugeNeedle":                  {Idempotent: false, HasSensitiveParams: false},
+	"RemoveProjectLogo":                  {Idempotent: true, HasSensitiveParams: false},
+	"UpdateProjectLogo":                  {Idempotent: true, HasSensitiveParams: false},
 	"ListProjectPeople":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProjectClientAccess":          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProjectAccess":                {Idempotent: true, HasSensitiveParams: false},
@@ -28410,6 +28542,8 @@ var operationRetryMax = map[string]int{
 	"ToggleGauge":                        2,
 	"ListGaugeNeedles":                   3,
 	"CreateGaugeNeedle":                  2,
+	"RemoveProjectLogo":                  3,
+	"UpdateProjectLogo":                  3,
 	"ListProjectPeople":                  3,
 	"UpdateProjectClientAccess":          3,
 	"UpdateProjectAccess":                3,
@@ -28707,6 +28841,8 @@ var operationRetryOn = map[string][]int{
 	"ToggleGauge":                        {429, 503},
 	"ListGaugeNeedles":                   {429, 503},
 	"CreateGaugeNeedle":                  {429, 503},
+	"RemoveProjectLogo":                  {429, 503},
+	"UpdateProjectLogo":                  {429, 503},
 	"ListProjectPeople":                  {429, 503},
 	"UpdateProjectClientAccess":          {503},
 	"UpdateProjectAccess":                {429, 503},
@@ -29676,6 +29812,14 @@ func (s *ProjectsService) Update(ctx context.Context, accountId string, projectI
 	return s.client.UpdateProject(ctx, accountId, projectId, body, reqEditors...)
 }
 
+func (s *ProjectsService) RemoveLogo(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.RemoveProjectLogo(ctx, accountId, projectId, reqEditors...)
+}
+
+func (s *ProjectsService) UpdateLogoWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UpdateProjectLogoWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
+}
+
 func (s *ProjectsService) RecordVisit(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.RecordProjectVisit(ctx, accountId, projectId, reqEditors...)
 }
@@ -30536,6 +30680,12 @@ type ClientWithResponsesInterface interface {
 	CreateGaugeNeedleWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGaugeNeedleResponse, error)
 
 	CreateGaugeNeedleWithResponse(ctx context.Context, accountId string, projectId int64, body CreateGaugeNeedleJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGaugeNeedleResponse, error)
+
+	// RemoveProjectLogoWithResponse request
+	RemoveProjectLogoWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*RemoveProjectLogoResponse, error)
+
+	// UpdateProjectLogoWithBodyWithResponse request with any body
+	UpdateProjectLogoWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectLogoResponse, error)
 
 	// ListProjectPeopleWithResponse request
 	ListProjectPeopleWithResponse(ctx context.Context, accountId string, projectId int64, params *ListProjectPeopleParams, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error)
@@ -36202,6 +36352,75 @@ func (r CreateGaugeNeedleResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateGaugeNeedleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveProjectLogoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveProjectLogoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveProjectLogoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveProjectLogoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateProjectLogoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateProjectLogoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateProjectLogoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateProjectLogoResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -42782,6 +43001,24 @@ func (c *ClientWithResponses) CreateGaugeNeedleWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseCreateGaugeNeedleResponse(rsp)
+}
+
+// RemoveProjectLogoWithResponse request returning *RemoveProjectLogoResponse
+func (c *ClientWithResponses) RemoveProjectLogoWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*RemoveProjectLogoResponse, error) {
+	rsp, err := c.RemoveProjectLogo(ctx, accountId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveProjectLogoResponse(rsp)
+}
+
+// UpdateProjectLogoWithBodyWithResponse request with arbitrary body returning *UpdateProjectLogoResponse
+func (c *ClientWithResponses) UpdateProjectLogoWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectLogoResponse, error) {
+	rsp, err := c.UpdateProjectLogoWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateProjectLogoResponse(rsp)
 }
 
 // ListProjectPeopleWithResponse request returning *ListProjectPeopleResponse
@@ -52283,6 +52520,116 @@ func ParseCreateGaugeNeedleResponse(rsp *http.Response) (*CreateGaugeNeedleRespo
 		var dest ForbiddenErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveProjectLogoResponse parses an HTTP response from a RemoveProjectLogoWithResponse call
+func ParseRemoveProjectLogoResponse(rsp *http.Response) (*RemoveProjectLogoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveProjectLogoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateProjectLogoResponse parses an HTTP response from a UpdateProjectLogoWithResponse call
+func ParseUpdateProjectLogoResponse(rsp *http.Response) (*UpdateProjectLogoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateProjectLogoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:

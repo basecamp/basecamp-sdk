@@ -2303,6 +2303,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/logo.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Upload or replace the project's logo (returns 204 No Content).
+         *     Uses the existing project image formats; maximum 5 MiB. Wallpaper is unchanged.
+         *     People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+         */
+        put: operations["UpdateProjectLogo"];
+        post?: never;
+        /**
+         * @description Remove the project's logo (returns 204 even when absent). Wallpaper is unchanged.
+         *     People and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.
+         */
+        delete: operations["RemoveProjectLogo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/people.json": {
         parameters: {
             query?: never;
@@ -6706,6 +6731,7 @@ export interface components {
             starred?: boolean;
             client_company?: components["schemas"]["ClientCompany"];
             wallpaper?: components["schemas"]["ProjectWallpaper"];
+            logo?: components["schemas"]["ProjectLogo"];
             /** @deprecated */
             clientside?: components["schemas"]["ClientSide"];
         };
@@ -6743,6 +6769,17 @@ export interface components {
         ProjectLimitErrorResponseContent: {
             error: string;
             message?: string;
+        };
+        /**
+         * @description The project's logo, included only in single-project responses when attached.
+         *     Project lists and home responses omit it. Absent logos omit this member, not null.
+         */
+        ProjectLogo: {
+            /**
+             * @description An authenticated API-host URL that redirects to storage, not a public image link.
+             *     Use the SDK's authenticated download helper rather than an image element.
+             */
+            url: string;
         };
         /**
          * @description The project's wallpaper, included only in single-project responses when attached.
@@ -8530,6 +8567,7 @@ export interface components {
             create?: components["schemas"]["CreateClientRequest"][];
         };
         UpdateProjectClientAccessResponseContent: components["schemas"]["ProjectAccessResult"];
+        UpdateProjectLogoInputPayload: string;
         UpdateProjectRequestContent: {
             name: string;
             description?: string;
@@ -18621,6 +18659,152 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateProjectLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    logo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description UpdateProjectLogo 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    RemoveProjectLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description RemoveProjectLogo 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

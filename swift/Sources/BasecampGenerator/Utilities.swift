@@ -186,6 +186,7 @@ private let resourceTypeOverrides: [String: String] = [
     // "resource" and would split the removal from the upload, which reports
     // "project_wallpaper".
     "RemoveProjectWallpaper": "project_wallpaper",
+    "RemoveProjectLogo": "project_logo",
 ]
 
 /// Extracts the resource type from an operationId using verb patterns.

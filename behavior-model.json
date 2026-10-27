@@ -2857,6 +2857,18 @@
         ]
       }
     },
+    "RemoveProjectLogo": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "RemoveProjectWallpaper": {
       "idempotent": true,
       "retry": {
@@ -3539,6 +3551,18 @@
         "base_delay_ms": 1000,
         "backoff": "exponential",
         "retry_on": [
+          503
+        ]
+      }
+    },
+    "UpdateProjectLogo": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
           503
         ]
       }

@@ -229,6 +229,28 @@ sdk_routes_absent_from_bc3_docs:
       recording it made", "a filing someone else started is not found"). Delete
       at the repin past #14136.
 
+  - method: PUT
+    path: /projects/:id/logo
+    reason: >-
+      UpdateProjectLogo. Served on the API host by bc3 #14174, merged as
+      87d66c9730b4b14d7845e69851e467300ed3a257 (implementation head
+      b5eaa72970f4d733aa5585802ca27339140c52df). The revision
+      spec/api-provenance.json pins predates it. Drawn in config/routes.rb
+      as the projects member resource :logo; Projects::LogosController#update
+      accepts multipart logo and returns 204. Documented in
+      doc/api/sections/projects.md and covered by
+      test/api/projects/logos_controller_api_test.rb at that merged revision.
+      Production smoke verified upload, exact download, replacement, version URL
+      change and invalid replacement preservation. Delete at the repin past #14174.
+
+  - method: DELETE
+    path: /projects/:id/logo
+    reason: >-
+      RemoveProjectLogo. Same merged bc3 #14174 and draw;
+      Projects::LogosController#destroy returns 204, including when absent.
+      Covered by test/api/projects/logos_controller_api_test.rb and production
+      smoke verified repeated deletion. Delete at the repin past #14174.
+
 # ---------------------------------------------------------------------------
 # Known-defective SDK routes — bc3 does NOT serve these, and we know it.
 #

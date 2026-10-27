@@ -11174,6 +11174,46 @@
       ]
     },
     {
+      "operationId": "RemoveProjectLogo",
+      "tag": "Projects",
+      "method": "DELETE",
+      "path": "/{accountId}/projects/{projectId}/logo.json",
+      "doc": "Remove the project's logo (returns 204 even when absent). Wallpaper is unchanged.\nPeople and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "projectId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "RemoveProjectWallpaper",
       "tag": "Projects",
       "method": "DELETE",
@@ -14306,6 +14346,48 @@
         },
         "type": "object"
       }
+    },
+    {
+      "operationId": "UpdateProjectLogo",
+      "tag": "Projects",
+      "method": "PUT",
+      "path": "/{accountId}/projects/{projectId}/logo.json",
+      "doc": "Upload or replace the project's logo (returns 204 No Content).\nUses the existing project image formats; maximum 5 MiB. Wallpaper is unchanged.\nPeople and agents who can edit the project may use this operation; others get 403, and projects outside the caller's visibility get 404.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "projectId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "bodyMediaType": "multipart/form-data",
+      "bodyRequired": true
     },
     {
       "operationId": "UpdateProjectWallpaper",

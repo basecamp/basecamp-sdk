@@ -277,4 +277,64 @@ class ProjectsServiceTest < Minitest::Test
 
     assert_equal 403, error.http_status
   end
+  def test_update_project_logo_sends_multipart
+    stub = stub_request(:put, "#{BASE_URL}/12345/projects/123/logo.json")
+      .with do |request|
+        request.headers["Content-Type"].start_with?("multipart/form-data; boundary=") &&
+          request.body.match?(/name="logo"; filename="beach\.webp".*fake-webp-data/m)
+      end
+      .to_return(status: 204)
+
+    result = @account.projects.update_project_logo(
+      project_id: 123, io: "fake-webp-data", filename: "beach.webp", content_type: "image/webp"
+    )
+
+    assert_nil result
+    assert_requested stub
+  end
+
+  def test_update_project_logo_omits_mode_when_absent
+    stub = stub_request(:put, "#{BASE_URL}/12345/projects/123/logo.json").to_return(status: 204)
+
+    @account.projects.update_project_logo(
+      project_id: 123, io: StringIO.new("data"), filename: "beach.png", content_type: "image/png"
+    )
+
+    assert_requested stub
+  end
+
+  def test_update_project_logo_refused_format
+    stub_request(:put, "#{BASE_URL}/12345/projects/123/logo.json")
+      .to_return(
+        status: 422,
+        body: { error: "Logo is not an allowed image type" }.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @account.projects.update_project_logo(
+        project_id: 123, io: "not an image", filename: "a.txt", content_type: "text/plain"
+      )
+    end
+
+    assert_equal 422, error.http_status
+  end
+
+  def test_remove_project_logo
+    stub = stub_delete("/12345/projects/123/logo.json")
+
+    assert_nil @account.projects.remove_project_logo(project_id: 123)
+    assert_requested stub
+  end
+
+  def test_remove_project_logo_forbidden
+    stub_request(:delete, "#{BASE_URL}/12345/projects/123/logo.json")
+      .to_return(status: 403, body: { error: "Access denied" }.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.projects.remove_project_logo(project_id: 123)
+    end
+
+    assert_equal 403, error.http_status
+  end
 end

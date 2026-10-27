@@ -144,6 +144,45 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Upload or replace the project's logo.
+     * @param projectId The project ID
+     * @param data Raw bytes of the file to upload
+     * @param filename Display name for the uploaded file
+     * @param contentType MIME type of the file (e.g., "image/png")
+     */
+    suspend fun updateProjectLogo(projectId: Long, data: ByteArray, filename: String, contentType: String): Unit {
+        val info = OperationInfo(
+            service = "Projects",
+            operation = "UpdateProjectLogo",
+            resourceType = "project_logo",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        request(info, {
+            httpPutMultipart("/projects/${projectId}/logo.json", "logo", data, filename, contentType, operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Remove the project's logo. Wallpaper is unchanged.
+     * @param projectId The project ID
+     */
+    suspend fun removeProjectLogo(projectId: Long): Unit {
+        val info = OperationInfo(
+            service = "Projects",
+            operation = "RemoveProjectLogo",
+            resourceType = "project_logo",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        request(info, {
+            httpDelete("/projects/${projectId}/logo.json", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
      * Record that the current user visited a project, moving it to the front of ListRecentProjects.
      * @param projectId The project ID
      */

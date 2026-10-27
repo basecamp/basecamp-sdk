@@ -897,3 +897,70 @@ func TestProjectsService_RemoveWallpaperForbidden(t *testing.T) {
 		t.Errorf("error = %d/%q, want 403/%q", bcErr.HTTPStatus, bcErr.Code, CodeForbidden)
 	}
 }
+
+func TestProjectsService_UpdateLogoValidationErrors(t *testing.T) {
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("server should not be called")
+	})
+
+	ctx := context.Background()
+	if err := svc.UpdateLogo(ctx, 42, nil, "a.png", "image/png"); err == nil {
+		t.Error("expected error for nil logo")
+	}
+	if err := svc.UpdateLogo(ctx, 42, strings.NewReader("data"), "", "image/png"); err == nil {
+		t.Error("expected error for empty filename")
+	}
+	if err := svc.UpdateLogo(ctx, 42, strings.NewReader("data"), "a.png", ""); err == nil {
+		t.Error("expected error for empty content type")
+	}
+}
+
+// bc3 applies the shared model's image validations and refuses non-images with 422.
+func TestProjectsService_UpdateLogoRefused(t *testing.T) {
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"error":"Logo is not an allowed image type"}`))
+	})
+
+	err := svc.UpdateLogo(context.Background(), 42, strings.NewReader("not an image"), "a.txt", "text/plain")
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error is not *basecamp.Error: %T (%v)", err, err)
+	}
+	if bcErr.HTTPStatus != 422 || bcErr.Code != CodeValidation {
+		t.Errorf("error = %d/%q, want 422/%q", bcErr.HTTPStatus, bcErr.Code, CodeValidation)
+	}
+}
+
+func TestProjectsService_RemoveLogo(t *testing.T) {
+	var gotMethod, gotPath string
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	if err := svc.RemoveLogo(context.Background(), 42); err != nil {
+		t.Fatalf("RemoveLogo returned error: %v", err)
+	}
+	if gotMethod != "DELETE" || gotPath != "/99999/projects/42/logo.json" {
+		t.Errorf("request = %s %s, want DELETE /99999/projects/42/logo.json", gotMethod, gotPath)
+	}
+}
+
+func TestProjectsService_RemoveLogoForbidden(t *testing.T) {
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"error":"Access denied"}`))
+	})
+
+	err := svc.RemoveLogo(context.Background(), 42)
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error is not *basecamp.Error: %T (%v)", err, err)
+	}
+	if bcErr.HTTPStatus != 403 || bcErr.Code != CodeForbidden {
+		t.Errorf("error = %d/%q, want 403/%q", bcErr.HTTPStatus, bcErr.Code, CodeForbidden)
+	}
+}
