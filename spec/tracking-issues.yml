@@ -99,25 +99,9 @@ prose_tracking_issues:
     file: "typescript/src/errors.ts"
     site: "typescript/src/errors.ts — the strictness gate is recorded against the #775 divergence"
     mentions: 0
-  - issue: 799
-    file: "SPEC.md"
-    site: "SPEC.md §6 — Python and Ruby still truncate the delay; #799 tracks the rounding convergence"
-    mentions: 0
-  - issue: 799
-    file: "MIGRATING.md"
-    site: "MIGRATING.md — #799 tracks the cross-SDK convergence on Retry-After rounding"
-    mentions: 0
   - issue: 775
     file: "go/pkg/basecamp/client.go"
     site: "go/pkg/basecamp/client.go — widening the set of statuses that carry a parsed Retry-After is #775's"
-    mentions: 0
-  - issue: 799
-    file: "go/pkg/basecamp/client.go"
-    site: "go/pkg/basecamp/client.go — the rounding and over-range halves of the divergence are #799's"
-    mentions: 0
-  - issue: 799
-    file: "go/pkg/basecamp/client_retry_after_test.go"
-    site: "go/pkg/basecamp/client_retry_after_test.go — pins Go's side pending #799's convergence"
     mentions: 0
   - issue: 818
     file: "SPEC.md"

@@ -392,7 +392,7 @@ func TestParseRetryAfter_FarFutureHTTPDateSaturates(t *testing.T) {
 // waiting. It also retries before the moment the server named. TypeScript
 // (`Math.ceil`), Kotlin (`(remainingMs + 999) / 1000`) and Swift
 // (`.rounded(.up)`) all round up for those two reasons; Go now joins them, and
-// SPEC §6 step 2 says so. Python and Ruby still truncate (#799).
+// SPEC §6 step 2 says so. Python and Ruby round up too (#857).
 //
 // The assertion is ONE-SIDED, which is what keeps it out of #783's territory
 // (review follow-up, Codex). An equality against a literal cannot work here:
