@@ -1043,10 +1043,10 @@ pub struct Comment {
 /// The `CopyRecordingRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CopyRecordingRequestContent {
-    /// The container to copy into, from the destination project's dock: a card
-    /// table for a card, a message board for a message, a vault for a document,
-    /// upload or folder, a schedule for a schedule entry. Give this or
-    /// destination_project_id.
+    /// The container to copy into, chosen as for MoveRecording's
+    /// filing_destination_id: a container of the kind the recording sits in now,
+    /// such as a to-do list, in this project or another, for a to-do. For a dock
+    /// tool, the destination project's dock. Give this or destination_project_id.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filing_destination_id: Option<i64>,
     /// The project to copy a dock tool to. Applies to tools only, and wins over
@@ -3704,10 +3704,13 @@ pub struct MoveCardRequestContent {
 /// The `MoveRecordingRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MoveRecordingRequestContent {
-    /// The container to move into, from the destination project's dock: a card
+    /// The container to move into, of the kind the recording sits in now: a card
     /// table for a card, a message board for a message, a vault for a document,
-    /// upload or folder, a schedule for a schedule entry. Give this or
-    /// destination_project_id.
+    /// upload, cloud file, Google document or folder, a schedule for a schedule
+    /// entry, a questionnaire for a check-in question, an inbox for an email
+    /// forward, a to-do set for a to-do list, and a to-do list, in this project
+    /// or another, for a to-do or to-do list group. For a dock tool, the
+    /// destination project's dock. Give this or destination_project_id.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filing_destination_id: Option<i64>,
     /// The project to move a dock tool to. Applies to tools only, and wins over
@@ -5019,7 +5022,8 @@ pub struct RepositionSubtaskRequestContent {
 pub struct RepositionTodoRequestContent {
     /// `position`.
     pub position: i32,
-    /// Optional todolist ID to move the todo to a different parent
+    /// A to-do list, or the project's to-do set, in the same project, to move the
+    /// todo into instead of its current parent. 422 when it is neither.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<i64>,
 }

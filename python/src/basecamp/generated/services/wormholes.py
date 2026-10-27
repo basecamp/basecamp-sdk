@@ -51,10 +51,11 @@ class WormholesService(BaseService):
     def create(self, *, bucket_id: int, card_table_id: int, destination_recording_id: int) -> dict[str, Any]:
         """Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.
 
-        A wormhole is the only mechanism for moving a card to a different project: its
-        id is a valid `column_id` for MoveCard, teleporting the card there. It is not
-        needed for a one-off move within a project; MoveCard goes to any column there
-        directly. A card table holds at most four wormholes.
+        A wormhole's id is a valid `column_id` for MoveCard, teleporting the card to
+        its destination column. It is not needed for a one-off move: MoveCard goes to
+        any column in the card's project directly, and MoveRecording moves a card to
+        another project's card table. Create one only when the card table should keep
+        that shortcut. A card table holds at most four wormholes.
         `destinationRecordingId` is the id of a column on another accessible card table.
 
         Args:
@@ -119,10 +120,11 @@ class AsyncWormholesService(AsyncBaseService):
     async def create(self, *, bucket_id: int, card_table_id: int, destination_recording_id: int) -> dict[str, Any]:
         """Add a wormhole to a card table: a standing shortcut that sends cards to a column on another card table, usually in another project.
 
-        A wormhole is the only mechanism for moving a card to a different project: its
-        id is a valid `column_id` for MoveCard, teleporting the card there. It is not
-        needed for a one-off move within a project; MoveCard goes to any column there
-        directly. A card table holds at most four wormholes.
+        A wormhole's id is a valid `column_id` for MoveCard, teleporting the card to
+        its destination column. It is not needed for a one-off move: MoveCard goes to
+        any column in the card's project directly, and MoveRecording moves a card to
+        another project's card table. Create one only when the card table should keep
+        that shortcut. A card table holds at most four wormholes.
         `destinationRecordingId` is the id of a column on another accessible card table.
 
         Args:

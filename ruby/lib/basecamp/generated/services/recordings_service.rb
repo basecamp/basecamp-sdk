@@ -34,10 +34,10 @@ module Basecamp
 
       # Start copying a recording into another project; poll GetFiling for the result.
       # @param recording_id [Integer] recording id ID
-      # @param filing_destination_id [Integer, nil] The container to copy into, from the destination project's dock: a card
-      #   table for a card, a message board for a message, a vault for a document,
-      #   upload or folder, a schedule for a schedule entry. Give this or
-      #   destination_project_id.
+      # @param filing_destination_id [Integer, nil] The container to copy into, chosen as for MoveRecording's
+      #   filing_destination_id: a container of the kind the recording sits in now,
+      #   such as a to-do list, in this project or another, for a to-do. For a dock
+      #   tool, the destination project's dock. Give this or destination_project_id.
       # @param destination_project_id [Integer, nil] The project to copy a dock tool to. Applies to tools only, and wins over
       #   filing_destination_id when a request for a tool gives both.
       # @param parent_id [Integer, nil] When copying into a vault, a folder inside it to put the copy in.
@@ -65,10 +65,13 @@ module Basecamp
 
       # Start moving a recording into another project; poll GetFiling for the result.
       # @param recording_id [Integer] recording id ID
-      # @param filing_destination_id [Integer, nil] The container to move into, from the destination project's dock: a card
+      # @param filing_destination_id [Integer, nil] The container to move into, of the kind the recording sits in now: a card
       #   table for a card, a message board for a message, a vault for a document,
-      #   upload or folder, a schedule for a schedule entry. Give this or
-      #   destination_project_id.
+      #   upload, cloud file, Google document or folder, a schedule for a schedule
+      #   entry, a questionnaire for a check-in question, an inbox for an email
+      #   forward, a to-do set for a to-do list, and a to-do list, in this project
+      #   or another, for a to-do or to-do list group. For a dock tool, the
+      #   destination project's dock. Give this or destination_project_id.
       # @param destination_project_id [Integer, nil] The project to move a dock tool to. Applies to tools only, and wins over
       #   filing_destination_id when a request for a tool gives both.
       # @param parent_id [Integer, nil] When moving into a vault, a folder inside it to put the recording in.

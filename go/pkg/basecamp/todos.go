@@ -875,7 +875,9 @@ func (s *TodosService) Uncomplete(ctx context.Context, todoID int64) (err error)
 
 // Reposition changes the position of a todo within its todolist.
 // position is 1-based (1 = first position).
-// parentID, if non-nil, moves the todo to a different todolist within the same project.
+// parentID, if non-nil, moves the todo into another todolist, or the project's
+// to-do set, within the same project, keeping its id; anything else is a
+// validation error. To move a todo into another project, use Recordings().Move.
 func (s *TodosService) Reposition(ctx context.Context, todoID int64, position int, parentID *int64) (err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Reposition",

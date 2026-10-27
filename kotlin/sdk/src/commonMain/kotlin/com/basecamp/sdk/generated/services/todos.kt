@@ -183,7 +183,7 @@ open class TodosService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Reposition a todo within its todolist
+     * Reposition a todo within its todolist, or move it into another list or the to-do set in the same project.
      * @param todoId The todo ID
      * @param body Request body
      */

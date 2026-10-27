@@ -86,6 +86,11 @@ impl<'a> CardsService<'a> {
     /// old id then returns not found. `position` does not control where it lands,
     /// but if supplied it must still be a positive integer.
     ///
+    /// No wormhole is needed to move a card to another project's card table either:
+    /// MoveRecording with that card table as `filing_destination_id` moves it, and
+    /// the card lands in Triage, or in Done if it is completed. Create a wormhole
+    /// only when the card table should keep that shortcut.
+    ///
     /// `POST /card_tables/cards/{cardId}/moves.json` — not idempotent, sent exactly once.
     pub async fn move_card(
         &self,

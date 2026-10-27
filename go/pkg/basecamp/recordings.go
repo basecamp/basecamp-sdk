@@ -521,9 +521,14 @@ type FilingDestinationRecording struct {
 // MoveRecordingRequest names where to move a recording. Set FilingDestinationID,
 // or DestinationProjectID for a dock tool.
 type MoveRecordingRequest struct {
-	// FilingDestinationID is the container to move into, from the destination
-	// project's dock: a card table for a card, a message board for a message, a
-	// vault for a document, upload or folder, a schedule for a schedule entry.
+	// FilingDestinationID is the container to move into, of the kind the
+	// recording sits in now: a card table for a card or a card table column you
+	// added (not Triage, Not now, Done or On hold), a message board for a
+	// message, a vault for a document, upload, cloud file, Google document or
+	// folder, a schedule for a schedule entry, a questionnaire for a check-in
+	// question, an inbox for an email forward, a to-do set for a to-do list, and
+	// a to-do list, in this project or another, for a to-do or to-do list group.
+	// For a dock tool, it may be the destination project's dock.
 	FilingDestinationID int64 `json:"filing_destination_id,omitempty"`
 	// DestinationProjectID is the project to move a dock tool to.
 	DestinationProjectID int64 `json:"destination_project_id,omitempty"`
@@ -550,6 +555,13 @@ type CopyRecordingRequest struct {
 // FilingProcessing. Once it completes, the recording lives in the destination
 // project under DestinationRecording.ID, and recordingID no longer reaches it.
 // A card moved into a card table lands in Triage, or in Done if it is completed.
+// A move always gives a new id, even within the project; to move a to-do into
+// another list in its own project and keep its id, use Todos().Reposition.
+//
+// Only the recordings MoveRecordingRequest.FilingDestinationID lists, and dock
+// tools, move on their own. Anything else, such as a comment, an attachment, a
+// card step or a check-in answer, moves only with its parent, and moving it
+// alone is forbidden.
 //
 // Repeating a move starts nothing: while the first is pending it is a
 // validation error, and once it is done, not found.
@@ -596,7 +608,9 @@ func (s *RecordingsService) Move(ctx context.Context, recordingID int64, req *Mo
 // Copy starts copying a recording into another project and returns the filing
 // that tracks it; the original stays where it is. Poll GetFiling until the
 // filing leaves FilingPending and FilingProcessing; DestinationRecording.ID is
-// then the copy.
+// then the copy. A copied card lands in Triage, or in Done if it is completed.
+// The recordings that move on their own copy on their own too, except the
+// Email Forwards tool, which can't be copied.
 //
 // Each call makes another copy, so the SDK never retries it.
 func (s *RecordingsService) Copy(ctx context.Context, recordingID int64, req *CopyRecordingRequest) (result *Filing, err error) {

@@ -597,10 +597,10 @@ type CopyRecordingRequestContent struct {
 	// filing_destination_id when a request for a tool gives both.
 	DestinationProjectId *int64 `json:"destination_project_id,omitempty"`
 
-	// FilingDestinationId The container to copy into, from the destination project's dock: a card
-	// table for a card, a message board for a message, a vault for a document,
-	// upload or folder, a schedule for a schedule entry. Give this or
-	// destination_project_id.
+	// FilingDestinationId The container to copy into, chosen as for MoveRecording's
+	// filing_destination_id: a container of the kind the recording sits in now,
+	// such as a to-do list, in this project or another, for a to-do. For a dock
+	// tool, the destination project's dock. Give this or destination_project_id.
 	FilingDestinationId *int64 `json:"filing_destination_id,omitempty"`
 
 	// IncludeComments Copy the recording's comments too. Defaults to false.
@@ -2585,10 +2585,13 @@ type MoveRecordingRequestContent struct {
 	// filing_destination_id when a request for a tool gives both.
 	DestinationProjectId *int64 `json:"destination_project_id,omitempty"`
 
-	// FilingDestinationId The container to move into, from the destination project's dock: a card
+	// FilingDestinationId The container to move into, of the kind the recording sits in now: a card
 	// table for a card, a message board for a message, a vault for a document,
-	// upload or folder, a schedule for a schedule entry. Give this or
-	// destination_project_id.
+	// upload, cloud file, Google document or folder, a schedule for a schedule
+	// entry, a questionnaire for a check-in question, an inbox for an email
+	// forward, a to-do set for a to-do list, and a to-do list, in this project
+	// or another, for a to-do or to-do list group. For a dock tool, the
+	// destination project's dock. Give this or destination_project_id.
 	FilingDestinationId *int64 `json:"filing_destination_id,omitempty"`
 
 	// ParentId When moving into a vault, a folder inside it to put the recording in.
@@ -3412,7 +3415,8 @@ type RepositionSubtaskRequestContent struct {
 
 // RepositionTodoRequestContent defines model for RepositionTodoRequestContent.
 type RepositionTodoRequestContent struct {
-	// ParentId Optional todolist ID to move the todo to a different parent
+	// ParentId A to-do list, or the project's to-do set, in the same project, to move the
+	// todo into instead of its current parent. 422 when it is neither.
 	ParentId *int64 `json:"parent_id,omitempty"`
 	Position int32  `json:"position"`
 }

@@ -220,12 +220,18 @@ class TodosService(BaseService):
         )
 
     def reposition(self, *, todo_id: int, position: int, parent_id: int | None = None) -> None:
-        """Reposition a todo within its todolist.
+        """Reposition a todo within its todolist, or move it into another list or the to-do set in the same project.
+
+        `parent_id` names a to-do list, or the project's to-do set, to move the todo
+        into; the todo keeps its id. It must be in the same project: anything else
+        answers 422. To move a todo into a list in another project, use
+        MoveRecording.
 
         Args:
             todo_id: The todo id.
             position: The position.
-            parent_id: Optional todolist ID to move the todo to a different parent
+            parent_id: A to-do list, or the project's to-do set, in the same project, to move the
+                todo into instead of its current parent. 422 when it is neither.
         """
         self._request_void(
             OperationInfo(service="todos", operation="reposition", is_mutation=True, resource_id=todo_id),
@@ -446,12 +452,18 @@ class AsyncTodosService(AsyncBaseService):
         )
 
     async def reposition(self, *, todo_id: int, position: int, parent_id: int | None = None) -> None:
-        """Reposition a todo within its todolist.
+        """Reposition a todo within its todolist, or move it into another list or the to-do set in the same project.
+
+        `parent_id` names a to-do list, or the project's to-do set, to move the todo
+        into; the todo keeps its id. It must be in the same project: anything else
+        answers 422. To move a todo into a list in another project, use
+        MoveRecording.
 
         Args:
             todo_id: The todo id.
             position: The position.
-            parent_id: Optional todolist ID to move the todo to a different parent
+            parent_id: A to-do list, or the project's to-do set, in the same project, to move the
+                todo into instead of its current parent. 422 when it is neither.
         """
         await self._request_void(
             OperationInfo(service="todos", operation="reposition", is_mutation=True, resource_id=todo_id),
