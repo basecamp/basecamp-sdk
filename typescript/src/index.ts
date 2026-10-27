@@ -508,6 +508,8 @@ export {
   type Recording,
   type ListRecordingOptions,
   type MoveToVaultRecordingRequest,
+  type MoveRecordingRequest,
+  type CopyRecordingRequest,
 } from "./generated/services/recordings.js";
 
 // Templates service - generated

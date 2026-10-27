@@ -36,7 +36,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-10-23T22:09:28.275Z",
+  "generated": "2026-10-27T15:35:57.499Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -1237,6 +1237,17 @@ const metadata: MetadataOutput = {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
         "maxPageSize": 50
+      }
+    },
+    "GetFiling": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "GetEverythingForwards": {
@@ -2481,6 +2492,17 @@ const metadata: MetadataOutput = {
         ]
       }
     },
+    "CopyRecording": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
     "ListEvents": {
       "retry": {
         "maxAttempts": 3,
@@ -2525,6 +2547,17 @@ const metadata: MetadataOutput = {
       }
     },
     "MoveRecordingToVault": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "MoveRecording": {
       "retry": {
         "maxAttempts": 2,
         "baseDelayMs": 1000,

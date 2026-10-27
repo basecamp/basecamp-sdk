@@ -1040,6 +1040,30 @@ pub struct Comment {
     pub boosts_url: Option<String>,
 }
 
+/// The `CopyRecordingRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CopyRecordingRequestContent {
+    /// The container to copy into, from the destination project's dock: a card
+    /// table for a card, a message board for a message, a vault for a document,
+    /// upload or folder, a schedule for a schedule entry. Give this or
+    /// destination_project_id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub filing_destination_id: Option<i64>,
+    /// The project to copy a dock tool to. Applies to tools only, and wins over
+    /// filing_destination_id when a request for a tool gives both.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_project_id: Option<i64>,
+    /// When copying into a vault, a folder inside it to put the copy in.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_id: Option<i64>,
+    /// Copy the recording's comments too. Defaults to false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub include_comments: Option<bool>,
+}
+
+/// `CopyRecordingResponseContent`.
+pub type CopyRecordingResponseContent = Filing;
+
 /// `CreateAnswerResponseContent`.
 pub type CreateAnswerResponseContent = QuestionAnswer;
 
@@ -2331,6 +2355,40 @@ pub struct FieldKeyedErrors {
 /// `FieldValidationErrorResponseContent`.
 pub type FieldValidationErrorResponseContent = FieldKeyedErrors;
 
+/// A move or copy of a recording into another project, as MoveRecording,
+/// CopyRecording and GetFiling answer it.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Filing {
+    /// `id`.
+    pub id: i64,
+    /// pending|processing|completed|failed
+    pub status: String,
+    /// Move|Copy
+    pub r#type: String,
+    /// `source_recording_id`.
+    pub source_recording_id: i64,
+    /// The filing's own API URL, for polling.
+    pub url: String,
+    /// `destination_recording`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_recording: Option<FilingDestinationRecording>,
+}
+
+/// The `FilingDestinationRecording` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct FilingDestinationRecording {
+    /// `id`.
+    pub id: i64,
+    /// The recordable type, such as `Kanban::Card`, `Todo` or `Message`.
+    pub r#type: String,
+    /// `url`.
+    pub url: String,
+    /// `app_url`.
+    pub app_url: String,
+}
+
 /// The `FirstWeekDay` values the Basecamp API declares.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
@@ -2901,6 +2959,9 @@ pub type GetEverythingUnassignedCardsResponseContent = Vec<BucketCardsGroup>;
 
 /// `GetEverythingUnassignedTodosResponseContent`.
 pub type GetEverythingUnassignedTodosResponseContent = Vec<BucketTodosGroup>;
+
+/// `GetFilingResponseContent`.
+pub type GetFilingResponseContent = Filing;
 
 /// `GetFolderResponseContent`.
 pub type GetFolderResponseContent = FolderWithProjects;
@@ -3639,6 +3700,27 @@ pub struct MoveCardRequestContent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
 }
+
+/// The `MoveRecordingRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct MoveRecordingRequestContent {
+    /// The container to move into, from the destination project's dock: a card
+    /// table for a card, a message board for a message, a vault for a document,
+    /// upload or folder, a schedule for a schedule entry. Give this or
+    /// destination_project_id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub filing_destination_id: Option<i64>,
+    /// The project to move a dock tool to. Applies to tools only, and wins over
+    /// filing_destination_id when a request for a tool gives both.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_project_id: Option<i64>,
+    /// When moving into a vault, a folder inside it to put the recording in.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_id: Option<i64>,
+}
+
+/// `MoveRecordingResponseContent`.
+pub type MoveRecordingResponseContent = Filing;
 
 /// The `MoveRecordingToVaultRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

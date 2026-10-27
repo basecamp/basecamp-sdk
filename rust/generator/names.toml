@@ -178,8 +178,9 @@ DeleteWormhole = "Wormholes"
 UpdateWormhole = "Wormholes"
 
 # METHOD_NAME_OVERRIDES, plus the Rust-only rows a keyword forces: `move` cannot be a
-# method name, so the two Move operations take the `move_<noun>` spelling.
+# method name, so the Move operations take the `move_<noun>` spelling.
 [operation_methods]
+CopyRecording = "copy"
 CreateAnswer = "createAnswer"
 CreateCampfireLine = "createLine"
 CreateCampfireUpload = "createUpload"
@@ -214,6 +215,7 @@ GetCampfire = "get"
 GetCampfireLine = "getLine"
 GetChatbot = "getChatbot"
 GetComment = "get"
+GetFiling = "getFiling"
 GetFolder = "getFolder"
 GetForward = "get"
 GetForwardReply = "getReply"
@@ -268,6 +270,7 @@ ListUploadVersions = "listVersions"
 ListUploads = "list"
 MoveCard = "moveCard"
 MoveCardColumn = "moveColumn"
+MoveRecording = "moveRecording"
 MoveRecordingToVault = "moveToVault"
 PauseQuestion = "pause"
 PinMessage = "pin"
@@ -302,12 +305,14 @@ UpdateUpload = "update"
 # RESOURCE_TYPE_OVERRIDES: the noun an operation acts on, as the hooks report it, where the
 # inferred one would split a family.
 [operation_resource_types]
+CopyRecording = "recording"
 CreateTodosetTodo = "todo"
 DestroyTimesheetEntry = "timesheet_entry"
 DisableProjectClients = "project"
 EnableProjectClients = "project"
 ListMyBookmarks = "bookmark"
 ListRecentProjects = "project"
+MoveRecording = "recording"
 MoveRecordingToVault = "recording"
 PollEvents = "feed_event"
 PollInbox = "inbox_item"

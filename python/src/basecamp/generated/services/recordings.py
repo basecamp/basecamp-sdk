@@ -11,6 +11,26 @@ from basecamp.hooks import OperationInfo
 
 
 class RecordingsService(BaseService):
+    def get_filing(self, *, filing_id: int) -> dict[str, Any]:
+        """Get the state of a move or copy started by MoveRecording or CopyRecording.
+
+        `status` is `pending` or `processing` while the work runs, `completed` when
+        it is done, and `failed` if it could not be done. Poll until it leaves
+        `pending` and `processing`. A completed filing carries the recording it made
+        under `destination_recording`; for a move, that is the moved recording's new
+        id. 404 for a filing someone else started, and for a completed one whose
+        recording has since been permanently deleted.
+
+        Args:
+            filing_id: The filing id.
+        """
+        return self._request(
+            OperationInfo(service="recordings", operation="get_filing", is_mutation=False, resource_id=filing_id),
+            "GET",
+            f"/filings/{filing_id}",
+            operation="GetFiling",
+        )
+
     def list(
         self,
         *,
@@ -45,6 +65,58 @@ class RecordingsService(BaseService):
             operation="ListRecordings",
         )
 
+    def copy(
+        self,
+        *,
+        recording_id: int,
+        filing_destination_id: int | None = None,
+        destination_project_id: int | None = None,
+        parent_id: int | None = None,
+        include_comments: bool | None = None,
+    ) -> dict[str, Any]:
+        """Start copying a recording into another project; poll GetFiling for the result.
+
+        Works like MoveRecording, except the original stays where it is. Name the
+        destination with `filing_destination_id`, a container of the kind the
+        recording sits in now, from the destination project's `dock` (GetProject): a
+        card copies into a card table (`kanban_board`) and lands in Triage, or in
+        Done if it is completed. A dock tool is copied by `destination_project_id`
+        instead. Poll GetFiling with the returned filing's id until `status` leaves
+        `pending` and `processing`; a completed filing's `destination_recording.id`
+        is the copy.
+
+        Not safe to retry blindly: each request makes another copy. Check the first
+        filing's status before trying again.
+
+        400 when neither destination is given. 403 when the recording only copies
+        along with its parent. 404 when the destination is not one the caller can
+        copy it into. 422 when the copy cannot start, such as when the recording is
+        being moved or the destination cannot take it.
+
+        Args:
+            recording_id: The recording id.
+            filing_destination_id: The container to copy into, from the destination project's dock:
+                a card table for a card, a message board for a message, a vault for a document,
+                upload or folder, a schedule for a schedule entry. Give this or
+                destination_project_id.
+            destination_project_id: The project to copy a dock tool to. Applies to tools only, and
+                wins over filing_destination_id when a request for a tool gives both.
+            parent_id: When copying into a vault, a folder inside it to put the copy in.
+            include_comments: Copy the recording's comments too. Defaults to false.
+        """
+        return self._request(
+            OperationInfo(service="recordings", operation="copy", is_mutation=True, resource_id=recording_id),
+            "POST",
+            f"/recordings/{recording_id}/copies.json",
+            json_body=self._compact(
+                filing_destination_id=filing_destination_id,
+                destination_project_id=destination_project_id,
+                parent_id=parent_id,
+                include_comments=include_comments,
+            ),
+            operation="CopyRecording",
+        )
+
     def move_to_vault(self, *, recording_id: int, parent_id: int, position: int | None = None) -> None:
         """Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
 
@@ -73,6 +145,60 @@ class RecordingsService(BaseService):
             f"/recordings/{recording_id}/filing.json",
             json_body=self._compact(parent_id=parent_id, position=position),
             operation="MoveRecordingToVault",
+        )
+
+    def move(
+        self,
+        *,
+        recording_id: int,
+        filing_destination_id: int | None = None,
+        destination_project_id: int | None = None,
+        parent_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Start moving a recording into another project; poll GetFiling for the result.
+
+        The move runs in the background and this answers 201 with a filing. Poll
+        GetFiling with its id until `status` leaves `pending` and `processing`. Once
+        the move completes, the recording lives in the destination project under a
+        new id, the completed filing's `destination_recording.id`; its old id no
+        longer reaches it.
+
+        Name the destination with `filing_destination_id`: the container the
+        recording moves into, of the same kind it sits in now, found in the
+        destination project's `dock` (GetProject). A card moves into a card table
+        (`kanban_board`) and lands in Triage, or in Done if it is completed; a card
+        table column moves into a card table too. A message moves into a
+        `message_board`; a document, upload or folder into a `vault`; a schedule
+        entry into a `schedule`. A dock tool itself (a message board, card table,
+        Docs & Files, schedule) is moved by `destination_project_id` instead.
+
+        400 when neither destination is given. 403 when the recording only moves
+        along with its parent, or the caller may not move it. 404 when the
+        destination is not one the caller can move it into. 422 when the move
+        cannot start, such as when the recording is already being moved or the
+        destination cannot take it. A repeated move is harmless: while the first is
+        pending it is 422, and once it is done, 404, because the recording has moved.
+
+        Args:
+            recording_id: The recording id.
+            filing_destination_id: The container to move into, from the destination project's dock:
+                a card table for a card, a message board for a message, a vault for a document,
+                upload or folder, a schedule for a schedule entry. Give this or
+                destination_project_id.
+            destination_project_id: The project to move a dock tool to. Applies to tools only, and
+                wins over filing_destination_id when a request for a tool gives both.
+            parent_id: When moving into a vault, a folder inside it to put the recording in.
+        """
+        return self._request(
+            OperationInfo(service="recordings", operation="move", is_mutation=True, resource_id=recording_id),
+            "POST",
+            f"/recordings/{recording_id}/moves.json",
+            json_body=self._compact(
+                filing_destination_id=filing_destination_id,
+                destination_project_id=destination_project_id,
+                parent_id=parent_id,
+            ),
+            operation="MoveRecording",
         )
 
     def spotlight(self, *, recording_id: int) -> dict[str, Any]:
@@ -144,6 +270,26 @@ class RecordingsService(BaseService):
 
 
 class AsyncRecordingsService(AsyncBaseService):
+    async def get_filing(self, *, filing_id: int) -> dict[str, Any]:
+        """Get the state of a move or copy started by MoveRecording or CopyRecording.
+
+        `status` is `pending` or `processing` while the work runs, `completed` when
+        it is done, and `failed` if it could not be done. Poll until it leaves
+        `pending` and `processing`. A completed filing carries the recording it made
+        under `destination_recording`; for a move, that is the moved recording's new
+        id. 404 for a filing someone else started, and for a completed one whose
+        recording has since been permanently deleted.
+
+        Args:
+            filing_id: The filing id.
+        """
+        return await self._request(
+            OperationInfo(service="recordings", operation="get_filing", is_mutation=False, resource_id=filing_id),
+            "GET",
+            f"/filings/{filing_id}",
+            operation="GetFiling",
+        )
+
     async def list(
         self,
         *,
@@ -178,6 +324,58 @@ class AsyncRecordingsService(AsyncBaseService):
             operation="ListRecordings",
         )
 
+    async def copy(
+        self,
+        *,
+        recording_id: int,
+        filing_destination_id: int | None = None,
+        destination_project_id: int | None = None,
+        parent_id: int | None = None,
+        include_comments: bool | None = None,
+    ) -> dict[str, Any]:
+        """Start copying a recording into another project; poll GetFiling for the result.
+
+        Works like MoveRecording, except the original stays where it is. Name the
+        destination with `filing_destination_id`, a container of the kind the
+        recording sits in now, from the destination project's `dock` (GetProject): a
+        card copies into a card table (`kanban_board`) and lands in Triage, or in
+        Done if it is completed. A dock tool is copied by `destination_project_id`
+        instead. Poll GetFiling with the returned filing's id until `status` leaves
+        `pending` and `processing`; a completed filing's `destination_recording.id`
+        is the copy.
+
+        Not safe to retry blindly: each request makes another copy. Check the first
+        filing's status before trying again.
+
+        400 when neither destination is given. 403 when the recording only copies
+        along with its parent. 404 when the destination is not one the caller can
+        copy it into. 422 when the copy cannot start, such as when the recording is
+        being moved or the destination cannot take it.
+
+        Args:
+            recording_id: The recording id.
+            filing_destination_id: The container to copy into, from the destination project's dock:
+                a card table for a card, a message board for a message, a vault for a document,
+                upload or folder, a schedule for a schedule entry. Give this or
+                destination_project_id.
+            destination_project_id: The project to copy a dock tool to. Applies to tools only, and
+                wins over filing_destination_id when a request for a tool gives both.
+            parent_id: When copying into a vault, a folder inside it to put the copy in.
+            include_comments: Copy the recording's comments too. Defaults to false.
+        """
+        return await self._request(
+            OperationInfo(service="recordings", operation="copy", is_mutation=True, resource_id=recording_id),
+            "POST",
+            f"/recordings/{recording_id}/copies.json",
+            json_body=self._compact(
+                filing_destination_id=filing_destination_id,
+                destination_project_id=destination_project_id,
+                parent_id=parent_id,
+                include_comments=include_comments,
+            ),
+            operation="CopyRecording",
+        )
+
     async def move_to_vault(self, *, recording_id: int, parent_id: int, position: int | None = None) -> None:
         """Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
 
@@ -206,6 +404,60 @@ class AsyncRecordingsService(AsyncBaseService):
             f"/recordings/{recording_id}/filing.json",
             json_body=self._compact(parent_id=parent_id, position=position),
             operation="MoveRecordingToVault",
+        )
+
+    async def move(
+        self,
+        *,
+        recording_id: int,
+        filing_destination_id: int | None = None,
+        destination_project_id: int | None = None,
+        parent_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Start moving a recording into another project; poll GetFiling for the result.
+
+        The move runs in the background and this answers 201 with a filing. Poll
+        GetFiling with its id until `status` leaves `pending` and `processing`. Once
+        the move completes, the recording lives in the destination project under a
+        new id, the completed filing's `destination_recording.id`; its old id no
+        longer reaches it.
+
+        Name the destination with `filing_destination_id`: the container the
+        recording moves into, of the same kind it sits in now, found in the
+        destination project's `dock` (GetProject). A card moves into a card table
+        (`kanban_board`) and lands in Triage, or in Done if it is completed; a card
+        table column moves into a card table too. A message moves into a
+        `message_board`; a document, upload or folder into a `vault`; a schedule
+        entry into a `schedule`. A dock tool itself (a message board, card table,
+        Docs & Files, schedule) is moved by `destination_project_id` instead.
+
+        400 when neither destination is given. 403 when the recording only moves
+        along with its parent, or the caller may not move it. 404 when the
+        destination is not one the caller can move it into. 422 when the move
+        cannot start, such as when the recording is already being moved or the
+        destination cannot take it. A repeated move is harmless: while the first is
+        pending it is 422, and once it is done, 404, because the recording has moved.
+
+        Args:
+            recording_id: The recording id.
+            filing_destination_id: The container to move into, from the destination project's dock:
+                a card table for a card, a message board for a message, a vault for a document,
+                upload or folder, a schedule for a schedule entry. Give this or
+                destination_project_id.
+            destination_project_id: The project to move a dock tool to. Applies to tools only, and
+                wins over filing_destination_id when a request for a tool gives both.
+            parent_id: When moving into a vault, a folder inside it to put the recording in.
+        """
+        return await self._request(
+            OperationInfo(service="recordings", operation="move", is_mutation=True, resource_id=recording_id),
+            "POST",
+            f"/recordings/{recording_id}/moves.json",
+            json_body=self._compact(
+                filing_destination_id=filing_destination_id,
+                destination_project_id=destination_project_id,
+                parent_id=parent_id,
+            ),
+            operation="MoveRecording",
         )
 
     async def spotlight(self, *, recording_id: int) -> dict[str, Any]:

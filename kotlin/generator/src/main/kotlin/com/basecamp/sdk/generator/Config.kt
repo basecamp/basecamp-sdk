@@ -169,6 +169,8 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "SpotlightRecording" to "spotlight",
     "UnspotlightRecording" to "unspotlight",
     "MoveRecordingToVault" to "moveToVault",
+    "CopyRecording" to "copy",
+    "GetFiling" to "getFiling",
     "GetMyProfile" to "me",
     // "bookmark(id)" reads as the action; keep the getter explicit.
     "GetBookmark" to "getBookmark",
@@ -305,6 +307,8 @@ val RESOURCE_TYPE_OVERRIDES = mapOf(
     "SpotlightRecording" to "recording",
     "UnspotlightRecording" to "recording",
     "MoveRecordingToVault" to "recording",
+    "MoveRecording" to "recording",
+    "CopyRecording" to "recording",
     "UpdateHillChartSettings" to "hill_chart",
     // The whole family reports "bookmark"; the inferred "my_bookmark" would
     // split the list operation into its own telemetry category.
@@ -372,6 +376,8 @@ val TYPE_ALIASES = mapOf(
     "TemplateLibraryCardTables" to "TemplateLibraryCardTables",
     "Templatification" to "Templatification",
     "TemplateLibraryCopy" to "TemplateLibraryCopy",
+    "Filing" to "Filing",
+    "FilingDestinationRecording" to "FilingDestinationRecording",
     "TemplateLibraryConfirmationPerson" to "TemplateLibraryConfirmationPerson",
     "Todolist" to "Todolist",
     "Todoset" to "Todoset",

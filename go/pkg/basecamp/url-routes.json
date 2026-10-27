@@ -1116,6 +1116,23 @@
       }
     },
     {
+      "pattern": "/{accountId}/filings/{filingId}",
+      "resource": "Recordings",
+      "operations": {
+        "GET": "GetFiling"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "filingId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/forwards",
       "resource": "Everything",
       "operations": {
@@ -2153,6 +2170,23 @@
       }
     },
     {
+      "pattern": "/{accountId}/recordings/{recordingId}/copies",
+      "resource": "Recordings",
+      "operations": {
+        "POST": "CopyRecording"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/recordings/{recordingId}/events",
       "resource": "Recordings",
       "operations": {
@@ -2196,6 +2230,23 @@
       "resource": "Recordings",
       "operations": {
         "POST": "MoveRecordingToVault"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/moves",
+      "resource": "Recordings",
+      "operations": {
+        "POST": "MoveRecording"
       },
       "params": {
         "accountId": {

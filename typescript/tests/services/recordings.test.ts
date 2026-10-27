@@ -209,6 +209,120 @@ describe("RecordingsService", () => {
     });
   });
 
+  describe("move", () => {
+    it("should post the destination and return the pending filing", async () => {
+      let body: unknown;
+      server.use(
+        http.post(`${BASE_URL}/recordings/3001/moves.json`, async ({ request }) => {
+          body = await request.json();
+          return HttpResponse.json(
+            { id: 4, status: "pending", type: "Move", source_recording_id: 3001, url: `${BASE_URL}/filings/4.json` },
+            { status: 201, headers: { Location: `${BASE_URL}/filings/4.json` } },
+          );
+        }),
+      );
+
+      const filing = await service.move(3001, { filingDestinationId: 4001 });
+
+      expect(body).toEqual({ filing_destination_id: 4001 });
+      expect(filing).toEqual({
+        id: 4,
+        status: "pending",
+        type: "Move",
+        source_recording_id: 3001,
+        url: `${BASE_URL}/filings/4.json`,
+      });
+    });
+
+    it("should surface a refused move", async () => {
+      server.use(
+        http.post(`${BASE_URL}/recordings/3001/moves.json`, () => {
+          return HttpResponse.json({ status: 422, error: "Unprocessable Entity" }, { status: 422 });
+        }),
+      );
+
+      const error = await service.move(3001, { filingDestinationId: 4001 }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).httpStatus).toBe(422);
+    });
+  });
+
+  describe("copy", () => {
+    it("should post the destination and include_comments", async () => {
+      let body: unknown;
+      server.use(
+        http.post(`${BASE_URL}/recordings/3001/copies.json`, async ({ request }) => {
+          body = await request.json();
+          return HttpResponse.json(
+            { id: 5, status: "pending", type: "Copy", source_recording_id: 3001, url: `${BASE_URL}/filings/5.json` },
+            { status: 201 },
+          );
+        }),
+      );
+
+      const filing = await service.copy(3001, { destinationProjectId: 2001, includeComments: true });
+
+      expect(body).toEqual({ destination_project_id: 2001, include_comments: true });
+      expect(filing.type).toBe("Copy");
+      expect(filing.destination_recording).toBeUndefined();
+    });
+
+    it("should send a copy once, even on a 503", async () => {
+      let attempts = 0;
+      server.use(
+        http.post(`${BASE_URL}/recordings/3001/copies.json`, () => {
+          attempts++;
+          return new HttpResponse(null, { status: 503 });
+        }),
+      );
+
+      const error = await service.copy(3001, { filingDestinationId: 4001 }).catch((e: unknown) => e);
+      expect(attempts).toBe(1);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).httpStatus).toBe(503);
+    });
+  });
+
+  describe("getFiling", () => {
+    it("should return a completed filing with the recording it made", async () => {
+      const destination = {
+        id: 1069480270,
+        type: "Kanban::Card",
+        url: `${BASE_URL}/buckets/2001/card_tables/cards/1069480270.json`,
+        app_url: "https://3.basecamp.com/12345/buckets/2001/card_tables/cards/1069480270",
+      };
+      server.use(
+        http.get(`${BASE_URL}/filings/4`, () => {
+          return HttpResponse.json({
+            id: 4,
+            status: "completed",
+            type: "Move",
+            source_recording_id: 3001,
+            url: `${BASE_URL}/filings/4.json`,
+            destination_recording: destination,
+          });
+        }),
+      );
+
+      const filing = await service.getFiling(4);
+
+      expect(filing.status).toBe("completed");
+      expect(filing.destination_recording).toEqual(destination);
+    });
+
+    it("should surface another person's filing as not found", async () => {
+      server.use(
+        http.get(`${BASE_URL}/filings/4`, () => {
+          return HttpResponse.json({ status: 404, error: "Not Found" }, { status: 404 });
+        }),
+      );
+
+      const error = await service.getFiling(4).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("not_found");
+    });
+  });
+
   describe("trash", () => {
     it("should move a recording to trash", async () => {
       server.use(

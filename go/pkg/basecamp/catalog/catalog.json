@@ -165,6 +165,70 @@
       ]
     },
     {
+      "operationId": "CopyRecording",
+      "tag": "Recordings",
+      "method": "POST",
+      "path": "/{accountId}/recordings/{recordingId}/copies.json",
+      "doc": "Start copying a recording into another project; poll GetFiling for the result.\n\nWorks like MoveRecording, except the original stays where it is. Name the\ndestination with `filing_destination_id`, a container of the kind the\nrecording sits in now, from the destination project's `dock` (GetProject): a\ncard copies into a card table (`kanban_board`) and lands in Triage, or in\nDone if it is completed. A dock tool is copied by `destination_project_id`\ninstead. Poll GetFiling with the returned filing's id until `status` leaves\n`pending` and `processing`; a completed filing's `destination_recording.id`\nis the copy.\n\nNot safe to retry blindly: each request makes another copy. Check the first\nfiling's status before trying again.\n\n400 when neither destination is given. 403 when the recording only copies\nalong with its parent. 404 when the destination is not one the caller can\ncopy it into. 422 when the copy cannot start, such as when the recording is\nbeing moved or the destination cannot take it.",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "recordingId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "destination_project_id": {
+            "description": "The project to copy a dock tool to. Applies to tools only, and wins over\nfiling_destination_id when a request for a tool gives both.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "filing_destination_id": {
+            "description": "The container to copy into, from the destination project's dock: a card\ntable for a card, a message board for a message, a vault for a document,\nupload or folder, a schedule for a schedule entry. Give this or\ndestination_project_id.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "include_comments": {
+            "description": "Copy the recording's comments too. Defaults to false.",
+            "type": "boolean"
+          },
+          "parent_id": {
+            "description": "When copying into a vault, a folder inside it to put the copy in.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
       "operationId": "CreateAnswer",
       "tag": "Checkins",
       "method": "POST",
@@ -5838,6 +5902,46 @@
       ]
     },
     {
+      "operationId": "GetFiling",
+      "tag": "Recordings",
+      "method": "GET",
+      "path": "/{accountId}/filings/{filingId}",
+      "doc": "Get the state of a move or copy started by MoveRecording or CopyRecording.\n\n`status` is `pending` or `processing` while the work runs, `completed` when\nit is done, and `failed` if it could not be done. Poll until it leaves\n`pending` and `processing`. A completed filing carries the recording it made\nunder `destination_recording`; for a move, that is the moved recording's new\nid. 404 for a filing someone else started, and for a completed one whose\nrecording has since been permanently deleted.",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "filingId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "GetFolder",
       "tag": "Folders",
       "method": "GET",
@@ -10566,6 +10670,66 @@
         "type": "object"
       },
       "bodyRequired": true
+    },
+    {
+      "operationId": "MoveRecording",
+      "tag": "Recordings",
+      "method": "POST",
+      "path": "/{accountId}/recordings/{recordingId}/moves.json",
+      "doc": "Start moving a recording into another project; poll GetFiling for the result.\n\nThe move runs in the background and this answers 201 with a filing. Poll\nGetFiling with its id until `status` leaves `pending` and `processing`. Once\nthe move completes, the recording lives in the destination project under a\nnew id, the completed filing's `destination_recording.id`; its old id no\nlonger reaches it.\n\nName the destination with `filing_destination_id`: the container the\nrecording moves into, of the same kind it sits in now, found in the\ndestination project's `dock` (GetProject). A card moves into a card table\n(`kanban_board`) and lands in Triage, or in Done if it is completed; a card\ntable column moves into a card table too. A message moves into a\n`message_board`; a document, upload or folder into a `vault`; a schedule\nentry into a `schedule`. A dock tool itself (a message board, card table,\nDocs & Files, schedule) is moved by `destination_project_id` instead.\n\n400 when neither destination is given. 403 when the recording only moves\nalong with its parent, or the caller may not move it. 404 when the\ndestination is not one the caller can move it into. 422 when the move\ncannot start, such as when the recording is already being moved or the\ndestination cannot take it. A repeated move is harmless: while the first is\npending it is 422, and once it is done, 404, because the recording has moved.",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "recordingId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "destination_project_id": {
+            "description": "The project to move a dock tool to. Applies to tools only, and wins over\nfiling_destination_id when a request for a tool gives both.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "filing_destination_id": {
+            "description": "The container to move into, from the destination project's dock: a card\ntable for a card, a message board for a message, a vault for a document,\nupload or folder, a schedule for a schedule entry. Give this or\ndestination_project_id.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "parent_id": {
+            "description": "When moving into a vault, a folder inside it to put the recording in.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "operationId": "MoveRecordingToVault",

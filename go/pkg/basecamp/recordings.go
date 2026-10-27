@@ -476,6 +476,203 @@ func (s *RecordingsService) MoveToVault(ctx context.Context, recordingID, vaultI
 	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
+// FilingStatus is the state of a move or copy.
+type FilingStatus string
+
+// A filing is pending or processing while the work runs, and ends completed or failed.
+const (
+	FilingPending    FilingStatus = "pending"
+	FilingProcessing FilingStatus = "processing"
+	FilingCompleted  FilingStatus = "completed"
+	FilingFailed     FilingStatus = "failed"
+)
+
+// FilingType says whether a filing is a move or a copy.
+type FilingType string
+
+// Filing types.
+const (
+	FilingMove FilingType = "Move"
+	FilingCopy FilingType = "Copy"
+)
+
+// Filing is a move or copy of a recording into another project. It runs in the
+// background: poll GetFiling until Status leaves FilingPending and FilingProcessing.
+type Filing struct {
+	ID                int64        `json:"id"`
+	Status            FilingStatus `json:"status"`
+	Type              FilingType   `json:"type"`
+	SourceRecordingID int64        `json:"source_recording_id"`
+	URL               string       `json:"url"`
+	// DestinationRecording is the recording the move or copy made, set only once
+	// Status is FilingCompleted. For a move, its ID is the recording's new id.
+	DestinationRecording *FilingDestinationRecording `json:"destination_recording,omitempty"`
+}
+
+// FilingDestinationRecording identifies the recording a completed filing made.
+type FilingDestinationRecording struct {
+	ID int64 `json:"id"`
+	// Type is the recordable type, such as "Kanban::Card", "Todo" or "Message".
+	Type   string `json:"type"`
+	URL    string `json:"url"`
+	AppURL string `json:"app_url"`
+}
+
+// MoveRecordingRequest names where to move a recording. Set FilingDestinationID,
+// or DestinationProjectID for a dock tool.
+type MoveRecordingRequest struct {
+	// FilingDestinationID is the container to move into, from the destination
+	// project's dock: a card table for a card, a message board for a message, a
+	// vault for a document, upload or folder, a schedule for a schedule entry.
+	FilingDestinationID int64 `json:"filing_destination_id,omitempty"`
+	// DestinationProjectID is the project to move a dock tool to.
+	DestinationProjectID int64 `json:"destination_project_id,omitempty"`
+	// ParentID is a folder inside the destination vault to put the recording in.
+	ParentID int64 `json:"parent_id,omitempty"`
+}
+
+// CopyRecordingRequest names where to copy a recording. Set FilingDestinationID,
+// or DestinationProjectID for a dock tool.
+type CopyRecordingRequest struct {
+	// FilingDestinationID is the container to copy into, chosen as for
+	// MoveRecordingRequest.FilingDestinationID.
+	FilingDestinationID int64 `json:"filing_destination_id,omitempty"`
+	// DestinationProjectID is the project to copy a dock tool to.
+	DestinationProjectID int64 `json:"destination_project_id,omitempty"`
+	// ParentID is a folder inside the destination vault to put the copy in.
+	ParentID int64 `json:"parent_id,omitempty"`
+	// IncludeComments copies the recording's comments too.
+	IncludeComments bool `json:"include_comments,omitempty"`
+}
+
+// Move starts moving a recording into another project and returns the filing
+// that tracks it. Poll GetFiling until the filing leaves FilingPending and
+// FilingProcessing. Once it completes, the recording lives in the destination
+// project under DestinationRecording.ID, and recordingID no longer reaches it.
+// A card moved into a card table lands in Triage, or in Done if it is completed.
+//
+// Repeating a move starts nothing: while the first is pending it is a
+// validation error, and once it is done, not found.
+func (s *RecordingsService) Move(ctx context.Context, recordingID int64, req *MoveRecordingRequest) (result *Filing, err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "Move",
+		ResourceType: "recording", IsMutation: true,
+		ResourceID: recordingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil || (req.FilingDestinationID == 0 && req.DestinationProjectID == 0) {
+		err = ErrUsage("a filing destination or destination project is required")
+		return nil, err
+	}
+
+	body := generated.MoveRecordingJSONRequestBody{
+		FilingDestinationId:  omitzero(req.FilingDestinationID),
+		DestinationProjectId: omitzero(req.DestinationProjectID),
+		ParentId:             omitzero(req.ParentID),
+	}
+	resp, err := s.client.parent.gen.MoveRecordingWithResponse(ctx, s.client.accountID, recordingID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	filing := filingFromGenerated(*resp.JSON201)
+	return &filing, nil
+}
+
+// Copy starts copying a recording into another project and returns the filing
+// that tracks it; the original stays where it is. Poll GetFiling until the
+// filing leaves FilingPending and FilingProcessing; DestinationRecording.ID is
+// then the copy.
+//
+// Each call makes another copy, so the SDK never retries it.
+func (s *RecordingsService) Copy(ctx context.Context, recordingID int64, req *CopyRecordingRequest) (result *Filing, err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "Copy",
+		ResourceType: "recording", IsMutation: true,
+		ResourceID: recordingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil || (req.FilingDestinationID == 0 && req.DestinationProjectID == 0) {
+		err = ErrUsage("a filing destination or destination project is required")
+		return nil, err
+	}
+
+	body := generated.CopyRecordingJSONRequestBody{
+		FilingDestinationId:  omitzero(req.FilingDestinationID),
+		DestinationProjectId: omitzero(req.DestinationProjectID),
+		ParentId:             omitzero(req.ParentID),
+		IncludeComments:      omitzero(req.IncludeComments),
+	}
+	resp, err := s.client.parent.gen.CopyRecordingWithResponse(ctx, s.client.accountID, recordingID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	filing := filingFromGenerated(*resp.JSON201)
+	return &filing, nil
+}
+
+// GetFiling returns the current state of a move or copy. A filing someone else
+// started is not found, as is a completed one whose recording has since been
+// permanently deleted.
+func (s *RecordingsService) GetFiling(ctx context.Context, filingID int64) (result *Filing, err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "GetFiling",
+		ResourceType: "filing", IsMutation: false,
+		ResourceID: filingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetFilingWithResponse(ctx, s.client.accountID, filingID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	filing := filingFromGenerated(*resp.JSON200)
+	return &filing, nil
+}
+
 // SetClientVisibility sets whether a recording is visible to clients.
 // visible specifies whether the recording should be visible to clients.
 // Returns the updated recording.
@@ -612,4 +809,23 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 	}
 
 	return r
+}
+
+func filingFromGenerated(gf generated.Filing) Filing {
+	filing := Filing{
+		ID:                gf.Id,
+		Status:            FilingStatus(gf.Status),
+		Type:              FilingType(gf.Type),
+		SourceRecordingID: gf.SourceRecordingId,
+		URL:               gf.Url,
+	}
+	if gf.DestinationRecording != nil {
+		filing.DestinationRecording = &FilingDestinationRecording{
+			ID:     gf.DestinationRecording.Id,
+			Type:   gf.DestinationRecording.Type,
+			URL:    gf.DestinationRecording.Url,
+			AppURL: gf.DestinationRecording.AppUrl,
+		}
+	}
+	return filing
 }

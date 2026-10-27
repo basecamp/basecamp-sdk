@@ -1392,6 +1392,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/filings/{filingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get the state of a move or copy started by MoveRecording or CopyRecording.
+         *
+         *     `status` is `pending` or `processing` while the work runs, `completed` when
+         *     it is done, and `failed` if it could not be done. Poll until it leaves
+         *     `pending` and `processing`. A completed filing carries the recording it made
+         *     under `destination_recording`; for a move, that is the moved recording's new
+         *     id. 404 for a filing someone else started, and for a completed one whose
+         *     recording has since been permanently deleted.
+         */
+        get: operations["GetFiling"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/forwards.json": {
         parameters: {
             query?: never;
@@ -2794,6 +2820,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recordings/{recordingId}/copies.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Start copying a recording into another project; poll GetFiling for the result.
+         *
+         *     Works like MoveRecording, except the original stays where it is. Name the
+         *     destination with `filing_destination_id`, a container of the kind the
+         *     recording sits in now, from the destination project's `dock` (GetProject): a
+         *     card copies into a card table (`kanban_board`) and lands in Triage, or in
+         *     Done if it is completed. A dock tool is copied by `destination_project_id`
+         *     instead. Poll GetFiling with the returned filing's id until `status` leaves
+         *     `pending` and `processing`; a completed filing's `destination_recording.id`
+         *     is the copy.
+         *
+         *     Not safe to retry blindly: each request makes another copy. Check the first
+         *     filing's status before trying again.
+         *
+         *     400 when neither destination is given. 403 when the recording only copies
+         *     along with its parent. 404 when the destination is not one the caller can
+         *     copy it into. 422 when the copy cannot start, such as when the recording is
+         *     being moved or the destination cannot take it.
+         */
+        post: operations["CopyRecording"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/recordings/{recordingId}/events.json": {
         parameters: {
             query?: never;
@@ -2859,6 +2921,47 @@ export interface paths {
          *     refusals carry an `error` message.
          */
         post: operations["MoveRecordingToVault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/recordings/{recordingId}/moves.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Start moving a recording into another project; poll GetFiling for the result.
+         *
+         *     The move runs in the background and this answers 201 with a filing. Poll
+         *     GetFiling with its id until `status` leaves `pending` and `processing`. Once
+         *     the move completes, the recording lives in the destination project under a
+         *     new id, the completed filing's `destination_recording.id`; its old id no
+         *     longer reaches it.
+         *
+         *     Name the destination with `filing_destination_id`: the container the
+         *     recording moves into, of the same kind it sits in now, found in the
+         *     destination project's `dock` (GetProject). A card moves into a card table
+         *     (`kanban_board`) and lands in Triage, or in Done if it is completed; a card
+         *     table column moves into a card table too. A message moves into a
+         *     `message_board`; a document, upload or folder into a `vault`; a schedule
+         *     entry into a `schedule`. A dock tool itself (a message board, card table,
+         *     Docs & Files, schedule) is moved by `destination_project_id` instead.
+         *
+         *     400 when neither destination is given. 403 when the recording only moves
+         *     along with its parent, or the caller may not move it. 404 when the
+         *     destination is not one the caller can move it into. 422 when the move
+         *     cannot start, such as when the recording is already being moved or the
+         *     destination cannot take it. A repeated move is harmless: while the first is
+         *     pending it is 422, and once it is done, 404, because the recording has moved.
+         */
+        post: operations["MoveRecording"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4669,6 +4772,30 @@ export interface components {
             boosts_count?: number;
             boosts_url?: string;
         };
+        CopyRecordingRequestContent: {
+            /**
+             * Format: int64
+             * @description The container to copy into, from the destination project's dock: a card
+             *     table for a card, a message board for a message, a vault for a document,
+             *     upload or folder, a schedule for a schedule entry. Give this or
+             *     destination_project_id.
+             */
+            filing_destination_id?: number;
+            /**
+             * Format: int64
+             * @description The project to copy a dock tool to. Applies to tools only, and wins over
+             *     filing_destination_id when a request for a tool gives both.
+             */
+            destination_project_id?: number;
+            /**
+             * Format: int64
+             * @description When copying into a vault, a folder inside it to put the copy in.
+             */
+            parent_id?: number;
+            /** @description Copy the recording's comments too. Defaults to false. */
+            include_comments?: boolean;
+        };
+        CopyRecordingResponseContent: components["schemas"]["Filing"];
         CreateAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         CreateAttachmentInputPayload: string;
         CreateAttachmentResponseContent: {
@@ -5480,6 +5607,31 @@ export interface components {
             errors: components["schemas"]["FieldErrorMap"];
         };
         FieldValidationErrorResponseContent: components["schemas"]["FieldKeyedErrors"];
+        /**
+         * @description A move or copy of a recording into another project, as MoveRecording,
+         *     CopyRecording and GetFiling answer it.
+         */
+        Filing: {
+            /** Format: int64 */
+            id: number;
+            /** @description pending|processing|completed|failed */
+            status: string;
+            /** @description Move|Copy */
+            type: string;
+            /** Format: int64 */
+            source_recording_id: number;
+            /** @description The filing's own API URL, for polling. */
+            url: string;
+            destination_recording?: components["schemas"]["FilingDestinationRecording"];
+        };
+        FilingDestinationRecording: {
+            /** Format: int64 */
+            id: number;
+            /** @description The recordable type, such as `Kanban::Card`, `Todo` or `Message`. */
+            type: string;
+            url: string;
+            app_url: string;
+        };
         /** @enum {string} */
         FirstWeekDay: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
         /**
@@ -5758,6 +5910,7 @@ export interface components {
         GetEverythingOverdueTodosResponseContent: components["schemas"]["Todo"][];
         GetEverythingUnassignedCardsResponseContent: components["schemas"]["BucketCardsGroup"][];
         GetEverythingUnassignedTodosResponseContent: components["schemas"]["BucketTodosGroup"][];
+        GetFilingResponseContent: components["schemas"]["Filing"];
         GetFolderResponseContent: components["schemas"]["FolderWithProjects"];
         GetForwardReplyResponseContent: components["schemas"]["ForwardReply"];
         GetForwardResponseContent: components["schemas"]["Forward"];
@@ -6135,6 +6288,28 @@ export interface components {
              */
             position?: number;
         };
+        MoveRecordingRequestContent: {
+            /**
+             * Format: int64
+             * @description The container to move into, from the destination project's dock: a card
+             *     table for a card, a message board for a message, a vault for a document,
+             *     upload or folder, a schedule for a schedule entry. Give this or
+             *     destination_project_id.
+             */
+            filing_destination_id?: number;
+            /**
+             * Format: int64
+             * @description The project to move a dock tool to. Applies to tools only, and wins over
+             *     filing_destination_id when a request for a tool gives both.
+             */
+            destination_project_id?: number;
+            /**
+             * Format: int64
+             * @description When moving into a vault, a folder inside it to put the recording in.
+             */
+            parent_id?: number;
+        };
+        MoveRecordingResponseContent: components["schemas"]["Filing"];
         MoveRecordingToVaultRequestContent: {
             /**
              * Format: int64
@@ -14793,6 +14968,73 @@ export interface operations {
             };
         };
     };
+    GetFiling: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                filingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetFiling 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetFilingResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetEverythingForwards: {
         parameters: {
             query?: {
@@ -20792,6 +21034,93 @@ export interface operations {
             };
         };
     };
+    CopyRecording: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CopyRecordingRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CopyRecording 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopyRecordingResponseContent"];
+                };
+            };
+            /** @description BadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description BareForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     ListEvents: {
         parameters: {
             query?: {
@@ -21040,6 +21369,93 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    MoveRecording: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MoveRecordingRequestContent"];
+            };
+        };
+        responses: {
+            /** @description MoveRecording 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoveRecordingResponseContent"];
+                };
+            };
+            /** @description BadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description BareForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
             };
             /** @description ValidationError 422 response */
             422: {

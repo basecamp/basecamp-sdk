@@ -41,6 +41,25 @@ public final class RecordingsService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func copy(recordingId: Int, req: CopyRecordingRequest) async throws -> Filing {
+        return try await request(
+            OperationInfo(service: "Recordings", operation: "CopyRecording", resourceType: "recording", isMutation: true, resourceId: recordingId),
+            method: "POST",
+            path: "/recordings/\(recordingId)/copies.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CopyRecording")
+        )
+    }
+
+    public func getFiling(filingId: Int) async throws -> Filing {
+        return try await request(
+            OperationInfo(service: "Recordings", operation: "GetFiling", resourceType: "filing", isMutation: false, resourceId: filingId),
+            method: "GET",
+            path: "/filings/\(filingId)",
+            retryConfig: Metadata.retryConfig(for: "GetFiling")
+        )
+    }
+
     public func list(type: String, options: ListRecordingOptions? = nil) async throws -> ListResult<Recording> {
         var queryItems: [URLQueryItem] = []
         queryItems.append(URLQueryItem(name: "type", value: type))
@@ -65,6 +84,16 @@ public final class RecordingsService: BaseService, @unchecked Sendable {
             queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListRecordings")
+        )
+    }
+
+    public func move(recordingId: Int, req: MoveRecordingRequest) async throws -> Filing {
+        return try await request(
+            OperationInfo(service: "Recordings", operation: "MoveRecording", resourceType: "recording", isMutation: true, resourceId: recordingId),
+            method: "POST",
+            path: "/recordings/\(recordingId)/moves.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "MoveRecording")
         )
     }
 

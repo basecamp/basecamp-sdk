@@ -591,6 +591,29 @@ type Comment struct {
 	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
+// CopyRecordingRequestContent defines model for CopyRecordingRequestContent.
+type CopyRecordingRequestContent struct {
+	// DestinationProjectId The project to copy a dock tool to. Applies to tools only, and wins over
+	// filing_destination_id when a request for a tool gives both.
+	DestinationProjectId *int64 `json:"destination_project_id,omitempty"`
+
+	// FilingDestinationId The container to copy into, from the destination project's dock: a card
+	// table for a card, a message board for a message, a vault for a document,
+	// upload or folder, a schedule for a schedule entry. Give this or
+	// destination_project_id.
+	FilingDestinationId *int64 `json:"filing_destination_id,omitempty"`
+
+	// IncludeComments Copy the recording's comments too. Defaults to false.
+	IncludeComments *bool `json:"include_comments,omitempty"`
+
+	// ParentId When copying into a vault, a folder inside it to put the copy in.
+	ParentId *int64 `json:"parent_id,omitempty"`
+}
+
+// CopyRecordingResponseContent A move or copy of a recording into another project, as MoveRecording,
+// CopyRecording and GetFiling answer it.
+type CopyRecordingResponseContent = Filing
+
 // CreateAnswerResponseContent defines model for CreateAnswerResponseContent.
 type CreateAnswerResponseContent = QuestionAnswer
 
@@ -1600,6 +1623,33 @@ type FieldKeyedErrors struct {
 // FieldValidationErrorResponseContent The field-keyed 422 body: {"errors": {"color": ["is not a valid color"]}}.
 type FieldValidationErrorResponseContent = FieldKeyedErrors
 
+// Filing A move or copy of a recording into another project, as MoveRecording,
+// CopyRecording and GetFiling answer it.
+type Filing struct {
+	DestinationRecording *FilingDestinationRecording `json:"destination_recording,omitempty"`
+	Id                   int64                       `json:"id"`
+	SourceRecordingId    int64                       `json:"source_recording_id"`
+
+	// Status pending|processing|completed|failed
+	Status string `json:"status"`
+
+	// Type Move|Copy
+	Type string `json:"type"`
+
+	// Url The filing's own API URL, for polling.
+	Url string `json:"url"`
+}
+
+// FilingDestinationRecording defines model for FilingDestinationRecording.
+type FilingDestinationRecording struct {
+	AppUrl string `json:"app_url"`
+	Id     int64  `json:"id"`
+
+	// Type The recordable type, such as `Kanban::Card`, `Todo` or `Message`.
+	Type string `json:"type"`
+	Url  string `json:"url"`
+}
+
 // FirstWeekDay defines model for FirstWeekDay.
 type FirstWeekDay string
 
@@ -1942,6 +1992,10 @@ type GetEverythingUnassignedCardsResponseContent = []BucketCardsGroup
 
 // GetEverythingUnassignedTodosResponseContent defines model for GetEverythingUnassignedTodosResponseContent.
 type GetEverythingUnassignedTodosResponseContent = []BucketTodosGroup
+
+// GetFilingResponseContent A move or copy of a recording into another project, as MoveRecording,
+// CopyRecording and GetFiling answer it.
+type GetFilingResponseContent = Filing
 
 // GetFolderResponseContent One folder plus the projects grouped inside it, as get/create/update return it.
 //
@@ -2524,6 +2578,26 @@ type MoveCardRequestContent struct {
 	// Position 1-indexed position within the destination column. Defaults to 1 (top).
 	Position *int32 `json:"position,omitempty"`
 }
+
+// MoveRecordingRequestContent defines model for MoveRecordingRequestContent.
+type MoveRecordingRequestContent struct {
+	// DestinationProjectId The project to move a dock tool to. Applies to tools only, and wins over
+	// filing_destination_id when a request for a tool gives both.
+	DestinationProjectId *int64 `json:"destination_project_id,omitempty"`
+
+	// FilingDestinationId The container to move into, from the destination project's dock: a card
+	// table for a card, a message board for a message, a vault for a document,
+	// upload or folder, a schedule for a schedule entry. Give this or
+	// destination_project_id.
+	FilingDestinationId *int64 `json:"filing_destination_id,omitempty"`
+
+	// ParentId When moving into a vault, a folder inside it to put the recording in.
+	ParentId *int64 `json:"parent_id,omitempty"`
+}
+
+// MoveRecordingResponseContent A move or copy of a recording into another project, as MoveRecording,
+// CopyRecording and GetFiling answer it.
+type MoveRecordingResponseContent = Filing
 
 // MoveRecordingToVaultRequestContent defines model for MoveRecordingToVaultRequestContent.
 type MoveRecordingToVaultRequestContent struct {
@@ -6158,11 +6232,17 @@ type SetClientVisibilityJSONRequestBody = SetClientVisibilityRequestContent
 // CreateCommentJSONRequestBody defines body for CreateComment for application/json ContentType.
 type CreateCommentJSONRequestBody = CreateCommentRequestContent
 
+// CopyRecordingJSONRequestBody defines body for CopyRecording for application/json ContentType.
+type CopyRecordingJSONRequestBody = CopyRecordingRequestContent
+
 // CreateEventBoostJSONRequestBody defines body for CreateEventBoost for application/json ContentType.
 type CreateEventBoostJSONRequestBody = CreateEventBoostRequestContent
 
 // MoveRecordingToVaultJSONRequestBody defines body for MoveRecordingToVault for application/json ContentType.
 type MoveRecordingToVaultJSONRequestBody = MoveRecordingToVaultRequestContent
+
+// MoveRecordingJSONRequestBody defines body for MoveRecording for application/json ContentType.
+type MoveRecordingJSONRequestBody = MoveRecordingRequestContent
 
 // UpdateSubscriptionJSONRequestBody defines body for UpdateSubscription for application/json ContentType.
 type UpdateSubscriptionJSONRequestBody = UpdateSubscriptionRequestContent
@@ -7167,6 +7247,9 @@ type ClientInterface interface {
 	// GetEverythingFiles request
 	GetEverythingFiles(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetFiling request
+	GetFiling(ctx context.Context, accountId string, filingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetEverythingForwards request
 	GetEverythingForwards(ctx context.Context, accountId string, params *GetEverythingForwardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -7502,6 +7585,11 @@ type ClientInterface interface {
 
 	CreateComment(ctx context.Context, accountId string, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CopyRecordingWithBody request with any body
+	CopyRecordingWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CopyRecording(ctx context.Context, accountId string, recordingId int64, body CopyRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListEvents request
 	ListEvents(ctx context.Context, accountId string, recordingId int64, params *ListEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -7517,6 +7605,11 @@ type ClientInterface interface {
 	MoveRecordingToVaultWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	MoveRecordingToVault(ctx context.Context, accountId string, recordingId int64, body MoveRecordingToVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MoveRecordingWithBody request with any body
+	MoveRecordingWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	MoveRecording(ctx context.Context, accountId string, recordingId int64, body MoveRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnspotlightRecording request
 	UnspotlightRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9289,6 +9382,16 @@ func (c *Client) GetEverythingFiles(ctx context.Context, accountId string, param
 
 }
 
+// GetFiling is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetFiling(ctx context.Context, accountId string, filingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetFilingRequest(c.Server, accountId, filingId)
+	}, true, "GetFiling", reqEditors...)
+
+}
+
 // GetEverythingForwards is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetEverythingForwards(ctx context.Context, accountId string, params *GetEverythingForwardsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -10569,6 +10672,36 @@ func (c *Client) CreateComment(ctx context.Context, accountId string, recordingI
 
 }
 
+// CopyRecordingWithBody executes the CopyRecording operation.
+
+func (c *Client) CopyRecordingWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCopyRecordingRequestWithBody(c.Server, accountId, recordingId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CopyRecording(ctx context.Context, accountId string, recordingId int64, body CopyRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCopyRecordingRequest(c.Server, accountId, recordingId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
 // ListEvents is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListEvents(ctx context.Context, accountId string, recordingId int64, params *ListEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -10638,6 +10771,36 @@ func (c *Client) MoveRecordingToVaultWithBody(ctx context.Context, accountId str
 func (c *Client) MoveRecordingToVault(ctx context.Context, accountId string, recordingId int64, body MoveRecordingToVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewMoveRecordingToVaultRequest(c.Server, accountId, recordingId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// MoveRecordingWithBody executes the MoveRecording operation.
+
+func (c *Client) MoveRecordingWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewMoveRecordingRequestWithBody(c.Server, accountId, recordingId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) MoveRecording(ctx context.Context, accountId string, recordingId int64, body MoveRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewMoveRecordingRequest(c.Server, accountId, recordingId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17233,6 +17396,47 @@ func NewGetEverythingFilesRequest(server string, accountId string, params *GetEv
 	return req, nil
 }
 
+// NewGetFilingRequest generates requests for GetFiling
+func NewGetFilingRequest(server string, accountId string, filingId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "filingId", runtime.ParamLocationPath, filingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/filings/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetEverythingForwardsRequest generates requests for GetEverythingForwards
 func NewGetEverythingForwardsRequest(server string, accountId string, params *GetEverythingForwardsParams) (*http.Request, error) {
 	var err error
@@ -22071,6 +22275,60 @@ func NewCreateCommentRequestWithBody(server string, accountId string, recordingI
 	return req, nil
 }
 
+// NewCopyRecordingRequest calls the generic CopyRecording builder with application/json body
+func NewCopyRecordingRequest(server string, accountId string, recordingId int64, body CopyRecordingJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCopyRecordingRequestWithBody(server, accountId, recordingId, "application/json", bodyReader)
+}
+
+// NewCopyRecordingRequestWithBody generates requests for CopyRecording with any type of body
+func NewCopyRecordingRequestWithBody(server string, accountId string, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/copies.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListEventsRequest generates requests for ListEvents
 func NewListEventsRequest(server string, accountId string, recordingId int64, params *ListEventsParams) (*http.Request, error) {
 	var err error
@@ -22300,6 +22558,60 @@ func NewMoveRecordingToVaultRequestWithBody(server string, accountId string, rec
 	}
 
 	operationPath := fmt.Sprintf("/%s/recordings/%s/filing.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewMoveRecordingRequest calls the generic MoveRecording builder with application/json body
+func NewMoveRecordingRequest(server string, accountId string, recordingId int64, body MoveRecordingJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewMoveRecordingRequestWithBody(server, accountId, recordingId, "application/json", bodyReader)
+}
+
+// NewMoveRecordingRequestWithBody generates requests for MoveRecording with any type of body
+func NewMoveRecordingRequestWithBody(server string, accountId string, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/moves.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -27741,6 +28053,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"PollEvents":                         {Idempotent: true, HasSensitiveParams: false},
 	"CreateStreamTicket":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingFiles":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetFiling":                          {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingForwards":              {Idempotent: true, HasSensitiveParams: false},
 	"DestroyGaugeNeedle":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetGaugeNeedle":                     {Idempotent: true, HasSensitiveParams: false},
@@ -27834,10 +28147,12 @@ var operationMetadata = map[string]OperationMetadata{
 	"SetClientVisibility":                {Idempotent: true, HasSensitiveParams: false},
 	"ListComments":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateComment":                      {Idempotent: false, HasSensitiveParams: false},
+	"CopyRecording":                      {Idempotent: false, HasSensitiveParams: false},
 	"ListEvents":                         {Idempotent: true, HasSensitiveParams: false},
 	"ListEventBoosts":                    {Idempotent: true, HasSensitiveParams: false},
 	"CreateEventBoost":                   {Idempotent: false, HasSensitiveParams: false},
 	"MoveRecordingToVault":               {Idempotent: false, HasSensitiveParams: false},
+	"MoveRecording":                      {Idempotent: false, HasSensitiveParams: false},
 	"UnspotlightRecording":               {Idempotent: true, HasSensitiveParams: false},
 	"SpotlightRecording":                 {Idempotent: true, HasSensitiveParams: false},
 	"UnarchiveRecording":                 {Idempotent: true, HasSensitiveParams: false},
@@ -28037,6 +28352,7 @@ var operationRetryMax = map[string]int{
 	"PollEvents":                         3,
 	"CreateStreamTicket":                 3,
 	"GetEverythingFiles":                 3,
+	"GetFiling":                          3,
 	"GetEverythingForwards":              3,
 	"DestroyGaugeNeedle":                 2,
 	"GetGaugeNeedle":                     3,
@@ -28130,10 +28446,12 @@ var operationRetryMax = map[string]int{
 	"SetClientVisibility":                3,
 	"ListComments":                       3,
 	"CreateComment":                      2,
+	"CopyRecording":                      2,
 	"ListEvents":                         3,
 	"ListEventBoosts":                    3,
 	"CreateEventBoost":                   2,
 	"MoveRecordingToVault":               2,
+	"MoveRecording":                      2,
 	"UnspotlightRecording":               3,
 	"SpotlightRecording":                 3,
 	"UnarchiveRecording":                 3,
@@ -28331,6 +28649,7 @@ var operationRetryOn = map[string][]int{
 	"PollEvents":                         {429, 503},
 	"CreateStreamTicket":                 {429, 503},
 	"GetEverythingFiles":                 {429, 503},
+	"GetFiling":                          {429, 503},
 	"GetEverythingForwards":              {429, 503},
 	"DestroyGaugeNeedle":                 {429, 503},
 	"GetGaugeNeedle":                     {429, 503},
@@ -28424,10 +28743,12 @@ var operationRetryOn = map[string][]int{
 	"SetClientVisibility":                {429, 503},
 	"ListComments":                       {429, 503},
 	"CreateComment":                      {429, 503},
+	"CopyRecording":                      {429, 503},
 	"ListEvents":                         {429, 503},
 	"ListEventBoosts":                    {429, 503},
 	"CreateEventBoost":                   {429, 503},
 	"MoveRecordingToVault":               {429, 503},
+	"MoveRecording":                      {429, 503},
 	"UnspotlightRecording":               {429, 503},
 	"SpotlightRecording":                 {429, 503},
 	"UnarchiveRecording":                 {429, 503},
@@ -29279,6 +29600,10 @@ func (s *DocumentsService) Replace(ctx context.Context, accountId string, docume
 	return s.client.ReplaceDocument(ctx, accountId, documentId, body, reqEditors...)
 }
 
+func (s *RecordingsService) GetFiling(ctx context.Context, accountId string, filingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetFiling(ctx, accountId, filingId, reqEditors...)
+}
+
 func (s *MessagesService) List(ctx context.Context, accountId string, boardId int64, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.ListMessages(ctx, accountId, boardId, params, reqEditors...)
 }
@@ -29383,6 +29708,14 @@ func (s *CommentsService) Create(ctx context.Context, accountId string, recordin
 	return s.client.CreateComment(ctx, accountId, recordingId, body, reqEditors...)
 }
 
+func (s *RecordingsService) CopyWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CopyRecordingWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
+}
+
+func (s *RecordingsService) Copy(ctx context.Context, accountId string, recordingId int64, body CopyRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CopyRecording(ctx, accountId, recordingId, body, reqEditors...)
+}
+
 func (s *EventsService) List(ctx context.Context, accountId string, recordingId int64, params *ListEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.ListEvents(ctx, accountId, recordingId, params, reqEditors...)
 }
@@ -29393,6 +29726,14 @@ func (s *RecordingsService) MoveToVaultWithBody(ctx context.Context, accountId s
 
 func (s *RecordingsService) MoveToVault(ctx context.Context, accountId string, recordingId int64, body MoveRecordingToVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.MoveRecordingToVault(ctx, accountId, recordingId, body, reqEditors...)
+}
+
+func (s *RecordingsService) MoveWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.MoveRecordingWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
+}
+
+func (s *RecordingsService) Move(ctx context.Context, accountId string, recordingId int64, body MoveRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.MoveRecording(ctx, accountId, recordingId, body, reqEditors...)
 }
 
 func (s *RecordingsService) Unspotlight(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -29988,6 +30329,9 @@ type ClientWithResponsesInterface interface {
 	// GetEverythingFilesWithResponse request
 	GetEverythingFilesWithResponse(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*GetEverythingFilesResponse, error)
 
+	// GetFilingWithResponse request
+	GetFilingWithResponse(ctx context.Context, accountId string, filingId int64, reqEditors ...RequestEditorFn) (*GetFilingResponse, error)
+
 	// GetEverythingForwardsWithResponse request
 	GetEverythingForwardsWithResponse(ctx context.Context, accountId string, params *GetEverythingForwardsParams, reqEditors ...RequestEditorFn) (*GetEverythingForwardsResponse, error)
 
@@ -30323,6 +30667,11 @@ type ClientWithResponsesInterface interface {
 
 	CreateCommentWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
 
+	// CopyRecordingWithBodyWithResponse request with any body
+	CopyRecordingWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyRecordingResponse, error)
+
+	CopyRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, body CopyRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*CopyRecordingResponse, error)
+
 	// ListEventsWithResponse request
 	ListEventsWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListEventsParams, reqEditors ...RequestEditorFn) (*ListEventsResponse, error)
 
@@ -30338,6 +30687,11 @@ type ClientWithResponsesInterface interface {
 	MoveRecordingToVaultWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveRecordingToVaultResponse, error)
 
 	MoveRecordingToVaultWithResponse(ctx context.Context, accountId string, recordingId int64, body MoveRecordingToVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveRecordingToVaultResponse, error)
+
+	// MoveRecordingWithBodyWithResponse request with any body
+	MoveRecordingWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveRecordingResponse, error)
+
+	MoveRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, body MoveRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveRecordingResponse, error)
 
 	// UnspotlightRecordingWithResponse request
 	UnspotlightRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*UnspotlightRecordingResponse, error)
@@ -33869,6 +34223,41 @@ func (r GetEverythingFilesResponse) ContentType() string {
 	return ""
 }
 
+type GetFilingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetFilingResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetFilingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetFilingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetFilingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetEverythingForwardsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -37059,6 +37448,42 @@ func (r CreateCommentResponse) ContentType() string {
 	return ""
 }
 
+type CopyRecordingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CopyRecordingResponseContent
+	JSON400      *BadRequestErrorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CopyRecordingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CopyRecordingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CopyRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListEventsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -37190,6 +37615,42 @@ func (r MoveRecordingToVaultResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r MoveRecordingToVaultResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type MoveRecordingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *MoveRecordingResponseContent
+	JSON400      *BadRequestErrorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r MoveRecordingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MoveRecordingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MoveRecordingResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -41665,6 +42126,15 @@ func (c *ClientWithResponses) GetEverythingFilesWithResponse(ctx context.Context
 	return ParseGetEverythingFilesResponse(rsp)
 }
 
+// GetFilingWithResponse request returning *GetFilingResponse
+func (c *ClientWithResponses) GetFilingWithResponse(ctx context.Context, accountId string, filingId int64, reqEditors ...RequestEditorFn) (*GetFilingResponse, error) {
+	rsp, err := c.GetFiling(ctx, accountId, filingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetFilingResponse(rsp)
+}
+
 // GetEverythingForwardsWithResponse request returning *GetEverythingForwardsResponse
 func (c *ClientWithResponses) GetEverythingForwardsWithResponse(ctx context.Context, accountId string, params *GetEverythingForwardsParams, reqEditors ...RequestEditorFn) (*GetEverythingForwardsResponse, error) {
 	rsp, err := c.GetEverythingForwards(ctx, accountId, params, reqEditors...)
@@ -42726,6 +43196,23 @@ func (c *ClientWithResponses) CreateCommentWithResponse(ctx context.Context, acc
 	return ParseCreateCommentResponse(rsp)
 }
 
+// CopyRecordingWithBodyWithResponse request with arbitrary body returning *CopyRecordingResponse
+func (c *ClientWithResponses) CopyRecordingWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyRecordingResponse, error) {
+	rsp, err := c.CopyRecordingWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCopyRecordingResponse(rsp)
+}
+
+func (c *ClientWithResponses) CopyRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, body CopyRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*CopyRecordingResponse, error) {
+	rsp, err := c.CopyRecording(ctx, accountId, recordingId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCopyRecordingResponse(rsp)
+}
+
 // ListEventsWithResponse request returning *ListEventsResponse
 func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListEventsParams, reqEditors ...RequestEditorFn) (*ListEventsResponse, error) {
 	rsp, err := c.ListEvents(ctx, accountId, recordingId, params, reqEditors...)
@@ -42776,6 +43263,23 @@ func (c *ClientWithResponses) MoveRecordingToVaultWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseMoveRecordingToVaultResponse(rsp)
+}
+
+// MoveRecordingWithBodyWithResponse request with arbitrary body returning *MoveRecordingResponse
+func (c *ClientWithResponses) MoveRecordingWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveRecordingResponse, error) {
+	rsp, err := c.MoveRecordingWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMoveRecordingResponse(rsp)
+}
+
+func (c *ClientWithResponses) MoveRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, body MoveRecordingJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveRecordingResponse, error) {
+	rsp, err := c.MoveRecording(ctx, accountId, recordingId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMoveRecordingResponse(rsp)
 }
 
 // UnspotlightRecordingWithResponse request returning *UnspotlightRecordingResponse
@@ -48800,6 +49304,62 @@ func ParseGetEverythingFilesResponse(rsp *http.Response) (*GetEverythingFilesRes
 	return response, nil
 }
 
+// ParseGetFilingResponse parses an HTTP response from a GetFilingWithResponse call
+func ParseGetFilingResponse(rsp *http.Response) (*GetFilingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetFilingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetFilingResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseGetEverythingForwardsResponse parses an HTTP response from a GetEverythingForwardsWithResponse call
 func ParseGetEverythingForwardsResponse(rsp *http.Response) (*GetEverythingForwardsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -53666,6 +54226,71 @@ func ParseCreateCommentResponse(rsp *http.Response) (*CreateCommentResponse, err
 	return response, nil
 }
 
+// ParseCopyRecordingResponse parses an HTTP response from a CopyRecordingWithResponse call
+func ParseCopyRecordingResponse(rsp *http.Response) (*CopyRecordingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CopyRecordingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CopyRecordingResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON400 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case rsp.StatusCode == 403:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseListEventsResponse parses an HTTP response from a ListEventsWithResponse call
 func ParseListEventsResponse(rsp *http.Response) (*ListEventsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -53856,6 +54481,71 @@ func ParseMoveRecordingToVaultResponse(rsp *http.Response) (*MoveRecordingToVaul
 
 	case rsp.StatusCode == 404:
 		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseMoveRecordingResponse parses an HTTP response from a MoveRecordingWithResponse call
+func ParseMoveRecordingResponse(rsp *http.Response) (*MoveRecordingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MoveRecordingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest MoveRecordingResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON400 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case rsp.StatusCode == 403:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest ValidationErrorResponseContent

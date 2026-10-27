@@ -107,8 +107,14 @@ grouped:
   RecordingsService:
     - operation: ArchiveRecording
       methods: ["Archive"]
+    - operation: CopyRecording
+      methods: ["CopyWithBody", "Copy"]
+    - operation: GetFiling
+      methods: ["GetFiling"]
     - operation: ListRecordings
       methods: ["List"]
+    - operation: MoveRecording
+      methods: ["MoveWithBody", "Move"]
     - operation: MoveRecordingToVault
       methods: ["MoveToVaultWithBody", "MoveToVault"]
     - operation: SpotlightRecording

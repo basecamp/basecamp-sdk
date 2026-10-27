@@ -1,8 +1,11 @@
 package com.basecamp.sdk
 
 import com.basecamp.sdk.generated.recordings
+import com.basecamp.sdk.generated.services.CopyRecordingBody
+import com.basecamp.sdk.generated.services.MoveRecordingBody
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
+import io.ktor.http.content.TextContent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -161,6 +164,142 @@ class RecordingsServiceTest {
             client.forAccount("12345").recordings.unspotlight(456)
         }
         assertEquals(403, error.httpStatus)
+        client.close()
+    }
+
+    // Mirrors spec/fixtures/recordings/filing_pending.json and filing_completed.json.
+    private val pendingFilingJson = """{
+        "id": 4,
+        "status": "pending",
+        "type": "Move",
+        "source_recording_id": 1069479351,
+        "url": "https://3.basecampapi.com/195539477/filings/4.json"
+    }"""
+
+    private val completedFilingJson = """{
+        "id": 4,
+        "status": "completed",
+        "type": "Move",
+        "source_recording_id": 1069479351,
+        "url": "https://3.basecampapi.com/195539477/filings/4.json",
+        "destination_recording": {
+            "id": 1069480270,
+            "type": "Message",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958505/messages/1069480270.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/messages/1069480270"
+        }
+    }"""
+
+    private fun jsonHeaders() = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+
+    @Test
+    fun moveSendsTheDestinationProjectAndReadsThePendingFiling() = runTest {
+        val client = mockClient { request ->
+            assertEquals(HttpMethod.Post, request.method)
+            assertEquals("/12345/recordings/1069479351/moves.json", request.url.encodedPath)
+            assertEquals("""{"destination_project_id":2085958505}""", (request.body as TextContent).text)
+            respond(pendingFilingJson, HttpStatusCode.Created, jsonHeaders())
+        }
+
+        val filing = client.forAccount("12345").recordings.move(
+            1069479351, MoveRecordingBody(destinationProjectId = 2085958505),
+        )
+
+        assertEquals(4L, filing.id)
+        assertEquals("pending", filing.status)
+        assertEquals("Move", filing.type)
+        assertEquals(1069479351L, filing.sourceRecordingId)
+        assertEquals("https://3.basecampapi.com/195539477/filings/4.json", filing.url)
+        assertNull(filing.destinationRecording)
+        client.close()
+    }
+
+    @Test
+    fun moveSurfacesARefusal() = runTest {
+        val client = mockClient {
+            respond("""{"status":422,"error":"Unprocessable Entity"}""", HttpStatusCode.UnprocessableEntity, jsonHeaders())
+        }
+
+        val error = assertFailsWith<BasecampException.Validation> {
+            client.forAccount("12345").recordings.move(1069479351, MoveRecordingBody(filingDestinationId = 4001))
+        }
+        assertEquals(422, error.httpStatus)
+        client.close()
+    }
+
+    @Test
+    fun copySendsTheDestinationAndIncludeComments() = runTest {
+        val client = mockClient { request ->
+            assertEquals(HttpMethod.Post, request.method)
+            assertEquals("/12345/recordings/1069479351/copies.json", request.url.encodedPath)
+            assertEquals(
+                """{"destination_project_id":2085958505,"include_comments":true}""",
+                (request.body as TextContent).text,
+            )
+            respond(pendingFilingJson, HttpStatusCode.Created, jsonHeaders())
+        }
+
+        val filing = client.forAccount("12345").recordings.copy(
+            1069479351, CopyRecordingBody(destinationProjectId = 2085958505, includeComments = true),
+        )
+
+        assertEquals("pending", filing.status)
+        assertNull(filing.destinationRecording)
+        client.close()
+    }
+
+    // A copy is not idempotent: a retried 503 could make two copies.
+    @Test
+    fun copyIsSentOnceOnA503WithRetriesEnabled() = runTest {
+        var attempts = 0
+        val client = testBasecampClient {
+            accessToken("test-token")
+            maxRetries = 3
+            engine = MockEngine {
+                attempts++
+                respond("{}", HttpStatusCode.ServiceUnavailable, headersOf("Retry-After", "1"))
+            }
+        }
+
+        val error = assertFailsWith<BasecampException.Api> {
+            client.forAccount("12345").recordings.copy(
+                1069479351, CopyRecordingBody(filingDestinationId = 4001, includeComments = true),
+            )
+        }
+        assertEquals(503, error.httpStatus)
+        assertEquals(1, attempts)
+        client.close()
+    }
+
+    @Test
+    fun getFilingReadsTheCompletedFilingAndItsDestination() = runTest {
+        val client = mockClient { request ->
+            assertEquals(HttpMethod.Get, request.method)
+            assertEquals("/12345/filings/4", request.url.encodedPath)
+            respond(completedFilingJson, HttpStatusCode.OK, jsonHeaders())
+        }
+
+        val filing = client.forAccount("12345").recordings.getFiling(4)
+
+        assertEquals("completed", filing.status)
+        val destination = assertNotNull(filing.destinationRecording)
+        assertEquals(1069480270L, destination.id)
+        assertEquals("Message", destination.type)
+        assertEquals("https://3.basecampapi.com/195539477/buckets/2085958505/messages/1069480270.json", destination.url)
+        assertEquals("https://3.basecamp.com/195539477/buckets/2085958505/messages/1069480270", destination.appUrl)
+        client.close()
+    }
+
+    @Test
+    fun getFilingSurfacesNotFound() = runTest {
+        val client = mockClient {
+            respond("""{"status":404,"error":"Not Found"}""", HttpStatusCode.NotFound, jsonHeaders())
+        }
+
+        val error = assertFailsWith<BasecampException.NotFound> {
+            client.forAccount("12345").recordings.getFiling(4)
+        }
+        assertEquals(404, error.httpStatus)
         client.close()
     }
 }

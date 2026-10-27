@@ -373,8 +373,9 @@ apply PollEvents @tags(["EventFeed"])
 apply PollInbox @tags(["EventFeed"])
 apply CreateStreamTicket @tags(["EventFeed"])
 
-// Recordings (recording lifecycle: list, spotlight, trash, archive, move; and the
-// recording's own event history).
+// Recordings (recording lifecycle: list, spotlight, trash, archive, move, copy,
+// and the filing that reports a move or copy; and the recording's own event
+// history).
 //
 // The six lifecycle operations came first (#922), and this paragraph is about
 // them alone: their new domain tag mirrors the Recordings service every SDK
@@ -417,6 +418,9 @@ apply TrashRecording @tags(["Recordings"])
 apply ArchiveRecording @tags(["Recordings"])
 apply UnarchiveRecording @tags(["Recordings"])
 apply MoveRecordingToVault @tags(["Recordings"])
+apply MoveRecording @tags(["Recordings"])
+apply CopyRecording @tags(["Recordings"])
+apply GetFiling @tags(["Recordings"])
 apply ListEvents @tags(["Recordings"])
 // Subtasks (wire type "Kanban::Step")
 apply ListSubtasks @tags(["Subtasks"])

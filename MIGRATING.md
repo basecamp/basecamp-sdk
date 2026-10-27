@@ -11,6 +11,19 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Recordings: moving and copying a recording to another project
+
+`MoveRecording`, `CopyRecording` and `GetFiling` are new operations, and
+additive for every caller: the Recordings service gains `move`, `copy` and
+`getFiling` (`Move`, `Copy` and `GetFiling` in Go, `move_recording` in Rust,
+`get_filing` in Python, Ruby and Rust). They break only Go code that
+implements the generated `ClientInterface` / `ClientWithResponsesInterface`
+itself, which gain `MoveRecording`, `MoveRecordingWithBody`, `CopyRecording`,
+`CopyRecordingWithBody` and `GetFiling` and their `...WithResponse` forms. A
+mock or fake of your own must add them.
+
 # v0.28.0
 
 ### Go: generated client interfaces gain project-wallpaper methods

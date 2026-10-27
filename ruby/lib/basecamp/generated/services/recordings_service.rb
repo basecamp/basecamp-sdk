@@ -7,6 +7,15 @@ module Basecamp
     # @generated from OpenAPI spec
     class RecordingsService < BaseService
 
+      # Get the state of a move or copy started by MoveRecording or CopyRecording.
+      # @param filing_id [Integer] filing id ID
+      # @return [Hash] response data
+      def get_filing(filing_id:)
+        with_operation(service: "recordings", operation: "get_filing", is_mutation: false, resource_id: filing_id) do
+          http_get("/filings/#{filing_id}", operation: "GetFiling").json(operation: "GetFiling")
+        end
+      end
+
       # List recordings of a given type across projects
       # @param type [String] Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
       # @param bucket [String, nil] bucket
@@ -23,6 +32,23 @@ module Basecamp
         end
       end
 
+      # Start copying a recording into another project; poll GetFiling for the result.
+      # @param recording_id [Integer] recording id ID
+      # @param filing_destination_id [Integer, nil] The container to copy into, from the destination project's dock: a card
+      #   table for a card, a message board for a message, a vault for a document,
+      #   upload or folder, a schedule for a schedule entry. Give this or
+      #   destination_project_id.
+      # @param destination_project_id [Integer, nil] The project to copy a dock tool to. Applies to tools only, and wins over
+      #   filing_destination_id when a request for a tool gives both.
+      # @param parent_id [Integer, nil] When copying into a vault, a folder inside it to put the copy in.
+      # @param include_comments [Boolean, nil] Copy the recording's comments too. Defaults to false.
+      # @return [Hash] response data
+      def copy(recording_id:, filing_destination_id: nil, destination_project_id: nil, parent_id: nil, include_comments: nil)
+        with_operation(service: "recordings", operation: "copy", is_mutation: true, resource_id: recording_id) do
+          http_post("/recordings/#{recording_id}/copies.json", body: compact_params(filing_destination_id: filing_destination_id, destination_project_id: destination_project_id, parent_id: parent_id, include_comments: include_comments)).json(operation: "CopyRecording")
+        end
+      end
+
       # Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
       # @param recording_id [Integer] recording id ID
       # @param parent_id [Integer] The destination vault. The recording's current vault keeps it where it is
@@ -34,6 +60,22 @@ module Basecamp
         with_operation(service: "recordings", operation: "move_to_vault", is_mutation: true, resource_id: recording_id) do
           http_post("/recordings/#{recording_id}/filing.json", body: compact_params(parent_id: parent_id, position: position))
           nil
+        end
+      end
+
+      # Start moving a recording into another project; poll GetFiling for the result.
+      # @param recording_id [Integer] recording id ID
+      # @param filing_destination_id [Integer, nil] The container to move into, from the destination project's dock: a card
+      #   table for a card, a message board for a message, a vault for a document,
+      #   upload or folder, a schedule for a schedule entry. Give this or
+      #   destination_project_id.
+      # @param destination_project_id [Integer, nil] The project to move a dock tool to. Applies to tools only, and wins over
+      #   filing_destination_id when a request for a tool gives both.
+      # @param parent_id [Integer, nil] When moving into a vault, a folder inside it to put the recording in.
+      # @return [Hash] response data
+      def move(recording_id:, filing_destination_id: nil, destination_project_id: nil, parent_id: nil)
+        with_operation(service: "recordings", operation: "move", is_mutation: true, resource_id: recording_id) do
+          http_post("/recordings/#{recording_id}/moves.json", body: compact_params(filing_destination_id: filing_destination_id, destination_project_id: destination_project_id, parent_id: parent_id)).json(operation: "MoveRecording")
         end
       end
 

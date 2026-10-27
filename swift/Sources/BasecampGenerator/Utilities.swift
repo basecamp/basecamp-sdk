@@ -153,6 +153,8 @@ private let resourceTypeOverrides: [String: String] = [
     "SpotlightRecording": "recording",
     "UnspotlightRecording": "recording",
     "MoveRecordingToVault": "recording",
+    "MoveRecording": "recording",
+    "CopyRecording": "recording",
     "UpdateHillChartSettings": "hill_chart",
     // The whole family reports "bookmark"; the inferred "my_bookmark" would
     // split the list operation into its own telemetry category.

@@ -538,7 +538,7 @@ func TestRecordingsListOptions_BuildsQueryParams(t *testing.T) {
 	}
 }
 
-func testMoveToVaultClient(t *testing.T, handler http.HandlerFunc) *RecordingsService {
+func testRecordingsServiceClient(t *testing.T, handler http.HandlerFunc) *RecordingsService {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -561,7 +561,7 @@ func TestRecordingsServiceMoveToVault(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var body string
-			svc := testMoveToVaultClient(t, func(w http.ResponseWriter, r *http.Request) {
+			svc := testRecordingsServiceClient(t, func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodPost {
 					t.Errorf("expected POST, got %s", r.Method)
 				}
@@ -584,7 +584,7 @@ func TestRecordingsServiceMoveToVault(t *testing.T) {
 }
 
 func TestRecordingsServiceMoveToVaultRejectsNegativePosition(t *testing.T) {
-	svc := testMoveToVaultClient(t, func(http.ResponseWriter, *http.Request) {
+	svc := testRecordingsServiceClient(t, func(http.ResponseWriter, *http.Request) {
 		t.Error("a negative position must not reach the wire")
 	})
 
@@ -609,7 +609,7 @@ func TestRecordingsServiceMoveToVaultErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := testMoveToVaultClient(t, func(w http.ResponseWriter, _ *http.Request) {
+			svc := testRecordingsServiceClient(t, func(w http.ResponseWriter, _ *http.Request) {
 				if tt.body != "" {
 					w.Header().Set("Content-Type", "application/json")
 				}
@@ -629,5 +629,176 @@ func TestRecordingsServiceMoveToVaultErrors(t *testing.T) {
 				t.Errorf("message = %q, want %q", apiErr.Message, tt.message)
 			}
 		})
+	}
+}
+
+func TestRecordingsServiceMove(t *testing.T) {
+	var body map[string]any
+	svc := testRecordingsServiceClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/99999/recordings/456/moves.json" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Location", "https://3.basecampapi.com/195539477/filings/4.json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(loadRecordingsFixture(t, "filing_pending.json"))
+	})
+
+	filing, err := svc.Move(context.Background(), 456, &MoveRecordingRequest{FilingDestinationID: 789})
+	if err != nil {
+		t.Fatalf("Move failed: %v", err)
+	}
+	if len(body) != 1 || body["filing_destination_id"] != float64(789) {
+		t.Errorf("body = %v, want only filing_destination_id 789", body)
+	}
+	want := Filing{
+		ID: 4, Status: FilingPending, Type: FilingMove, SourceRecordingID: 1069479351,
+		URL: "https://3.basecampapi.com/195539477/filings/4.json",
+	}
+	if *filing != want {
+		t.Errorf("filing = %+v, want %+v", *filing, want)
+	}
+}
+
+func TestRecordingsServiceCopy(t *testing.T) {
+	var body map[string]any
+	svc := testRecordingsServiceClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/99999/recordings/456/copies.json" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id":5,"status":"pending","type":"Copy","source_recording_id":456,"url":"https://3.basecampapi.com/195539477/filings/5.json"}`))
+	})
+
+	filing, err := svc.Copy(context.Background(), 456, &CopyRecordingRequest{DestinationProjectID: 2085958505, IncludeComments: true})
+	if err != nil {
+		t.Fatalf("Copy failed: %v", err)
+	}
+	if len(body) != 2 || body["destination_project_id"] != float64(2085958505) || body["include_comments"] != true {
+		t.Errorf("body = %v, want destination_project_id and include_comments", body)
+	}
+	if filing.ID != 5 || filing.Type != FilingCopy || filing.Status != FilingPending || filing.DestinationRecording != nil {
+		t.Errorf("unexpected filing: %+v", filing)
+	}
+}
+
+func TestRecordingsServiceCopyIsNotRetried(t *testing.T) {
+	for _, status := range []int{http.StatusInternalServerError, http.StatusServiceUnavailable} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			attempts := 0
+			svc := testRecordingsServiceClient(t, func(w http.ResponseWriter, _ *http.Request) {
+				attempts++
+				w.WriteHeader(status)
+			})
+
+			_, err := svc.Copy(context.Background(), 456, &CopyRecordingRequest{FilingDestinationID: 789})
+			if apiErr, ok := errors.AsType[*Error](err); !ok || apiErr.HTTPStatus != status {
+				t.Fatalf("expected a %d error, got: %v", status, err)
+			}
+			if attempts != 1 {
+				t.Errorf("a copy must be sent once, got %d attempts", attempts)
+			}
+		})
+	}
+}
+
+func TestRecordingsServiceMoveAndCopyRequireADestination(t *testing.T) {
+	svc := testRecordingsServiceClient(t, func(http.ResponseWriter, *http.Request) {
+		t.Error("a request without a destination must not reach the wire")
+	})
+
+	for name, call := range map[string]func() error{
+		"move nil": func() error { _, err := svc.Move(context.Background(), 456, nil); return err },
+		"move empty": func() error {
+			_, err := svc.Move(context.Background(), 456, &MoveRecordingRequest{ParentID: 9})
+			return err
+		},
+		"copy nil": func() error { _, err := svc.Copy(context.Background(), 456, nil); return err },
+		"copy empty": func() error {
+			_, err := svc.Copy(context.Background(), 456, &CopyRecordingRequest{IncludeComments: true})
+			return err
+		},
+	} {
+		err := call()
+		if apiErr, ok := errors.AsType[*Error](err); !ok || apiErr.Code != CodeUsage {
+			t.Errorf("%s: expected usage error, got: %v", name, err)
+		}
+	}
+}
+
+func TestRecordingsServiceMoveErrors(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		body   string
+		code   string
+	}{
+		{"already being moved", http.StatusUnprocessableEntity, `{"status":422,"error":"Unprocessable Entity"}`, CodeValidation},
+		{"only moves with its parent", http.StatusForbidden, "", CodeForbidden},
+		{"unreachable destination", http.StatusNotFound, `{"status":404,"error":"Not Found"}`, CodeNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := testRecordingsServiceClient(t, func(w http.ResponseWriter, _ *http.Request) {
+				if tt.body != "" {
+					w.Header().Set("Content-Type", "application/json")
+				}
+				w.WriteHeader(tt.status)
+				w.Write([]byte(tt.body))
+			})
+
+			_, err := svc.Move(context.Background(), 456, &MoveRecordingRequest{FilingDestinationID: 789})
+			apiErr, ok := errors.AsType[*Error](err)
+			if !ok || apiErr.Code != tt.code || apiErr.HTTPStatus != tt.status {
+				t.Fatalf("expected %s %d, got: %v", tt.code, tt.status, err)
+			}
+		})
+	}
+}
+
+func TestRecordingsServiceGetFiling(t *testing.T) {
+	svc := testRecordingsServiceClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/99999/filings/4" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(loadRecordingsFixture(t, "filing_completed.json"))
+	})
+
+	filing, err := svc.GetFiling(context.Background(), 4)
+	if err != nil {
+		t.Fatalf("GetFiling failed: %v", err)
+	}
+	if filing.Status != FilingCompleted || filing.Type != FilingMove {
+		t.Errorf("unexpected filing: %+v", filing)
+	}
+	want := FilingDestinationRecording{
+		ID:     1069480270,
+		Type:   "Message",
+		URL:    "https://3.basecampapi.com/195539477/buckets/2085958505/messages/1069480270.json",
+		AppURL: "https://3.basecamp.com/195539477/buckets/2085958505/messages/1069480270",
+	}
+	if filing.DestinationRecording == nil || *filing.DestinationRecording != want {
+		t.Errorf("destination = %+v, want %+v", filing.DestinationRecording, want)
+	}
+}
+
+func TestRecordingsServiceGetFilingNotFound(t *testing.T) {
+	svc := testRecordingsServiceClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"status":404,"error":"Not Found"}`))
+	})
+
+	_, err := svc.GetFiling(context.Background(), 4)
+	if apiErr, ok := errors.AsType[*Error](err); !ok || apiErr.Code != CodeNotFound {
+		t.Fatalf("expected not_found, got: %v", err)
 	}
 }

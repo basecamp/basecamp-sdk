@@ -56,6 +56,53 @@ impl<'a> RecordingsService<'a> {
         self.client.send_unit(operation).await
     }
 
+    /// Start copying a recording into another project; poll GetFiling for the result.
+    ///
+    /// Works like MoveRecording, except the original stays where it is. Name the
+    /// destination with `filing_destination_id`, a container of the kind the
+    /// recording sits in now, from the destination project's `dock` (GetProject): a
+    /// card copies into a card table (`kanban_board`) and lands in Triage, or in
+    /// Done if it is completed. A dock tool is copied by `destination_project_id`
+    /// instead. Poll GetFiling with the returned filing's id until `status` leaves
+    /// `pending` and `processing`; a completed filing's `destination_recording.id`
+    /// is the copy.
+    ///
+    /// Not safe to retry blindly: each request makes another copy. Check the first
+    /// filing's status before trying again.
+    ///
+    /// 400 when neither destination is given. 403 when the recording only copies
+    /// along with its parent. 404 when the destination is not one the caller can
+    /// copy it into. 422 when the copy cannot start, such as when the recording is
+    /// being moved or the destination cannot take it.
+    ///
+    /// `POST /recordings/{recordingId}/copies.json` — not idempotent, sent exactly once.
+    pub async fn copy(
+        &self,
+        recording_id: i64,
+        body: &CopyRecordingRequestContent,
+    ) -> Result<CopyRecordingResponseContent, Error> {
+        let mut operation = self
+            .client
+            .operation(&routes::COPY_RECORDING, &[&recording_id]);
+        operation.json(body)?;
+        self.client.send(operation).await
+    }
+
+    /// Get the state of a move or copy started by MoveRecording or CopyRecording.
+    ///
+    /// `status` is `pending` or `processing` while the work runs, `completed` when
+    /// it is done, and `failed` if it could not be done. Poll until it leaves
+    /// `pending` and `processing`. A completed filing carries the recording it made
+    /// under `destination_recording`; for a move, that is the moved recording's new
+    /// id. 404 for a filing someone else started, and for a completed one whose
+    /// recording has since been permanently deleted.
+    ///
+    /// `GET /filings/{filingId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn get_filing(&self, filing_id: i64) -> Result<GetFilingResponseContent, Error> {
+        let operation = self.client.operation(&routes::GET_FILING, &[&filing_id]);
+        self.client.send(operation).await
+    }
+
     /// List recordings of a given type across projects
     ///
     /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
@@ -75,6 +122,43 @@ impl<'a> RecordingsService<'a> {
         operation.query_optional("direction", params.direction.as_ref());
         operation.query_optional("page", params.page.as_ref());
         self.client.send_page(operation).await
+    }
+
+    /// Start moving a recording into another project; poll GetFiling for the result.
+    ///
+    /// The move runs in the background and this answers 201 with a filing. Poll
+    /// GetFiling with its id until `status` leaves `pending` and `processing`. Once
+    /// the move completes, the recording lives in the destination project under a
+    /// new id, the completed filing's `destination_recording.id`; its old id no
+    /// longer reaches it.
+    ///
+    /// Name the destination with `filing_destination_id`: the container the
+    /// recording moves into, of the same kind it sits in now, found in the
+    /// destination project's `dock` (GetProject). A card moves into a card table
+    /// (`kanban_board`) and lands in Triage, or in Done if it is completed; a card
+    /// table column moves into a card table too. A message moves into a
+    /// `message_board`; a document, upload or folder into a `vault`; a schedule
+    /// entry into a `schedule`. A dock tool itself (a message board, card table,
+    /// Docs & Files, schedule) is moved by `destination_project_id` instead.
+    ///
+    /// 400 when neither destination is given. 403 when the recording only moves
+    /// along with its parent, or the caller may not move it. 404 when the
+    /// destination is not one the caller can move it into. 422 when the move
+    /// cannot start, such as when the recording is already being moved or the
+    /// destination cannot take it. A repeated move is harmless: while the first is
+    /// pending it is 422, and once it is done, 404, because the recording has moved.
+    ///
+    /// `POST /recordings/{recordingId}/moves.json` — not idempotent, sent exactly once.
+    pub async fn move_recording(
+        &self,
+        recording_id: i64,
+        body: &MoveRecordingRequestContent,
+    ) -> Result<MoveRecordingResponseContent, Error> {
+        let mut operation = self
+            .client
+            .operation(&routes::MOVE_RECORDING, &[&recording_id]);
+        operation.json(body)?;
+        self.client.send(operation).await
     }
 
     /// Move a document, upload or vault into another vault in its project, or reorder it in its own vault.
