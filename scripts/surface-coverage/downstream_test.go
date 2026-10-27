@@ -80,8 +80,51 @@ func TestWorkspaceSDKIsNotCoverage(t *testing.T) {
 // of leaving a report that covers only the patterns that loaded.
 func TestUnloadablePatternFails(t *testing.T) {
 	if _, err := loadRepo("testdata/downstream", []string{"./cmd/app", "./cmd/nope"}); err == nil {
-		t.Fatal("loadRepo with a missing package pattern succeeded")
+		t.Error("loadRepo with a missing package pattern succeeded")
 	}
+	repo, _ := copyFixture(t)
+	if err := os.MkdirAll(filepath.Join(repo, "empty", "tree"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadRepo(repo, []string{"./cmd/app", "./empty/..."}); err == nil {
+		t.Error("loadRepo with a wildcard that matches nothing succeeded")
+	}
+}
+
+// TestInvalidBindingIsNotCoverage: in code that does not compile, an SDK
+// value assigned to an interface it does not satisfy binds nothing, though
+// the interface has a method of the same name.
+func TestInvalidBindingIsNotCoverage(t *testing.T) {
+	repo, _ := copyFixture(t)
+	src := `package cmds
+
+import (
+	"context"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+)
+
+type byName interface {
+	Get(ctx context.Context, id string) error
+}
+
+func invalid(ctx context.Context, ac *basecamp.AccountClient) {
+	var b byName = ac.Gadgets()
+	_ = b.Get(ctx, "x")
+}
+`
+	if err := os.WriteFile(filepath.Join(repo, "internal/cmds/invalid.go"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r, err := loadRepo(repo, []string{"./cmd/app"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.TypeErrors == 0 {
+		t.Fatal("the invalid assignment type-checked")
+	}
+	v1, _ := fixtureSDKs(t)
+	assertIDs(t, "uncovered beside an invalid binding", ids(buildReport(v1, nil, v1, r).Uncovered), []string{"GetGadget", "ReplaceThing"})
 }
 
 // TestCgoFilesAreRead: an SDK call in a file that imports "C" counts.

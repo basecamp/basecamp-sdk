@@ -79,6 +79,7 @@ func TestRouteMatch(t *testing.T) {
 	for _, c := range []struct {
 		method, pattern, want string
 	}{
+		// AccountClient paths may leave the account out (the default below).
 		{"GET", "/projects/" + wild + ".json", "GetProject"},
 		// A computed segment never stands in for a fixed word.
 		{"GET", "/projects/recent.json", "ListRecentProjects"},
@@ -98,9 +99,33 @@ func TestRouteMatch(t *testing.T) {
 		// Two equally good fits: unresolved rather than a guess.
 		{"GET", "/x/" + wild + ".json", ""},
 	} {
-		got, ok := routes.match(c.method, c.pattern)
+		got, ok := routes.match(c.method, c.pattern, true)
 		if got != c.want || ok != (c.want != "") {
 			t.Errorf("match(%s %q) = %q, %v; want %q", c.method, display(c.pattern), got, ok, c.want)
 		}
+	}
+}
+
+// TestClientPathsCarryTheAccount: Client sends its path as given, so an
+// account-relative path from it reaches no account route.
+func TestClientPathsCarryTheAccount(t *testing.T) {
+	routes := newRouteTable([]Operation{{ID: "GetMyProfile", Method: "GET", Path: "/{accountId}/my/profile.json"}})
+	for pattern, want := range map[string]string{
+		"/my/profile.json":                              "",
+		"/123/my/profile.json":                          "GetMyProfile",
+		"/" + wild + "/my/profile.json":                 "GetMyProfile",
+		"https://3.basecampapi.com/123/my/profile.json": "GetMyProfile",
+	} {
+		if got, _ := routes.match("GET", pattern, false); got != want {
+			t.Errorf("Client match(%q) = %q, want %q", display(pattern), got, want)
+		}
+	}
+	client := "(*" + sdkPkgPath + ".Client).Get"
+	account := "(*" + sdkPkgPath + ".AccountClient).Get"
+	if _, ok := routes.matchRef(ref{Key: client, Raw: "GET", Pattern: "/my/profile.json", Resolved: true}); ok {
+		t.Error("Client.Get of an account-relative path matched")
+	}
+	if _, ok := routes.matchRef(ref{Key: account, Raw: "GET", Pattern: "/my/profile.json", Resolved: true}); !ok {
+		t.Error("AccountClient.Get of an account-relative path did not match")
 	}
 }

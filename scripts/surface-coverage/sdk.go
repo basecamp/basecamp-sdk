@@ -120,7 +120,7 @@ func loadSDK(dir, version string) (*SDK, error) {
 							direct[key][op] = true
 						}
 					case r.Raw != "":
-						if op, ok := s.routes.match(r.Raw, r.Pattern); ok && r.Resolved {
+						if op, ok := s.routes.matchRef(r); ok && r.Resolved {
 							direct[key][op] = true
 						}
 					case r.Exported && r.Recv != own && strings.HasSuffix(r.Recv, "Service"):
@@ -222,7 +222,7 @@ func (s *SDK) opsFor(r ref) ([]string, bool) {
 		if !r.Resolved {
 			return nil, true
 		}
-		if op, ok := s.routes.match(r.Raw, r.Pattern); ok {
+		if op, ok := s.routes.matchRef(r); ok {
 			return []string{op}, true
 		}
 		return nil, true

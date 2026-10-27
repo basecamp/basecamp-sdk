@@ -131,12 +131,18 @@ func splitPath(p string) []string {
 // "/projects/%d.json" is GetProject and not some /projects/<word> listing.
 // Among fits, the one with the most literal-to-literal segments wins; a tie
 // leaves the call unresolved rather than guessing.
-func (t *routeTable) match(method, pattern string) (string, bool) {
+//
+// accountRelative says the path may leave out the account, as AccountClient
+// paths do; Client sends its path as given, so one of its paths must carry
+// the account to reach an account route.
+func (t *routeTable) match(method, pattern string, accountRelative bool) (string, bool) {
 	segs := splitPath(pattern)
 	// A path that starts with the account ID, computed or literal (an
-	// absolute URL or "/<account>/...", which AccountClient accepts), is
-	// tried with that segment dropped too.
-	candidates := [][]string{segs}
+	// absolute URL or "/<account>/..."), is tried with that segment dropped.
+	var candidates [][]string
+	if accountRelative {
+		candidates = append(candidates, segs)
+	}
 	if len(segs) > 0 && (strings.Contains(segs[0], wild) || allDigits(segs[0])) {
 		candidates = append(candidates, segs[1:])
 	}
@@ -165,6 +171,11 @@ func (t *routeTable) match(method, pattern string) (string, bool) {
 		return "", false
 	}
 	return best, true
+}
+
+// matchRef matches a raw call by its path, minding which client sent it.
+func (t *routeTable) matchRef(r ref) (string, bool) {
+	return t.match(r.Raw, r.Pattern, strings.Contains(r.Key, ".AccountClient)."))
 }
 
 func allDigits(s string) bool {

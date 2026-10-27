@@ -70,6 +70,13 @@ func goList(dir string, env []string, patterns ...string) ([]*listedPackage, err
 		}
 		pkgs = append(pkgs, &p)
 	}
+	// A wildcard pattern that matches nothing is only a warning to go list;
+	// it narrows the report as surely as a missing package does.
+	for _, line := range strings.Split(stderr.String(), "\n") {
+		if strings.Contains(line, "matched no packages") {
+			return nil, fmt.Errorf("go list in %s: %s", dir, strings.TrimSpace(line))
+		}
+	}
 	if len(pkgs) == 0 {
 		if runErr != nil {
 			return nil, fmt.Errorf("go list %s in %s: %v\n%s", strings.Join(patterns, " "), dir, runErr, stderr.String())

@@ -175,7 +175,7 @@ func buildReport(sdk, prev, pinned *SDK, repo *Repo) *Report {
 		}
 		c := RawCall{Method: r.Raw, Site: r.Site}
 		if r.Resolved {
-			if _, ok := sdk.routes.match(r.Raw, r.Pattern); ok {
+			if _, ok := sdk.routes.matchRef(r.ref); ok {
 				continue
 			}
 			c.Path = display(r.Pattern)

@@ -179,6 +179,11 @@ func (b *ifaceBindings) bind(dst types.Type, src ast.Expr, info *types.Info) {
 	if !ok || tv.Type == nil || !sdkType(tv.Type) {
 		return
 	}
+	// Only a value that really satisfies the interface: in code that does
+	// not compile, a same-named method with another signature is no binding.
+	if !types.AssignableTo(tv.Type, dst) {
+		return
+	}
 	b.add(dst, tv.Type)
 }
 
