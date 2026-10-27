@@ -206,7 +206,8 @@ jobs:
 
       # Scans every go.mod in the repo, so a new module is covered without
       # editing this file. Today that is go/, conformance/runner/go/,
-      # scripts/check-wrapper-drift/ and scripts/gen-catalog/. Only the
+      # scripts/check-wrapper-drift/, scripts/gen-catalog/ and
+      # scripts/surface-coverage/. Only the
       # go.mod extractor is enabled: the lockfiles of the other SDKs keep
       # their own gates above. It exits nonzero on any finding, and also if
       # it finds no go.mod or doesn't recognise the extractor name.

@@ -5,4 +5,5 @@ use (
 	./go
 	./scripts/check-wrapper-drift
 	./scripts/gen-catalog
+	./scripts/surface-coverage
 )
