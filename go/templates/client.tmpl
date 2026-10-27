@@ -1842,6 +1842,28 @@ func (s *RecordingsService) MoveToVault{{.Suffix}}(ctx context.Context{{genParam
 	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
 }
 {{end}}{{end}}
+{{else if eq $opid "MoveRecording"}}
+func (s *RecordingsService) MoveWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *RecordingsService) Move{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "CopyRecording"}}
+func (s *RecordingsService) CopyWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *RecordingsService) Copy{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "GetFiling"}}
+func (s *RecordingsService) GetFiling(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
 
 {{/* Webhooks operations */}}
 {{else if eq $opid "ListWebhooks"}}

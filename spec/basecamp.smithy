@@ -230,6 +230,9 @@ service Basecamp {
     ArchiveRecording,
     UnarchiveRecording,
     MoveRecordingToVault,
+    MoveRecording,
+    CopyRecording,
+    GetFiling,
     SetClientVisibility,
 
     // Batch 9 - Questionnaires, Questions, Answers (Checkins)
@@ -8118,6 +8121,151 @@ structure MoveRecordingToVaultInput {
 
 structure MoveRecordingToVaultOutput {}
 
+/// Start moving a recording into another project; poll GetFiling for the result.
+///
+/// The move runs in the background and this answers 201 with a filing. Poll
+/// GetFiling with its id until `status` leaves `pending` and `processing`. Once
+/// the move completes, the recording lives in the destination project under a
+/// new id, the completed filing's `destination_recording.id`; its old id no
+/// longer reaches it.
+///
+/// Name the destination with `filing_destination_id`: the container the
+/// recording moves into, of the same kind it sits in now, found in the
+/// destination project's `dock` (GetProject). A card moves into a card table
+/// (`kanban_board`) and lands in Triage, or in Done if it is completed; a card
+/// table column moves into a card table too. A message moves into a
+/// `message_board`; a document, upload or folder into a `vault`; a schedule
+/// entry into a `schedule`. A dock tool itself (a message board, card table,
+/// Docs & Files, schedule) is moved by `destination_project_id` instead.
+///
+/// 400 when neither destination is given. 403 when the recording only moves
+/// along with its parent, or the caller may not move it. 404 when the
+/// destination is not one the caller can move it into. 422 when the move
+/// cannot start, such as when the recording is already being moved or the
+/// destination cannot take it. A repeated move is harmless: while the first is
+/// pending it is 422, and once it is done, 404, because the recording has moved.
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/moves.json", code: 201)
+operation MoveRecording {
+  input: MoveRecordingInput
+  output: MoveRecordingOutput
+  errors: [BadRequestError, BareForbiddenError, NotFoundError, ValidationError, UnauthorizedError, RateLimitError, InternalServerError]
+}
+
+structure MoveRecordingInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  /// The container to move into, from the destination project's dock: a card
+  /// table for a card, a message board for a message, a vault for a document,
+  /// upload or folder, a schedule for a schedule entry. Give this or
+  /// destination_project_id.
+  filing_destination_id: RecordingId
+
+  /// The project to move a dock tool to. Applies to tools only, and wins over
+  /// filing_destination_id when a request for a tool gives both.
+  destination_project_id: ProjectId
+
+  /// When moving into a vault, a folder inside it to put the recording in.
+  parent_id: VaultId
+}
+
+structure MoveRecordingOutput {
+  filing: Filing
+}
+
+/// Start copying a recording into another project; poll GetFiling for the result.
+///
+/// Works like MoveRecording, except the original stays where it is. Name the
+/// destination with `filing_destination_id`, a container of the kind the
+/// recording sits in now, from the destination project's `dock` (GetProject): a
+/// card copies into a card table (`kanban_board`) and lands in Triage, or in
+/// Done if it is completed. A dock tool is copied by `destination_project_id`
+/// instead. Poll GetFiling with the returned filing's id until `status` leaves
+/// `pending` and `processing`; a completed filing's `destination_recording.id`
+/// is the copy.
+///
+/// Not safe to retry blindly: each request makes another copy. Check the first
+/// filing's status before trying again.
+///
+/// 400 when neither destination is given. 403 when the recording only copies
+/// along with its parent. 404 when the destination is not one the caller can
+/// copy it into. 422 when the copy cannot start, such as when the recording is
+/// being moved or the destination cannot take it.
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/copies.json", code: 201)
+operation CopyRecording {
+  input: CopyRecordingInput
+  output: CopyRecordingOutput
+  errors: [BadRequestError, BareForbiddenError, NotFoundError, ValidationError, UnauthorizedError, RateLimitError, InternalServerError]
+}
+
+structure CopyRecordingInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  /// The container to copy into, from the destination project's dock: a card
+  /// table for a card, a message board for a message, a vault for a document,
+  /// upload or folder, a schedule for a schedule entry. Give this or
+  /// destination_project_id.
+  filing_destination_id: RecordingId
+
+  /// The project to copy a dock tool to. Applies to tools only, and wins over
+  /// filing_destination_id when a request for a tool gives both.
+  destination_project_id: ProjectId
+
+  /// When copying into a vault, a folder inside it to put the copy in.
+  parent_id: VaultId
+
+  /// Copy the recording's comments too. Defaults to false.
+  include_comments: Boolean
+}
+
+structure CopyRecordingOutput {
+  filing: Filing
+}
+
+/// Get the state of a move or copy started by MoveRecording or CopyRecording.
+///
+/// `status` is `pending` or `processing` while the work runs, `completed` when
+/// it is done, and `failed` if it could not be done. Poll until it leaves
+/// `pending` and `processing`. A completed filing carries the recording it made
+/// under `destination_recording`; for a move, that is the moved recording's new
+/// id. 404 for a filing someone else started, and for a completed one whose
+/// recording has since been permanently deleted.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/filings/{filingId}")
+operation GetFiling {
+  input: GetFilingInput
+  output: GetFilingOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetFilingInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  filingId: FilingId
+}
+
+structure GetFilingOutput {
+  filing: Filing
+}
+
 /// Set client visibility for a recording
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
@@ -10974,6 +11122,55 @@ structure TemplateLibraryCopy {
   /// The copied card table. Exactly one destination is present once the copy
   /// completes, according to the kind copied, and neither before.
   destination_card_table: CardTable
+}
+
+// ===== Filing Shapes =====
+
+long FilingId
+
+@documentation("pending|processing|completed|failed")
+string FilingStatus
+
+@documentation("Move|Copy")
+string FilingType
+
+/// A move or copy of a recording into another project, as MoveRecording,
+/// CopyRecording and GetFiling answer it.
+structure Filing {
+  @required
+  id: FilingId
+
+  @required
+  status: FilingStatus
+
+  @required
+  type: FilingType
+
+  @required
+  source_recording_id: RecordingId
+
+  /// The filing's own API URL, for polling.
+  @required
+  url: String
+
+  /// The recording the move or copy made. Present only once the filing is
+  /// completed.
+  destination_recording: FilingDestinationRecording
+}
+
+structure FilingDestinationRecording {
+  @required
+  id: RecordingId
+
+  /// The recordable type, such as `Kanban::Card`, `Todo` or `Message`.
+  @required
+  type: String
+
+  @required
+  url: String
+
+  @required
+  app_url: String
 }
 
 list TemplateLibraryConfirmationPersonList {

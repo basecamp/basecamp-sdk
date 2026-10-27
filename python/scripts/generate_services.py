@@ -148,6 +148,8 @@ METHOD_NAME_OVERRIDES = {
     "SpotlightRecording": "spotlight",
     "UnspotlightRecording": "unspotlight",
     "MoveRecordingToVault": "move_to_vault",
+    "CopyRecording": "copy",
+    "GetFiling": "get_filing",
     "GetMyProfile": "my_profile",
     "GetTodolistOrGroup": "get",
     # The plain `update` name belongs to the merge-safe composite; the raw

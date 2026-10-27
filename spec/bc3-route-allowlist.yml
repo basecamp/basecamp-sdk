@@ -193,6 +193,42 @@ sdk_routes_absent_from_bc3_docs:
       succeeds" in test/api/projects/wallpapers_controller_api_test.rb. Before
       #14062 the API host answers 404. Delete at the repin past #14062.
 
+  - method: POST
+    path: /recordings/:id/moves
+    reason: >-
+      MoveRecording. Documented in doc/api/sections/recordings.md ("Move a
+      recording to another project") by bc3 #14136, merged as
+      4e3b68921c39ff033edf14bc802d08830b23efee (2026-10-26). The revision
+      spec/api-provenance.json pins predates it. `resources :moves, only: %i[ new
+      create ]` (config/routes.rb:245) sits in `concern :filable` (:244), which
+      `concern :recording_actions` includes at :266, drawn flat at :320 inside
+      `resources :recordings, only: :show` (:304, commented "CANONICAL: Top-level
+      unscoped routes for recording actions"). Recordings::MovesController#create
+      renders app/views/api/filings/show.json.jbuilder with 201; covered by
+      test/api/recordings/moves_controller_api_test.rb ("move a card to another
+      project's card table"). Delete at the repin past #14136.
+
+  - method: POST
+    path: /recordings/:id/copies
+    reason: >-
+      CopyRecording. Same bc3 PR (#14136, "Copy a recording to another
+      project"), same concern: `resources :copies, only: %i[ new create ]`
+      (config/routes.rb:246). Recordings::CopiesController#create renders
+      app/views/api/filings/show.json.jbuilder with 201; covered by
+      test/api/recordings/copies_controller_api_test.rb ("copy a message to
+      another project's message board"). Delete at the repin past #14136.
+
+  - method: GET
+    path: /filings/:id
+    reason: >-
+      GetFiling. Same bc3 PR (#14136, "Get a filing"). Drawn flat at
+      config/routes.rb:219 (`resources :filings, only: :show`); FilingsController
+      answers JSON on the API host and renders
+      app/views/api/filings/show.json.jbuilder, covered by
+      test/api/filings_controller_api_test.rb ("show a completed move with the
+      recording it made", "a filing someone else started is not found"). Delete
+      at the repin past #14136.
+
 # ---------------------------------------------------------------------------
 # Known-defective SDK routes — bc3 does NOT serve these, and we know it.
 #

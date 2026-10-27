@@ -37,6 +37,8 @@ let methodNameOverrides: [String: String] = [
     "SpotlightRecording": "spotlight",
     "UnspotlightRecording": "unspotlight",
     "MoveRecordingToVault": "moveToVault",
+    "CopyRecording": "copy",
+    "GetFiling": "getFiling",
     // "bookmark(id)" reads as the action; keep the getter explicit.
     "GetBookmark": "getBookmark",
     // "folder(id)" reads as a noun with no verb; the rest of the family is
