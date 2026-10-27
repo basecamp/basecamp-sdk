@@ -52,7 +52,7 @@ use basecamp.traits#basecampClearable
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-10-19"
+  version: "2026-10-27"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }

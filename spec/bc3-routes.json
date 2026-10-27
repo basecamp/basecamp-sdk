@@ -5,12 +5,12 @@
   "source": {
     "repo": "basecamp/bc3",
     "branch": "master",
-    "revision": "4958288166a19b98894fce8d7deb5edbdd34424b",
-    "date": "2026-10-19",
+    "revision": "2a47a419594f666865f8870541e90b14ec6b0b04",
+    "date": "2026-10-27",
     "extracted_from": [
       "doc/api/sections/*.md"
     ],
-    "sections_scanned": 72,
+    "sections_scanned": 73,
     "generator_sha256": "20e682227ca1962b8127691abb41343dde05155bff529123d0dd0489f5ecc378"
   },
   "routes": [
@@ -318,6 +318,28 @@
       "raw": "/projects/1/gauge/needles/2.json",
       "sections": [
         "gauges.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/projects/:id/logo",
+      "raw": "/projects/1/logo.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/projects/:id/wallpaper",
+      "raw": "/projects/1/wallpaper.json",
+      "sections": [
+        "projects.md"
       ],
       "evidence": [
         "bullet"
@@ -1509,6 +1531,18 @@
     },
     {
       "method": "GET",
+      "path": "/embeds/:id",
+      "raw": "/embeds/$SGID.json",
+      "sections": [
+        "embeds.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/events",
       "raw": "/events.json",
       "sections": [
@@ -1525,6 +1559,18 @@
       "raw": "/files.json",
       "sections": [
         "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/filings/:id",
+      "raw": "/filings/4.json",
+      "sections": [
+        "recordings.md"
       ],
       "evidence": [
         "bullet",
@@ -1927,6 +1973,17 @@
     },
     {
       "method": "GET",
+      "path": "/projects/:id/logo",
+      "raw": "/projects/1/logo.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/projects/:id/people",
       "raw": "/projects/1/people.json",
       "sections": [
@@ -1969,6 +2026,17 @@
       "evidence": [
         "bullet",
         "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/projects/:id/wallpaper",
+      "raw": "/projects/1/wallpaper.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet"
       ]
     },
     {
@@ -2982,10 +3050,32 @@
     },
     {
       "method": "POST",
+      "path": "/buckets/:id/recordings/:id/copies",
+      "raw": "/buckets/1/recordings/2/copies.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/buckets/:id/recordings/:id/filing",
       "raw": "/buckets/1/recordings/2/filing.json",
       "sections": [
         "vaults.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/recordings/:id/moves",
+      "raw": "/buckets/1/recordings/2/moves.json",
+      "sections": [
+        "recordings.md"
       ],
       "evidence": [
         "bullet"
@@ -3318,6 +3408,18 @@
     },
     {
       "method": "POST",
+      "path": "/embeds",
+      "raw": "/embeds.json",
+      "sections": [
+        "embeds.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/events/stream_ticket",
       "raw": "/events/stream_ticket.json",
       "sections": [
@@ -3520,6 +3622,18 @@
     },
     {
       "method": "POST",
+      "path": "/recordings/:id/copies",
+      "raw": "/recordings/2/copies.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/recordings/:id/events/:id/boosts",
       "raw": "/recordings/2/events/3/boosts.json",
       "sections": [
@@ -3538,6 +3652,18 @@
       ],
       "evidence": [
         "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/recordings/:id/moves",
+      "raw": "/recordings/2/moves.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
       ]
     },
     {
@@ -4442,6 +4568,17 @@
     },
     {
       "method": "PUT",
+      "path": "/projects/:id/logo",
+      "raw": "/projects/1/logo.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
       "path": "/projects/:id/people/client_users",
       "raw": "/projects/1/people/client_users.json",
       "sections": [
@@ -4478,6 +4615,17 @@
       "method": "PUT",
       "path": "/projects/:id/status/archived",
       "raw": "/projects/1/status/archived.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/projects/:id/wallpaper",
+      "raw": "/projects/1/wallpaper.json",
       "sections": [
         "projects.md"
       ],
