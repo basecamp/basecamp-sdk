@@ -8,11 +8,12 @@
 mod support;
 
 use basecamp_sdk::models::{
-    UpdateCardRequestContent, UpdateCardStepRequestContent, UpdateSubtaskRequestContent,
+    CopyRecordingRequestContent, MoveRecordingRequestContent, UpdateCardRequestContent,
+    UpdateCardStepRequestContent, UpdateSubtaskRequestContent,
 };
 use basecamp_sdk::{Date, DateChange};
 use support::account;
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{body_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
@@ -861,6 +862,79 @@ async fn recordings_unspotlight_reaches_the_wire() {
         .unspotlight(100)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn recordings_move_recording_returns_the_filing() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/999/recordings/100/moves.json"))
+        .and(body_json(serde_json::json!({"filing_destination_id": 200})))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "id": 4, "status": "pending", "type": "Move", "source_recording_id": 100,
+            "url": "https://3.basecampapi.com/999/filings/4.json"
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let body = MoveRecordingRequestContent {
+        filing_destination_id: Some(200),
+        ..Default::default()
+    };
+    let filing = account(&server)
+        .recordings()
+        .move_recording(100, &body)
+        .await
+        .unwrap();
+    assert_eq!((filing.id, filing.status.as_str()), (4, "pending"));
+    assert!(filing.destination_recording.is_none());
+}
+
+#[tokio::test]
+async fn recordings_copy_is_sent_once_on_a_503() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/999/recordings/100/copies.json"))
+        .respond_with(ResponseTemplate::new(503))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let body = CopyRecordingRequestContent {
+        filing_destination_id: Some(200),
+        include_comments: Some(true),
+        ..Default::default()
+    };
+    let error = account(&server)
+        .recordings()
+        .copy(100, &body)
+        .await
+        .unwrap_err();
+    assert_eq!(error.http_status(), Some(503));
+}
+
+#[tokio::test]
+async fn recordings_get_filing_decodes_the_destination() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/filings/4"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 4, "status": "completed", "type": "Move", "source_recording_id": 100,
+            "url": "https://3.basecampapi.com/999/filings/4.json",
+            "destination_recording": {
+                "id": 300, "type": "Kanban::Card",
+                "url": "https://3.basecampapi.com/999/buckets/1/card_tables/cards/300.json",
+                "app_url": "https://3.basecamp.com/999/buckets/1/card_tables/cards/300"
+            }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let filing = account(&server).recordings().get_filing(4).await.unwrap();
+    let destination = filing.destination_recording.unwrap();
+    assert_eq!(
+        (destination.id, destination.r#type.as_str()),
+        (300, "Kanban::Card")
+    );
 }
 
 #[tokio::test]

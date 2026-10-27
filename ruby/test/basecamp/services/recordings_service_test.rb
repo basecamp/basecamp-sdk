@@ -122,6 +122,76 @@ class RecordingsServiceTest < Minitest::Test
     assert_equal 403, error.http_status
   end
 
+  def test_move
+    body = nil
+    stub_request(:post, "https://3.basecampapi.com/12345/recordings/456/moves.json")
+      .with { |req| body = JSON.parse(req.body) }
+      .to_return(status: 201, body: load_fixture("recordings/filing_pending.json").to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    filing = @account.recordings.move(recording_id: 456, filing_destination_id: 789)
+
+    assert_equal({ "filing_destination_id" => 789 }, body)
+    assert_equal "pending", filing["status"]
+    assert_equal "Move", filing["type"]
+    assert_not filing.key?("destination_recording")
+  end
+
+  def test_move_surfaces_a_refusal
+    stub_request(:post, "https://3.basecampapi.com/12345/recordings/456/moves.json")
+      .to_return(status: 422, body: { status: 422, error: "Unprocessable Entity" }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @account.recordings.move(recording_id: 456, filing_destination_id: 789)
+    end
+    assert_equal 422, error.http_status
+  end
+
+  def test_copy
+    body = nil
+    stub_request(:post, "https://3.basecampapi.com/12345/recordings/456/copies.json")
+      .with { |req| body = JSON.parse(req.body) }
+      .to_return(status: 201, body: load_fixture("recordings/filing_pending.json").merge("type" => "Copy").to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    filing = @account.recordings.copy(recording_id: 456, destination_project_id: 2085958505, include_comments: true)
+
+    assert_equal({ "destination_project_id" => 2085958505, "include_comments" => true }, body)
+    assert_equal "Copy", filing["type"]
+  end
+
+  def test_copy_is_sent_once_on_a_503
+    stub = stub_request(:post, "https://3.basecampapi.com/12345/recordings/456/copies.json")
+      .to_return(status: 503, body: "")
+
+    assert_raises(Basecamp::ApiError) do
+      @account.recordings.copy(recording_id: 456, filing_destination_id: 789)
+    end
+    assert_requested stub, times: 1
+  end
+
+  def test_get_filing
+    stub_request(:get, "https://3.basecampapi.com/12345/filings/4")
+      .to_return(status: 200, body: load_fixture("recordings/filing_completed.json").to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    filing = @account.recordings.get_filing(filing_id: 4)
+
+    assert_equal "completed", filing["status"]
+    assert_equal 1069480270, filing["destination_recording"]["id"]
+  end
+
+  def test_get_filing_surfaces_not_found
+    stub_request(:get, "https://3.basecampapi.com/12345/filings/4")
+      .to_return(status: 404, body: { status: 404, error: "Not Found" }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.recordings.get_filing(filing_id: 4)
+    end
+  end
+
   def test_archive
     stub_put("/12345/recordings/456/status/archived.json", response_body: {})
 
