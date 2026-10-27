@@ -1268,7 +1268,7 @@ func parseRetryAfter(header string) int {
 		// shortest honoured delay into "retry immediately": a date 400ms out
 		// became 0, was read as "no delay", and fell onto the backoff curve.
 		// Rounding up also never retries before the moment the server named.
-		// Python and Ruby still truncate; that half of the divergence is #799.
+		// Python and Ruby round up too (#857).
 		if remaining := time.Until(t); remaining > 0 {
 			seconds := int64(remaining / time.Second)
 			if remaining%time.Second != 0 {
