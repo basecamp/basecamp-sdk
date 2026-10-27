@@ -44,7 +44,7 @@ func pathPattern(e ast.Expr, info *types.Info) (string, bool) {
 			if !found || tv.Value == nil || tv.Value.Kind() != constant.String {
 				return "", false
 			}
-			return expandFormat(constant.StringVal(tv.Value)), true
+			return expandFormat(constant.StringVal(tv.Value), x.Args[1:], info), true
 		}
 	}
 	return "", false
@@ -61,12 +61,36 @@ func isSprintf(call *ast.CallExpr, info *types.Info) bool {
 
 var verbRE = regexp.MustCompile(`%[-+# 0-9.*\[\]]*[a-zA-Z%]`)
 
-// expandFormat turns a Sprintf format into a pattern: each verb becomes wild
-// and %% becomes %.
-func expandFormat(format string) string {
+// expandFormat turns a Sprintf format into a pattern. A verb whose argument
+// is a constant becomes that constant's text, so Sprintf("/todos/%s.json",
+// "open") is /todos/open.json and not any to-do; any other verb becomes wild,
+// and %% becomes %. A format with explicit argument indexes or * widths is
+// read as wild throughout rather than guessed at.
+func expandFormat(format string, args []ast.Expr, info *types.Info) string {
+	positional := !strings.ContainsAny(format, "[*")
+	next := 0
 	return verbRE.ReplaceAllStringFunc(format, func(v string) string {
 		if v == "%%" {
 			return "%"
+		}
+		i := next
+		next++
+		if !positional || i >= len(args) {
+			return wild
+		}
+		tv, ok := info.Types[ast.Unparen(args[i])]
+		if !ok || tv.Value == nil || len(v) != 2 {
+			return wild
+		}
+		switch tv.Value.Kind() {
+		case constant.String:
+			if v == "%s" || v == "%v" {
+				return constant.StringVal(tv.Value)
+			}
+		case constant.Int:
+			if v == "%d" || v == "%v" {
+				return tv.Value.ExactString()
+			}
 		}
 		return wild
 	})
@@ -176,8 +200,12 @@ func (t *routeTable) match(method, pattern string, accountRelative bool) (string
 }
 
 // matchRef matches a raw call by its path, minding which client sent it.
+//
+// An AccountClient path may leave the account out, but only a relative one:
+// AccountClient sends an absolute URL as given.
 func (t *routeTable) matchRef(r ref) (string, bool) {
-	return t.match(r.Raw, r.Pattern, strings.Contains(r.Key, ".AccountClient)."))
+	relative := strings.Contains(r.Key, ".AccountClient).") && !strings.Contains(r.Pattern, "://")
+	return t.match(r.Raw, r.Pattern, relative)
 }
 
 func allDigits(s string) bool {

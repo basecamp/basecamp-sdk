@@ -149,7 +149,7 @@ func TestCoverageAgainstPinnedRelease(t *testing.T) {
 		raw = append(raw, c.Method+" "+c.Path)
 	}
 	sort.Strings(raw)
-	assertIDs(t, "unmatched raw calls", raw, []string{"GET ", "GET /nowhere/{…}.json"})
+	assertIDs(t, "unmatched raw calls", raw, []string{"GET ", "GET /nowhere/5.json"})
 }
 
 func TestCoverageCountsOnlyTheChosenPackages(t *testing.T) {

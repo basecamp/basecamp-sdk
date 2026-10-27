@@ -21,6 +21,9 @@ var (
 	concat = "/people/" + strconv.FormatInt(id, 10) + ".json"
 	spf    = fmt.Sprintf("/buckets/%d/todos/%v.json?x=%%s", id, id)
 	spfDyn = fmt.Sprintf(dyn, id)
+	spfK   = fmt.Sprintf("/todos/%s.json", "open")
+	spfMix = fmt.Sprintf("/x/%d/%s/%d", id, "y", 7)
+	spfIdx = fmt.Sprintf("/x/%[2]s/%s", "a", "b", "c")
 	bare   = dyn
 	both   = dyn + dyn
 )`
@@ -43,6 +46,11 @@ var (
 		"concat": {"/people/" + wild + ".json", true},
 		"spf":    {"/buckets/" + wild + "/todos/" + wild + ".json?x=%s", true},
 		"spfDyn": {"", false},
+		// A constant argument is part of the path.
+		"spfK":   {"/todos/open.json", true},
+		"spfMix": {"/x/" + wild + "/y/7", true},
+		// Explicit indexes reorder the arguments; read as wild, not guessed.
+		"spfIdx": {"/x/" + wild + "/" + wild, true},
 		"bare":   {"", false},
 		"both":   {"", false},
 	}
@@ -129,5 +137,12 @@ func TestClientPathsCarryTheAccount(t *testing.T) {
 	}
 	if _, ok := routes.matchRef(ref{Key: account, Raw: "GET", Pattern: "/my/profile.json", Resolved: true}); !ok {
 		t.Error("AccountClient.Get of an account-relative path did not match")
+	}
+	// AccountClient sends an absolute URL as given, so it must carry the account.
+	if _, ok := routes.matchRef(ref{Key: account, Raw: "GET", Pattern: "https://3.basecampapi.com/my/profile.json", Resolved: true}); ok {
+		t.Error("AccountClient.Get of an absolute URL without the account matched")
+	}
+	if _, ok := routes.matchRef(ref{Key: account, Raw: "GET", Pattern: "https://3.basecampapi.com/123/my/profile.json", Resolved: true}); !ok {
+		t.Error("AccountClient.Get of an absolute URL with the account did not match")
 	}
 }
