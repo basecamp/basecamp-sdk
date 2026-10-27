@@ -101,6 +101,10 @@ func buildReport(sdk, prev, pinned *SDK, repo *Repo) *Report {
 		TypeErrors: repo.TypeErrors,
 		Operations: len(sdk.Operations),
 		Missing:    repo.Missing,
+		// Empty lists, not null, so a JSON reader can take len() of each.
+		Covered:   []CoveredOp{},
+		Uncovered: []Operation{},
+		Stale:     []StaleRef{},
 	}
 	covered, undeclared := coverage(sdk, repo.Refs)
 	for _, op := range sdk.Operations {

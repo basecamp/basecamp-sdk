@@ -1,5 +1,6 @@
 // Package generated stands in for the oapi-codegen client. Against v1:
-// DeleteThing is gone; FetchThing, ArchiveThing and ListGadgets are new.
+// DeleteThing is gone; FetchThing, ArchiveThing and ListGadgets are new; and
+// ListWidgets keeps its catalog entry but loses its entry point here.
 package generated
 
 import "context"

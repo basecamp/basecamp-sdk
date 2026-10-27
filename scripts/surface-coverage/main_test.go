@@ -18,15 +18,7 @@ func TestRunAtRef(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
 	}
-	root := t.TempDir()
-	sdkDir := filepath.Join(root, "sdk-v1")
-	repo := filepath.Join(root, "downstream")
-	copyTree(t, "testdata/sdk-v1", sdkDir)
-	copyTree(t, "testdata/downstream", repo)
-	// An archived ref lands somewhere else, so the replace must be absolute.
-	gomod := filepath.Join(repo, "go.mod")
-	data, _ := os.ReadFile(gomod)
-	os.WriteFile(gomod, []byte(strings.Replace(string(data), "../sdk-v1", sdkDir, 1)), 0o644)
+	repo, sdkDir := copyFixture(t)
 
 	git := func(args ...string) {
 		t.Helper()
@@ -38,11 +30,6 @@ func TestRunAtRef(t *testing.T) {
 	git("init", "-q")
 	git("add", ".")
 	git("commit", "-q", "-m", "fixture")
-
-	// The working tree stops calling Delete; the commit still does.
-	cmds := filepath.Join(repo, "internal/cmds/cmds.go")
-	src, _ := os.ReadFile(cmds)
-	os.WriteFile(cmds, []byte(strings.Replace(string(src), "_ = ac.Things().Delete(ctx, 2)", "", 1)), 0o644)
 
 	report := func(args ...string) *Report {
 		t.Helper()
@@ -58,6 +45,15 @@ func TestRunAtRef(t *testing.T) {
 		return &r
 	}
 
+	if clean := report(); strings.HasSuffix(clean.Commit, "-dirty") || clean.Commit == "" {
+		t.Errorf("clean working-tree commit = %q, want HEAD's short sha", clean.Commit)
+	}
+
+	// The working tree stops calling Delete; the commit still does.
+	cmds := filepath.Join(repo, "internal/cmds/cmds.go")
+	src, _ := os.ReadFile(cmds)
+	os.WriteFile(cmds, []byte(strings.Replace(string(src), "_ = ac.Things().Delete(ctx, 2)", "", 1)), 0o644)
+
 	atRef := report("-ref", "HEAD")
 	if atRef.Ref != "HEAD" || atRef.Commit == "" {
 		t.Errorf("ref = %q, commit = %q", atRef.Ref, atRef.Commit)
@@ -65,6 +61,9 @@ func TestRunAtRef(t *testing.T) {
 	assertIDs(t, "uncovered at HEAD", ids(atRef.Uncovered), []string{"GetGadget", "ReplaceThing"})
 
 	worktree := report()
+	if worktree.Commit != atRef.Commit+"-dirty" {
+		t.Errorf("working-tree commit = %q, want %q: the tree differs from HEAD", worktree.Commit, atRef.Commit+"-dirty")
+	}
 	assertIDs(t, "uncovered in the working tree", ids(worktree.Uncovered), []string{"DeleteThing", "GetGadget", "ReplaceThing"})
 
 	var md bytes.Buffer
@@ -74,6 +73,22 @@ func TestRunAtRef(t *testing.T) {
 	if !strings.HasPrefix(md.String(), "### SDK operation coverage: downstream at `") {
 		t.Errorf("markdown starts %q", md.String()[:60])
 	}
+}
+
+// copyFixture copies the downstream fixture and the v1 SDK it pins into a
+// temp dir, with the replace made absolute so the copy (or an archive of it)
+// resolves from anywhere.
+func copyFixture(t *testing.T) (repo, sdkDir string) {
+	t.Helper()
+	root := t.TempDir()
+	sdkDir = filepath.Join(root, "sdk-v1")
+	repo = filepath.Join(root, "downstream")
+	copyTree(t, "testdata/sdk-v1", sdkDir)
+	copyTree(t, "testdata/downstream", repo)
+	gomod := filepath.Join(repo, "go.mod")
+	data, _ := os.ReadFile(gomod)
+	os.WriteFile(gomod, []byte(strings.Replace(string(data), "../sdk-v1", sdkDir, 1)), 0o644)
+	return repo, sdkDir
 }
 
 func copyTree(t *testing.T, src, dst string) {

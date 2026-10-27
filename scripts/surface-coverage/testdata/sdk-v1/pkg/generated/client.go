@@ -19,4 +19,7 @@ func (c *ClientWithResponses) DeleteGadgetWithResponse(ctx context.Context, id i
 	return nil
 }
 
+// ListWidgetsWithResponse has no wrapper; the downstream calls it directly.
+func (c *ClientWithResponses) ListWidgetsWithResponse(ctx context.Context) error { return nil }
+
 func NewClientWithResponses() *ClientWithResponses { return &ClientWithResponses{} }

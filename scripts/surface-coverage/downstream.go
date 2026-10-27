@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"go/ast"
+	"go/token"
 	"go/types"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 )
@@ -15,7 +16,7 @@ type Repo struct {
 	Dir       string
 	Module    string
 	Patterns  []string
-	PinnedSDK string // the SDK version the module's go.mod resolves
+	PinnedSDK string // the SDK version the module's go.mod resolves; "" when a go.work supplies it
 	Packages  []string
 	Refs      []siteRef
 	// TypeErrors counts type errors in the module's own packages. Each one
@@ -98,7 +99,12 @@ func loadRepo(dir string, patterns []string) (*Repo, error) {
 		if p.Module != nil && p.Module.Path == sdkModulePath && r.PinnedSDK == "" {
 			r.PinnedSDK = p.Module.Version
 		}
-		if p.Module == nil || !p.Module.Main {
+		// Only the repository's own module is checked from source and
+		// analyzed; everything else, including the other modules of a go.work
+		// (Module.Main is true for each of them), comes from export data. A
+		// workspace that uses a local SDK checkout makes the SDK a main module
+		// too, and its wrappers are not the repository's coverage.
+		if p.Module == nil || p.Module.Path != mod {
 			continue
 		}
 		c, err := l.check(p.ImportPath)
@@ -107,14 +113,7 @@ func loadRepo(dir string, patterns []string) (*Repo, error) {
 		}
 		r.Packages = append(r.Packages, p.ImportPath)
 		r.TypeErrors += len(c.Errors)
-		for _, e := range c.Errors {
-			if te, ok := e.(types.Error); ok {
-				if missingSDKSymbol(te.Msg) {
-					pos := l.fset.Position(te.Pos)
-					r.Missing = append(r.Missing, site{File: rel(dir, pos.Filename), Line: pos.Line, Text: te.Msg})
-				}
-			}
-		}
+		r.Missing = append(r.Missing, missingSDKSymbols(c, l.fset, dir)...)
 		checked = append(checked, c)
 	}
 
@@ -161,10 +160,47 @@ func (r *Repo) add(l *loader, rf ref) {
 	r.Refs = append(r.Refs, siteRef{ref: rf, Site: site{File: rel(r.Dir, pos.Filename), Line: pos.Line}})
 }
 
-var missingRE = regexp.MustCompile(`has no field or method|undefined: basecamp\.|undefined: generated\.`)
-
-func missingSDKSymbol(msg string) bool {
-	return missingRE.MatchString(msg) && (strings.Contains(msg, "basecamp.") || strings.Contains(msg, "generated."))
+// missingSDKSymbols are the type errors at a selector into the SDK that
+// resolves to nothing: a package-level name the SDK package lacks, however
+// the import is named, or a method or field an SDK type lacks.
+func missingSDKSymbols(c *checkedPackage, fset *token.FileSet, dir string) []site {
+	if len(c.Errors) == 0 {
+		return nil
+	}
+	sels := map[token.Pos]*ast.SelectorExpr{}
+	for _, f := range c.Files {
+		ast.Inspect(f, func(n ast.Node) bool {
+			if sel, ok := n.(*ast.SelectorExpr); ok {
+				sels[sel.Sel.Pos()] = sel
+			}
+			return true
+		})
+	}
+	var out []site
+	for _, e := range c.Errors {
+		te, ok := e.(types.Error)
+		if !ok {
+			continue
+		}
+		sel := sels[te.Pos]
+		if sel == nil || c.Info.Uses[sel.Sel] != nil {
+			continue
+		}
+		into := false
+		if id, ok := sel.X.(*ast.Ident); ok {
+			if pn, ok := c.Info.Uses[id].(*types.PkgName); ok {
+				into = inSDK(pn.Imported().Path())
+			}
+		}
+		if tv, ok := c.Info.Types[sel.X]; ok && tv.Type != nil && sdkType(tv.Type) {
+			into = true
+		}
+		if into {
+			pos := fset.Position(te.Pos)
+			out = append(out, site{File: rel(dir, pos.Filename), Line: pos.Line, Text: te.Msg})
+		}
+	}
+	return out
 }
 
 func rel(base, path string) string {

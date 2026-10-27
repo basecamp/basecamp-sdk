@@ -10,6 +10,7 @@
     {"operationId": "GetThing", "tag": "Things", "method": "GET", "path": "/{accountId}/things/{thingId}.json"},
     {"operationId": "ListGadgets", "tag": "Gadgets", "method": "GET", "path": "/{accountId}/gadgets.json"},
     {"operationId": "ListThings", "tag": "Things", "method": "GET", "path": "/{accountId}/things.json"},
+    {"operationId": "ListWidgets", "tag": "Widgets", "method": "GET", "path": "/{accountId}/widgets.json"},
     {"operationId": "ReplaceThing", "tag": "Things", "method": "PUT", "path": "/{accountId}/things/{thingId}.json"}
   ]
 }

@@ -126,12 +126,13 @@ func TestCoverageAgainstPinnedRelease(t *testing.T) {
 		"GetPerson",    // a raw GET of a concatenated path
 		"GetThing",     // a direct call
 		"ListThings",   // through the repository's own interface
+		"ListWidgets",  // the generated client, called directly
 	})
 	// GetGadget is reached only through a composite and a test file;
 	// ReplaceThing only from a package the shipped binary does not import.
 	assertIDs(t, "uncovered", ids(r.Uncovered), []string{"GetGadget", "ReplaceThing"})
-	if len(r.Stale) != 0 {
-		t.Errorf("stale = %+v, want none against the pinned release", r.Stale)
+	if r.Stale == nil || len(r.Stale) != 0 {
+		t.Errorf("stale = %#v, want an empty list against the pinned release", r.Stale)
 	}
 	if r.Delta != nil {
 		t.Errorf("delta = %+v, want none without a previous release", r.Delta)
@@ -156,7 +157,7 @@ func TestDeltaAgainstPreviousRelease(t *testing.T) {
 	r := buildReport(v2, v1, v1, fixtureRepo(t))
 
 	assertIDs(t, "covered", coveredIDs(r), []string{"CreateThing", "DeleteGadget", "FetchThing", "GetMyProfile", "GetPerson", "ListThings"})
-	assertIDs(t, "uncovered", ids(r.Uncovered), []string{"ArchiveThing", "GetGadget", "GetThing", "ListGadgets", "ReplaceThing"})
+	assertIDs(t, "uncovered", ids(r.Uncovered), []string{"ArchiveThing", "GetGadget", "GetThing", "ListGadgets", "ListWidgets", "ReplaceThing"})
 
 	d := r.Delta
 	if d == nil || d.Previous != "v1.0.0" {
@@ -167,11 +168,15 @@ func TestDeltaAgainstPreviousRelease(t *testing.T) {
 	// FetchThing is new and reached, so it is not newly uncovered.
 	assertIDs(t, "newly uncovered", ids(d.NewlyUncovered), []string{"ArchiveThing", "ListGadgets"})
 	// GetThing is in both releases; v1's ThingsService.Get performed it and
-	// v2's does not.
-	assertIDs(t, "lost coverage", ids(d.LostCoverage), []string{"GetThing"})
+	// v2's does not. ListWidgets is in both catalogs, but v2's generated
+	// client no longer has the entry point the repository calls.
+	assertIDs(t, "lost coverage", ids(d.LostCoverage), []string{"GetThing", "ListWidgets"})
 
-	if len(r.Stale) != 1 {
-		t.Fatalf("stale = %+v, want ThingsService.Delete alone", r.Stale)
+	if len(r.Stale) != 2 {
+		t.Fatalf("stale = %+v, want ThingsService.Delete and ListWidgetsWithResponse", r.Stale)
+	}
+	if gen := r.Stale[1]; gen.Symbol != "(*generated.ClientWithResponses).ListWidgetsWithResponse" || len(gen.Operations) != 1 || gen.Operations[0] != "ListWidgets" {
+		t.Errorf("stale generated entry point = %+v", gen)
 	}
 	st := r.Stale[0]
 	if st.Symbol != "(*basecamp.ThingsService).Delete" || !strings.Contains(st.Reason, "not in SDK v2.0.0") {
@@ -192,13 +197,13 @@ func TestMarkdown(t *testing.T) {
 	md := buf.String()
 	for _, want := range []string{
 		"### SDK operation coverage: downstream at `abc123` against SDK v2.0.0",
-		"| SDK v2.0.0 operations | 11 |",
-		"| Reached by downstream | 6 (55%) |",
-		"| Not reached | 5 |",
+		"| SDK v2.0.0 operations | 12 |",
+		"| Reached by downstream | 6 (50%) |",
+		"| Not reached | 6 |",
 		"| New since v1.0.0 | 3, 2 not reached |",
 		"| Removed since v1.0.0 | 1 |",
-		"| Reached through v1.0.0, not through v2.0.0 | 1 |",
-		"| Stale references to the SDK | 1 |",
+		"| Reached through v1.0.0, not through v2.0.0 | 2 |",
+		"| Stale references to the SDK | 2 |",
 		"- `ArchiveThing` (Things): `PUT /{accountId}/things/{thingId}/status/archived.json`",
 		"- `(*basecamp.ThingsService).Delete`: not in SDK v2.0.0 (performed `DeleteThing`); `internal/cmds/cmds.go:",
 		"| Gadgets | `GetGadget`, `ListGadgets` |",
@@ -207,6 +212,17 @@ func TestMarkdown(t *testing.T) {
 	} {
 		if !strings.Contains(md, want) {
 			t.Errorf("markdown lacks %q:\n%s", want, md)
+		}
+	}
+}
+
+func TestPctNeverRoundsUpToComplete(t *testing.T) {
+	for _, c := range []struct {
+		n, d int
+		want string
+	}{{286, 287, "99%"}, {287, 287, "100%"}, {245, 287, "85%"}, {0, 0, "0%"}, {1, 3, "33%"}} {
+		if got := pct(c.n, c.d); got != c.want {
+			t.Errorf("pct(%d, %d) = %s, want %s", c.n, c.d, got, c.want)
 		}
 	}
 }

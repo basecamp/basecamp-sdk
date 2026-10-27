@@ -133,10 +133,11 @@ func splitPath(p string) []string {
 // leaves the call unresolved rather than guessing.
 func (t *routeTable) match(method, pattern string) (string, bool) {
 	segs := splitPath(pattern)
-	// A path that starts with a computed segment may carry the account ID
-	// (an absolute URL or "/<account>/..."); try it with that segment dropped.
+	// A path that starts with the account ID, computed or literal (an
+	// absolute URL or "/<account>/...", which AccountClient accepts), is
+	// tried with that segment dropped too.
 	candidates := [][]string{segs}
-	if len(segs) > 0 && strings.Contains(segs[0], wild) {
+	if len(segs) > 0 && (strings.Contains(segs[0], wild) || allDigits(segs[0])) {
 		candidates = append(candidates, segs[1:])
 	}
 	best, bestScore, tie := "", -1, false
@@ -164,6 +165,18 @@ func (t *routeTable) match(method, pattern string) (string, bool) {
 		return "", false
 	}
 	return best, true
+}
+
+func allDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func fit(pattern []string, r route) (int, bool) {

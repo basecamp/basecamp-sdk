@@ -206,13 +206,18 @@ func (s *SDK) generatedOp(name string) (string, bool) {
 // opsFor returns the operations a reference to an SDK symbol performs, and
 // whether this SDK version declares the symbol at all.
 func (s *SDK) opsFor(r ref) ([]string, bool) {
+	// The symbol must exist in this version before its name or path says
+	// anything: a generated entry point renamed away, or a raw helper
+	// removed, is a stale reference even while its operation lives on.
+	if !s.declared[r.Key] {
+		return nil, false
+	}
 	switch {
 	case r.Generated != "":
-		op, ok := s.generatedOp(r.Generated)
-		if !ok {
-			return nil, s.declared[r.Key]
+		if op, ok := s.generatedOp(r.Generated); ok {
+			return []string{op}, true
 		}
-		return []string{op}, true
+		return nil, true
 	case r.Raw != "":
 		if !r.Resolved {
 			return nil, true

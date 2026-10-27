@@ -153,9 +153,11 @@ func plural(n int, noun string) string {
 	return fmt.Sprintf("%d %ss", n, noun)
 }
 
+// pct rounds down, so 286 of 287 reads 99%, never 100%: the headline must
+// not claim complete coverage while an operation is left.
 func pct(n, d int) string {
 	if d == 0 {
 		return "0%"
 	}
-	return fmt.Sprintf("%.0f%%", 100*float64(n)/float64(d))
+	return fmt.Sprintf("%d%%", 100*n/d)
 }

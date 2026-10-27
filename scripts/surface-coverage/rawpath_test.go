@@ -90,6 +90,9 @@ func TestRouteMatch(t *testing.T) {
 		{"GET", "/projects/" + wild + ".json?page=2", "GetProject"},
 		{"GET", "https://3.basecampapi.com/" + wild + "/projects/" + wild + ".json", "GetProject"},
 		{"GET", "/" + wild + "/projects/" + wild + ".json", "GetProject"},
+		// A literal account ID, which AccountClient accepts too.
+		{"GET", "/12345/projects/" + wild + ".json", "GetProject"},
+		{"GET", "https://3.basecampapi.com/12345/projects/1.json", "GetProject"},
 		{"POST", "/projects/" + wild + ".json", ""},
 		{"GET", "/nowhere.json", ""},
 		// Two equally good fits: unresolved rather than a guess.

@@ -232,7 +232,7 @@ func checkoutRef(repo, ref, tmp string) (string, string, error) {
 		return "", "", err
 	}
 	if ref == "" {
-		return abs, gitShort(abs, "HEAD"), nil
+		return abs, workingTreeLabel(abs), nil
 	}
 	commit := gitShort(abs, ref+"^{commit}")
 	if commit == "" {
@@ -261,6 +261,21 @@ func checkoutRef(repo, ref, tmp string) (string, string, error) {
 		return "", "", fmt.Errorf("extracting %s: %v %s", ref, err, stderr.String())
 	}
 	return dst, commit, nil
+}
+
+// workingTreeLabel names what an analysis of the working tree read: the HEAD
+// commit, marked "-dirty" when the tree has changes the commit does not, so
+// a report never claims a commit's coverage for code that is not in it.
+func workingTreeLabel(dir string) string {
+	head := gitShort(dir, "HEAD")
+	if head == "" {
+		return ""
+	}
+	out, err := exec.Command("git", "-C", dir, "status", "--porcelain", "--untracked-files=normal").Output()
+	if err != nil || len(strings.TrimSpace(string(out))) > 0 {
+		return head + "-dirty"
+	}
+	return head
 }
 
 func gitShort(dir, rev string) string {
