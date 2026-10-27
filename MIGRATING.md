@@ -1377,9 +1377,8 @@ host cannot schedule saturates at 2147483647 seconds (~68 years) rather than
 wrapping negative, and that figure does not vary by architecture. Every
 over-ceiling digit string saturates there, including one too large for the
 parser's own `int64` — the earlier two-tier rule (unrepresentable → malformed,
-unschedulable → saturate) is gone from every Go parser — and #799 tracks the
-cross-SDK convergence on over-range values, which the six SDKs still answer
-differently.
+unschedulable → saturate) is gone from every Go parser. #857 later converged
+the other five SDKs on the same saturation.
 
 **Two behaviours changed for `DownloadURL` and the rate-limiter hook as well**,
 because all three paths share `parseRetryAfter`: an HTTP-date's sub-second
