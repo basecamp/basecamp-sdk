@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -73,4 +74,45 @@ func TestWorkspaceSDKIsNotCoverage(t *testing.T) {
 	// ThingsService.Summary reaches GadgetsService.Get inside the SDK; were
 	// the SDK's packages counted, GetGadget would read as reached.
 	assertIDs(t, "uncovered with the SDK in the workspace", ids(rep.Uncovered), []string{"GetGadget", "ReplaceThing"})
+}
+
+// TestUnloadablePatternFails: a mistyped -pkg pattern fails the run instead
+// of leaving a report that covers only the patterns that loaded.
+func TestUnloadablePatternFails(t *testing.T) {
+	if _, err := loadRepo("testdata/downstream", []string{"./cmd/app", "./cmd/nope"}); err == nil {
+		t.Fatal("loadRepo with a missing package pattern succeeded")
+	}
+}
+
+// TestCgoFilesAreRead: an SDK call in a file that imports "C" counts.
+func TestCgoFilesAreRead(t *testing.T) {
+	if out, err := exec.Command("go", "env", "CGO_ENABLED").Output(); err != nil || strings.TrimSpace(string(out)) != "1" {
+		t.Skip("cgo is not enabled")
+	}
+	repo, _ := copyFixture(t)
+	src := `package cmds
+
+// int one(void) { return 1; }
+import "C"
+
+import (
+	"context"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+)
+
+func viaCgo(ctx context.Context, ac *basecamp.AccountClient) {
+	_ = ac.Gadgets().Get(ctx, int64(C.one()))
+}
+`
+	if err := os.WriteFile(filepath.Join(repo, "internal/cmds/cgo.go"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r, err := loadRepo(repo, []string{"./cmd/app"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v1, _ := fixtureSDKs(t)
+	rep := buildReport(v1, nil, v1, r)
+	assertIDs(t, "uncovered with a cgo caller", ids(rep.Uncovered), []string{"ReplaceThing"})
 }

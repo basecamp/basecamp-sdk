@@ -19,7 +19,23 @@ import (
 // var, a return, a composite-literal element or a conversion. It follows the
 // value one step; an SDK value first wrapped in a struct of the repository's
 // own is not followed.
-type ifaceBindings map[*types.TypeName]map[types.Type]bool
+//
+// A named interface is keyed by its declaration; an unnamed one, written
+// inline as a parameter or field type, by the *types.Interface itself, which
+// is also the receiver of the methods called through it.
+type ifaceBindings map[any]map[types.Type]bool
+
+func ifaceKey(t types.Type) (any, *types.Interface) {
+	switch x := types.Unalias(t).(type) {
+	case *types.Named:
+		if it, ok := x.Underlying().(*types.Interface); ok {
+			return x.Origin().Obj(), it
+		}
+	case *types.Interface:
+		return x, x
+	}
+	return nil, nil
+}
 
 func (b ifaceBindings) collect(file *ast.File, info *types.Info) {
 	var sigs []*types.Signature
@@ -137,33 +153,32 @@ func (b ifaceBindings) bindComposite(lit *ast.CompositeLit, info *types.Info) {
 // bind records src flowing into dst when dst is a named interface and src's
 // type is declared in the SDK.
 func (b ifaceBindings) bind(dst types.Type, src ast.Expr, info *types.Info) {
-	named, ok := types.Unalias(dst).(*types.Named)
-	if !ok || !types.IsInterface(named) {
+	if key, _ := ifaceKey(dst); key == nil {
 		return
 	}
 	tv, ok := info.Types[src]
 	if !ok || tv.Type == nil || !sdkType(tv.Type) {
 		return
 	}
-	b.add(named, tv.Type)
+	b.add(dst, tv.Type)
 }
 
-func (b ifaceBindings) add(iface *types.Named, t types.Type) {
-	obj := iface.Origin().Obj()
-	if b[obj] == nil {
-		b[obj] = map[types.Type]bool{}
-	}
-	if b[obj][t] {
+func (b ifaceBindings) add(iface types.Type, t types.Type) {
+	key, it := ifaceKey(iface)
+	if key == nil {
 		return
 	}
-	b[obj][t] = true
+	if b[key] == nil {
+		b[key] = map[types.Type]bool{}
+	}
+	if b[key][t] {
+		return
+	}
+	b[key][t] = true
 	// A method of an embedded interface is called with that interface as its
 	// receiver, so bind the embedded interfaces too.
-	it := iface.Underlying().(*types.Interface)
 	for i := 0; i < it.NumEmbeddeds(); i++ {
-		if e, ok := types.Unalias(it.EmbeddedType(i)).(*types.Named); ok && types.IsInterface(e) {
-			b.add(e, t)
-		}
+		b.add(it.EmbeddedType(i), t)
 	}
 }
 
@@ -182,12 +197,12 @@ func (b ifaceBindings) expand(fn *types.Func) []*types.Func {
 	if recv == nil {
 		return nil
 	}
-	named, ok := types.Unalias(recv.Type()).(*types.Named)
-	if !ok || !types.IsInterface(named) {
+	key, _ := ifaceKey(recv.Type())
+	if key == nil {
 		return nil
 	}
 	var out []*types.Func
-	for t := range b[named.Origin().Obj()] {
+	for t := range b[key] {
 		obj, _, _ := types.LookupFieldOrMethod(t, true, fn.Pkg(), fn.Name())
 		if m, ok := obj.(*types.Func); ok && m.Pkg() != nil && inSDK(m.Pkg().Path()) {
 			out = append(out, m)

@@ -42,3 +42,7 @@ func (s *ThingsService) Delete(ctx context.Context, id int64) error {
 func (s *ThingsService) Summary(ctx context.Context, id int64) error {
 	return s.client.Gadgets().Get(ctx, id)
 }
+
+func (s *ThingsService) Count(ctx context.Context) error {
+	return s.client.parent.gen.CountThingsWithResponse(ctx)
+}

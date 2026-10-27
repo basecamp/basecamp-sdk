@@ -91,10 +91,9 @@ func (l *loader) check(path string) (*checkedPackage, error) {
 		files = lp.GoFiles
 	}
 	c := &checkedPackage{Path: path, Dir: lp.Dir}
+	// Every compiled file is Go source, though cgo's output sits in the build
+	// cache under names without a .go extension.
 	for _, name := range files {
-		if filepath.Ext(name) != ".go" {
-			continue
-		}
 		if !filepath.IsAbs(name) {
 			name = filepath.Join(lp.Dir, name)
 		}

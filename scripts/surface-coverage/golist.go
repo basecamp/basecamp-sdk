@@ -19,6 +19,7 @@ type listedPackage struct {
 	DepOnly         bool
 	Standard        bool
 	GoFiles         []string
+	CgoFiles        []string
 	CompiledGoFiles []string
 	ImportMap       map[string]string
 	Module          *struct {
@@ -37,8 +38,16 @@ type listedPackage struct {
 // source when a package is only imported. -e keeps going past a package that
 // fails to compile: the report still wants the call sites in the packages
 // that do, and the type errors themselves name what broke.
+//
+// -compiled lists the files the compiler is given, cgo's output included, so
+// a package that imports "C" is read whole.
+//
+// A requested package that go list could not load at all — a mistyped or
+// missing pattern — fails the run rather than leaving a report that quietly
+// covers only the patterns that did load. A package that loads but does not
+// compile is kept.
 func goList(dir string, env []string, patterns ...string) ([]*listedPackage, error) {
-	args := append([]string{"list", "-e", "-export", "-deps", "-json"}, patterns...)
+	args := append([]string{"list", "-e", "-export", "-compiled", "-deps", "-json"}, patterns...)
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), env...)
@@ -55,6 +64,9 @@ func goList(dir string, env []string, patterns ...string) ([]*listedPackage, err
 			break
 		} else if err != nil {
 			return nil, fmt.Errorf("go list in %s: decoding output: %w", dir, err)
+		}
+		if !p.DepOnly && p.Error != nil && len(p.GoFiles)+len(p.CgoFiles) == 0 {
+			return nil, fmt.Errorf("go list in %s: %s: %s", dir, p.ImportPath, strings.TrimSpace(p.Error.Err))
 		}
 		pkgs = append(pkgs, &p)
 	}

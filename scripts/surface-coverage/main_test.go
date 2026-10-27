@@ -112,3 +112,39 @@ func copyTree(t *testing.T, src, dst string) {
 		t.Fatal(err)
 	}
 }
+
+// TestDescribeLocalCheckout: a local SDK checkout is labeled by its go/v*
+// release, marked -dirty when its tree has changes, and a dirty or ahead
+// checkout's delta is against that release.
+func TestDescribeLocalCheckout(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	dir := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false"}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a"), 0o644)
+	git("init", "-q")
+	git("add", ".")
+	git("commit", "-q", "-m", "one")
+	git("tag", "v1.0.0")
+	git("tag", "go/v1.0.0")
+	if got := describe(dir); got != "v1.0.0" {
+		t.Errorf("describe at the tag = %q, want v1.0.0", got)
+	}
+	if got := localPrevious(dir); got != "" {
+		t.Errorf("localPrevious at the tag = %q, want \"\" (the release before, from the proxy)", got)
+	}
+	os.WriteFile(filepath.Join(dir, "b.txt"), []byte("b"), 0o644)
+	if got := describe(dir); got != "v1.0.0-dirty" {
+		t.Errorf("describe with an untracked file = %q, want v1.0.0-dirty", got)
+	}
+	if got := localPrevious(dir); got != "v1.0.0" {
+		t.Errorf("localPrevious when dirty = %q, want v1.0.0", got)
+	}
+}

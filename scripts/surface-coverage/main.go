@@ -268,14 +268,17 @@ func checkoutRef(repo, ref, tmp string) (string, string, error) {
 // a report never claims a commit's coverage for code that is not in it.
 func workingTreeLabel(dir string) string {
 	head := gitShort(dir, "HEAD")
-	if head == "" {
-		return ""
-	}
-	out, err := exec.Command("git", "-C", dir, "status", "--porcelain", "--untracked-files=normal").Output()
-	if err != nil || len(strings.TrimSpace(string(out))) > 0 {
+	if head != "" && dirty(dir) {
 		return head + "-dirty"
 	}
 	return head
+}
+
+// dirty reports changes, untracked files included, in the working tree
+// under dir; a status it cannot read counts as dirty.
+func dirty(dir string) bool {
+	out, err := exec.Command("git", "-C", dir, "status", "--porcelain", "--untracked-files=normal", "--", ".").Output()
+	return err != nil || len(strings.TrimSpace(string(out))) > 0
 }
 
 func gitShort(dir, rev string) string {
@@ -290,16 +293,21 @@ func gitShort(dir, rev string) string {
 const goTagPrefix = "go/"
 
 // describe labels a local checkout by its nearest Go module release:
-// "v0.29.1" when it is that release, "v0.29.1-3-gabc123" when ahead of it.
+// "v0.29.1" when it is that release, "v0.29.1-3-gabc123" when ahead of it,
+// with "-dirty" when the working tree differs from its commit.
 func describe(dir string) string {
 	out, err := exec.Command("git", "-C", dir, "describe", "--tags", "--match", goTagPrefix+"v*").Output()
 	if err != nil {
-		if short := gitShort(dir, "HEAD"); short != "" {
-			return short
+		if label := workingTreeLabel(dir); label != "" {
+			return label
 		}
 		return "local"
 	}
-	return strings.TrimPrefix(strings.TrimSpace(string(out)), goTagPrefix)
+	label := strings.TrimPrefix(strings.TrimSpace(string(out)), goTagPrefix)
+	if dirty(dir) {
+		label += "-dirty"
+	}
+	return label
 }
 
 // localPrevious is the release a local checkout's delta is against: the

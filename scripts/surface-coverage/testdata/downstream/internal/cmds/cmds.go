@@ -27,6 +27,11 @@ type remover interface{ deleter }
 
 func remove(ctx context.Context, r remover) error { return r.Delete(ctx, 6) }
 
+// count reaches ThingsService.Count through an interface written inline.
+func count(ctx context.Context, c interface{ Count(context.Context) error }) error {
+	return c.Count(ctx)
+}
+
 func Run(ctx context.Context, ac *basecamp.AccountClient, path string) {
 	things := ac.Things()
 	_ = things.Get(ctx, 1)  // a direct call
@@ -36,6 +41,7 @@ func Run(ctx context.Context, ac *basecamp.AccountClient, path string) {
 	_ = ac.Things().Summary(ctx, 3)                                     // a composite: not GetGadget
 	_ = list(ctx, ac.Things())                                          // through a seam
 	_ = remove(ctx, ac.Gadgets())                                       // through an embedded seam
+	_ = count(ctx, ac.Things())                                         // through an inline seam
 	_, _ = ac.Get(ctx, "/my/profile.json")                              // raw, literal
 	_, _ = ac.Get(ctx, "/people/"+strconv.Itoa(4)+".json")              // raw, concatenated
 	_, _ = ac.Get(ctx, fmt.Sprintf("/nowhere/%d.json", 5))              // raw, matches nothing

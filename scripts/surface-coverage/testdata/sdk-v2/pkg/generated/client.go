@@ -21,4 +21,6 @@ func (c *ClientWithResponses) DeleteGadgetWithResponse(ctx context.Context, id i
 	return nil
 }
 
+func (c *ClientWithResponses) CountThingsWithResponse(ctx context.Context) error { return nil }
+
 func NewClientWithResponses() *ClientWithResponses { return &ClientWithResponses{} }

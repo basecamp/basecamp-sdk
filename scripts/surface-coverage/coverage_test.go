@@ -119,6 +119,7 @@ func TestCoverageAgainstPinnedRelease(t *testing.T) {
 	r := buildReport(v1, nil, v1, repo)
 
 	assertIDs(t, "covered", coveredIDs(r), []string{
+		"CountThings",  // through an interface written inline
 		"CreateThing",  // a method value
 		"DeleteGadget", // through an interface embedded in the repository's own
 		"DeleteThing",  // a direct call
@@ -156,7 +157,7 @@ func TestDeltaAgainstPreviousRelease(t *testing.T) {
 	v1, v2 := fixtureSDKs(t)
 	r := buildReport(v2, v1, v1, fixtureRepo(t))
 
-	assertIDs(t, "covered", coveredIDs(r), []string{"CreateThing", "DeleteGadget", "FetchThing", "GetMyProfile", "GetPerson", "ListThings"})
+	assertIDs(t, "covered", coveredIDs(r), []string{"CountThings", "CreateThing", "DeleteGadget", "FetchThing", "GetMyProfile", "GetPerson", "ListThings"})
 	assertIDs(t, "uncovered", ids(r.Uncovered), []string{"ArchiveThing", "GetGadget", "GetThing", "ListGadgets", "ListWidgets", "ReplaceThing"})
 
 	d := r.Delta
@@ -197,8 +198,8 @@ func TestMarkdown(t *testing.T) {
 	md := buf.String()
 	for _, want := range []string{
 		"### SDK operation coverage: downstream at `abc123` against SDK v2.0.0",
-		"| SDK v2.0.0 operations | 12 |",
-		"| Reached by downstream | 6 (50%) |",
+		"| SDK v2.0.0 operations | 13 |",
+		"| Reached by downstream | 7 (53%) |",
 		"| Not reached | 6 |",
 		"| New since v1.0.0 | 3, 2 not reached |",
 		"| Removed since v1.0.0 | 1 |",
