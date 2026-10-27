@@ -192,7 +192,7 @@ This is a named release path. A person's merge of a spec change is the word to r
 
 Quiet period: 6h. Cap: 24h.
 
-The job reads this section from `main` on every run. Change the line above to change the window, or remove the section to withdraw the grant. Without the section, a prep PR releases only when a person merges it.
+The job reads this section from `main` on every run. Change the line above to change the window, or remove the section to withdraw the grant. Removing it stops the job arming anything new. A prep PR it has already armed still merges unless someone disables its auto-merge or closes it. Without the section, a prep PR releases only when a person merges it.
 
 ---
 
