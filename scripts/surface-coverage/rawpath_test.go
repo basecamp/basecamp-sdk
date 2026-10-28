@@ -23,7 +23,8 @@ var (
 	spfDyn = fmt.Sprintf(dyn, id)
 	spfK   = fmt.Sprintf("/todos/%s.json", "open")
 	spfMix = fmt.Sprintf("/x/%d/%s/%d", id, "y", 7)
-	spfIdx = fmt.Sprintf("/x/%[2]s/%s", "a", "b", "c")
+	spfIdx = fmt.Sprintf("/todos/%[1]s.json", "open")
+	spfStr = fmt.Sprintf("/x/%*d", 3, id)
 	bare   = dyn
 	both   = dyn + dyn
 )`
@@ -49,8 +50,10 @@ var (
 		// A constant argument is part of the path.
 		"spfK":   {"/todos/open.json", true},
 		"spfMix": {"/x/" + wild + "/y/7", true},
-		// Explicit indexes reorder the arguments; read as wild, not guessed.
-		"spfIdx": {"/x/" + wild + "/" + wild, true},
+		// Explicit indexes and * widths reorder the arguments: left unread,
+		// so the call is listed rather than credited to /todos/{todoId}.
+		"spfIdx": {"", false},
+		"spfStr": {"", false},
 		"bare":   {"", false},
 		"both":   {"", false},
 	}
@@ -144,5 +147,9 @@ func TestClientPathsCarryTheAccount(t *testing.T) {
 	}
 	if _, ok := routes.matchRef(ref{Key: account, Raw: "GET", Pattern: "https://3.basecampapi.com/123/my/profile.json", Resolved: true}); !ok {
 		t.Error("AccountClient.Get of an absolute URL with the account did not match")
+	}
+	// A URL in the query does not make a relative path absolute.
+	if _, ok := routes.matchRef(ref{Key: account, Raw: "GET", Pattern: "/my/profile.json?next=https://example.com/x", Resolved: true}); !ok {
+		t.Error("AccountClient.Get of a relative path with a URL in its query did not match")
 	}
 }

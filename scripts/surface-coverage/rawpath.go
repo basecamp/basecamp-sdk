@@ -44,7 +44,13 @@ func pathPattern(e ast.Expr, info *types.Info) (string, bool) {
 			if !found || tv.Value == nil || tv.Value.Kind() != constant.String {
 				return "", false
 			}
-			return expandFormat(constant.StringVal(tv.Value), x.Args[1:], info), true
+			format := constant.StringVal(tv.Value)
+			// Explicit argument indexes and * widths reorder the arguments;
+			// such a path is left unread rather than guessed at.
+			if strings.ContainsAny(format, "[*") {
+				return "", false
+			}
+			return expandFormat(format, x.Args[1:], info), true
 		}
 	}
 	return "", false
@@ -61,13 +67,12 @@ func isSprintf(call *ast.CallExpr, info *types.Info) bool {
 
 var verbRE = regexp.MustCompile(`%[-+# 0-9.*\[\]]*[a-zA-Z%]`)
 
-// expandFormat turns a Sprintf format into a pattern. A verb whose argument
-// is a constant becomes that constant's text, so Sprintf("/todos/%s.json",
-// "open") is /todos/open.json and not any to-do; any other verb becomes wild,
-// and %% becomes %. A format with explicit argument indexes or * widths is
-// read as wild throughout rather than guessed at.
+// expandFormat turns a Sprintf format, one without explicit argument indexes
+// or * widths, into a pattern. A verb whose argument is a constant becomes
+// that constant's text, so Sprintf("/todos/%s.json", "open") is
+// /todos/open.json and not any to-do; any other verb becomes wild, and %%
+// becomes %.
 func expandFormat(format string, args []ast.Expr, info *types.Info) string {
-	positional := !strings.ContainsAny(format, "[*")
 	next := 0
 	return verbRE.ReplaceAllStringFunc(format, func(v string) string {
 		if v == "%%" {
@@ -75,7 +80,7 @@ func expandFormat(format string, args []ast.Expr, info *types.Info) string {
 		}
 		i := next
 		next++
-		if !positional || i >= len(args) {
+		if i >= len(args) {
 			return wild
 		}
 		tv, ok := info.Types[ast.Unparen(args[i])]
@@ -202,9 +207,12 @@ func (t *routeTable) match(method, pattern string, accountRelative bool) (string
 // matchRef matches a raw call by its path, minding which client sent it.
 //
 // An AccountClient path may leave the account out, but only a relative one:
-// AccountClient sends an absolute URL as given.
+// AccountClient sends a path that starts http:// or https:// as given, and
+// so is judged here, not by a URL that merely appears in a query.
 func (t *routeTable) matchRef(r ref) (string, bool) {
-	relative := strings.Contains(r.Key, ".AccountClient).") && !strings.Contains(r.Pattern, "://")
+	lower := strings.ToLower(r.Pattern)
+	absolute := strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://")
+	relative := strings.Contains(r.Key, ".AccountClient).") && !absolute
 	return t.match(r.Raw, r.Pattern, relative)
 }
 
