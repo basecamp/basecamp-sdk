@@ -116,6 +116,24 @@ class FilingWaitTest {
     }
 
     @Test
+    fun aPollThatFailsOutsideTheSdkStillCarriesTheFiling() = runTest {
+        val client = mockClient { request ->
+            if (request.method == HttpMethod.Post) {
+                respond(filing("pending"), HttpStatusCode.Created, jsonHeaders())
+            } else {
+                throw IllegalStateException("token store unavailable")
+            }
+        }
+
+        val error = assertFailsWith<BasecampException.FilingFailure> {
+            client.forAccount("12345").recordings.copyAndWait(456, CopyRecordingBody(filingDestinationId = 789))
+        }
+        assertEquals(BasecampException.FILING_UNSETTLED, error.reason)
+        assertEquals(4L, error.filing?.id)
+        client.close()
+    }
+
+    @Test
     fun aRefusedStartPollsNothing() = runTest {
         for (status in listOf(HttpStatusCode.Forbidden, HttpStatusCode.NotFound, HttpStatusCode.UnprocessableEntity)) {
             var requests = 0

@@ -78,6 +78,26 @@ final class FilingWaitTests: XCTestCase {
         XCTAssertEqual(posts(transport), 1)
     }
 
+    func testCancellingBeforeTheFirstPollKeepsTheFiling() async throws {
+        let transport = Self.transport(start: (201, Self.filing("pending")), polls: [Self.filing("processing")])
+        let account = makeTestAccountClient(transport: transport)
+
+        let wait = Task {
+            try await account.recordings.copyAndWait(
+                recordingId: 456, req: CopyRecordingRequest(filingDestinationId: 789))
+        }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        wait.cancel()
+
+        do {
+            _ = try await wait.value
+            XCTFail("Expected the wait to end")
+        } catch FilingError.unsettled(let filing, _) {
+            XCTAssertEqual(filing.id, 4)
+        }
+        XCTAssertEqual(posts(transport), 1)
+    }
+
     func testARefusedStartPollsNothing() async throws {
         for status in [403, 404, 422] {
             let transport = MockTransport(statusCode: status, data: Data("{}".utf8))

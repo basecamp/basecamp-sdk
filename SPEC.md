@@ -5718,7 +5718,10 @@ fixture coverage (4) in `conformance/tests/recordings_filing_wait.json`,
 executed by every runner, and placement in each SDK's hand-written layer (5);
 rule 6 does not arise. The waits are wall-clock bounded and cannot be
 expressed as a static fixture, so the wait-ends case is pinned in each SDK's
-native tests rather than the fixture.
+native tests rather than the fixture. In Go the context bounds a GetFiling in
+flight as well; elsewhere the bound is checked between polls, and a poll
+already sent finishes under the client's own request timeout and retry
+policy, so a wait can run past its bound by at most one poll.
 
 | SDK | Filing waits |
 |-----|--------------|

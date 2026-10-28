@@ -138,13 +138,17 @@ extension RecordingsService {
             if filing.status == "failed" { throw FilingError.failed(filing) }
             let now = DispatchTime.now().uptimeNanoseconds
             let remaining = deadline > now ? deadline - now : 0
-            if remaining <= delay {
-                if remaining > 0 { try await Task.sleep(nanoseconds: remaining) }
-                throw FilingError.unsettled(filing, cause: nil)
-            }
-            try await Task.sleep(nanoseconds: delay)
+            // A cancellation during a sleep is unsettled too, carrying the
+            // filing, as one during the poll is: the start already happened.
             do {
+                if remaining <= delay {
+                    if remaining > 0 { try await Task.sleep(nanoseconds: remaining) }
+                    throw FilingError.unsettled(filing, cause: nil)
+                }
+                try await Task.sleep(nanoseconds: delay)
                 filing = try await getFiling(filingId: filing.id)
+            } catch let error as FilingError {
+                throw error
             } catch {
                 throw FilingError.unsettled(filing, cause: error)
             }

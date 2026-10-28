@@ -2,6 +2,7 @@ package com.basecamp.sdk.services
 
 import com.basecamp.sdk.BasecampException
 import com.basecamp.sdk.generated.models.Filing
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -90,6 +91,12 @@ internal suspend fun fileAndWait(
             BasecampException.FILING_MAY_HAVE_STARTED
         }
         throw BasecampException.FilingFailure(reason, "$reason: ${e.message}", cause = e)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        throw BasecampException.FilingFailure(
+            BasecampException.FILING_MAY_HAVE_STARTED, "${BasecampException.FILING_MAY_HAVE_STARTED}: ${e.message}", cause = e,
+        )
     }
 
     val deadline = TimeSource.Monotonic.markNow() + (timeout?.takeIf { it.isPositive() } ?: DEFAULT_WAIT)
@@ -109,7 +116,9 @@ internal suspend fun fileAndWait(
         delay(wait)
         last = try {
             getFiling(last.id)
-        } catch (e: BasecampException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             throw BasecampException.FilingFailure(
                 BasecampException.FILING_UNSETTLED, "filing ${last.id} is still ${last.status}", last, e,
             )
