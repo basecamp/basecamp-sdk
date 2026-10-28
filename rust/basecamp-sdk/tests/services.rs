@@ -695,8 +695,8 @@ async fn hill_charts_list_versions_reaches_the_wire() {
     assert_eq!(page.total_count(), Some(1));
     let versions = page.into_inner();
     assert_eq!(versions.len(), 1);
-    assert_eq!(versions[0].id, 1069480194);
-    assert_eq!(versions[0].dots[0].id, Some(1069479863));
+    assert_eq!(versions[0].id, 1_069_480_194);
+    assert_eq!(versions[0].dots[0].id, Some(1_069_479_863));
     assert_eq!(versions[0].dots[0].position, 40);
 }
 

@@ -143,6 +143,7 @@ export {
 export {
   HillChartsService,
   type UpdateSettingsHillChartRequest,
+  type ListVersionsHillChartOptions,
 } from "./generated/services/hill-charts.js";
 
 export {
