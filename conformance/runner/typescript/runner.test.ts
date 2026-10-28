@@ -788,6 +788,10 @@ async function executeOperation(
         return { result: summarizeProjects(recentProjects) };
       }
 
+      case "JoinProject":
+        await client.projects.joinProject(Number(params.projectId));
+        break;
+
       case "RecordProjectVisit":
         await client.projects.recordProjectVisit(Number(params.projectId));
         break;

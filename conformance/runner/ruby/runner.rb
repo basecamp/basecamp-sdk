@@ -454,6 +454,8 @@ class OperationMapper
       @account.projects.get(project_id: path_params["projectId"])
     when "ListRecentProjects"
       @account.projects.list_recent_projects
+    when "JoinProject"
+      @account.projects.join_project(project_id: path_params["projectId"])
     when "RecordProjectVisit"
       @account.projects.record_project_visit(project_id: path_params["projectId"])
     when "ListPings"

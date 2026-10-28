@@ -702,5 +702,35 @@
       "idempotent",
       "delete"
     ]
+  },
+  {
+    "name": "JoinProject POST does NOT retry",
+    "description": "A repeated join answers 302 instead of 201, which some SDKs raise as an error, so JoinProject carries no idempotency flag and must be attempted exactly once on 503.",
+    "operation": "JoinProject",
+    "method": "POST",
+    "path": "/buckets/{projectId}/admissions.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "statusCode",
+        "expected": 503
+      }
+    ],
+    "tags": [
+      "no-retry",
+      "post",
+      "project-join"
+    ]
   }
 ]

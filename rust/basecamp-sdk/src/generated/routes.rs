@@ -3417,6 +3417,26 @@ pub static GET_WEBHOOK: Route = Route {
     metadata: &metadata::GET_WEBHOOK,
 };
 
+/// `POST /buckets/{projectId}/admissions.json`.
+pub static JOIN_PROJECT: Route = Route {
+    id: "JoinProject",
+    service: "Projects",
+    method: Method::POST,
+    path: "/buckets/{projectId}/admissions.json",
+    pattern: "/buckets/{projectId}/admissions",
+    resource_type: "project",
+    params: &[RouteParam {
+        name: "projectId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::JOIN_PROJECT,
+};
+
 /// `GET /questions/{questionId}/answers.json`.
 pub static LIST_ANSWERS: Route = Route {
     id: "ListAnswers",
@@ -6262,6 +6282,7 @@ pub static ROUTES: &[&Route] = &[
     &GET_UPLOAD,
     &GET_VAULT,
     &GET_WEBHOOK,
+    &JOIN_PROJECT,
     &LIST_ANSWERS,
     &LIST_ASSIGNABLE_PEOPLE,
     &LIST_CAMPFIRE_LINES,

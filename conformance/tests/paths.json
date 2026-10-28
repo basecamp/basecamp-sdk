@@ -2775,5 +2775,34 @@
       "people",
       "project-clients"
     ]
+  },
+  {
+    "name": "JoinProject constructs the bucket admissions path",
+    "description": "Verifies JoinProject POSTs /buckets/{projectId}/admissions.json with no body and accepts the bodyless 201 (BC3 #13623).",
+    "operation": "JoinProject",
+    "method": "POST",
+    "path": "/buckets/{projectId}/admissions.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "mockResponses": [
+      {
+        "status": 201
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958505/admissions.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "projects",
+      "project-join"
+    ]
   }
 ]

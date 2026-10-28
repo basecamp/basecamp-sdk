@@ -36,7 +36,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-10-28T05:27:30.218Z",
+  "generated": "2026-10-29T02:03:19.156Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -498,6 +498,17 @@ const metadata: MetadataOutput = {
     "CreateWebhook": {
       "retry": {
         "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "JoinProject": {
+      "retry": {
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [

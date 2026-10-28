@@ -54,6 +54,15 @@ public final class ProjectsService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func joinProject(projectId: Int) async throws {
+        try await requestVoid(
+            OperationInfo(service: "Projects", operation: "JoinProject", resourceType: "project", isMutation: true, projectId: projectId),
+            method: "POST",
+            path: "/buckets/\(projectId)/admissions.json",
+            retryConfig: Metadata.retryConfig(for: "JoinProject")
+        )
+    }
+
     public func list(options: ListProjectOptions? = nil) async throws -> ListResult<Project> {
         var queryItems: [URLQueryItem] = []
         if let status = options?.status {

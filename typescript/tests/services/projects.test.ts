@@ -211,6 +211,48 @@ describe("ProjectsService", () => {
     });
   });
 
+  describe("joinProject", () => {
+    it("should join with a bodyless POST and accept the empty 201", async () => {
+      let body: string | undefined;
+      server.use(
+        http.post(`${BASE_URL}/buckets/42/admissions.json`, async ({ request }) => {
+          body = await request.text();
+          return new HttpResponse(null, { status: 201 });
+        })
+      );
+
+      await expect(client.projects.joinProject(42)).resolves.toBeUndefined();
+      expect(body).toBe("");
+    });
+
+    it("should resolve when the person already has access (a followed 302)", async () => {
+      const seen: string[] = [];
+      server.use(
+        http.post(`${BASE_URL}/buckets/42/admissions.json`, () => {
+          seen.push("POST");
+          return new HttpResponse(null, { status: 302, headers: { Location: `${BASE_URL}/projects/42` } });
+        }),
+        http.get(`${BASE_URL}/projects/42`, () => {
+          seen.push("GET");
+          return HttpResponse.json(sampleProject(42));
+        })
+      );
+
+      await expect(client.projects.joinProject(42)).resolves.toBeUndefined();
+      expect(seen).toEqual(["POST", "GET"]);
+    });
+
+    it("should throw not_found when the project is missing or doesn't admit the person", async () => {
+      server.use(
+        http.post(`${BASE_URL}/buckets/999/admissions.json`, () => {
+          return HttpResponse.json({ error: "Not found" }, { status: 404 });
+        })
+      );
+
+      await expect(client.projects.joinProject(999)).rejects.toMatchObject({ code: "not_found", httpStatus: 404 });
+    });
+  });
+
   describe("create", () => {
     it("should create a project with name and description", async () => {
       server.use(

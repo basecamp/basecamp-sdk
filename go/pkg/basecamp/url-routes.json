@@ -476,6 +476,23 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{projectId}/admissions",
+      "resource": "Projects",
+      "operations": {
+        "POST": "JoinProject"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/calendars/{calendarId}",
       "resource": "Calendars",
       "operations": {

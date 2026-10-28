@@ -220,6 +220,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             let projects = account.projects().list_recent_projects().await?;
             Ok(Outcome::Json(summarize_projects(&projects)))
         }
+        "JoinProject" => unit(account.projects().join_project(id("projectId")).await),
         "RecordProjectVisit" => unit(
             account
                 .projects()

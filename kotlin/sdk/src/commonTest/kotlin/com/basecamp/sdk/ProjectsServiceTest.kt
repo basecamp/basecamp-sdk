@@ -247,6 +247,90 @@ class ProjectsServiceTest {
         client.close()
     }
 
+    @Test
+    fun joinProject() = runTest {
+        var capturedMethod: HttpMethod? = null
+        var capturedPath: String? = null
+        var capturedBodyLength: Long? = null
+
+        val client = mockClient { request ->
+            capturedMethod = request.method
+            capturedPath = request.url.encodedPath
+            capturedBodyLength = request.body.contentLength ?: 0L
+
+            respond(
+                content = "",
+                status = HttpStatusCode.Created,
+            )
+        }
+
+        val account = client.forAccount("12345")
+        account.projects.joinProject(projectId = 42)
+
+        assertEquals(HttpMethod.Post, capturedMethod)
+        assertTrue(capturedPath!!.endsWith("/buckets/42/admissions.json"))
+        assertEquals(0L, capturedBodyLength)
+
+        client.close()
+    }
+
+    // A person who already has access gets a 302 to the project. Ktor follows
+    // redirects for GET and HEAD only, so the POST's 302 surfaces as an API
+    // error carrying 302: the person is on the project either way.
+    @Test
+    fun joinProjectAlreadyOnProjectIsA302ApiError() = runTest {
+        val paths = mutableListOf<String>()
+        val client = mockClient { request ->
+            paths += "${request.method.value} ${request.url.encodedPath}"
+            if (request.method == HttpMethod.Post) {
+                respond(
+                    content = "",
+                    status = HttpStatusCode.Found,
+                    headers = headersOf(HttpHeaders.Location, "https://3.basecampapi.com/12345/projects/42"),
+                )
+            } else {
+                respond(
+                    content = """{"id": 42}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                )
+            }
+        }
+
+        val account = client.forAccount("12345")
+        try {
+            account.projects.joinProject(projectId = 42)
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Api) {
+            assertEquals(302, e.httpStatus)
+        }
+        assertEquals(listOf("POST /12345/buckets/42/admissions.json"), paths)
+
+        client.close()
+    }
+
+    // A missing project, or one whose policy doesn't admit the person.
+    @Test
+    fun joinProjectNotFoundThrows() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = """{"error": "Not found"}""",
+                status = HttpStatusCode.NotFound,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val account = client.forAccount("12345")
+        try {
+            account.projects.joinProject(projectId = 999)
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.NotFound) {
+            assertEquals(404, e.httpStatus)
+        }
+
+        client.close()
+    }
+
     // An inaccessible project answers 404; archived/trashed ones still 204.
     @Test
     fun recordProjectVisitNotFoundThrows() = runTest {

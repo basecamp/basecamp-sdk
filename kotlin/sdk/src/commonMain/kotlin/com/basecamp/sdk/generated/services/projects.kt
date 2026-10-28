@@ -13,6 +13,24 @@ import kotlinx.serialization.json.JsonElement
 class ProjectsService(client: AccountClient) : BaseService(client) {
 
     /**
+     * Join the current person to an all-access project (returns 201 Created with
+     * @param projectId The project ID
+     */
+    suspend fun joinProject(projectId: Long): Unit {
+        val info = OperationInfo(
+            service = "Projects",
+            operation = "JoinProject",
+            resourceType = "project",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        request(info, {
+            httpPost("/buckets/${projectId}/admissions.json", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
      * List the projects the current user has most recently visited, most recent visit first.
      */
     suspend fun listRecentProjects(): List<Project> {

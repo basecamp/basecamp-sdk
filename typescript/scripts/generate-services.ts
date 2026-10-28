@@ -326,6 +326,8 @@ const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
   // through to the generic "resource".
   ListRecentProjects: "project",
   RecordProjectVisit: "project",
+  // "Join" is not a verb pattern either; the join is project state.
+  JoinProject: "project",
   // Client access is the client-side counterpart of UpdateProjectAccess, which
   // reports "project_access"; the inferred "project_client_access" would split
   // the pair. The enablement toggle is project state, as the Go wrapper reports.

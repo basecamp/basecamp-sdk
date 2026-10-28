@@ -186,6 +186,7 @@ object Metadata {
         "GetUpload" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetVault" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetWebhook" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "JoinProject" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListAnswers" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListAssignablePeople" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListCampfireLines" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
