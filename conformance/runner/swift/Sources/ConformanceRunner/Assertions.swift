@@ -141,6 +141,7 @@ func semanticErrorType(_ error: RecordingSummaryError) -> String {
 private let knownSemanticErrorTypes: Set<String> = [
     "recording_unresolved", "campfire_discovery_incomplete", "no_recording_type",
     "unknown_recording_type", "bucket_mismatch",
+    "filing_refused", "filing_may_have_started", "filing_failed", "filing_unsettled",
 ]
 
 /// The vocabulary `conformanceCode` can produce. It must stay in sync with that

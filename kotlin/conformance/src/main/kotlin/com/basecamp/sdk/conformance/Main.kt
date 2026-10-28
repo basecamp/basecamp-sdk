@@ -104,8 +104,8 @@ private fun decodeFailureMessage(e: SerializationException): String =
  * Kotlin row and rostered below rather than left to a green suite to hide.
  *
  * The constant stays whatever its contents, so the next gap has somewhere to go
- * and the named-roster branch below keeps a caller; the `link-header` skip this
- * runner reports comes from the tag branch, not from here. Every entry
+ * and the named-roster branch below keeps a caller; the third skip this runner
+ * reports comes from the `link-header` tag branch, not from here. Every entry
  * added here must be rostered in `spec/zero-skip-roster.yml`.
  */
 private val KOTLIN_SKIPS: Map<String, String> = mapOf(

@@ -1291,6 +1291,18 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
                 recordingType: pathParams.optString("recordingType")))
         return DispatchResult(resultJSON: try resultJSON(summary))
 
+    case "RecordingsMoveAndWait":
+        let filing = try await account.recordings.moveAndWait(
+            recordingId: pathParams.longParam("recordingId"),
+            req: MoveRecordingRequest(filingDestinationId: rb.longParam("filing_destination_id")))
+        return DispatchResult(resultJSON: try resultJSON(filing))
+
+    case "RecordingsCopyAndWait":
+        let filing = try await account.recordings.copyAndWait(
+            recordingId: pathParams.longParam("recordingId"),
+            req: CopyRecordingRequest(filingDestinationId: rb.longParam("filing_destination_id")))
+        return DispatchResult(resultJSON: try resultJSON(filing))
+
     // `mentions` defaults to empty rather than throwing when absent: the
     // composite is defined for a comment with no mentions, and the fixture that
     // exercises it names the key.
