@@ -3323,11 +3323,7 @@ manifests rather than being checked on its own.
 - "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
 - "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
 
-**Rust** (`conformance/runner/rust/src/main.rs` `RUST_SKIPS`) — the `link-header` fixture above runs; only its `requestCount` assertion is suppressed:
-- "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait reports a filing Basecamp failed" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
+**Rust** (`conformance/runner/rust/src/main.rs` `RUST_SKIPS`) — none; the `link-header` fixture above runs; only its `requestCount` assertion is suppressed.
 
 <!-- @zero-skip-roster:end -->
 

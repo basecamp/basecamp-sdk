@@ -8,6 +8,7 @@ use std::time::Duration;
 use basecamp_sdk::Error;
 use basecamp_sdk::chrono::DateTime;
 use basecamp_sdk::http::HeaderMap;
+use basecamp_sdk::services::filing_wait::FilingError;
 use basecamp_sdk::services::recordings::RecordingSummaryError;
 use serde_json::Value;
 
@@ -547,6 +548,15 @@ pub fn compare_values(label: &str, expected: &Value, actual: &Value) -> Result<(
 /// discovery — an identity the message text cannot carry. The names are the fixture's
 /// vocabulary; this maps the Rust SDK's error kinds onto them (SPEC §18, Appendix F).
 pub fn semantic_error_type(error: &Error) -> Option<&'static str> {
+    if let Some(filing) = FilingError::of(error) {
+        return match filing {
+            FilingError::Refused(_) => Some("filing_refused"),
+            FilingError::MayHaveStarted(_) => Some("filing_may_have_started"),
+            FilingError::Failed(_) => Some("filing_failed"),
+            FilingError::Unsettled { .. } => Some("filing_unsettled"),
+            _ => None,
+        };
+    }
     match RecordingSummaryError::of(error)? {
         RecordingSummaryError::Unresolved(_) => Some("recording_unresolved"),
         RecordingSummaryError::CampfireDiscoveryIncomplete { .. } => {

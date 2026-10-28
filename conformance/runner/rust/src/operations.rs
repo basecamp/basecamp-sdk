@@ -674,6 +674,30 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             };
             json(account.recordings().summarize(&reference).await?)
         }
+        "RecordingsMoveAndWait" => {
+            let request = MoveRecordingRequestContent {
+                filing_destination_id: Some(int64_param(body, "filing_destination_id")),
+                ..Default::default()
+            };
+            json(
+                account
+                    .recordings()
+                    .move_and_wait(id("recordingId"), &request, None)
+                    .await?,
+            )
+        }
+        "RecordingsCopyAndWait" => {
+            let request = CopyRecordingRequestContent {
+                filing_destination_id: Some(int64_param(body, "filing_destination_id")),
+                ..Default::default()
+            };
+            json(
+                account
+                    .recordings()
+                    .copy_and_wait(id("recordingId"), &request, None)
+                    .await?,
+            )
+        }
         "CommentsCreateWithMentions" => {
             let content = string_param(body, "content");
             let mentions = optional_int64_list_param(body, "mentions").unwrap_or_default();

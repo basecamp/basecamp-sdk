@@ -222,20 +222,12 @@ runners:
       - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
         reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
 
-  # Rust's `RUST_SKIPS` holds only the Go-first filing waits. Its runner drives the SDK through a scripted
+  # Rust's `RUST_SKIPS` is empty. Its runner drives the SDK through a scripted
   # `HttpClient` rather than a socket, so the two origin-normalization cases Go
   # cannot dial run here; the `link-header` fixture RUNS with only its
-  # `requestCount` assertion suppressed; and the Go-first composite is ported,
-  # so its cases run too.
+  # `requestCount` assertion suppressed; and the Go-first composites are ported,
+  # so their cases run too.
   rust:
     source: "`conformance/runner/rust/src/main.rs` `RUST_SKIPS`"
     note: "the `link-header` fixture above runs; only its `requestCount` assertion is suppressed"
-    skips:
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
+    skips: []
