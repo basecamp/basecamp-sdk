@@ -5721,7 +5721,13 @@ expressed as a static fixture, so the wait-ends case is pinned in each SDK's
 native tests rather than the fixture. In Go the context bounds a GetFiling in
 flight as well; elsewhere the bound is checked between polls, and a poll
 already sent finishes under the client's own request timeout and retry
-policy, so a wait can run past its bound by at most one poll.
+policy, so a wait can run past its bound by at most one poll. Cancelling the caller's
+task is cancellation in Python's asyncio and in Kotlin's coroutines, and is
+left as the language delivers it rather than converted into `filing_unsettled`:
+a caller who needs the filing back passes the wait's own timeout, which ends
+in `filing_unsettled` with the filing. Swift's cancellation is an ordinary
+thrown error and Go's is the context the wait already watches, so both report
+it as `filing_unsettled`.
 
 | SDK | Filing waits |
 |-----|--------------|
