@@ -462,6 +462,10 @@ class OperationMapper
       @account.pings.create(user_ids: body["user_ids"], new_group: body["new_group"])
     when "CreateEmbed"
       @account.embeds.create(url: body["url"])
+    when "ListHillChartVersions"
+      @account.hill_charts.list_versions(todoset_id: path_params["todosetId"]).to_a
+    when "GetHillChartVersion"
+      @account.hill_charts.get_version(todoset_id: path_params["todosetId"], version_id: path_params["versionId"])
     when "GetEmbed"
       @account.embeds.get(sgid: path_params["sgid"])
     when "GetTemplateLibraryTodolists"

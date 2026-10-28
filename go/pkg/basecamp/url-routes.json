@@ -3143,6 +3143,44 @@
       }
     },
     {
+      "pattern": "/{accountId}/todosets/{todosetId}/hills/versions",
+      "resource": "Todos",
+      "operations": {
+        "GET": "ListHillChartVersions"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "todosetId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todosets/{todosetId}/hills/versions/{versionId}",
+      "resource": "Todos",
+      "operations": {
+        "GET": "GetHillChartVersion"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "todosetId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "versionId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/todosets/{todosetId}/todolists",
       "resource": "Todos",
       "operations": {

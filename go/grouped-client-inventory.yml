@@ -312,6 +312,7 @@ not_grouped:
   - GetGaugeNeedle
   - GetGoogleDocument
   - GetHillChart
+  - GetHillChartVersion
   - GetInbox
   - GetMessageBoard
   - GetMessageType
@@ -357,6 +358,7 @@ not_grouped:
   - ListForwards
   - ListGaugeNeedles
   - ListGauges
+  - ListHillChartVersions
   - ListLineupMarkers
   - ListMessageTypes
   - ListMyBookmarks

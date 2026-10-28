@@ -1,9 +1,16 @@
 ---
 gap: hill-chart-progress-updates
-status: addressed-in-bc3-pr-13620
+status: absorbed-in-sdk
 detected: 2026-10-19
 sdk_demand: medium
 bc3_pr: 13620
+smithy_refs:
+  - ListHillChartVersions
+  - GetHillChartVersion
+  - HillChartVersion
+  - HillChartVersionDot
+  - HillChartVersionId
+  - HillChart.versions_url
 bc3_refs:
   introduced_in: "Serve hill chart progress updates as JSON (BC3 #13620, fd7f569808)"
   routes:
@@ -50,3 +57,16 @@ Nothing further: docs and example markers landed in #13620.
 A spec PR adds the two operations, the shape and `versions_url` on `HillChart`,
 regenerates, and adds the per-SDK happy-path and 404 tests. Its allowlist entry
 in `spec/bc3-route-allowlist.yml` is deleted in the same PR.
+
+## Absorbed
+
+`ListHillChartVersions` and `GetHillChartVersion` on the `HillCharts` service
+(`listVersions` and `getVersion`; Go `HillCharts().ListVersions` and
+`GetVersion`), the `HillChartVersion` and `HillChartVersionDot` shapes, and
+`versions_url` on `HillChart`. A progress update's dot has its own shape
+because its `id` is null, and `url` and `app_url` absent, once the todolist is
+permanently deleted or moved to another project; `HillChartDot` keeps its
+required `id`. The documented examples are shared fixtures under
+`spec/fixtures/hill_charts/`, with one more carrying a dot whose todolist is
+gone, and `conformance/tests/hill_chart_versions.json` runs both operations in
+every SDK. The two route-allowlist entries are deleted.

@@ -8,6 +8,7 @@ public struct HillChart: Codable, Sendable {
     public var appVersionsUrl: String?
     public var dots: [HillChartDot]?
     public var updatedAt: String?
+    public var versionsUrl: String?
 
     public init(
         enabled: Bool,
@@ -15,7 +16,8 @@ public struct HillChart: Codable, Sendable {
         appUpdateUrl: String? = nil,
         appVersionsUrl: String? = nil,
         dots: [HillChartDot]? = nil,
-        updatedAt: String? = nil
+        updatedAt: String? = nil,
+        versionsUrl: String? = nil
     ) {
         self.enabled = enabled
         self.stale = stale
@@ -23,5 +25,6 @@ public struct HillChart: Codable, Sendable {
         self.appVersionsUrl = appVersionsUrl
         self.dots = dots
         self.updatedAt = updatedAt
+        self.versionsUrl = versionsUrl
     }
 }

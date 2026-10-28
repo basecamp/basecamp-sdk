@@ -862,6 +862,12 @@ class OperationMapper:
                 )
             case "CreateEmbed":
                 return self._account.embeds.create(url=body["url"])
+            case "ListHillChartVersions":
+                return self._account.hill_charts.list_versions(todoset_id=path_params["todosetId"])
+            case "GetHillChartVersion":
+                return self._account.hill_charts.get_version(
+                    todoset_id=path_params["todosetId"], version_id=path_params["versionId"]
+                )
             case "GetEmbed":
                 return self._account.embeds.get(sgid=path_params["sgid"])
             case "GetTemplateLibraryTodolists":

@@ -1337,6 +1337,17 @@
       ]
     }
   },
+  "GetHillChartVersion": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "GetInbox": {
     "retry": {
       "backoff": "exponential",
@@ -2042,6 +2053,17 @@
     }
   },
   "ListGauges": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "ListHillChartVersions": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,

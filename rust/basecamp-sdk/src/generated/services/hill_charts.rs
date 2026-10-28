@@ -13,6 +13,14 @@ use crate::error::Error;
 use crate::generated::routes;
 #[allow(unused_imports)]
 use crate::generated::types::*;
+use crate::pagination::Page;
+
+/// Optional query parameters for `ListHillChartVersions`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ListHillChartVersionsParams {
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+    pub page: Option<i32>,
+}
 
 /// `HillCharts` operations, sent through one [`AccountClient`].
 #[derive(Debug, Clone, Copy)]
@@ -38,6 +46,48 @@ impl<'a> HillChartsService<'a> {
             .client
             .operation(&routes::GET_HILL_CHART, &[&todoset_id]);
         self.client.send(operation).await
+    }
+
+    /// Get one progress update from a todoset's hill chart
+    ///
+    /// `GET /todosets/{todosetId}/hills/versions/{versionId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn get_version(
+        &self,
+        todoset_id: i64,
+        version_id: i64,
+    ) -> Result<GetHillChartVersionResponseContent, Error> {
+        let operation = self
+            .client
+            .operation(&routes::GET_HILL_CHART_VERSION, &[&todoset_id, &version_id]);
+        self.client.send(operation).await
+    }
+
+    /// List the progress updates on a todoset's hill chart, newest first.
+    ///
+    /// Each time someone updates a hill chart, Basecamp saves a progress update:
+    /// the note they wrote (`description`, rich text) and where each tracked
+    /// todolist sat on the hill at that moment (`dots`). Earlier updates are kept,
+    /// so this list is the hill chart's history. Discussion on an update is read
+    /// through its `comments_url`.
+    ///
+    /// To collect updates across projects, read the progress report: events with
+    /// a `kind` of `hill_version_created` have a `url` that `GetHillChartVersion`
+    /// answers.
+    ///
+    /// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+    /// to fetch additional pages. X-Total-Count header provides total count.
+    ///
+    /// `GET /todosets/{todosetId}/hills/versions.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn list_versions(
+        &self,
+        todoset_id: i64,
+        params: &ListHillChartVersionsParams,
+    ) -> Result<Page<ListHillChartVersionsResponseContent>, Error> {
+        let mut operation = self
+            .client
+            .operation(&routes::LIST_HILL_CHART_VERSIONS, &[&todoset_id]);
+        operation.query_optional("page", params.page.as_ref());
+        self.client.send_page(operation).await
     }
 
     /// Track or untrack todolists on a hill chart

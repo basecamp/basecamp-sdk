@@ -12,4 +12,4 @@ pub mod types;
 pub const API_VERSION: &str = "2026-10-27";
 
 /// How many operations the model declares.
-pub const OPERATION_COUNT: usize = 292;
+pub const OPERATION_COUNT: usize = 294;

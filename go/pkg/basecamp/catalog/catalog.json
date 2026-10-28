@@ -6191,6 +6191,55 @@
       ]
     },
     {
+      "operationId": "GetHillChartVersion",
+      "tag": "Todos",
+      "method": "GET",
+      "path": "/{accountId}/todosets/{todosetId}/hills/versions/{versionId}",
+      "doc": "Get one progress update from a todoset's hill chart",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "todosetId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "versionId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "GetInbox",
       "tag": "Forwards",
       "method": "GET",
@@ -9203,6 +9252,60 @@
           "schema": {
             "description": "Comma-separated list of project IDs. When provided, results are returned\nin the order specified instead of by risk level.",
             "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "operationId": "ListHillChartVersions",
+      "tag": "Todos",
+      "method": "GET",
+      "path": "/{accountId}/todosets/{todosetId}/hills/versions.json",
+      "doc": "List the progress updates on a todoset's hill chart, newest first.\n\nEach time someone updates a hill chart, Basecamp saves a progress update:\nthe note they wrote (`description`, rich text) and where each tracked\ntodolist sat on the hill at that moment (`dots`). Earlier updates are kept,\nso this list is the hill chart's history. Discussion on an update is read\nthrough its `comments_url`.\n\nTo collect updates across projects, read the progress report: events with\na `kind` of `hill_version_created` have a `url` that `GetHillChartVersion`\nanswers.\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "todosetId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
           }
         },
         {

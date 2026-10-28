@@ -87,7 +87,7 @@ making the absorption journey publicly auditable.
 | [recording-backlinks](recording-backlinks.md) | addressed-in-bc3-pr-13121 | master | medium |
 | [account-people-enrollment](account-people-enrollment.md) | addressed-in-bc3-pr-9962 | master | medium |
 | [pings](pings.md) | absorbed-in-sdk | master | high |
-| [hill-chart-progress-updates](hill-chart-progress-updates.md) | addressed-in-bc3-pr-13620 | master | medium |
+| [hill-chart-progress-updates](hill-chart-progress-updates.md) | absorbed-in-sdk | master | medium |
 | [project-join-admission](project-join-admission.md) | addressed-in-bc3-pr-13623 | master | medium |
 | [vault-view-preference](vault-view-preference.md) | addressed-in-bc3-pr-13372 | master | low |
 | [embeds](embeds.md) | absorbed-in-sdk | master | medium |

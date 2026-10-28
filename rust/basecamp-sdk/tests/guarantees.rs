@@ -139,11 +139,11 @@ fn configuration_is_validated() {
 #[test]
 fn the_route_table_is_complete_and_consistent() {
     use basecamp_sdk::routes::{ROUTES, Route};
-    assert_eq!(ROUTES.len(), 292);
-    assert_eq!(basecamp_sdk::metadata::OPERATIONS.len(), 292);
+    assert_eq!(ROUTES.len(), 294);
+    assert_eq!(basecamp_sdk::metadata::OPERATIONS.len(), 294);
     let mut ids: Vec<&str> = ROUTES.iter().map(|route| route.id).collect();
     ids.dedup();
-    assert_eq!(ids.len(), 292, "operation ids are unique");
+    assert_eq!(ids.len(), 294, "operation ids are unique");
     for route in ROUTES {
         assert_eq!(route.id, route.metadata.operation);
         assert!(route.path.starts_with('/'));
@@ -159,7 +159,7 @@ fn the_route_table_is_complete_and_consistent() {
         .iter()
         .filter(|route| route.metadata.readonly)
         .count();
-    assert_eq!(readonly, 138);
+    assert_eq!(readonly, 140);
     let paginated = ROUTES
         .iter()
         .filter(|route| {
@@ -169,7 +169,7 @@ fn the_route_table_is_complete_and_consistent() {
             )
         })
         .count();
-    assert_eq!(paginated, 62);
+    assert_eq!(paginated, 63);
     // The cursor style is the event feed's two poll lanes and nothing else: the
     // route table must say they page (SPEC §8, §23) while keeping them out of
     // the Link walk counted above, and must say CreateStreamTicket does not page
@@ -232,7 +232,7 @@ fn the_route_table_is_complete_and_consistent() {
         basecamp_sdk::routes::UPDATE_PROJECT_LOGO.body,
         basecamp_sdk::routes::BodyKind::Multipart { field: "logo" }
     );
-    assert_eq!(basecamp_sdk::OPERATION_COUNT, 292);
+    assert_eq!(basecamp_sdk::OPERATION_COUNT, 294);
 }
 
 #[test]

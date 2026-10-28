@@ -2470,6 +2470,32 @@ pub static GET_HILL_CHART: Route = Route {
     metadata: &metadata::GET_HILL_CHART,
 };
 
+/// `GET /todosets/{todosetId}/hills/versions/{versionId}`.
+pub static GET_HILL_CHART_VERSION: Route = Route {
+    id: "GetHillChartVersion",
+    service: "HillCharts",
+    method: Method::GET,
+    path: "/todosets/{todosetId}/hills/versions/{versionId}",
+    pattern: "/todosets/{todosetId}/hills/versions/{versionId}",
+    resource_type: "hill_chart_version",
+    params: &[
+        RouteParam {
+            name: "todosetId",
+            kind: ParamKind::Int64,
+        },
+        RouteParam {
+            name: "versionId",
+            kind: ParamKind::Int64,
+        },
+    ],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::GET_HILL_CHART_VERSION,
+};
+
 /// `GET /inboxes/{inboxId}`.
 pub static GET_INBOX: Route = Route {
     id: "GetInbox",
@@ -3826,6 +3852,29 @@ pub static LIST_GAUGES: Route = Route {
     write: None,
     deprecated: false,
     metadata: &metadata::LIST_GAUGES,
+};
+
+/// `GET /todosets/{todosetId}/hills/versions.json`.
+pub static LIST_HILL_CHART_VERSIONS: Route = Route {
+    id: "ListHillChartVersions",
+    service: "HillCharts",
+    method: Method::GET,
+    path: "/todosets/{todosetId}/hills/versions.json",
+    pattern: "/todosets/{todosetId}/hills/versions",
+    resource_type: "hill_chart_version",
+    params: &[RouteParam {
+        name: "todosetId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::Link {
+        key: None,
+        total_count_header: Some("X-Total-Count"),
+    },
+    write: None,
+    deprecated: false,
+    metadata: &metadata::LIST_HILL_CHART_VERSIONS,
 };
 
 /// `GET /lineup/markers.json`.
@@ -6166,6 +6215,7 @@ pub static ROUTES: &[&Route] = &[
     &GET_GAUGE_NEEDLE,
     &GET_GOOGLE_DOCUMENT,
     &GET_HILL_CHART,
+    &GET_HILL_CHART_VERSION,
     &GET_INBOX,
     &GET_MESSAGE,
     &GET_MESSAGE_BOARD,
@@ -6231,6 +6281,7 @@ pub static ROUTES: &[&Route] = &[
     &LIST_FORWARDS,
     &LIST_GAUGE_NEEDLES,
     &LIST_GAUGES,
+    &LIST_HILL_CHART_VERSIONS,
     &LIST_LINEUP_MARKERS,
     &LIST_MESSAGE_TYPES,
     &LIST_MESSAGES,

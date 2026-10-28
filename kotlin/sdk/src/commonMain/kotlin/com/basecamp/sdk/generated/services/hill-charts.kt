@@ -55,4 +55,49 @@ class HillChartsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<HillChart>(body)
         }
     }
+
+    /**
+     * List the progress updates on a todoset's hill chart, newest first.
+     * @param todosetId The todoset ID
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun listVersions(todosetId: Long, options: ListHillChartVersionsOptions? = null): ListResult<HillChartVersion> {
+        val info = OperationInfo(
+            service = "HillCharts",
+            operation = "ListHillChartVersions",
+            resourceType = "hill_chart_version",
+            isMutation = false,
+            projectId = null,
+            resourceId = todosetId,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/todosets/${todosetId}/hills/versions.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<HillChartVersion>>(body)
+        }
+    }
+
+    /**
+     * Get one progress update from a todoset's hill chart
+     * @param todosetId The todoset ID
+     * @param versionId The version ID
+     */
+    suspend fun getVersion(todosetId: Long, versionId: Long): HillChartVersion {
+        val info = OperationInfo(
+            service = "HillCharts",
+            operation = "GetHillChartVersion",
+            resourceType = "hill_chart_version",
+            isMutation = false,
+            projectId = null,
+            resourceId = versionId,
+        )
+        return request(info, {
+            httpGet("/todosets/${todosetId}/hills/versions/${versionId}", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<HillChartVersion>(body)
+        }
+    }
 }

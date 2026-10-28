@@ -492,6 +492,15 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         let embed = try await account.embeds.create(req: CreateEmbedRequest(url: rb.stringParam("url")))
         return DispatchResult(resultJSON: try resultJSON(embed))
 
+    case "ListHillChartVersions":
+        let versions = try await account.hillCharts.listVersions(todosetId: pathParams.longParam("todosetId"))
+        return DispatchResult(totalCount: versions.meta.totalCount, truncated: versions.meta.truncated)
+
+    case "GetHillChartVersion":
+        let version = try await account.hillCharts.getVersion(
+            todosetId: pathParams.longParam("todosetId"), versionId: pathParams.longParam("versionId"))
+        return DispatchResult(resultJSON: try resultJSON(version))
+
     case "GetEmbed":
         let embed = try await account.embeds.get(sgid: pathParams.stringParam("sgid"))
         return DispatchResult(resultJSON: try resultJSON(embed))

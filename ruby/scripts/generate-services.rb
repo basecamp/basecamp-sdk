@@ -161,7 +161,7 @@ class ServiceGenerator
       'Todos' => %w[ListTodos CreateTodo CreateTodosetTodo GetTodo ReplaceTodo CompleteTodo UncompleteTodo],
       'Todolists' => %w[GetTodolistOrGroup UpdateTodolistOrGroup ListTodolists CreateTodolist RepositionTodolist],
       'Todosets' => %w[GetTodoset],
-      'HillCharts' => %w[GetHillChart UpdateHillChartSettings],
+      'HillCharts' => %w[GetHillChart UpdateHillChartSettings ListHillChartVersions GetHillChartVersion],
       'TodolistGroups' => %w[ListTodolistGroups CreateTodolistGroup RepositionTodolistGroup]
     },
     'Untagged' => {
@@ -300,7 +300,9 @@ class ServiceGenerator
     'ListScheduleEntries' => 'list_entries',
     'GetScheduleEntryOccurrence' => 'get_entry_occurrence',
     'GetHillChart' => 'get',
-    'UpdateHillChartSettings' => 'update_settings'
+    'UpdateHillChartSettings' => 'update_settings',
+    'ListHillChartVersions' => 'list_versions',
+    'GetHillChartVersion' => 'get_version'
   }.freeze
 
   # Verb patterns for extracting method names

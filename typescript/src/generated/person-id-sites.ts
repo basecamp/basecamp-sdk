@@ -383,6 +383,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "GetGoogleDocument": [
     "creator"
   ],
+  "GetHillChartVersion": [
+    "creator"
+  ],
   "GetInbox": [
     "creator"
   ],
@@ -617,6 +620,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
     "[].creator"
   ],
   "ListGauges": [
+    "[].creator"
+  ],
+  "ListHillChartVersions": [
     "[].creator"
   ],
   "ListMessages": [
