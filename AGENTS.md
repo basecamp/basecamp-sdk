@@ -184,15 +184,15 @@ gh run list --repo basecamp/basecamp-sdk --limit 8 --json name,status,conclusion
 
 This is a named release path. A person's merge of a spec change is the word to release it: a PR that changes `openapi.json`, or anything under `spec/` except the gap registry `spec/api-gaps/`, opened and merged by a person. Dependabot's spec bumps and gap entries are not spec changes here. The only thing that acts on it is coworker's `sdk-release` job, running hourly on the operator's machine, and it acts like this:
 
-- Each spec merge since the last tag opens or extends a release window. The window closes once no spec change has merged for the quiet period, or once the first one has waited the cap, or at once for a spec PR labelled `release-now`. A spec change that merges after the window closes, but before the prep PR lands, rides along in that release rather than opening a new window.
-- The job keeps one prep PR open from `release-next` (`chore(release): prepare SDK vX.Y.Z`, the version lines `make bump` writes and nothing else). When the window closes, it arms auto-merge on that PR. Auto-merge waits on the checks main requires, and nothing bypasses them. On its next run the job tags the merge commit, which starts the release workflows above.
+- Each spec merge since the last tag opens or extends a release window. The window closes once no spec change has merged for the quiet period, or once the first one has waited the cap, or at once for a spec PR labelled `release-now`. A spec change that merges after the window closes, but before the prep PR lands, rides along in that release.
+- The job keeps one prep PR open from `release-next` (`chore(release): prepare SDK vX.Y.Z`, the version lines `make bump` writes and nothing else). Once the window has closed, the job squash-merges that PR on its first hourly run where the checks main requires have passed and no review thread is unresolved or changes requested. It merges at the head it judged and bypasses no rule. On its next run it tags the merge commit, which starts the release workflows above.
 - One release carries the whole window, at the highest level any change since the last tag needs. `breaking` or a dropped operation is a minor before 1.0 and a major after. `enhancement` or an added operation is a minor. Anything else is a patch.
 - Every publish but Swift's still waits for a reviewer in its environment, and the job approves none.
-- To hold a release, close the prep PR or disable its auto-merge. The job never re-arms a PR a person disabled. Label the prep PR `on-hold` to let it merge without a tag.
+- To hold a release, close the prep PR or label it `on-hold`. The job doesn't merge an `on-hold` PR, and if a person merges one, the job asks on a card instead of tagging. Editing the PR's description or pushing to its branch hands the PR to a person.
 
 Quiet period: 6h. Cap: 24h.
 
-The job reads this section from `main` on every run. Change the line above to change the window, or remove the section to withdraw the grant. Removing it stops the job arming anything new. A prep PR it has already armed still merges unless someone disables its auto-merge or closes it. Without the section, a prep PR releases only when a person merges it.
+The job reads this section from `main` on every run. Change the line above to change the window, or remove the section to withdraw the grant. The job holds nothing armed on GitHub between runs, so removing the section stops it at once. Without the section, a prep PR releases only when a person merges it.
 
 ---
 
