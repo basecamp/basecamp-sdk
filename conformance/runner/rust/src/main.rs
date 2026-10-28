@@ -20,7 +20,8 @@ use std::process::ExitCode;
 use fixtures::TestCase;
 use manifest::{Exclusion, Manifest};
 
-/// Cases the Rust SDK deliberately does not execute: none.
+/// Cases the Rust SDK deliberately does not execute: the `recordings_filing_wait.json`
+/// cases of the Go-first filing waits (SPEC Appendix F, Filing Waits), which a port deletes.
 ///
 /// It held every case of `recording_summary.json` while that Go-first composite (SPEC
 /// Appendix F, Recording Summaries and Mention Helpers) was unported; the port landed and
@@ -29,7 +30,24 @@ use manifest::{Exclusion, Manifest};
 /// `link-header` fixture runs with only its `requestCount` assertion suppressed
 /// (assertions.rs). Every entry added here must also be rostered in
 /// `spec/zero-skip-roster.yml`, or `make check-fixture-execution` fails.
-const RUST_SKIPS: &[(&str, &str)] = &[];
+const RUST_SKIPS: &[(&str, &str)] = &[
+    (
+        "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes",
+        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+    ),
+    (
+        "RecordingsMoveAndWait reports a filing Basecamp failed",
+        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+    ),
+    (
+        "RecordingsMoveAndWait polls nothing when Basecamp refuses the move",
+        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+    ),
+    (
+        "RecordingsCopyAndWait never resends a copy whose start answered 503",
+        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+    ),
+];
 
 #[tokio::main]
 async fn main() -> ExitCode {

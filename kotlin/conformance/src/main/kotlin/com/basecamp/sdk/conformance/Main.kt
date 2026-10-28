@@ -99,9 +99,13 @@ private fun decodeFailureMessage(e: SerializationException): String =
  * reference rejects is read here rather than refused. It is recorded in SPEC's
  * Kotlin row and rostered below rather than left to a green suite to hide.
  *
+ * The `recordings_filing_wait.json` entries are a missing port, not a runtime
+ * limit: the Go-first filing waits (SPEC Appendix F, Filing Waits), which a port
+ * deletes.
+ *
  * The constant stays whatever its contents, so the next gap has somewhere to go
- * and the named-roster branch below keeps a caller; the third skip this runner
- * reports comes from the `link-header` tag branch, not from here. Every entry
+ * and the named-roster branch below keeps a caller; the `link-header` skip this
+ * runner reports comes from the tag branch, not from here. Every entry
  * added here must be rostered in `spec/zero-skip-roster.yml`.
  */
 private val KOTLIN_SKIPS: Map<String, String> = mapOf(
@@ -111,6 +115,14 @@ private val KOTLIN_SKIPS: Map<String, String> = mapOf(
     "RecordingsSummarize refuses a wrong-typed id on a parent's bucket" to
         "kotlinx.serialization reads a quoted number into any numeric primitive, so a plain int64 " +
         "cannot be made strict without a generator-emitted serializer",
+    "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" to
+        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+    "RecordingsMoveAndWait reports a filing Basecamp failed" to
+        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+    "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" to
+        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+    "RecordingsCopyAndWait never resends a copy whose start answered 503" to
+        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
 )
 
 

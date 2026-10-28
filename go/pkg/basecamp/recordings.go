@@ -529,6 +529,7 @@ type MoveRecordingRequest struct {
 	// question, an inbox for an email forward, a to-do set for a to-do list, and
 	// a to-do list, in this project or another, for a to-do or to-do list group.
 	// For a dock tool, it may be the destination project's dock.
+	// FilingContainerFor names the kind for a recording type.
 	FilingDestinationID int64 `json:"filing_destination_id,omitempty"`
 	// DestinationProjectID is the project to move a dock tool to.
 	DestinationProjectID int64 `json:"destination_project_id,omitempty"`
