@@ -1,0 +1,18 @@
+{
+  "operations": [
+    {"operationId": "ArchiveThing", "tag": "Things", "method": "PUT", "path": "/{accountId}/things/{thingId}/status/archived.json"},
+    {"operationId": "CountThings", "tag": "Things", "method": "GET", "path": "/{accountId}/things/count.json"},
+    {"operationId": "CreateThing", "tag": "Things", "method": "POST", "path": "/{accountId}/things.json"},
+    {"operationId": "FetchThing", "tag": "Things", "method": "GET", "path": "/{accountId}/things/{thingId}/fetch.json"},
+    {"operationId": "DeleteGadget", "tag": "Gadgets", "method": "DELETE", "path": "/{accountId}/gadgets/{gadgetId}.json"},
+    {"operationId": "GetGadget", "tag": "Gadgets", "method": "GET", "path": "/{accountId}/gadgets/{gadgetId}.json"},
+    {"operationId": "GetMyProfile", "tag": "People", "method": "GET", "path": "/{accountId}/my/profile.json"},
+    {"operationId": "GetPerson", "tag": "People", "method": "GET", "path": "/{accountId}/people/{personId}.json"},
+    {"operationId": "GetThing", "tag": "Things", "method": "GET", "path": "/{accountId}/things/{thingId}.json"},
+    {"operationId": "ListGadgets", "tag": "Gadgets", "method": "GET", "path": "/{accountId}/gadgets.json"},
+    {"operationId": "ListSprockets", "tag": "Sprockets", "method": "GET", "path": "/{accountId}/sprockets.json"},
+    {"operationId": "ListThings", "tag": "Things", "method": "GET", "path": "/{accountId}/things.json"},
+    {"operationId": "ListWidgets", "tag": "Widgets", "method": "GET", "path": "/{accountId}/widgets.json"},
+    {"operationId": "ReplaceThing", "tag": "Things", "method": "PUT", "path": "/{accountId}/things/{thingId}.json"}
+  ]
+}

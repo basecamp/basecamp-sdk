@@ -485,6 +485,16 @@ jobs:
         working-directory: .
         run: make catalog-check
 
+      - name: Test the surface-coverage tool
+        # Stdlib-only module in go.work (scripts/surface-coverage) that reports
+        # which SDK operations the CLI and MCP server reach. Its tests include
+        # a check that every catalog operation has an exported entry point the
+        # tool's call graph follows, so a wrapper change that would blind the
+        # downstream reports fails here. Runs from repo root regardless of this
+        # job's `working-directory: go`.
+        working-directory: .
+        run: make surface-coverage-test
+
       - name: Check auth-routable consumer invariants
         run: ../scripts/check-auth-routable-consumers.sh
 

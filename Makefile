@@ -466,6 +466,26 @@ go-check-wrapper-drift:
 	@echo "==> Checking wrapper field-level drift..."
 	@go run ./scripts/check-wrapper-drift/
 
+.PHONY: surface-coverage surface-coverage-test
+
+# Report which SDK operations a downstream Go repository reaches, which it
+# does not, and which of its SDK references are stale — Markdown for a pull
+# request body. Coverage comes from call sites, type-checked on both sides;
+# see scripts/surface-coverage/main.go. REPO is required; SDK defaults to this
+# checkout (pass a release, e.g. SDK=v0.30.0, to fetch it from the module
+# proxy instead).
+#   make surface-coverage REPO=../basecamp-cli
+#   make surface-coverage REPO=../basecamp-mcp-server SDK=v0.29.1
+surface-coverage:
+	@test -n "$(REPO)" || (echo "usage: make surface-coverage REPO=<downstream repo> [SDK=<release>]" && exit 1)
+	@go run ./scripts/surface-coverage $(if $(SDK),-sdk $(SDK),-sdk-dir .) -repo $(REPO)
+
+# The tool's own tests, including the check that every catalog operation has
+# an exported SDK entry point the call graph can see.
+surface-coverage-test:
+	@echo "==> Running surface-coverage tests..."
+	@go test ./scripts/surface-coverage/
+
 .PHONY: auth-routable-check
 
 # Check that hop-2-only primitives are not called outside the authenticated

@@ -1,0 +1,35 @@
+// This fixture is copied to pkg/generated in a temp tree by the tests
+// (testmain_test.go), so no hand-written file sits under a generated/
+// directory in the repository.
+
+// Package generated stands in for the oapi-codegen client: one entry point
+// per operation, spelled from its operationId.
+package generated
+
+import "context"
+
+type ClientWithResponses struct{}
+
+func (c *ClientWithResponses) GetThingWithResponse(ctx context.Context, id int64) error  { return nil }
+func (c *ClientWithResponses) ListThingsWithResponse(ctx context.Context) error          { return nil }
+func (c *ClientWithResponses) CreateThingWithBodyWithResponse(ctx context.Context) error { return nil }
+func (c *ClientWithResponses) DeleteThingWithResponse(ctx context.Context, id int64) error {
+	return nil
+}
+func (c *ClientWithResponses) GetGadgetWithResponse(ctx context.Context, id int64) error { return nil }
+
+// NewClientWithResponses is not an operation.
+func (c *ClientWithResponses) DeleteGadgetWithResponse(ctx context.Context, id int64) error {
+	return nil
+}
+
+// ListWidgetsWithResponse has no wrapper; the downstream calls it directly.
+func (c *ClientWithResponses) ListWidgetsWithResponse(ctx context.Context) error { return nil }
+
+func (c *ClientWithResponses) CountThingsWithResponse(ctx context.Context) error { return nil }
+
+// ListSprocketsWithResponse has no wrapper either; the downstream reaches it
+// through an interface of its own.
+func (c *ClientWithResponses) ListSprocketsWithResponse(ctx context.Context) error { return nil }
+
+func NewClientWithResponses() *ClientWithResponses { return &ClientWithResponses{} }
