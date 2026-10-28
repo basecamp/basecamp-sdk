@@ -59,6 +59,32 @@ class RecordingsService(private val account: AccountClient) :
     com.basecamp.sdk.generated.services.RecordingsService(account) {
 
     /**
+     * Starts a move once, as [move] does, and waits for Basecamp to finish it,
+     * polling [getFiling] with backoff. Returns the completed filing, whose
+     * `destinationRecording` is the moved recording; otherwise throws a
+     * [BasecampException.FilingFailure] whose `reason` says how far it got
+     * (SPEC.md Appendix F, Filing Waits). [timeout] defaults to a minute.
+     */
+    suspend fun moveAndWait(
+        recordingId: Long,
+        body: com.basecamp.sdk.generated.services.MoveRecordingBody,
+        timeout: kotlin.time.Duration? = null,
+    ): com.basecamp.sdk.generated.models.Filing =
+        fileAndWait(timeout, { move(recordingId, body) }, { getFiling(it) })
+
+    /**
+     * Starts a copy once, as [copy] does, and waits for Basecamp to finish it.
+     * Only after a `filing_refused` failure is copying again safe; anything
+     * else may already have made a copy.
+     */
+    suspend fun copyAndWait(
+        recordingId: Long,
+        body: com.basecamp.sdk.generated.services.CopyRecordingBody,
+        timeout: kotlin.time.Duration? = null,
+    ): com.basecamp.sdk.generated.models.Filing =
+        fileAndWait(timeout, { copy(recordingId, body) }, { getFiling(it) })
+
+    /**
      * Resolves a recording pointer into a [RecordingSummary] through the typed
      * read its type names. See [RecordingRef] for the routing inputs and the
      * class comment above for the design.

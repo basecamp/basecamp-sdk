@@ -53,6 +53,10 @@ private val SEMANTIC_ERROR_TYPES = setOf(
     BasecampException.RECORDING_UNRESOLVED,
     BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE,
     BasecampException.RECORDING_BUCKET_MISMATCH,
+    BasecampException.FILING_REFUSED,
+    BasecampException.FILING_MAY_HAVE_STARTED,
+    BasecampException.FILING_FAILED,
+    BasecampException.FILING_UNSETTLED,
 )
 
 /** Default account ID for conformance tests. */
@@ -99,10 +103,6 @@ private fun decodeFailureMessage(e: SerializationException): String =
  * reference rejects is read here rather than refused. It is recorded in SPEC's
  * Kotlin row and rostered below rather than left to a green suite to hide.
  *
- * The `recordings_filing_wait.json` entries are a missing port, not a runtime
- * limit: the Go-first filing waits (SPEC Appendix F, Filing Waits), which a port
- * deletes.
- *
  * The constant stays whatever its contents, so the next gap has somewhere to go
  * and the named-roster branch below keeps a caller; the `link-header` skip this
  * runner reports comes from the tag branch, not from here. Every entry
@@ -115,14 +115,6 @@ private val KOTLIN_SKIPS: Map<String, String> = mapOf(
     "RecordingsSummarize refuses a wrong-typed id on a parent's bucket" to
         "kotlinx.serialization reads a quoted number into any numeric primitive, so a plain int64 " +
         "cannot be made strict without a generator-emitted serializer",
-    "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" to
-        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-    "RecordingsMoveAndWait reports a filing Basecamp failed" to
-        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-    "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" to
-        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-    "RecordingsCopyAndWait never resends a copy whose start answered 503" to
-        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
 )
 
 
@@ -996,6 +988,7 @@ private fun runTest(tc: TestCase): TestResult {
                 // runner draws the same line; this is the Kotlin spelling of it.
                 if (expectedType in SEMANTIC_ERROR_TYPES) {
                     val reason = (caughtException as? BasecampException.RecordingSummaryFailure)?.reason
+                        ?: (caughtException as? BasecampException.FilingFailure)?.reason
                         ?: return TestResult(
                             false,
                             "Expected composite error type \"$expectedType\", got a " +
@@ -2084,6 +2077,26 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
                 ),
             )
             DispatchResult(resultJson = Json.encodeToJsonElement(RecordingSummary.serializer(), summary))
+        }
+
+        "RecordingsMoveAndWait" -> {
+            val filing = account.recordings.moveAndWait(
+                tc.pathParams.longParam("recordingId"),
+                com.basecamp.sdk.generated.services.MoveRecordingBody(
+                    filingDestinationId = tc.requestBody.longParam("filing_destination_id"),
+                ),
+            )
+            DispatchResult(resultJson = Json.encodeToJsonElement(com.basecamp.sdk.generated.models.Filing.serializer(), filing))
+        }
+
+        "RecordingsCopyAndWait" -> {
+            val filing = account.recordings.copyAndWait(
+                tc.pathParams.longParam("recordingId"),
+                com.basecamp.sdk.generated.services.CopyRecordingBody(
+                    filingDestinationId = tc.requestBody.longParam("filing_destination_id"),
+                ),
+            )
+            DispatchResult(resultJson = Json.encodeToJsonElement(com.basecamp.sdk.generated.models.Filing.serializer(), filing))
         }
 
         "CommentsCreateWithMentions" -> {

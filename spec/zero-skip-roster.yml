@@ -199,14 +199,6 @@ runners:
         reason: "accepting-direction: `kotlinx.serialization` reads a quoted number into any numeric primitive regardless of `isLenient`, so a plain int64 is not strict here until the generator emits a serializer that makes it so (card 43)."
       - case: "RecordingsSummarize refuses a wrong-typed id on a parent's bucket"
         reason: "accepting-direction: the same quoted-number read, one member further in."
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
 
   swift:
     source: "`conformance/runner/swift/.../Runner.swift` — `temporarySkips` holds the Go-first filing waits; the `link-header` entry comes from the tag branch"

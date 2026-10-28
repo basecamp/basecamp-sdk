@@ -3311,10 +3311,6 @@ manifests rather than being checked on its own.
 - "List operation returns first page with Link header" — architectural: the SDK auto-paginates, and its status model reports the last consumed response, so a one-response queue yields "no response" (see the tag-branch discussion above).
 - "RecordingsSummarize refuses a wrong-typed parent id, which is not a person's flexible one" — accepting-direction: `kotlinx.serialization` reads a quoted number into any numeric primitive regardless of `isLenient`, so a plain int64 is not strict here until the generator emits a serializer that makes it so (card 43).
 - "RecordingsSummarize refuses a wrong-typed id on a parent's bucket" — accepting-direction: the same quoted-number read, one member further in.
-- "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait reports a filing Basecamp failed" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
 
 **Swift** (`conformance/runner/swift/.../Runner.swift` — `temporarySkips` holds the Go-first filing waits; the `link-header` entry comes from the tag branch):
 - "List operation returns first page with Link header" — architectural, same as Kotlin: auto-pagination plus a last-consumed-response status model.
