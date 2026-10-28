@@ -63,6 +63,16 @@ class RecordingsFilingWaitTest < Minitest::Test
     assert_kind_of Basecamp::NotFoundError, error.cause
   end
 
+  def test_malformed_poll_keeps_the_filing
+    stub_request(:post, "#{BASE}/recordings/456/copies.json").to_return(json(201, filing("pending")))
+    stub_request(:get, "#{BASE}/filings/4").to_return(json(200, []))
+
+    error = assert_raises(Basecamp::FilingUnsettledError) do
+      @account.recordings.copy_and_wait(recording_id: 456, filing_destination_id: 789)
+    end
+    assert_equal 4, error.filing["id"]
+  end
+
   def test_start_refused
     [ 403, 404, 422 ].each do |status|
       WebMock.reset!

@@ -155,6 +155,19 @@ function refusedBeforeFiling(err: unknown): err is BasecampError {
   return (status >= 400 && status < 500) || err.code === "usage" || err.code === "rate_limit";
 }
 
+// The generated methods return the body undecoded, so a malformed one would
+// otherwise replace the filing the caller needs to poll again.
+function isFiling(value: unknown, filingId?: number): value is Filing {
+  if (typeof value !== "object" || value === null) return false;
+  const { id, status } = value as { id?: unknown; status?: unknown };
+  return (
+    typeof id === "number" &&
+    Number.isInteger(id) &&
+    typeof status === "string" &&
+    (filingId === undefined || id === filingId)
+  );
+}
+
 /** Starts a filing once and waits for it; the body of moveAndWait and copyAndWait. */
 export async function fileAndWait(
   start: () => Promise<Filing>,
@@ -166,6 +179,9 @@ export async function fileAndWait(
     filing = await start();
   } catch (err) {
     throw refusedBeforeFiling(err) ? new FilingRefusedError(err) : new FilingMayHaveStartedError(err);
+  }
+  if (!isFiling(filing)) {
+    throw new FilingMayHaveStartedError(new Error(`unreadable answer ${JSON.stringify(filing)}`));
   }
 
   const deadline = Date.now() + (opts?.timeoutMs && opts.timeoutMs > 0 ? opts.timeoutMs : DEFAULT_WAIT_MS);
@@ -179,10 +195,15 @@ export async function fileAndWait(
       throw new FilingUnsettledError(filing, new Error("the wait for the filing ended"));
     }
     await new Promise((resolve) => setTimeout(resolve, delay));
+    let latest: unknown;
     try {
-      filing = await getFiling(filing.id);
+      latest = await getFiling(filing.id);
     } catch (err) {
       throw new FilingUnsettledError(filing, err);
     }
+    if (!isFiling(latest, filing.id)) {
+      throw new FilingUnsettledError(filing, new Error(`unreadable answer ${JSON.stringify(latest)}`));
+    }
+    filing = latest;
   }
 }

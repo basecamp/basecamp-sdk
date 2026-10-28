@@ -85,6 +85,29 @@ class TestCopyAndWait:
         assert isinstance(raised.value.__cause__, NotFoundError)
 
     @respx.mock
+    def test_malformed_poll_keeps_the_filing(self):
+        respx.post(f"{BASE}/recordings/456/copies.json").mock(return_value=httpx.Response(201, json=filing("pending")))
+        respx.get(f"{BASE}/filings/4").mock(return_value=httpx.Response(200, json=[]))
+        client, account = make_account()
+        with pytest.raises(FilingUnsettledError) as raised:
+            account.recordings.copy_and_wait(recording_id=456, filing_destination_id=789)
+        client.close()
+        assert raised.value.filing["id"] == 4
+
+    @respx.mock
+    def test_async_malformed_poll_keeps_the_filing(self):
+        respx.post(f"{BASE}/recordings/456/copies.json").mock(return_value=httpx.Response(201, json=filing("pending")))
+        respx.get(f"{BASE}/filings/4").mock(return_value=httpx.Response(200, json=[]))
+
+        async def run():
+            async with AsyncClient(access_token="test-token") as client:
+                await client.for_account("12345").recordings.copy_and_wait(recording_id=456, filing_destination_id=789)
+
+        with pytest.raises(FilingUnsettledError) as raised:
+            asyncio.run(run())
+        assert raised.value.filing["id"] == 4
+
+    @respx.mock
     @pytest.mark.parametrize("status", [403, 404, 422])
     def test_start_refused(self, status):
         start = respx.post(f"{BASE}/recordings/456/moves.json").mock(return_value=httpx.Response(status, json={}))

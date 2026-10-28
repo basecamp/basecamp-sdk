@@ -67,6 +67,7 @@ module Basecamp
       rescue StandardError => e
         raise FilingMayHaveStartedError, "filing may have started: #{e.message}"
       end
+      raise FilingMayHaveStartedError, "filing may have started: unreadable answer #{filing.inspect}" unless filing?(filing)
 
       deadline = monotonic + (timeout.to_f.positive? ? timeout.to_f : DEFAULT_WAIT)
       delay = FIRST_POLL
@@ -81,12 +82,22 @@ module Basecamp
         end
         sleep(delay)
         begin
-          filing = get_filing.call(filing["id"])
+          latest = get_filing.call(filing["id"])
         rescue StandardError
           raise FilingUnsettledError.new(filing)
         end
+        raise FilingUnsettledError.new(filing) unless filing?(latest, filing["id"])
+
+        filing = latest
         delay = [ 2 * delay, MAX_POLL ].min
       end
+    end
+
+    # The generated methods return the body undecoded, so a malformed one would
+    # otherwise replace the filing the caller needs to poll again.
+    def filing?(value, filing_id = nil)
+      value.is_a?(Hash) && value["id"].is_a?(Integer) && value["status"].is_a?(String) &&
+        (filing_id.nil? || value["id"] == filing_id)
     end
 
     def refused?(error)

@@ -59,6 +59,23 @@ describe("RecordingsService.copyAndWait", () => {
   });
 });
 
+describe("RecordingsService.copyAndWait with a malformed poll", () => {
+  it("keeps the filing it last read", async () => {
+    server.use(
+      http.post(`${BASE_URL}/recordings/3001/copies.json`, () =>
+        HttpResponse.json(filing("pending"), { status: 201 }),
+      ),
+      http.get(`${BASE_URL}/filings/4`, () => HttpResponse.json([])),
+    );
+
+    const err = await createBasecampClient({ accountId: "12345", accessToken: "test-token" })
+      .recordings.copyAndWait(3001, { filingDestinationId: 789 })
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(FilingUnsettledError);
+    expect((err as FilingUnsettledError).filing.id).toBe(4);
+  });
+});
+
 describe("filingContainerFor", () => {
   it.each([
     ["Kanban::Card", "Kanban::Triage", "kanban_board"],

@@ -119,6 +119,18 @@ def _start_error(err: Exception) -> FilingError:
     return FilingMayHaveStartedError(f"filing may have started: {err}")
 
 
+def _is_filing(value: Any, filing_id: int | None = None) -> bool:
+    # The generated methods return the body undecoded, so a malformed one would
+    # otherwise replace the filing the caller needs to poll again.
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("id"), int)
+        and not isinstance(value.get("id"), bool)
+        and isinstance(value.get("status"), str)
+        and (filing_id is None or value["id"] == filing_id)
+    )
+
+
 def _settled(filing: dict[str, Any]) -> dict[str, Any] | None:
     if filing.get("status") == "completed" and filing.get("destination_recording"):
         return filing
@@ -136,6 +148,8 @@ def file_and_wait(
         filing = start()
     except Exception as err:
         raise _start_error(err) from err
+    if not _is_filing(filing):
+        raise FilingMayHaveStartedError(f"filing may have started: unreadable answer {filing!r}")
     deadline = time.monotonic() + (timeout if timeout and timeout > 0 else _DEFAULT_WAIT)
     delay = _FIRST_POLL
     while True:
@@ -147,9 +161,12 @@ def file_and_wait(
             raise FilingUnsettledError(filing)
         time.sleep(delay)
         try:
-            filing = get_filing(filing["id"])
+            latest = get_filing(filing["id"])
         except Exception as err:
             raise FilingUnsettledError(filing) from err
+        if not _is_filing(latest, filing["id"]):
+            raise FilingUnsettledError(filing)
+        filing = latest
         delay = min(2 * delay, _MAX_POLL)
 
 
@@ -162,6 +179,8 @@ async def async_file_and_wait(
         filing = await start()
     except Exception as err:
         raise _start_error(err) from err
+    if not _is_filing(filing):
+        raise FilingMayHaveStartedError(f"filing may have started: unreadable answer {filing!r}")
     deadline = time.monotonic() + (timeout if timeout and timeout > 0 else _DEFAULT_WAIT)
     delay = _FIRST_POLL
     while True:
@@ -173,7 +192,10 @@ async def async_file_and_wait(
             raise FilingUnsettledError(filing)
         await asyncio.sleep(delay)
         try:
-            filing = await get_filing(filing["id"])
+            latest = await get_filing(filing["id"])
         except Exception as err:
             raise FilingUnsettledError(filing) from err
+        if not _is_filing(latest, filing["id"]):
+            raise FilingUnsettledError(filing)
+        filing = latest
         delay = min(2 * delay, _MAX_POLL)
