@@ -1151,7 +1151,7 @@ class HillChartVersion(TypedDict):
 class HillChartVersionDot(TypedDict):
     app_url: NotRequired[str]
     color: str
-    id: NotRequired[int]
+    id: NotRequired[int | None]
     label: str
     position: int
     url: NotRequired[str]

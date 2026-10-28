@@ -165,7 +165,7 @@ class HillChartsServiceTest < Minitest::Test
     gone = version["dots"][1]
     assert gone.key?("id")
     assert_nil gone["id"]
-    refute gone.key?("url")
+    assert_not gone.key?("url")
     assert_equal "Old research list", gone["label"]
   end
 

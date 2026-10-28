@@ -6248,7 +6248,7 @@ export interface components {
              * @description The todolist's ID, or null when it has since been permanently deleted
              *     or moved to another project; `url` and `app_url` are then omitted.
              */
-            id?: number;
+            id?: number | null;
             /** @description The todolist's full name at the time of the update. */
             label: string;
             color: string;

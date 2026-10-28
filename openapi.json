@@ -36570,9 +36570,13 @@
         "description": "A todolist's place on the hill in one progress update.",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "description": "The todolist's ID, or null when it has since been permanently deleted\nor moved to another project; `url` and `app_url` are then omitted.",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type": "int64"
           },
           "label": {
             "type": "string",

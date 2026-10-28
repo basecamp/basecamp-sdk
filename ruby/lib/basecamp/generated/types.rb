@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-28T04:59:39Z
+# Generated: 2026-10-28T05:27:32Z
 
 require "json"
 require "time"
@@ -2663,7 +2663,7 @@ module Basecamp
         @label = data["label"]
         @position = parse_integer(data["position"])
         @app_url = data["app_url"]
-        @id = parse_integer(data["id"])
+        @id = data["id"]
         @url = data["url"]
       end
 
