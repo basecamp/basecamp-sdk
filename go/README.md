@@ -588,7 +588,7 @@ for both.
 |---------|---------|
 | `Webhooks()` | List, Get, Create, Update, Delete |
 | `Subscriptions()` | List, Subscribe, Unsubscribe, Update |
-| `Recordings()` | Archive, Unarchive, Trash, Summarize |
+| `Recordings()` | Archive, Unarchive, Trash, Summarize, Move, Copy, MoveAndWait, CopyAndWait, GetFiling |
 
 ### Client Portal
 
@@ -783,6 +783,33 @@ character would turn `sgid="<real sgid>&#1;"` into the real sgid and suppress
 the mention; this reader emits the character, so the value differs and the
 mention is written. `MentionMarkup` refuses an `attachable_sgid` that names
 anyone other than the person it is given.
+
+## Moving and copying recordings
+
+Basecamp moves and copies a recording in the background. `MoveAndWait` and
+`CopyAndWait` start the filing once, never resending it (each copy request
+makes another copy), and poll `GetFiling` until Basecamp finishes it, for up
+to a minute or until the context ends. The destination is a container of the
+recording's own kind: `FilingContainerFor` names it by dock name, such as
+`message_board` for a message.
+
+```go
+filing, err := account.Recordings().CopyAndWait(ctx, messageID, &basecamp.CopyRecordingRequest{
+    FilingDestinationID: messageBoardID,
+}, nil)
+var refused *basecamp.FilingRefusedError
+var unsettled *basecamp.FilingUnsettledError
+switch {
+case err == nil:
+    fmt.Println("copy:", filing.DestinationRecording.ID)
+case errors.As(err, &refused):
+    // Nothing was copied; it is safe to try again.
+case errors.As(err, &unsettled):
+    // Still running: check it later with GetFiling(ctx, unsettled.Filing.ID).
+default:
+    // FilingFailedError, or FilingMayHaveStartedError: look before copying again.
+}
+```
 
 ## Working with Webhooks
 

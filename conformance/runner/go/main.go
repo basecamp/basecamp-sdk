@@ -1904,6 +1904,24 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		}
 		return operationResult{result: summary}
 
+	case "RecordingsMoveAndWait":
+		filing, err := account.Recordings().MoveAndWait(ctx, getInt64Param(tc.PathParams, "recordingId"), &basecamp.MoveRecordingRequest{
+			FilingDestinationID: getInt64Param(tc.RequestBody, "filing_destination_id"),
+		}, nil)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: filing}
+
+	case "RecordingsCopyAndWait":
+		filing, err := account.Recordings().CopyAndWait(ctx, getInt64Param(tc.PathParams, "recordingId"), &basecamp.CopyRecordingRequest{
+			FilingDestinationID: getInt64Param(tc.RequestBody, "filing_destination_id"),
+		}, nil)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: filing}
+
 	case "CommentsCreateWithMentions":
 		recordingID := getInt64Param(tc.PathParams, "recordingId")
 		content, _ := tc.RequestBody["content"].(string)
@@ -2469,7 +2487,8 @@ func checkAssertion(
 
 // compareValues compares an expected JSON value against an actual Go value.
 // Handles json.Number (from UseNumber), float64, bool, and string.
-// semanticErrorType names the RecordingsSummarize sentinels for the errorType
+// semanticErrorType names the RecordingsSummarize sentinels and the filing
+// outcomes of RecordingsMoveAndWait and RecordingsCopyAndWait for the errorType
 // assertion, so a fixture can pin that "unresolved" is neither an API read
 // failure nor incomplete discovery — an identity the message text cannot
 // carry. The names are the fixture's vocabulary; a port maps its own error
@@ -2486,6 +2505,16 @@ func semanticErrorType(err error) (string, bool) {
 		return "unknown_recording_type", true
 	case errors.Is(err, basecamp.ErrBucketMismatch):
 		return "bucket_mismatch", true
+	}
+	switch err.(type) {
+	case *basecamp.FilingRefusedError:
+		return "filing_refused", true
+	case *basecamp.FilingMayHaveStartedError:
+		return "filing_may_have_started", true
+	case *basecamp.FilingFailedError:
+		return "filing_failed", true
+	case *basecamp.FilingUnsettledError:
+		return "filing_unsettled", true
 	}
 	return "", false
 }

@@ -1,0 +1,264 @@
+[
+  {
+    "name": "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes",
+    "description": "The copy is started with one POST and never resent; the filing is then read with GetFiling until Basecamp reports it completed, and the completed filing, naming the copy as destination_recording, is the result.",
+    "operation": "RecordingsCopyAndWait",
+    "method": "POST",
+    "path": "/recordings/456/copies.json",
+    "pathParams": {
+      "recordingId": 456
+    },
+    "requestBody": {
+      "filing_destination_id": 789
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 4,
+          "status": "pending",
+          "type": "Copy",
+          "source_recording_id": 456,
+          "url": "https://3.basecampapi.com/999/filings/4.json"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 4,
+          "status": "processing",
+          "type": "Copy",
+          "source_recording_id": 456,
+          "url": "https://3.basecampapi.com/999/filings/4.json"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 4,
+          "status": "completed",
+          "type": "Copy",
+          "source_recording_id": 456,
+          "url": "https://3.basecampapi.com/999/filings/4.json",
+          "destination_recording": {
+            "id": 1069480270,
+            "type": "Message",
+            "url": "https://3.basecampapi.com/999/buckets/2085958505/messages/1069480270.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958505/messages/1069480270"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 3
+      },
+      {
+        "type": "requestMethod",
+        "index": 0,
+        "expected": "POST"
+      },
+      {
+        "type": "requestPath",
+        "index": 0,
+        "expected": "/999/recordings/456/copies.json"
+      },
+      {
+        "type": "requestBody",
+        "index": 0,
+        "expected": {
+          "filing_destination_id": 789
+        }
+      },
+      {
+        "type": "requestMethod",
+        "index": 1,
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "index": 1,
+        "expected": "/999/filings/4"
+      },
+      {
+        "type": "requestPath",
+        "index": 2,
+        "expected": "/999/filings/4"
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "completed"
+      },
+      {
+        "type": "responseBody",
+        "path": "destination_recording.id",
+        "expected": 1069480270
+      }
+    ],
+    "tags": [
+      "filing-wait"
+    ]
+  },
+  {
+    "name": "RecordingsMoveAndWait reports a filing Basecamp failed",
+    "description": "A filing whose status turns failed ends the wait with the composite's own failed identity, distinct from a refused start and from a wait that ran out.",
+    "operation": "RecordingsMoveAndWait",
+    "method": "POST",
+    "path": "/recordings/456/moves.json",
+    "pathParams": {
+      "recordingId": 456
+    },
+    "requestBody": {
+      "filing_destination_id": 789
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 4,
+          "status": "pending",
+          "type": "Move",
+          "source_recording_id": 456,
+          "url": "https://3.basecampapi.com/999/filings/4.json"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 4,
+          "status": "failed",
+          "type": "Move",
+          "source_recording_id": 456,
+          "url": "https://3.basecampapi.com/999/filings/4.json"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestPath",
+        "index": 1,
+        "expected": "/999/filings/4"
+      },
+      {
+        "type": "errorType",
+        "expected": "filing_failed"
+      }
+    ],
+    "tags": [
+      "filing-wait",
+      "error"
+    ]
+  },
+  {
+    "name": "RecordingsMoveAndWait polls nothing when Basecamp refuses the move",
+    "description": "A 4xx answer to the start means nothing was filed: the composite reports it as refused, which is safe to try again, and polls nothing.",
+    "operation": "RecordingsMoveAndWait",
+    "method": "POST",
+    "path": "/recordings/456/moves.json",
+    "pathParams": {
+      "recordingId": 456
+    },
+    "requestBody": {
+      "filing_destination_id": 789
+    },
+    "mockResponses": [
+      {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "status": 422,
+          "error": "Unprocessable Entity"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "errorType",
+        "expected": "filing_refused"
+      }
+    ],
+    "tags": [
+      "filing-wait",
+      "error"
+    ]
+  },
+  {
+    "name": "RecordingsCopyAndWait never resends a copy whose start answered 503",
+    "description": "Each copy request makes another copy, and a 5xx can follow a copy Basecamp already began, so the start is sent once and the error says the copy may have started rather than offering a retry.",
+    "operation": "RecordingsCopyAndWait",
+    "method": "POST",
+    "path": "/recordings/456/copies.json",
+    "pathParams": {
+      "recordingId": 456
+    },
+    "requestBody": {
+      "filing_destination_id": 789
+    },
+    "mockResponses": [
+      {
+        "status": 503,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "status": 503,
+          "error": "Service Unavailable"
+        }
+      },
+      {
+        "status": 503,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "status": 503,
+          "error": "Service Unavailable"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "errorType",
+        "expected": "filing_may_have_started"
+      }
+    ],
+    "tags": [
+      "filing-wait",
+      "error"
+    ]
+  }
+]

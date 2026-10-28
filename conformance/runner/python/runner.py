@@ -1850,11 +1850,17 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
 
 
 class ConformanceRunner:
-    # Empty, and it stays empty. Every case in every fixture runs here; a
-    # skip added back needs a matching entry in spec/zero-skip-roster.yml or
+    # Only the Go-first filing waits (SPEC Appendix F, Filing Waits), which a
+    # port deletes. Every other case in every fixture runs here; a skip needs a
+    # matching entry in spec/zero-skip-roster.yml or
     # `make check-fixture-execution` fails (SPEC section 19).
-    SKIPS: set[str] = set()
-    SKIP_REASONS: dict[str, str] = {}
+    SKIP_REASONS: dict[str, str] = {
+        "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes": "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+        "RecordingsMoveAndWait reports a filing Basecamp failed": "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+        "RecordingsMoveAndWait polls nothing when Basecamp refuses the move": "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+        "RecordingsCopyAndWait never resends a copy whose start answered 503": "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+    }
+    SKIPS: set[str] = set(SKIP_REASONS)
 
     def __init__(self, tests_dir: str):
         self._tests_dir = Path(tests_dir)

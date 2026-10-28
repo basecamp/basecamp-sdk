@@ -55,7 +55,7 @@
 //   - [AccountClient.Messages] - Message board posts
 //   - [AccountClient.MessageBoards] - Message boards
 //   - [AccountClient.Comments] - Comments on any recording
-//   - [AccountClient.Recordings] - Recording-generic operations, including [RecordingsService.Summarize]
+//   - [AccountClient.Recordings] - Recording-generic operations, including [RecordingsService.Summarize] and [RecordingsService.CopyAndWait]
 //   - [AccountClient.People] - User and people management
 //   - [AccountClient.Campfires] - Chat rooms
 //   - [AccountClient.Schedules] - Calendar schedules

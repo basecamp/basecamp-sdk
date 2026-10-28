@@ -110,6 +110,22 @@ const TS_SDK_SKIPS = new Map<string, string>([
     "Large integer IDs preserved without precision loss",
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
   ],
+  [
+    "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes",
+    "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+  ],
+  [
+    "RecordingsMoveAndWait reports a filing Basecamp failed",
+    "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+  ],
+  [
+    "RecordingsMoveAndWait polls nothing when Basecamp refuses the move",
+    "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+  ],
+  [
+    "RecordingsCopyAndWait never resends a copy whose start answered 503",
+    "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+  ],
 ]);
 
 /**

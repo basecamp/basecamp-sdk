@@ -1329,6 +1329,10 @@ RUBY_SKIPS = Set.new([
   "PrioritizeAssignment POST retries when marked idempotent",
   "DeprioritizeAssignment DELETE retries when marked idempotent",
   "Network error on an idempotent POST is retried then succeeds",
+  "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes",
+  "RecordingsMoveAndWait reports a filing Basecamp failed",
+  "RecordingsMoveAndWait polls nothing when Basecamp refuses the move",
+  "RecordingsCopyAndWait never resends a copy whose start answered 503",
 ].freeze)
 
 RUBY_SKIP_REASONS = {
@@ -1351,6 +1355,10 @@ RUBY_SKIP_REASONS = {
   "PrioritizeAssignment POST retries when marked idempotent" => "Ruby SDK only retries GET",
   "DeprioritizeAssignment DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
   "Network error on an idempotent POST is retried then succeeds" => "Ruby SDK only retries GET network errors; mutations go through single_request with no retry",
+  "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" => "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+  "RecordingsMoveAndWait reports a filing Basecamp failed" => "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+  "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" => "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
+  "RecordingsCopyAndWait never resends a copy whose start answered 503" => "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
 }.freeze
 
 # Single test case
