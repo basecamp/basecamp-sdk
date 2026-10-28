@@ -83,20 +83,16 @@ export type FilingErrorKind =
 
 /**
  * A move or copy that did not complete. `kind` says how far it got; match on
- * it or on the subclass. Only `FilingRefusedError` is safe to try again.
+ * it or on the subclass. Only `FilingRefusedError` is safe to try again. Like
+ * Go's, these are not `BasecampError`s: the failure that caused one is its
+ * `cause`, so a retryable error inside one that may have filed cannot read as
+ * permission to send the start again.
  */
-export class FilingError extends BasecampError {
+export class FilingError extends Error {
   readonly kind: FilingErrorKind;
 
-  // Only a refusal takes its cause's code and retryability. The others report
-  // api_error, not retryable, so a 404 from a poll or a 503 on a start that
-  // may have filed cannot read as a refusal to try again.
   constructor(kind: FilingErrorKind, message: string, cause?: unknown) {
-    const refusal = kind === "filing_refused" && cause instanceof BasecampError ? cause : undefined;
-    super(refusal?.code ?? "api_error", message, {
-      retryable: refusal?.retryable ?? false,
-      ...(cause instanceof Error ? { cause } : {}),
-    });
+    super(message, cause === undefined ? undefined : { cause });
     this.name = "FilingError";
     this.kind = kind;
   }
@@ -104,6 +100,8 @@ export class FilingError extends BasecampError {
 
 /** Basecamp refused to start the move or copy (a 4xx): nothing was filed. */
 export class FilingRefusedError extends FilingError {
+  declare readonly cause: BasecampError;
+
   constructor(cause: BasecampError) {
     super("filing_refused", `filing refused: ${cause.message}`, cause);
     this.name = "FilingRefusedError";
@@ -134,8 +132,8 @@ export class FilingFailedError extends FilingError {
 
 /**
  * Basecamp started the move or copy and had not finished when the wait ended:
- * the timeout, or a GetFiling that failed. `filing` is its last known state;
- * poll `getFiling(filing.id)` rather than starting it again.
+ * the timeout, or a GetFiling that failed (its `cause`). `filing` is its last
+ * known state; poll `getFiling(filing.id)` rather than starting it again.
  */
 export class FilingUnsettledError extends FilingError {
   readonly filing: Filing;

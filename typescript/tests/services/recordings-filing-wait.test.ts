@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
+import { BasecampError } from "../../src/errors.js";
 import {
   FilingUnsettledError,
   filingContainerFor,
@@ -36,7 +37,7 @@ describe("RecordingsService.copyAndWait", () => {
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(FilingUnsettledError);
     expect((err as FilingUnsettledError).filing).toMatchObject({ id: 4, status: "processing" });
-    expect((err as FilingUnsettledError).retryable).toBe(false);
+    expect(err).not.toBeInstanceOf(BasecampError);
     expect(starts).toBe(1);
   });
 
@@ -54,7 +55,7 @@ describe("RecordingsService.copyAndWait", () => {
       .copyAndWait(3001, { filingDestinationId: 789 })
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(FilingUnsettledError);
-    expect((err as FilingUnsettledError).code).toBe("api_error");
+    expect(((err as FilingUnsettledError).cause as BasecampError).httpStatus).toBe(404);
   });
 });
 

@@ -124,22 +124,14 @@ runners:
       - case: "Bracketed IPv6 loopback origin stays on the mocked origin"
         reason: "same as above."
 
-  # Python's `SKIPS` holds only the Go-first filing waits: the recording
-  # summary composite is ported here, so its cases run. The `link-header` fixture RUNS too — only its `requestCount`
+  # Python's `SKIPS` is empty: the Go-first composites are ported here, so
+  # their cases run. The `link-header` fixture RUNS too — only its `requestCount`
   # assertion is suppressed — so it is not a skip and must not be rostered as
   # one.
   python:
     source: "`conformance/runner/python/runner.py` `SKIPS`"
     note: "the `link-header` fixture above runs; only its `requestCount` assertion is suppressed"
-    skips:
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
+    skips: []
 
   ruby:
     source: "`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`"

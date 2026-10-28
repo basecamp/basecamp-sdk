@@ -3281,11 +3281,7 @@ manifests rather than being checked on its own.
 - "Mixed-case host and explicit default port stay on the mocked origin" — Go runner dials `configOverrides.baseUrl` directly; its `httptest` mock owns its origin, so origin-interception normalization does not apply.
 - "Bracketed IPv6 loopback origin stays on the mocked origin" — same as above.
 
-**Python** (`conformance/runner/python/runner.py` `SKIPS`) — the `link-header` fixture above runs; only its `requestCount` assertion is suppressed:
-- "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait reports a filing Basecamp failed" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
+**Python** (`conformance/runner/python/runner.py` `SKIPS`) — none; the `link-header` fixture above runs; only its `requestCount` assertion is suppressed.
 
 **Ruby** (`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`):
 - "PUT operation is naturally idempotent" — GET-only retry (waiver 2B.3).
