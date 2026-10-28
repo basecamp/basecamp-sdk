@@ -15,6 +15,7 @@ import {
   BasecampError,
   PeopleConfirmationRequiredError,
   RecordingSummaryError,
+  FilingError,
 } from "@37signals/basecamp";
 import type {
   BasecampClient,
@@ -110,22 +111,6 @@ const TS_SDK_SKIPS = new Map<string, string>([
     "Large integer IDs preserved without precision loss",
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
   ],
-  [
-    "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes",
-    "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-  ],
-  [
-    "RecordingsMoveAndWait reports a filing Basecamp failed",
-    "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-  ],
-  [
-    "RecordingsMoveAndWait polls nothing when Basecamp refuses the move",
-    "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-  ],
-  [
-    "RecordingsCopyAndWait never resends a copy whose start answered 503",
-    "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-  ],
 ]);
 
 /**
@@ -171,7 +156,8 @@ function isNetworkRejection(err: unknown): boolean {
  * `api_error`) for every caller that only knows about that.
  */
 function semanticErrorType(err: unknown): string | undefined {
-  return err instanceof RecordingSummaryError ? err.kind : undefined;
+  if (err instanceof RecordingSummaryError || err instanceof FilingError) return err.kind;
+  return undefined;
 }
 
 /**
@@ -1547,6 +1533,20 @@ async function executeOperation(
         };
         return { result: await client.recordings.summarize(ref) };
       }
+
+      case "RecordingsMoveAndWait":
+        return {
+          result: await client.recordings.moveAndWait(Number(params.recordingId), {
+            filingDestinationId: Number(body.filing_destination_id),
+          }),
+        };
+
+      case "RecordingsCopyAndWait":
+        return {
+          result: await client.recordings.copyAndWait(Number(params.recordingId), {
+            filingDestinationId: Number(body.filing_destination_id),
+          }),
+        };
 
       case "CommentsCreateWithMentions": {
         const mentions = Array.isArray(body.mentions)

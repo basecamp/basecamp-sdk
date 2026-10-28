@@ -196,14 +196,6 @@ runners:
     skips:
       - case: "Large integer IDs preserved without precision loss"
         reason: "`Number` is 53-bit (waiver 1B.6)."
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
 
   # No section-level classification: the kinds of entry below differ in status
   # and must not share a label. The `link-header` case is architectural and says

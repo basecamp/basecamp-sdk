@@ -505,6 +505,19 @@ export {
   type RecordingReadSources,
 } from "./services/recordings-extensions.js";
 export {
+  FilingError,
+  FilingRefusedError,
+  FilingMayHaveStartedError,
+  FilingFailedError,
+  FilingUnsettledError,
+  filingContainerFor,
+  filingContainerTakesFolders,
+  type Filing,
+  type FilingContainer,
+  type FilingErrorKind,
+  type FilingWaitOptions,
+} from "./services/filing-wait.js";
+export {
   type Recording,
   type ListRecordingOptions,
   type MoveToVaultRecordingRequest,

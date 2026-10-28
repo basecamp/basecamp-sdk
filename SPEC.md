@@ -3314,10 +3314,6 @@ manifests rather than being checked on its own.
 
 **TypeScript** (`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`):
 - "Large integer IDs preserved without precision loss" — `Number` is 53-bit (waiver 1B.6).
-- "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait reports a filing Basecamp failed" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
 
 **Kotlin** (`kotlin/conformance/.../Main.kt` `KOTLIN_SKIPS`, plus the `link-header` entry below, which comes from the tag branch rather than from the constant):
 - "List operation returns first page with Link header" — architectural: the SDK auto-paginates, and its status model reports the last consumed response, so a one-response queue yields "no response" (see the tag-branch discussion above).
