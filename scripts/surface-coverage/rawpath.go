@@ -45,10 +45,13 @@ func pathPattern(e ast.Expr, info *types.Info) (string, bool) {
 				return "", false
 			}
 			format := constant.StringVal(tv.Value)
-			// Explicit argument indexes and * widths reorder the arguments;
-			// such a path is left unread rather than guessed at.
-			if strings.ContainsAny(format, "[*") {
-				return "", false
+			// Explicit argument indexes and * widths inside a verb reorder the
+			// arguments; such a path is left unread rather than guessed at. A
+			// [ or * in the literal text, as in type_names[]=, is just text.
+			for _, v := range verbRE.FindAllString(format, -1) {
+				if strings.ContainsAny(v, "[*") {
+					return "", false
+				}
 			}
 			return expandFormat(format, x.Args[1:], info), true
 		}

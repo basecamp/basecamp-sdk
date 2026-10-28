@@ -79,7 +79,7 @@ func TestWorkspaceSDKIsNotCoverage(t *testing.T) {
 // TestUnloadablePatternFails: a mistyped -pkg pattern fails the run instead
 // of leaving a report that covers only the patterns that loaded.
 func TestUnloadablePatternFails(t *testing.T) {
-	if _, err := loadRepo("testdata/downstream", []string{"./cmd/app", "./cmd/nope"}); err == nil {
+	if _, err := loadRepo(fixture("downstream"), []string{"./cmd/app", "./cmd/nope"}); err == nil {
 		t.Error("loadRepo with a missing package pattern succeeded")
 	}
 	repo, _ := copyFixture(t)

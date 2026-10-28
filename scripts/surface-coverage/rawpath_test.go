@@ -25,6 +25,7 @@ var (
 	spfMix = fmt.Sprintf("/x/%d/%s/%d", id, "y", 7)
 	spfIdx = fmt.Sprintf("/todos/%[1]s.json", "open")
 	spfStr = fmt.Sprintf("/x/%*d", 3, id)
+	spfLit = fmt.Sprintf("/search.json?type_names[]=%s&q=*", dyn)
 	bare   = dyn
 	both   = dyn + dyn
 )`
@@ -54,6 +55,8 @@ var (
 		// so the call is listed rather than credited to /todos/{todoId}.
 		"spfIdx": {"", false},
 		"spfStr": {"", false},
+		// [ and * in the literal text are text, not indexing.
+		"spfLit": {"/search.json?type_names[]=" + wild + "&q=*", true},
 		"bare":   {"", false},
 		"both":   {"", false},
 	}

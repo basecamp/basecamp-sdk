@@ -1,3 +1,7 @@
+// This fixture is copied to pkg/generated in a temp tree by the tests
+// (testmain_test.go), so no hand-written file sits under a generated/
+// directory in the repository.
+
 // Package generated stands in for the oapi-codegen client: one entry point
 // per operation, spelled from its operationId.
 package generated

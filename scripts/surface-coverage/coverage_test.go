@@ -23,10 +23,10 @@ var (
 func fixtureSDKs(t *testing.T) (*SDK, *SDK) {
 	t.Helper()
 	fixtureOnce.Do(func() {
-		if fixtureV1, fixtureErr = loadSDK("testdata/sdk-v1", "v1.0.0"); fixtureErr != nil {
+		if fixtureV1, fixtureErr = loadSDK(fixture("sdk-v1"), "v1.0.0"); fixtureErr != nil {
 			return
 		}
-		fixtureV2, fixtureErr = loadSDK("testdata/sdk-v2", "v2.0.0")
+		fixtureV2, fixtureErr = loadSDK(fixture("sdk-v2"), "v2.0.0")
 	})
 	if fixtureErr != nil {
 		t.Fatal(fixtureErr)
@@ -39,7 +39,7 @@ func fixtureRepo(t *testing.T, patterns ...string) *Repo {
 	if len(patterns) == 0 {
 		patterns = []string{"./cmd/app"}
 	}
-	r, err := loadRepo("testdata/downstream", patterns)
+	r, err := loadRepo(fixture("downstream"), patterns)
 	if err != nil {
 		t.Fatal(err)
 	}

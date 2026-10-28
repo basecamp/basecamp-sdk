@@ -83,8 +83,8 @@ func copyFixture(t *testing.T) (repo, sdkDir string) {
 	root := t.TempDir()
 	sdkDir = filepath.Join(root, "sdk-v1")
 	repo = filepath.Join(root, "downstream")
-	copyTree(t, "testdata/sdk-v1", sdkDir)
-	copyTree(t, "testdata/downstream", repo)
+	copyTree(t, fixture("sdk-v1"), sdkDir)
+	copyTree(t, fixture("downstream"), repo)
 	gomod := filepath.Join(repo, "go.mod")
 	data, _ := os.ReadFile(gomod)
 	os.WriteFile(gomod, []byte(strings.Replace(string(data), "../sdk-v1", sdkDir, 1)), 0o644)
@@ -93,22 +93,7 @@ func copyFixture(t *testing.T) (repo, sdkDir string) {
 
 func copyTree(t *testing.T, src, dst string) {
 	t.Helper()
-	err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(src, path)
-		target := filepath.Join(dst, rel)
-		if info.IsDir() {
-			return os.MkdirAll(target, 0o755)
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(target, data, 0o644)
-	})
-	if err != nil {
+	if err := copyDir(src, dst); err != nil {
 		t.Fatal(err)
 	}
 }
