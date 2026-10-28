@@ -94,6 +94,11 @@
         "expected": "/999/filings/4"
       },
       {
+        "type": "requestMethod",
+        "index": 2,
+        "expected": "GET"
+      },
+      {
         "type": "requestPath",
         "index": 2,
         "expected": "/999/filings/4"
@@ -157,6 +162,16 @@
       {
         "type": "requestCount",
         "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "index": 0,
+        "expected": "POST"
+      },
+      {
+        "type": "requestMethod",
+        "index": 1,
+        "expected": "GET"
       },
       {
         "type": "requestPath",
