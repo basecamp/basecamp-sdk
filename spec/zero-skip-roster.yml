@@ -174,14 +174,6 @@ runners:
         reason: "GET-only retry (waiver 2B.3)."
       - case: "Network error on an idempotent POST is retried then succeeds"
         reason: "GET-only network retry (waiver 2B.3)."
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
 
   typescript:
     source: "`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`"
