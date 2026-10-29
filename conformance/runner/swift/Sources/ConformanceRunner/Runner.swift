@@ -20,14 +20,14 @@ private let operationsHonoringPage: Set<String> = ["ListProjects"]
 
 /// Temporary capability skips, keyed by exact test name.
 ///
-/// It holds only the `recordings_filing_wait.json` cases, of the Go-first
-/// filing waits (SPEC Appendix F, Filing Waits), which a Swift port deletes.
-/// Every other case in `conformance/tests` that this runner can reach, it runs.
-/// It held the `recording_summary.json` cases while that Go-first composite
-/// (SPEC Appendix F, Recording Summaries and Mention Helpers) had no Swift port;
-/// the port landed and they went with it. Swift is three-gate (status, network
-/// and idempotent-POST retry) and since #563 retries the authenticated download
-/// hop too, so no other fixture asks for a capability the SDK lacks.
+/// EMPTY, and that is the whole claim: every case in `conformance/tests` that
+/// this runner can reach, it runs. It held the `recording_summary.json` cases —
+/// every case in that fixture — while the Go-first composite (SPEC Appendix F,
+/// Recording Summaries and Mention Helpers) had no Swift port; the port landed,
+/// and the roster's own rule is that a port deletes its entries, so they are
+/// gone rather than reworded. Swift is three-gate (status, network and
+/// idempotent-POST retry) and since #563 retries the authenticated download hop
+/// too, so no fixture asks for a capability the SDK lacks.
 ///
 /// The one standing exclusion is architectural rather than a gap — the
 /// `link-header` tag branch in the run loop, which no name-keyed entry can
@@ -36,20 +36,13 @@ private let operationsHonoringPage: Set<String> = ["ListProjects"]
 /// Kept as a declared constant rather than deleted with its entries: it is the
 /// seam `SWIFT_CONFORMANCE_NO_SKIPS` and `spec/zero-skip-roster.yml` both name,
 /// and the next genuine capability gap is rostered by adding a line to it.
-private let temporarySkips: [String: String] = [
-    "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes":
-        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-    "RecordingsMoveAndWait reports a filing Basecamp failed":
-        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-    "RecordingsMoveAndWait polls nothing when Basecamp refuses the move":
-        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-    "RecordingsCopyAndWait never resends a copy whose start answered 503":
-        "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-]
+private let temporarySkips: [String: String] = [:]
 
 /// The roster the run loop consults. `SWIFT_CONFORMANCE_NO_SKIPS=1` empties it,
 /// so a temporary skip can be proven genuine before it is added and proven ready
-/// to flip once the capability lands.
+/// to flip once the capability lands. With the roster already empty the variable
+/// changes nothing today; it stays wired because the next gap is rostered by
+/// adding a line above, not by re-adding the mechanism.
 ///
 /// The value is compared exactly: an inherited empty or `=0` variable must not
 /// quietly change what the suite covers.
@@ -372,6 +365,14 @@ struct Runner {
                 // assert `forbidden` rather than a composite identity.
                 semanticError = SemanticError(
                     type: semanticErrorType(error), message: error.message, code: error.canonicalCode)
+                dispatchFailed = true
+            } catch let error as FilingError {
+                // The filing waits' own outcomes (Appendix F, Filing Waits).
+                // Only a refusal reports its cause's code; the rest are
+                // api_error, as the SDK documents.
+                var code = "api_error"
+                if case .refused(let cause) = error { code = conformanceCode(cause) }
+                semanticError = SemanticError(type: error.kind, message: error.message, code: code)
                 dispatchFailed = true
             } catch let error as RunnerError {
                 // A fixture the dispatch table cannot honor as written: an

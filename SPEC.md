@@ -3031,7 +3031,7 @@ Current composites:
 - **Documents** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Documents)". The raw path is `replace`, and it needs no override: the wire operation is `ReplaceDocument`, so the ordinary naming algorithm produces it.
 - **Schedule entries** `updateEntry` (merge-safe) and `editEntry` (read-modify-write) — see §5 "Merge-Safe Write Surface (Schedule Entries)". The raw path is `replaceEntry`. Alone among the composites it is **carve-out-aware**: it resends the five readable-and-writable fields from the read-back but leaves `participant_ids`, `url` and `highlighted` off the wire unless the caller addressed them, because BC3 preserves those server-side and resending them is redundant at best and wrong if the read raced a change.
 - **Cards** `update` (merge-safe) — see §5 "Merge-Safe Write Surface (Cards)". The raw path is `updateVerbatim`.
-- **Recordings** `MoveAndWait` and `CopyAndWait` (Go only, so far) — start a move or copy once and poll `GetFiling` until it settles; see Appendix F "Filing Waits".
+- **Recordings** move-and-wait and copy-and-wait — start a move or copy once and poll `GetFiling` until it settles; see Appendix F "Filing Waits".
 - **Uploads** `download` — composes the generated `get` (GetUpload) with the client-level `downloadURL` primitive (§14), erroring when the upload carries no `download_url`; the result's filename prefers the upload metadata's `filename`.
 
 **Body compaction is not relaxed for composites.** A composite never sends `{"field": null}` to express "clear" (§18 rule). Where a server accepts a blank-cast — as BC3 does for `due_on`, which it casts to nil and which a server test pins — the **empty string** is the clear encoding, and it is the only one all seven SDKs can express identically: six strip nulls structurally before the wire (Python `_compact`, Ruby `compact_params`, Kotlin `?.let`, TypeScript's `JSON.stringify` dropping `undefined`, Swift `encodeIfPresent`, Rust `skip_serializing_if = "Option::is_none"`), but none of them strip `""`. The spec marks each request member that takes this clear on a partial update with `@basecampClearable` (`x-basecamp-clearable` in OpenAPI): today the `due_on` of `UpdateCard`, `UpdateCardStep` and `UpdateSubtask`. A generator whose type for such a member cannot spell `""` gives it a type that can; Rust's is `DateChange`, so its generated requests send the clear themselves and need no hand-marshaled body.
@@ -3146,7 +3146,7 @@ the category slug is the filename (basename, `_` written as `-`).
 | pings | `pings.json` | §3 Client Architecture (account path construction), §6 Error Taxonomy, §10 Type Fidelity (an optional wire field omitted, not nulled, when unset), §11 Response Semantics |
 | project-constructions | `project_constructions.json` | §3 Client Architecture (account path construction), §10 Type Fidelity (an optional wire field sent when given and omitted, not nulled, when not), §11 Response Semantics |
 | recording-summary | `recording_summary.json` | §18 Hand-Written Composite Methods, Appendix F (Recording Summaries and Mention Helpers — the composite every runner executes; Go was the reference the ports followed) |
-| recordings-filing-wait | `recordings_filing_wait.json` | §18 Hand-Written Composite Methods, Appendix F (Filing Waits — Go only so far; the six other runners skip it by name) |
+| recordings-filing-wait | `recordings_filing_wait.json` | §18 Hand-Written Composite Methods, Appendix F (Filing Waits — the composite every runner executes; Go was the reference the ports followed) |
 | project-logo | `project_logo.json` | §10 Type Fidelity |
 | retry | `retry.json` | §7 Retry |
 | schedule-entries-write | `schedule_entries_write.json` | §5 Merge-Safe Write Surface (Schedule Entries), §18 Hand-Written Composite Methods, §10 Type Fidelity (explicit-empty vs. omitted wire semantics) |
@@ -3282,11 +3282,7 @@ manifests rather than being checked on its own.
 - "Mixed-case host and explicit default port stay on the mocked origin" — Go runner dials `configOverrides.baseUrl` directly; its `httptest` mock owns its origin, so origin-interception normalization does not apply.
 - "Bracketed IPv6 loopback origin stays on the mocked origin" — same as above.
 
-**Python** (`conformance/runner/python/runner.py` `SKIPS`) — the `link-header` fixture above runs; only its `requestCount` assertion is suppressed:
-- "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait reports a filing Basecamp failed" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
+**Python** (`conformance/runner/python/runner.py` `SKIPS`) — none; the `link-header` fixture above runs; only its `requestCount` assertion is suppressed.
 
 **Ruby** (`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`):
 - "PUT operation is naturally idempotent" — GET-only retry (waiver 2B.3).
@@ -3308,39 +3304,19 @@ manifests rather than being checked on its own.
 - "PrioritizeAssignment POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "DeprioritizeAssignment DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "Network error on an idempotent POST is retried then succeeds" — GET-only network retry (waiver 2B.3).
-- "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait reports a filing Basecamp failed" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
 
 **TypeScript** (`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`):
 - "Large integer IDs preserved without precision loss" — `Number` is 53-bit (waiver 1B.6).
-- "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait reports a filing Basecamp failed" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
 
 **Kotlin** (`kotlin/conformance/.../Main.kt` `KOTLIN_SKIPS`, plus the `link-header` entry below, which comes from the tag branch rather than from the constant):
 - "List operation returns first page with Link header" — architectural: the SDK auto-paginates, and its status model reports the last consumed response, so a one-response queue yields "no response" (see the tag-branch discussion above).
 - "RecordingsSummarize refuses a wrong-typed parent id, which is not a person's flexible one" — accepting-direction: `kotlinx.serialization` reads a quoted number into any numeric primitive regardless of `isLenient`, so a plain int64 is not strict here until the generator emits a serializer that makes it so (card 43).
 - "RecordingsSummarize refuses a wrong-typed id on a parent's bucket" — accepting-direction: the same quoted-number read, one member further in.
-- "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait reports a filing Basecamp failed" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
 
-**Swift** (`conformance/runner/swift/.../Runner.swift` — `temporarySkips` holds the Go-first filing waits; the `link-header` entry comes from the tag branch):
+**Swift** (`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is empty since the Go-first composite was ported; the one entry below comes from the `link-header` tag branch):
 - "List operation returns first page with Link header" — architectural, same as Kotlin: auto-pagination plus a last-consumed-response status model.
-- "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait reports a filing Basecamp failed" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
 
-**Rust** (`conformance/runner/rust/src/main.rs` `RUST_SKIPS`) — the `link-header` fixture above runs; only its `requestCount` assertion is suppressed:
-- "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait reports a filing Basecamp failed" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
-- "RecordingsCopyAndWait never resends a copy whose start answered 503" — Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.
+**Rust** (`conformance/runner/rust/src/main.rs` `RUST_SKIPS`) — none; the `link-header` fixture above runs; only its `requestCount` assertion is suppressed.
 
 <!-- @zero-skip-roster:end -->
 
@@ -5720,27 +5696,50 @@ written; a port's unescaper must do the same, or compare the raw attribute.
 ### Filing Waits
 
 Moving or copying a recording into another project, and waiting for Basecamp
-to finish it, is implemented in Go only, first: `RecordingsService.MoveAndWait`
-and `CopyAndWait` (`go/pkg/basecamp/filing_wait.go`). Each starts the filing
-once through MoveRecording or CopyRecording, never resending it (each copy
-request makes another copy), then polls GetFiling with backoff until the
-filing completes or fails, or a caller-bounded wait ends. The outcome is
-typed: a completed filing whose `destination_recording` is the new recording,
-or `FilingRefusedError` (a 4xx answer, or a refusal before the request was
-sent: nothing was filed), `FilingMayHaveStartedError` (a 5xx or a dropped
-connection on the start: it may have been filed), `FilingFailedError`
-(Basecamp reported it failed) or `FilingUnsettledError` (still pending or
-processing when the wait ended, carrying the filing so a caller can poll it).
-`FilingContainerFor` maps a recordable type, and its parent's type, to the
-kind of container a filing names as `filing_destination_id`, by dock name.
+to finish it, is implemented in all seven SDKs, Go first as the reference the
+others ported against (`go/pkg/basecamp/filing_wait.go`). Each SDK's move-and-wait
+and copy-and-wait starts the filing once through MoveRecording or
+CopyRecording, never resending it (each copy request makes another copy), then
+polls GetFiling with backoff (250 ms doubling to 2 s) until the filing
+completes or fails, or a caller-bounded wait ends (a minute by default). The
+outcome is one of four, named alike in every SDK by the fixture vocabulary:
+`filing_refused` (a 4xx answer, or a refusal before the request was sent:
+nothing was filed, so trying again is safe), `filing_may_have_started` (a 5xx
+or a dropped connection on the start: it may have been filed),
+`filing_failed` (Basecamp reported it failed) and `filing_unsettled` (still
+pending or processing when the wait ended, or a GetFiling that failed,
+carrying the filing so a caller can poll it). Only a refusal lends its cause's
+code and retryability: a 404 from a poll or a 503 on a start that may have
+filed must not read as an invitation to start again. Each SDK also carries the
+table from a recordable type, and its parent's type, to the kind of container
+a filing names as `filing_destination_id`, by dock name.
+
 They are composites in §18's sense, held to its rules: every request is a
 generated operation under its own hook identity (1, 3), composition only (2),
 fixture coverage (4) in `conformance/tests/recordings_filing_wait.json`,
-executed by the Go runner, and placement in `go/pkg/basecamp/` (5); rule 6
-does not arise. They shipped in Go first because their consumers are the two
-Go MCP servers and the Go CLI, which must agree on when a copy is safe to
-send again. The six other runners skip the fixture's cases by name, rostered
-in §19, and a port deletes its own entries.
+executed by every runner, and placement in each SDK's hand-written layer (5);
+rule 6 does not arise. The waits are wall-clock bounded and cannot be
+expressed as a static fixture, so the wait-ends case is pinned in each SDK's
+native tests rather than the fixture. In Go the context bounds a GetFiling in
+flight as well; elsewhere the bound is checked between polls, and a poll
+already sent finishes under the client's own request timeout and retry
+policy, so a wait can run past its bound by at most one poll. Cancelling the caller's
+task is cancellation in Python's asyncio and in Kotlin's coroutines, and is
+left as the language delivers it rather than converted into `filing_unsettled`:
+a caller who needs the filing back passes the wait's own timeout, which ends
+in `filing_unsettled` with the filing. Swift's cancellation is an ordinary
+thrown error and Go's is the context the wait already watches, so both report
+it as `filing_unsettled`.
+
+| SDK | Filing waits |
+|-----|--------------|
+| Go | `RecordingsService.MoveAndWait` / `CopyAndWait` with `FilingWaitOptions.Timeout` or the context's deadline; errors `*FilingRefusedError` (unwraps), `*FilingMayHaveStartedError`, `*FilingFailedError`, `*FilingUnsettledError` (neither unwraps); `FilingContainerFor` |
+| TypeScript | `client.recordings.moveAndWait` / `copyAndWait` (`typescript/src/services/filing-wait.ts`, wired through `recordings-extensions.ts`), `{ timeoutMs }`; rejects with a `FilingError` subclass carrying `kind` and `cause`, not a `BasecampError`; `filingContainerFor` |
+| Ruby | `recordings.move_and_wait` / `copy_and_wait` (prepended in `recordings_extensions.rb`, loop in `Basecamp::FilingWait`), `timeout:` in seconds; raises a `Basecamp::FilingError` subclass, outside `Basecamp::Error`, with the cause as `cause`; `Basecamp::FilingWait.container_for` |
+| Python | `recordings.move_and_wait` / `copy_and_wait`, sync and async (`python/src/basecamp/services/filing_wait.py`), `timeout=` in seconds; raises a `FilingError` subclass, outside `BasecampError`, with the cause as `__cause__`; `filing_container_for` |
+| Kotlin | `recordings.moveAndWait` / `copyAndWait` (`services/FilingWait.kt`), `timeout: Duration?`; throws `BasecampException.FilingFailure`, whose `reason` is the vocabulary — a subclass because the hierarchy is sealed, as `RecordingSummaryFailure` is; `FilingContainer.of` |
+| Swift | `recordings.moveAndWait` / `copyAndWait` (`swift/Sources/Basecamp/FilingWait.swift`), `timeout: TimeInterval?`; throws `FilingError` (`refused`, `mayHaveStarted`, `failed`, `unsettled`), not a `BasecampError`; `FilingContainer.of` |
+| Rust | `RecordingsService::move_and_wait` / `copy_and_wait` (`services/filing_wait.rs`), `FilingWaitOptions`; an `Error` carrying a `FilingError`, matched with `FilingError::of`, whose only exposed source is a refusal; `FilingContainer::of` |
 
 ### Retry Strategy (§7)
 

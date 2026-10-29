@@ -22,6 +22,12 @@ import httpx
 import respx
 
 import basecamp
+from basecamp.services.filing_wait import (
+    FilingFailedError,
+    FilingMayHaveStartedError,
+    FilingRefusedError,
+    FilingUnsettledError,
+)
 from basecamp import Client, Config, StaticTokenProvider
 from basecamp.auth import BearerAuth
 from basecamp.errors import (
@@ -1320,6 +1326,16 @@ class OperationMapper:
                     event_type=path_params.get("eventType"),
                     recording_type=path_params.get("recordingType"),
                 )
+            case "RecordingsMoveAndWait":
+                return self._account.recordings.move_and_wait(
+                    recording_id=path_params["recordingId"],
+                    filing_destination_id=body["filing_destination_id"],
+                )
+            case "RecordingsCopyAndWait":
+                return self._account.recordings.copy_and_wait(
+                    recording_id=path_params["recordingId"],
+                    filing_destination_id=body["filing_destination_id"],
+                )
             case "CommentsCreateWithMentions":
                 return self._account.comments.create_with_mentions(
                     recording_id=path_params["recordingId"],
@@ -1608,6 +1624,10 @@ class TestRunner:
                         NoRecordingTypeError: "no_recording_type",
                         UnknownRecordingTypeError: "unknown_recording_type",
                         BucketMismatchError: "bucket_mismatch",
+                        FilingRefusedError: "filing_refused",
+                        FilingMayHaveStartedError: "filing_may_have_started",
+                        FilingFailedError: "filing_failed",
+                        FilingUnsettledError: "filing_unsettled",
                     }
                     # Derived from the enum, not transcribed from it: the
                     # hand-written list had 8 of its 10 members, so a fixture
@@ -1856,17 +1876,11 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
 
 
 class ConformanceRunner:
-    # Only the Go-first filing waits (SPEC Appendix F, Filing Waits), which a
-    # port deletes. Every other case in every fixture runs here; a skip needs a
-    # matching entry in spec/zero-skip-roster.yml or
+    # Empty, and it stays empty. Every case in every fixture runs here; a
+    # skip added back needs a matching entry in spec/zero-skip-roster.yml or
     # `make check-fixture-execution` fails (SPEC section 19).
-    SKIP_REASONS: dict[str, str] = {
-        "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes": "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-        "RecordingsMoveAndWait reports a filing Basecamp failed": "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-        "RecordingsMoveAndWait polls nothing when Basecamp refuses the move": "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-        "RecordingsCopyAndWait never resends a copy whose start answered 503": "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-    }
-    SKIPS: set[str] = set(SKIP_REASONS)
+    SKIPS: set[str] = set()
+    SKIP_REASONS: dict[str, str] = {}
 
     def __init__(self, tests_dir: str):
         self._tests_dir = Path(tests_dir)

@@ -37,6 +37,15 @@ from basecamp.errors import (
 )
 from basecamp.hooks import BasecampHooks, OperationInfo, OperationResult, RequestInfo, RequestResult
 from basecamp.mentions import mention_markup, mentioned_person_ids, person_id_from_sgid, with_mentions
+from basecamp.services.filing_wait import (
+    FilingError,
+    FilingFailedError,
+    FilingMayHaveStartedError,
+    FilingRefusedError,
+    FilingUnsettledError,
+    filing_container_for,
+    filing_container_takes_folders,
+)
 from basecamp.services.recordings import (
     RecordingSummary,
     summarizable_event_types,
@@ -44,6 +53,13 @@ from basecamp.services.recordings import (
 )
 
 __all__ = [
+    "FilingError",
+    "FilingFailedError",
+    "FilingMayHaveStartedError",
+    "FilingRefusedError",
+    "FilingUnsettledError",
+    "filing_container_for",
+    "filing_container_takes_folders",
     "Client",
     "AccountClient",
     "AsyncClient",

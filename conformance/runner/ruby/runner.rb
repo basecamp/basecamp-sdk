@@ -883,6 +883,16 @@ class OperationMapper
         event_type: path_params["eventType"],
         recording_type: path_params["recordingType"]
       )
+    when "RecordingsMoveAndWait"
+      @account.recordings.move_and_wait(
+        recording_id: path_params["recordingId"],
+        filing_destination_id: body["filing_destination_id"]
+      )
+    when "RecordingsCopyAndWait"
+      @account.recordings.copy_and_wait(
+        recording_id: path_params["recordingId"],
+        filing_destination_id: body["filing_destination_id"]
+      )
     when "CommentsCreateWithMentions"
       # "mentions" is the fixture's spelling of the person ids; the SDK calls
       # them person_ids, after the people read that resolves each one.
@@ -1333,10 +1343,6 @@ RUBY_SKIPS = Set.new([
   "PrioritizeAssignment POST retries when marked idempotent",
   "DeprioritizeAssignment DELETE retries when marked idempotent",
   "Network error on an idempotent POST is retried then succeeds",
-  "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes",
-  "RecordingsMoveAndWait reports a filing Basecamp failed",
-  "RecordingsMoveAndWait polls nothing when Basecamp refuses the move",
-  "RecordingsCopyAndWait never resends a copy whose start answered 503",
 ].freeze)
 
 RUBY_SKIP_REASONS = {
@@ -1359,10 +1365,6 @@ RUBY_SKIP_REASONS = {
   "PrioritizeAssignment POST retries when marked idempotent" => "Ruby SDK only retries GET",
   "DeprioritizeAssignment DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
   "Network error on an idempotent POST is retried then succeeds" => "Ruby SDK only retries GET network errors; mutations go through single_request with no retry",
-  "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes" => "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-  "RecordingsMoveAndWait reports a filing Basecamp failed" => "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-  "RecordingsMoveAndWait polls nothing when Basecamp refuses the move" => "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
-  "RecordingsCopyAndWait never resends a copy whose start answered 503" => "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet.",
 }.freeze
 
 # Single test case
@@ -1950,7 +1952,9 @@ class TestRunner
   #
   # nil for every other error, which then classifies by canonical code as before.
   def semantic_error_type(error)
-    error.is_a?(Basecamp::RecordingSummaryError) ? error.kind : nil
+    case error
+    when Basecamp::RecordingSummaryError, Basecamp::FilingError then error.kind
+    end
   end
 
   def dig_path(obj, path)
