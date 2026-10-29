@@ -416,6 +416,7 @@ apply CreateStreamTicket @tags(["EventFeed"])
 // position.json path takes a toolId, not a recordingId — they are dock-tool
 // operations that happen to share the prefix, and they are tagged Dock.
 apply ListRecordings @tags(["Recordings"])
+apply GetRecording @tags(["Recordings"])
 apply SpotlightRecording @tags(["Recordings"])
 apply UnspotlightRecording @tags(["Recordings"])
 apply TrashRecording @tags(["Recordings"])

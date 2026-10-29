@@ -171,6 +171,34 @@ class RecordingsServiceTest < Minitest::Test
     assert_requested stub, times: 1
   end
 
+  def test_get
+    stub_get("/12345/recordings/1069479351", response_body: load_fixture("recordings/get.json"))
+
+    recording = @account.recordings.get(recording_id: 1069479351)
+
+    assert_equal "Message", recording["type"]
+    assert_equal "Message::Board", recording["parent"]["type"]
+    assert_equal 2085958499, recording["bucket"]["id"]
+  end
+
+  def test_get_dock_tool_has_no_parent
+    stub_get("/12345/recordings/1069479338", response_body: load_fixture("recordings/get_tool.json"))
+
+    recording = @account.recordings.get(recording_id: 1069479338)
+
+    assert_equal "Message::Board", recording["type"]
+    assert_nil recording["parent"]
+    assert_equal 2085958499, recording["bucket"]["id"]
+  end
+
+  def test_get_surfaces_not_found
+    stub_request(:get, "https://3.basecampapi.com/12345/recordings/9999").to_return(status: 404)
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.recordings.get(recording_id: 9999)
+    end
+  end
+
   def test_get_filing
     stub_request(:get, "https://3.basecampapi.com/12345/filings/4")
       .to_return(status: 200, body: load_fixture("recordings/filing_completed.json").to_json,

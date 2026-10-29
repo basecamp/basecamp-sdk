@@ -11,6 +11,8 @@ import type { RecordingsService } from "../../src/generated/services/recordings.
 import { BasecampError } from "../../src/errors.js";
 import { ListResult } from "../../src/pagination.js";
 import { createBasecampClient } from "../../src/client.js";
+import recordingFixture from "../../../spec/fixtures/recordings/get.json" with { type: "json" };
+import toolFixture from "../../../spec/fixtures/recordings/get_tool.json" with { type: "json" };
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -280,6 +282,42 @@ describe("RecordingsService", () => {
       expect(attempts).toBe(1);
       expect(error).toBeInstanceOf(BasecampError);
       expect((error as BasecampError).httpStatus).toBe(503);
+    });
+  });
+
+  describe("get", () => {
+    it("should read a recording without knowing its type", async () => {
+      server.use(
+        http.get(`${BASE_URL}/recordings/1069479351`, () => HttpResponse.json(recordingFixture)),
+      );
+
+      const recording = await service.get(1069479351);
+
+      expect(recording.type).toBe("Message");
+      expect(recording.parent).toMatchObject({ id: 1069479338, type: "Message::Board" });
+      expect(recording.bucket).toEqual({ id: 2085958499, name: "The Leto Laptop", type: "Project" });
+    });
+
+    it("should read a dock tool, which has no parent", async () => {
+      server.use(
+        http.get(`${BASE_URL}/recordings/1069479338`, () => HttpResponse.json(toolFixture)),
+      );
+
+      const recording = await service.get(1069479338);
+
+      expect(recording.type).toBe("Message::Board");
+      expect(recording.parent).toBeUndefined();
+      expect(recording.bucket.id).toBe(2085958499);
+    });
+
+    it("should surface a missing recording as not found", async () => {
+      server.use(
+        http.get(`${BASE_URL}/recordings/9999`, () => new HttpResponse(null, { status: 404 })),
+      );
+
+      const error = await service.get(9999).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("not_found");
     });
   });
 

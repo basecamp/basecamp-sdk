@@ -271,6 +271,62 @@ class RecordingsServiceTest {
         client.close()
     }
 
+    // Mirrors spec/fixtures/recordings/get_tool.json: a dock tool has no parent.
+    private val toolJson = """{
+        "id": 100,
+        "status": "active",
+        "visible_to_clients": false,
+        "created_at": "2025-01-01T00:00:00Z",
+        "updated_at": "2025-01-01T00:00:00Z",
+        "title": "Message Board",
+        "inherits_status": true,
+        "type": "Message::Board",
+        "url": "https://3.basecampapi.com/12345/buckets/1/message_boards/100.json",
+        "app_url": "https://3.basecamp.com/12345/buckets/1/message_boards/100",
+        "position": 1,
+        "bucket": {"id": 1, "name": "Project", "type": "Project"},
+        "creator": {"id": 1, "name": "Test User", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z"}
+    }"""
+
+    @Test
+    fun getReadsARecordingWithoutKnowingItsType() = runTest {
+        val client = mockClient { request ->
+            assertEquals(HttpMethod.Get, request.method)
+            assertEquals("/12345/recordings/456", request.url.encodedPath)
+            respond(recordingJson(456, ""), HttpStatusCode.OK, jsonHeaders())
+        }
+
+        val recording = client.forAccount("12345").recordings.get(456)
+
+        assertEquals("Message", recording.type)
+        val parent = assertNotNull(recording.parent)
+        assertEquals(100L, parent.id)
+        assertEquals("Message::Board", parent.type)
+        assertEquals(1L, recording.bucket.id)
+        client.close()
+    }
+
+    @Test
+    fun getReadsADockToolWithoutAParent() = runTest {
+        val client = mockClient { respond(toolJson, HttpStatusCode.OK, jsonHeaders()) }
+
+        val recording = client.forAccount("12345").recordings.get(100)
+
+        assertEquals("Message::Board", recording.type)
+        assertNull(recording.parent)
+        client.close()
+    }
+
+    @Test
+    fun getSurfacesNotFound() = runTest {
+        val client = mockClient { respond("", HttpStatusCode.NotFound) }
+
+        assertFailsWith<BasecampException.NotFound> {
+            client.forAccount("12345").recordings.get(9999)
+        }
+        client.close()
+    }
+
     @Test
     fun getFilingReadsTheCompletedFilingAndItsDestination() = runTest {
         val client = mockClient { request ->

@@ -377,6 +377,7 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     "GetQuestion": (("creator",),),
     "GetQuestionReminders": (("[]", "question", "creator"),),
     "GetQuestionnaire": (("creator",),),
+    "GetRecording": (("creator",),),
     "GetRecordingTimesheet": (
         ("[]", "creator"),
         ("[]", "person"),

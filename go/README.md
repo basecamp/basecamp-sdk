@@ -588,7 +588,7 @@ for both.
 |---------|---------|
 | `Webhooks()` | List, Get, Create, Update, Delete |
 | `Subscriptions()` | List, Subscribe, Unsubscribe, Update |
-| `Recordings()` | Archive, Unarchive, Trash, Summarize, Move, Copy, MoveAndWait, CopyAndWait, GetFiling |
+| `Recordings()` | Get, Archive, Unarchive, Trash, Summarize, Move, Copy, MoveAndWait, CopyAndWait, GetFiling |
 
 ### Client Portal
 
@@ -663,10 +663,10 @@ lines, err := account.Campfires().ListLines(ctx, campfireID, nil)
 An account event feed row or a webhook points at a recording — bucket id,
 recording id, and an event type such as `comment.created` — without carrying
 its content. `Recordings().Summarize` resolves that pointer through the typed
-read the type names (the API has no untyped recording read, so the type is the
-routing key) into a compact projection: type, title, app URL, parent, bucket,
-creator, assignees, the person ids the content mentions, the content itself,
-and `updated_at`.
+read the type names (the pointer carries the type, so it routes on it) into a
+compact projection: type, title, app URL, parent, bucket, creator, assignees,
+the person ids the content mentions, the content itself, and `updated_at`. To
+read a recording when you hold only its id, use `Recordings().Get`.
 
 ```go
 summary, err := account.Recordings().Summarize(ctx, basecamp.RecordingRef{

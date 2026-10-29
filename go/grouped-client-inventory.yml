@@ -115,6 +115,8 @@ grouped:
       methods: ["CopyWithBody", "Copy"]
     - operation: GetFiling
       methods: ["GetFiling"]
+    - operation: GetRecording
+      methods: ["Get"]
     - operation: ListRecordings
       methods: ["List"]
     - operation: MoveRecording

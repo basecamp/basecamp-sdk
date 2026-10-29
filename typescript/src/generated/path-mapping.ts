@@ -134,6 +134,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/{accountId}/questions/{questionId}/pause.json": "PauseQuestion",
   "DELETE:/{accountId}/recordings/{messageId}/pin.json": "UnpinMessage",
   "POST:/{accountId}/recordings/{messageId}/pin.json": "PinMessage",
+  "GET:/{accountId}/recordings/{recordingId}": "GetRecording",
   "DELETE:/{accountId}/recordings/{recordingId}/bookmark.json": "DeleteBookmark",
   "GET:/{accountId}/recordings/{recordingId}/bookmark.json": "GetBookmark",
   "POST:/{accountId}/recordings/{recordingId}/bookmark.json": "CreateBookmark",

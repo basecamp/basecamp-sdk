@@ -989,6 +989,69 @@ async fn recordings_copy_is_sent_once_on_a_503() {
 }
 
 #[tokio::test]
+async fn recordings_get_reads_type_parent_and_bucket() {
+    let server = MockServer::start().await;
+    let body: serde_json::Value =
+        serde_json::from_str(include_str!("../../../spec/fixtures/recordings/get.json")).unwrap();
+    Mock::given(method("GET"))
+        .and(path("/999/recordings/1069479351"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let recording = account(&server)
+        .recordings()
+        .get(1_069_479_351)
+        .await
+        .unwrap();
+    let parent = recording.parent.unwrap();
+    assert_eq!(
+        (
+            recording.r#type.as_str(),
+            parent.id,
+            parent.r#type.as_str(),
+            recording.bucket.id
+        ),
+        ("Message", 1_069_479_338, "Message::Board", 2_085_958_499)
+    );
+}
+
+#[tokio::test]
+async fn recordings_get_reads_a_dock_tool_without_a_parent() {
+    let server = MockServer::start().await;
+    let body: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/fixtures/recordings/get_tool.json"
+    ))
+    .unwrap();
+    Mock::given(method("GET"))
+        .and(path("/999/recordings/1069479338"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let recording = account(&server)
+        .recordings()
+        .get(1_069_479_338)
+        .await
+        .unwrap();
+    assert_eq!(recording.r#type, "Message::Board");
+    assert!(recording.parent.is_none());
+}
+
+#[tokio::test]
+async fn recordings_get_maps_404_to_not_found() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/recordings/9999"))
+        .respond_with(ResponseTemplate::new(404))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let error = account(&server).recordings().get(9999).await.unwrap_err();
+    assert_eq!(error.code(), basecamp_sdk::ErrorCode::NotFound);
+}
+
+#[tokio::test]
 async fn recordings_get_filing_decodes_the_destination() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

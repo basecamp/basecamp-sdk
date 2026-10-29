@@ -3128,6 +3128,9 @@ pub type GetQuestionResponseContent = Question;
 /// `GetQuestionnaireResponseContent`.
 pub type GetQuestionnaireResponseContent = Questionnaire;
 
+/// `GetRecordingResponseContent`.
+pub type GetRecordingResponseContent = Recording;
+
 /// `GetRecordingTimesheetResponseContent`.
 pub type GetRecordingTimesheetResponseContent = Vec<TimesheetEntry>;
 

@@ -62,6 +62,26 @@ open class RecordingsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Get any recording by its id, without knowing its type.
+     * @param recordingId The recording ID
+     */
+    suspend fun get(recordingId: Long): Recording {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "GetRecording",
+            resourceType = "recording",
+            isMutation = false,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        return request(info, {
+            httpGet("/recordings/${recordingId}", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Recording>(body)
+        }
+    }
+
+    /**
      * Start copying a recording into another project; poll GetFiling for the result.
      * @param recordingId The recording ID
      * @param body Request body

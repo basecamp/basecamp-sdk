@@ -476,6 +476,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "GetQuestionnaire": [
     "creator"
   ],
+  "GetRecording": [
+    "creator"
+  ],
   "GetRecordingTimesheet": [
     "[].creator",
     "[].person"

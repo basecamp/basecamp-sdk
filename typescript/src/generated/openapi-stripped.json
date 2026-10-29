@@ -17114,6 +17114,97 @@
         }
       }
     },
+    "/recordings/{recordingId}": {
+      "get": {
+        "description": "Get any recording by its id, without knowing its type.\n\nReturns the recording's own JSON, as its type-specific read would, plus\n`bookmark_url` and `subscription_url`. `type` names the kind of recording,\nso a caller holding only an id can follow up with the type-specific read.\n`parent` names the recording it sits in, by id and type, and `bucket` its\nproject. A dock tool itself (a message board, card table, Docs & Files,\nschedule, and so on) has no `parent`.\n\n404 when the recording does not exist, is deleted, or the caller cannot\nsee it, and for plumbing recordings that have no URL of their own.",
+        "operationId": "GetRecording",
+        "parameters": [
+          {
+            "name": "recordingId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetRecording 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetRecordingResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Recordings"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/recordings/{recordingId}/bookmark.json": {
       "delete": {
         "description": "Remove the current user's bookmark from a recording (returns 204 No Content).\nIdempotent: deleting an absent bookmark also returns 204.",
@@ -32832,6 +32923,9 @@
       },
       "GetQuestionnaireResponseContent": {
         "$ref": "#/components/schemas/Questionnaire"
+      },
+      "GetRecordingResponseContent": {
+        "$ref": "#/components/schemas/Recording"
       },
       "GetRecordingTimesheetResponseContent": {
         "type": "array",

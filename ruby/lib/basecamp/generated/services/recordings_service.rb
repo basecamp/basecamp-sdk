@@ -32,6 +32,15 @@ module Basecamp
         end
       end
 
+      # Get any recording by its id, without knowing its type.
+      # @param recording_id [Integer] recording id ID
+      # @return [Hash] response data
+      def get(recording_id:)
+        with_operation(service: "recordings", operation: "get", is_mutation: false, resource_id: recording_id) do
+          http_get("/recordings/#{recording_id}", operation: "GetRecording").json(operation: "GetRecording")
+        end
+      end
+
       # Start copying a recording into another project; poll GetFiling for the result.
       # @param recording_id [Integer] recording id ID
       # @param filing_destination_id [Integer, nil] The container to copy into, chosen as for MoveRecording's

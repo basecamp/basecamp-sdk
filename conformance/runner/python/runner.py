@@ -868,6 +868,8 @@ class OperationMapper:
                 return self._account.hill_charts.get_version(
                     todoset_id=path_params["todosetId"], version_id=path_params["versionId"]
                 )
+            case "GetRecording":
+                return self._account.recordings.get(recording_id=path_params["recordingId"])
             case "GetEmbed":
                 return self._account.embeds.get(sgid=path_params["sgid"])
             case "GetTemplateLibraryTodolists":

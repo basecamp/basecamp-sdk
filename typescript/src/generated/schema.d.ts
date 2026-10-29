@@ -2734,6 +2734,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recordings/{recordingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get any recording by its id, without knowing its type.
+         *
+         *     Returns the recording's own JSON, as its type-specific read would, plus
+         *     `bookmark_url` and `subscription_url`. `type` names the kind of recording,
+         *     so a caller holding only an id can follow up with the type-specific read.
+         *     `parent` names the recording it sits in, by id and type, and `bucket` its
+         *     project. A dock tool itself (a message board, card table, Docs & Files,
+         *     schedule, and so on) has no `parent`.
+         *
+         *     404 when the recording does not exist, is deleted, or the caller cannot
+         *     see it, and for plumbing recordings that have no URL of their own.
+         */
+        get: operations["GetRecording"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/recordings/{recordingId}/bookmark.json": {
         parameters: {
             query?: never;
@@ -6104,6 +6133,7 @@ export interface components {
         GetQuestionRemindersResponseContent: components["schemas"]["QuestionReminder"][];
         GetQuestionResponseContent: components["schemas"]["Question"];
         GetQuestionnaireResponseContent: components["schemas"]["Questionnaire"];
+        GetRecordingResponseContent: components["schemas"]["Recording"];
         GetRecordingTimesheetResponseContent: components["schemas"]["TimesheetEntry"][];
         GetScheduleEntryOccurrenceResponseContent: components["schemas"]["ScheduleEntry"];
         GetScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
@@ -20695,6 +20725,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetRecording: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetRecording 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetRecordingResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

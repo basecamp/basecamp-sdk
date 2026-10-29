@@ -967,6 +967,10 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		version, err := account.HillCharts().GetVersion(ctx, getInt64Param(tc.PathParams, "todosetId"), getInt64Param(tc.PathParams, "versionId"))
 		return operationResult{err: err, result: version}
 
+	case "GetRecording":
+		recording, err := account.Recordings().Get(ctx, getInt64Param(tc.PathParams, "recordingId"))
+		return operationResult{err: err, result: recording}
+
 	case "GetEmbed":
 		embed, err := account.Embeds().Get(ctx, getStringParam(tc.PathParams, "sgid"))
 		return operationResult{err: err, result: embed}

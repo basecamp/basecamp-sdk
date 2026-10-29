@@ -2973,6 +2973,26 @@ pub static GET_QUESTIONNAIRE: Route = Route {
     metadata: &metadata::GET_QUESTIONNAIRE,
 };
 
+/// `GET /recordings/{recordingId}`.
+pub static GET_RECORDING: Route = Route {
+    id: "GetRecording",
+    service: "Recordings",
+    method: Method::GET,
+    path: "/recordings/{recordingId}",
+    pattern: "/recordings/{recordingId}",
+    resource_type: "recording",
+    params: &[RouteParam {
+        name: "recordingId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::GET_RECORDING,
+};
+
 /// `GET /recordings/{recordingId}/timesheet.json`.
 pub static GET_RECORDING_TIMESHEET: Route = Route {
     id: "GetRecordingTimesheet",
@@ -6240,6 +6260,7 @@ pub static ROUTES: &[&Route] = &[
     &GET_QUESTION,
     &GET_QUESTION_REMINDERS,
     &GET_QUESTIONNAIRE,
+    &GET_RECORDING,
     &GET_RECORDING_TIMESHEET,
     &GET_SCHEDULE,
     &GET_SCHEDULE_ENTRY,

@@ -164,6 +164,7 @@ object Metadata {
         "GetQuestion" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetQuestionReminders" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetQuestionnaire" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "GetRecording" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetRecordingTimesheet" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetSchedule" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetScheduleEntry" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

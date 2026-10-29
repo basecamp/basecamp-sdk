@@ -2098,6 +2098,23 @@
       }
     },
     {
+      "pattern": "/{accountId}/recordings/{recordingId}",
+      "resource": "Recordings",
+      "operations": {
+        "GET": "GetRecording"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/recordings/{recordingId}/bookmark",
       "resource": "Bookmarks",
       "operations": {

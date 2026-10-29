@@ -97,6 +97,26 @@ impl<'a> RecordingsService<'a> {
         self.client.send(operation).await
     }
 
+    /// Get any recording by its id, without knowing its type.
+    ///
+    /// Returns the recording's own JSON, as its type-specific read would, plus
+    /// `bookmark_url` and `subscription_url`. `type` names the kind of recording,
+    /// so a caller holding only an id can follow up with the type-specific read.
+    /// `parent` names the recording it sits in, by id and type, and `bucket` its
+    /// project. A dock tool itself (a message board, card table, Docs & Files,
+    /// schedule, and so on) has no `parent`.
+    ///
+    /// 404 when the recording does not exist, is deleted, or the caller cannot
+    /// see it, and for plumbing recordings that have no URL of their own.
+    ///
+    /// `GET /recordings/{recordingId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn get(&self, recording_id: i64) -> Result<GetRecordingResponseContent, Error> {
+        let operation = self
+            .client
+            .operation(&routes::GET_RECORDING, &[&recording_id]);
+        self.client.send(operation).await
+    }
+
     /// Get the state of a move or copy started by MoveRecording or CopyRecording.
     ///
     /// `status` is `pending` or `processing` while the work runs, `completed` when

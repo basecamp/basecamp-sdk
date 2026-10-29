@@ -302,6 +302,42 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 	return &RecordingListResult{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
+// Get returns any recording by ID, without knowing its type. Type names the
+// kind of recording, Parent the recording it sits in, and Bucket its project.
+// A dock tool, such as a message board or card table, has no Parent. A
+// recording that does not exist, is deleted, or that the caller cannot see is
+// not found, as is a plumbing recording with no URL of its own.
+func (s *RecordingsService) Get(ctx context.Context, recordingID int64) (result *Recording, err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "Get",
+		ResourceType: "recording", IsMutation: false,
+		ResourceID: recordingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetRecordingWithResponse(ctx, s.client.accountID, recordingID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	recording := recordingFromGenerated(*resp.JSON200)
+	return &recording, nil
+}
+
 // Spotlight puts a recording's card on its project or template home page.
 // Spotlighting an already-spotlighted recording is idempotent and returns the recording.
 func (s *RecordingsService) Spotlight(ctx context.Context, recordingID int64) (result *Recording, err error) {
