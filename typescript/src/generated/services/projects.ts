@@ -73,6 +73,35 @@ export interface UpdateProjectWallpaperProjectOptions {
 export class ProjectsService extends BaseService {
 
   /**
+   * Join the current person to an all-access project (returns 201 Created with
+   * @param projectId - The project ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.projects.joinProject(123);
+   * ```
+   */
+  async joinProject(projectId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Projects",
+        operation: "JoinProject",
+        resourceType: "project",
+        isMutation: true,
+        projectId,
+      },
+      () =>
+        this.client.POST("/buckets/{projectId}/admissions.json", {
+          params: {
+            path: { projectId },
+          },
+        })
+    );
+  }
+
+  /**
    * List the projects the current user has most recently visited, most recent visit first.
    * @returns Array of Project
    *

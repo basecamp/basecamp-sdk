@@ -314,6 +314,35 @@ func (s *ProjectsService) RecordVisit(ctx context.Context, id int64) (err error)
 	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
+// Join joins the current person to an all-access project, as opening it in
+// the web app and joining does. The project's admissions policy decides who
+// may join; a project that doesn't exist or whose policy doesn't admit the
+// current person answers 404. When the person already has access, Basecamp
+// answers 302 to the project and changes nothing; the HTTP client follows it,
+// so Join returns nil then too. Not retried: a replay after a lost 201 is that
+// 302, which other SDKs report as an error.
+func (s *ProjectsService) Join(ctx context.Context, id int64) (err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "Join",
+		ResourceType: "project", IsMutation: true,
+		ProjectID: id,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.JoinProjectWithResponse(ctx, s.client.accountID, id)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
 // Get returns a project by ID.
 func (s *ProjectsService) Get(ctx context.Context, id int64) (result *Project, err error) {
 	op := OperationInfo{

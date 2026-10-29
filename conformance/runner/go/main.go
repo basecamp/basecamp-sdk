@@ -927,6 +927,11 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		}
 		return operationResult{result: summarizeProjects(projects)}
 
+	case "JoinProject":
+		projectID := getInt64Param(tc.PathParams, "projectId")
+		err := account.Projects().Join(ctx, projectID)
+		return operationResult{err: err}
+
 	case "RecordProjectVisit":
 		projectID := getInt64Param(tc.PathParams, "projectId")
 		err := account.Projects().RecordVisit(ctx, projectID)

@@ -168,6 +168,10 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # Hill chart progress updates (+2 ops): ListHillChartVersions and
 # GetHillChartVersion are readonly reads, so the union grows and the
 # idempotent set does not.
+# Project join (+0): JoinProject's POST changes nothing when repeated, but a
+# repeat answers 302 instead of 201, which Kotlin and Rust raise as an error,
+# so retrying a join the server already took would turn it into one. Not
+# flagged idempotent, and not readonly.
 expected_idempotent=103
 expected_union=243
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')

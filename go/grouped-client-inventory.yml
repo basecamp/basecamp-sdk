@@ -88,6 +88,8 @@ grouped:
       methods: ["CreateWithBody", "Create"]
     - operation: GetProject
       methods: ["Get"]
+    - operation: JoinProject
+      methods: ["Join"]
     - operation: ListProjects
       methods: ["List"]
     - operation: ListRecentProjects

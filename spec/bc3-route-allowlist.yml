@@ -369,10 +369,6 @@ bc3_routes_not_modeled:
 
   # -- Registered in spec/api-gaps/, absorption pending (repin to b1f18fd182) --
 
-  - method: POST
-    path: /buckets/:id/admissions
-    registry: spec/api-gaps/project-join-admission.md
-
   - method: PUT
     path: /vaults/:id/view_preference
     registry: spec/api-gaps/vault-view-preference.md

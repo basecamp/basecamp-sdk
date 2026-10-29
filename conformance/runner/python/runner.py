@@ -851,6 +851,8 @@ class OperationMapper:
                 return self._account.projects.get(project_id=path_params["projectId"])
             case "ListRecentProjects":
                 return self._account.projects.list_recent_projects()
+            case "JoinProject":
+                return self._account.projects.join_project(project_id=path_params["projectId"])
             case "RecordProjectVisit":
                 return self._account.projects.record_project_visit(project_id=path_params["projectId"])
             case "ListPings":

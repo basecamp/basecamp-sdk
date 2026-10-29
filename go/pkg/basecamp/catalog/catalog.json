@@ -8189,6 +8189,46 @@
       ]
     },
     {
+      "operationId": "JoinProject",
+      "tag": "Projects",
+      "method": "POST",
+      "path": "/{accountId}/buckets/{projectId}/admissions.json",
+      "doc": "Join the current person to an all-access project (returns 201 Created with\nno body). The API counterpart of opening an all-access project in the web\napp and joining it; UpdateProjectAccess, by contrast, grants or revokes\naccess for the people it names.\n\nThe project's `admissions` policy decides who may join: `team` admits the\naccount's team (not clients) and its agents, `employee` the team members and\nagents who belong to the account's own company, and `invite` only account\nowners. An agent's own token joins as a person does, and a personal agent\njoins only a project its boss is already on; a token a person delegated to\nan agent acts as that person.\n\nA project that doesn't exist, or whose policy doesn't admit the current\nperson, answers 404. The policy is checked first, so that includes people\nwho already have access but aren't admitted by it, such as a client. When\nthe policy admits the person and they already have access, nothing changes\nand Basecamp answers `302 Found` to the project instead of 201. The Go,\nTypeScript, Swift, Python and Ruby SDKs return normally then (the first\nthree follow the redirect, the last two take the 3xx as success); Kotlin and\nRust follow no redirect on a POST and raise an API error carrying 302. In\nevery SDK the person is on the project afterwards.\n\nListProjects lists only projects the person already has access to, so the\nid of a project to join comes from elsewhere, such as its web URL. An owner\nwho isn't yet on an `invite` project gets 403 from GetProject, with\n`admission_url` and `admission_method` in the body naming this operation.\nReading a project, or most resources in one, that the person could join\njoins them as this operation does, without subscribing them.\n\nNot retried on 429 or 503: after a join whose 201 was lost, a replay\nanswers the 302, an error in Kotlin and Rust.",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "projectId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "ListAnswers",
       "tag": "Checkins",
       "method": "GET",

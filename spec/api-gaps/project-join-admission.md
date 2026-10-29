@@ -1,9 +1,11 @@
 ---
 gap: project-join-admission
-status: addressed-in-bc3-pr-13623
+status: absorbed-in-sdk
 detected: 2026-10-19
 sdk_demand: medium
 bc3_pr: 13623
+smithy_refs:
+  - "JoinProject (spec/basecamp.smithy:937)"
 bc3_refs:
   introduced_in: "Let API clients join an all-access project (BC3 #13623, c579a5a18c), documented in people.md as Join a project"
   routes:
@@ -48,3 +50,21 @@ that follows it must send `Accept: application/json` or add the extension.
 A spec PR adds the operation and the `403` shape, regenerates, and adds the
 per-SDK tests, including the redirect case. Its allowlist entry in
 `spec/bc3-route-allowlist.yml` is deleted in the same PR.
+
+## Absorbed
+
+`JoinProject` on the Projects service (`Projects().Join` in Go), a bodyless
+`POST` answering an empty `201`, with `404` for a missing project or one whose
+policy doesn't admit the person. It is not flagged idempotent: a repeat answers
+`302`, which the Go, TypeScript, Swift, Python and Ruby SDKs return from
+normally and Kotlin and Rust raise as an API error carrying `302`. Each SDK has
+a test pinning its 302 behavior.
+
+BC3 #13881 later let an agent's own token join as a person does, where it had
+answered `403`; the operation documents the current contract.
+
+The `403` from `GetProject` with `admission_url` and `admission_method` is
+documented on `JoinProject` rather than modeled as an error shape: every SDK
+maps a `403` to its forbidden error by status, none surfaces error-body fields
+beyond the message, and the URL names this operation for a project id the
+caller already holds.

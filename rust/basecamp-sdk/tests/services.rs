@@ -2035,3 +2035,62 @@ error_case!(
     wormholes_delete_maps_a_rejection,
     |account: basecamp_sdk::AccountClient| async move { account.wormholes().delete(100, 101).await }
 );
+
+#[tokio::test]
+async fn projects_join_project_reaches_the_wire() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/999/buckets/42/admissions.json"))
+        .and(header("Authorization", "Bearer test-token"))
+        .and(header("Accept", "application/json"))
+        .and(header(
+            "User-Agent",
+            basecamp_sdk::version::default_user_agent().as_str(),
+        ))
+        .respond_with(ResponseTemplate::new(201))
+        .expect(1)
+        .mount(&server)
+        .await;
+    account(&server).projects().join_project(42).await.unwrap();
+}
+
+// A person who already has access gets a 302 to the project. This SDK follows no
+// redirect, so the join surfaces as an api_error carrying 302: the person is on the
+// project either way.
+#[tokio::test]
+async fn projects_join_project_already_on_project_is_a_302_api_error() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/999/buckets/42/admissions.json"))
+        .respond_with(ResponseTemplate::new(302).insert_header("Location", "/999/projects/42"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let error = account(&server)
+        .projects()
+        .join_project(42)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), basecamp_sdk::ErrorCode::ApiError);
+    assert_eq!(error.http_status(), Some(302));
+}
+
+#[tokio::test]
+async fn projects_join_project_not_found() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/999/buckets/999/admissions.json"))
+        .respond_with(
+            ResponseTemplate::new(404).set_body_json(serde_json::json!({"error": "Not found"})),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    let error = account(&server)
+        .projects()
+        .join_project(999)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), basecamp_sdk::ErrorCode::NotFound);
+    assert_eq!(error.http_status(), Some(404));
+}

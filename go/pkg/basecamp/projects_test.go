@@ -633,6 +633,83 @@ func TestProjectsService_RecordVisit(t *testing.T) {
 	}
 }
 
+func TestProjectsService_Join(t *testing.T) {
+	var gotMethod, gotPath string
+	var gotBody []byte
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		gotBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusCreated)
+	})
+
+	if err := svc.Join(context.Background(), 42); err != nil {
+		t.Fatalf("Join returned error: %v", err)
+	}
+	if gotMethod != "POST" || gotPath != "/99999/buckets/42/admissions.json" {
+		t.Errorf("request = %s %s, want POST /99999/buckets/42/admissions.json", gotMethod, gotPath)
+	}
+	if len(gotBody) != 0 {
+		t.Errorf("request body = %q, want none", gotBody)
+	}
+}
+
+// A person who already has access gets a 302 to the project. Go's HTTP client
+// follows it, so Join reports success, as the join it asked for holds.
+func TestProjectsService_JoinAlreadyOnProject(t *testing.T) {
+	var paths []string
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+		if r.URL.Path == "/99999/buckets/42/admissions.json" {
+			http.Redirect(w, r, "/99999/projects/42", http.StatusFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":42,"name":"All hands"}`))
+	})
+
+	if err := svc.Join(context.Background(), 42); err != nil {
+		t.Fatalf("Join returned error on the already-on-project 302: %v", err)
+	}
+	if len(paths) != 2 || paths[0] != "POST /99999/buckets/42/admissions.json" || paths[1] != "GET /99999/projects/42" {
+		t.Errorf("requests = %v, want the POST then the followed GET", paths)
+	}
+}
+
+// A missing project, or one whose policy doesn't admit the person, is 404.
+func TestProjectsService_JoinNotFound(t *testing.T) {
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"Not found"}`))
+	})
+
+	err := svc.Join(context.Background(), 999)
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error is not *basecamp.Error: %T (%v)", err, err)
+	}
+	if bcErr.HTTPStatus != 404 || bcErr.Code != CodeNotFound {
+		t.Errorf("error = %d %q, want 404 %q", bcErr.HTTPStatus, bcErr.Code, CodeNotFound)
+	}
+}
+
+// Join is not idempotent-marked, so a 503 is not retried: a replay after a
+// lost 201 would answer the 302.
+func TestProjectsService_JoinNotRetried(t *testing.T) {
+	calls := 0
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusServiceUnavailable)
+	})
+
+	if err := svc.Join(context.Background(), 42); err == nil {
+		t.Fatal("Join should have returned an error on 503")
+	}
+	if calls != 1 {
+		t.Errorf("requests = %d, want 1", calls)
+	}
+}
+
 // An inaccessible project answers 404; archived/trashed ones still 204.
 func TestProjectsService_RecordVisitNotFound(t *testing.T) {
 	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {

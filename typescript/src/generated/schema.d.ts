@@ -494,6 +494,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/buckets/{projectId}/admissions.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Join the current person to an all-access project (returns 201 Created with
+         *     no body). The API counterpart of opening an all-access project in the web
+         *     app and joining it; UpdateProjectAccess, by contrast, grants or revokes
+         *     access for the people it names.
+         *
+         *     The project's `admissions` policy decides who may join: `team` admits the
+         *     account's team (not clients) and its agents, `employee` the team members and
+         *     agents who belong to the account's own company, and `invite` only account
+         *     owners. An agent's own token joins as a person does, and a personal agent
+         *     joins only a project its boss is already on; a token a person delegated to
+         *     an agent acts as that person.
+         *
+         *     A project that doesn't exist, or whose policy doesn't admit the current
+         *     person, answers 404. The policy is checked first, so that includes people
+         *     who already have access but aren't admitted by it, such as a client. When
+         *     the policy admits the person and they already have access, nothing changes
+         *     and Basecamp answers `302 Found` to the project instead of 201. The Go,
+         *     TypeScript, Swift, Python and Ruby SDKs return normally then (the first
+         *     three follow the redirect, the last two take the 3xx as success); Kotlin and
+         *     Rust follow no redirect on a POST and raise an API error carrying 302. In
+         *     every SDK the person is on the project afterwards.
+         *
+         *     ListProjects lists only projects the person already has access to, so the
+         *     id of a project to join comes from elsewhere, such as its web URL. An owner
+         *     who isn't yet on an `invite` project gets 403 from GetProject, with
+         *     `admission_url` and `admission_method` in the body naming this operation.
+         *     Reading a project, or most resources in one, that the person could join
+         *     joins them as this operation does, without subscribing them.
+         *
+         *     Not retried on 429 or 503: after a join whose 201 was lost, a replay
+         *     answers the 302, an error in Kotlin and Rust.
+         */
+        post: operations["JoinProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/calendars/{calendarId}": {
         parameters: {
             query?: never;
@@ -11465,6 +11514,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebhookLimitErrorResponseContent"];
+                };
+            };
+        };
+    };
+    JoinProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JoinProject 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
                 };
             };
         };

@@ -164,6 +164,31 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertTrue(req.url!.absoluteString.hasSuffix("/projects/7/recent_visit.json"))
     }
 
+    func testJoinProjectSendsBodylessPost() async throws {
+        let transport = MockTransport(statusCode: 201, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        try await account.projects.joinProject(projectId: 7)
+
+        let req = transport.lastRequest!.request
+        XCTAssertEqual(req.httpMethod, "POST")
+        XCTAssertTrue(req.url!.absoluteString.hasSuffix("/buckets/7/admissions.json"))
+        XCTAssertTrue(req.httpBody?.isEmpty ?? true)
+    }
+
+    // A missing project, or one whose policy doesn't admit the person.
+    func testJoinProjectSurfacesNotFoundError() async throws {
+        let transport = MockTransport(statusCode: 404, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            try await account.projects.joinProject(projectId: 999)
+            XCTFail("Expected not found error")
+        } catch let error as BasecampError {
+            XCTAssertEqual(error.httpStatusCode, 404)
+        }
+    }
+
     // An inaccessible project answers 404; archived/trashed ones still 204.
     func testRecordProjectVisitSurfacesNotFoundError() async throws {
         let transport = MockTransport(statusCode: 404, data: Data())

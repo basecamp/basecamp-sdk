@@ -31,6 +31,21 @@ constructor parameter, with a default: source that names its arguments, or
 passes all of the current ones positionally, still compiles, but the
 constructor and `copy` signatures change at the binary level, so recompile.
 
+### Projects: joining an all-access project
+
+`JoinProject` is a new operation, and additive for every caller: the Projects
+service gains `joinProject` (`Join` in Go, `join_project` in Python, Ruby and
+Rust). It breaks only Go code that implements the generated `ClientInterface`
+/ `ClientWithResponsesInterface` itself: `generated.ClientInterface` now
+requires `JoinProject`, and `generated.ClientWithResponsesInterface` requires
+`JoinProjectWithResponse`. Custom implementations and test doubles must add
+them or regenerate their mocks. Calls through the concrete generated clients
+and `basecamp.ProjectsService` remain source-compatible.
+
+When the person already has access, Basecamp answers `302` instead of `201`.
+The Go, TypeScript, Swift, Python and Ruby SDKs return normally then; Kotlin
+and Rust raise an API error carrying `302`.
+
 # v0.30.0
 
 ### Go: generated client interfaces gain project-logo methods

@@ -142,6 +142,45 @@ class TestProjects:
         assert excinfo.value.http_status == 404
 
     @respx.mock
+    def test_join_project(self):
+        route = respx.post(f"{BASE}/buckets/42/admissions.json").mock(return_value=httpx.Response(201))
+
+        client, account = make_account()
+        assert account.projects.join_project(project_id=42) is None
+        client.close()
+
+        assert route.call_count == 1
+        assert route.calls.last.request.content == b""
+
+    @respx.mock
+    def test_join_project_already_on_project_302_is_success(self):
+        # A person who already has access gets a 302 to the project. The client
+        # follows no redirect and a 3xx is not an error, so the join returns.
+        route = respx.post(f"{BASE}/buckets/42/admissions.json").mock(
+            return_value=httpx.Response(302, headers={"Location": f"{BASE}/projects/42"})
+        )
+        followed = respx.get(f"{BASE}/projects/42").mock(return_value=httpx.Response(200, json={"id": 42}))
+
+        client, account = make_account()
+        assert account.projects.join_project(project_id=42) is None
+        client.close()
+
+        assert route.call_count == 1
+        assert followed.call_count == 0
+
+    @respx.mock
+    def test_join_project_not_found(self):
+        # A missing project, or one whose policy doesn't admit the person.
+        respx.post(f"{BASE}/buckets/999/admissions.json").mock(return_value=httpx.Response(404))
+
+        client, account = make_account()
+        with pytest.raises(NotFoundError) as excinfo:
+            account.projects.join_project(project_id=999)
+        client.close()
+
+        assert excinfo.value.http_status == 404
+
+    @respx.mock
     def test_list_projects_forwards_archived_status_filter(self):
         route = respx.get(f"{BASE}/projects.json", params={"status": "archived"}).mock(
             return_value=httpx.Response(200, json=[])

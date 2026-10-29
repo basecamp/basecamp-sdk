@@ -7131,6 +7131,9 @@ type ClientInterface interface {
 
 	CreateWebhook(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// JoinProject request
+	JoinProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetCalendar request
 	GetCalendar(ctx context.Context, accountId string, calendarId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -8659,6 +8662,22 @@ func (c *Client) CreateWebhookWithBody(ctx context.Context, accountId string, bu
 func (c *Client) CreateWebhook(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateWebhookRequest(c.Server, accountId, bucketId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// JoinProject executes the JoinProject operation.
+
+func (c *Client) JoinProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewJoinProjectRequest(c.Server, accountId, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -14370,6 +14389,47 @@ func NewCreateWebhookRequestWithBody(server string, accountId string, bucketId i
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewJoinProjectRequest generates requests for JoinProject
+func NewJoinProjectRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/admissions.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -28334,6 +28394,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateGoogleDocument":               {Idempotent: false, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
+	"JoinProject":                        {Idempotent: false, HasSensitiveParams: false},
 	"GetCalendar":                        {Idempotent: true, HasSensitiveParams: false},
 	"UpdateCalendar":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
@@ -28637,6 +28698,7 @@ var operationRetryMax = map[string]int{
 	"CreateGoogleDocument":               2,
 	"ListWebhooks":                       3,
 	"CreateWebhook":                      2,
+	"JoinProject":                        3,
 	"GetCalendar":                        3,
 	"UpdateCalendar":                     3,
 	"GetCard":                            3,
@@ -28938,6 +29000,7 @@ var operationRetryOn = map[string][]int{
 	"CreateGoogleDocument":               {429, 503},
 	"ListWebhooks":                       {429, 503},
 	"CreateWebhook":                      {429, 503},
+	"JoinProject":                        {429, 503},
 	"GetCalendar":                        {429, 503},
 	"UpdateCalendar":                     {429, 503},
 	"GetCard":                            {429, 503},
@@ -29885,6 +29948,10 @@ func (s *WebhooksService) Create(ctx context.Context, accountId string, bucketId
 	return s.client.CreateWebhook(ctx, accountId, bucketId, body, reqEditors...)
 }
 
+func (s *ProjectsService) Join(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.JoinProject(ctx, accountId, projectId, reqEditors...)
+}
+
 func (s *CardsService) Get(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.GetCard(ctx, accountId, cardId, reqEditors...)
 }
@@ -30479,6 +30546,9 @@ type ClientWithResponsesInterface interface {
 	CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
 
 	CreateWebhookWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
+
+	// JoinProjectWithResponse request
+	JoinProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*JoinProjectResponse, error)
 
 	// GetCalendarWithResponse request
 	GetCalendarWithResponse(ctx context.Context, accountId string, calendarId int64, reqEditors ...RequestEditorFn) (*GetCalendarResponse, error)
@@ -32660,6 +32730,40 @@ func (r CreateWebhookResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type JoinProjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r JoinProjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r JoinProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r JoinProjectResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -41977,6 +42081,15 @@ func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, acc
 	return ParseCreateWebhookResponse(rsp)
 }
 
+// JoinProjectWithResponse request returning *JoinProjectResponse
+func (c *ClientWithResponses) JoinProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*JoinProjectResponse, error) {
+	rsp, err := c.JoinProject(ctx, accountId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseJoinProjectResponse(rsp)
+}
+
 // GetCalendarWithResponse request returning *GetCalendarResponse
 func (c *ClientWithResponses) GetCalendarWithResponse(ctx context.Context, accountId string, calendarId int64, reqEditors ...RequestEditorFn) (*GetCalendarResponse, error) {
 	rsp, err := c.GetCalendar(ctx, accountId, calendarId, reqEditors...)
@@ -46889,6 +47002,58 @@ func ParseCreateWebhookResponse(rsp *http.Response) (*CreateWebhookResponse, err
 		var dest WebhookLimitErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON507 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseJoinProjectResponse parses an HTTP response from a JoinProjectWithResponse call
+func ParseJoinProjectResponse(rsp *http.Response) (*JoinProjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &JoinProjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
 		}
 
 	}

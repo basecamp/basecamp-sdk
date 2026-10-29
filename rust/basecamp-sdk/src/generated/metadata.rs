@@ -503,6 +503,9 @@ pub static GET_VAULT: OperationMetadata = OperationMetadata { operation: "GetVau
 /// `GetWebhook`.
 #[rustfmt::skip]
 pub static GET_WEBHOOK: OperationMetadata = OperationMetadata { operation: "GetWebhook", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `JoinProject`.
+#[rustfmt::skip]
+pub static JOIN_PROJECT: OperationMetadata = OperationMetadata { operation: "JoinProject", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `ListAnswers`.
 #[rustfmt::skip]
 pub static LIST_ANSWERS: OperationMetadata = OperationMetadata { operation: "ListAnswers", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -1056,6 +1059,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &GET_UPLOAD,
     &GET_VAULT,
     &GET_WEBHOOK,
+    &JOIN_PROJECT,
     &LIST_ANSWERS,
     &LIST_ASSIGNABLE_PEOPLE,
     &LIST_CAMPFIRE_LINES,

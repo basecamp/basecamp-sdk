@@ -109,6 +109,40 @@ class ProjectsServiceTest < Minitest::Test
     assert_equal 404, error.http_status
   end
 
+  def test_join_project
+    stub = stub_request(:post, "https://3.basecampapi.com/12345/buckets/123/admissions.json")
+      .with { |request| request.body.to_s.empty? }
+      .to_return(status: 201, body: "")
+
+    result = @account.projects.join_project(project_id: 123)
+
+    assert_nil result
+    assert_requested stub
+  end
+
+  # A person who already has access gets a 302 to the project. The client
+  # follows no redirect and a 3xx is not an error, so the join returns.
+  def test_join_project_already_on_project_302_is_success
+    join = stub_request(:post, "https://3.basecampapi.com/12345/buckets/123/admissions.json")
+      .to_return(status: 302, body: "", headers: { "Location" => "https://3.basecampapi.com/12345/projects/123" })
+    followed = stub_request(:get, "https://3.basecampapi.com/12345/projects/123").to_return(status: 200, body: "{}")
+
+    assert_nil @account.projects.join_project(project_id: 123)
+    assert_requested join, times: 1
+    assert_not_requested followed
+  end
+
+  def test_join_project_not_found
+    # A missing project, or one whose policy doesn't admit the person.
+    stub_post("/12345/buckets/999/admissions.json", response_body: "", status: 404)
+
+    error = assert_raises(Basecamp::NotFoundError) do
+      @account.projects.join_project(project_id: 999)
+    end
+
+    assert_equal 404, error.http_status
+  end
+
   def test_get_project
     # Generated service: /projects/{id} without .json
     stub_get("/12345/projects/123", response_body: sample_project)

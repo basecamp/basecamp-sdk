@@ -7,6 +7,16 @@ module Basecamp
     # @generated from OpenAPI spec
     class ProjectsService < BaseService
 
+      # Join the current person to an all-access project (returns 201 Created with
+      # @param project_id [Integer] project id ID
+      # @return [void]
+      def join_project(project_id:)
+        with_operation(service: "projects", operation: "join_project", is_mutation: true, project_id: project_id) do
+          http_post("/buckets/#{project_id}/admissions.json")
+          nil
+        end
+      end
+
       # List the projects the current user has most recently visited, most recent visit first.
       # @return [Array<Hash>] response data
       def list_recent_projects()

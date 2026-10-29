@@ -1246,6 +1246,11 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult(resultJson = summarizeProjects(recentProjects))
         }
 
+        "JoinProject" -> {
+            account.projects.joinProject(tc.pathParams.longParam("projectId"))
+            DispatchResult()
+        }
+
         "RecordProjectVisit" -> {
             account.projects.recordProjectVisit(tc.pathParams.longParam("projectId"))
             DispatchResult()

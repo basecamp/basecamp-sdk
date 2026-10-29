@@ -473,6 +473,10 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         let recentProjects = try await account.projects.listRecentProjects()
         return DispatchResult(resultJSON: summarizeProjects(recentProjects))
 
+    case "JoinProject":
+        try await account.projects.joinProject(projectId: pathParams.longParam("projectId"))
+        return DispatchResult()
+
     case "RecordProjectVisit":
         try await account.projects.recordProjectVisit(projectId: pathParams.longParam("projectId"))
         return DispatchResult()
