@@ -1111,12 +1111,47 @@ class HillChart(TypedDict):
     enabled: bool
     stale: bool
     updated_at: NotRequired[str]
+    versions_url: NotRequired[str]
 
 
 class HillChartDot(TypedDict):
     app_url: NotRequired[str]
     color: str
     id: int
+    label: str
+    position: int
+    url: NotRequired[str]
+
+
+class HillChartVersion(TypedDict):
+    app_url: str
+    bookmark_url: NotRequired[str]
+    boosts_count: NotRequired[int]
+    boosts_url: NotRequired[str]
+    bucket: TodoBucket
+    comments_count: NotRequired[int]
+    comments_url: NotRequired[str]
+    created_at: str
+    creator: Person
+    description: NotRequired[str]
+    description_attachments: list[RichTextAttachment]
+    dots: list[HillChartVersionDot]
+    id: int
+    inherits_status: bool
+    parent: RecordingParent
+    status: str
+    subscription_url: NotRequired[str]
+    title: str
+    type: str
+    updated_at: str
+    url: str
+    visible_to_clients: bool
+
+
+class HillChartVersionDot(TypedDict):
+    app_url: NotRequired[str]
+    color: str
+    id: NotRequired[int | None]
     label: str
     position: int
     url: NotRequired[str]

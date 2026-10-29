@@ -669,6 +669,82 @@ async fn hill_charts_get_reaches_the_wire() {
 }
 
 #[tokio::test]
+async fn hill_charts_list_versions_reaches_the_wire() {
+    let server = MockServer::start().await;
+    let body: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/fixtures/hill_charts/versions.json"
+    ))
+    .unwrap();
+    Mock::given(method("GET"))
+        .and(path("/999/todosets/100/hills/versions.json"))
+        .and(header("Authorization", "Bearer test-token"))
+        .and(header("Accept", "application/json"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("X-Total-Count", "1")
+                .set_body_json(body),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    let page = account(&server)
+        .hill_charts()
+        .list_versions(100, &Default::default())
+        .await
+        .unwrap();
+    assert_eq!(page.total_count(), Some(1));
+    let versions = page.into_inner();
+    assert_eq!(versions.len(), 1);
+    assert_eq!(versions[0].id, 1_069_480_194);
+    assert_eq!(versions[0].dots[0].id, Some(1_069_479_863));
+    assert_eq!(versions[0].dots[0].position, 40);
+}
+
+#[tokio::test]
+async fn hill_charts_get_version_reads_a_dot_whose_todolist_is_gone() {
+    let server = MockServer::start().await;
+    let body: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/fixtures/hill_charts/version_todolist_gone.json"
+    ))
+    .unwrap();
+    Mock::given(method("GET"))
+        .and(path("/999/todosets/100/hills/versions/200"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let version = account(&server)
+        .hill_charts()
+        .get_version(100, 200)
+        .await
+        .unwrap();
+    let gone = &version.dots[1];
+    assert_eq!(
+        (gone.id, gone.url.as_deref(), gone.label.as_str()),
+        (None, None, "Old research list")
+    );
+}
+
+#[tokio::test]
+async fn hill_charts_get_version_maps_404_to_not_found() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/todosets/100/hills/versions/404"))
+        .respond_with(
+            ResponseTemplate::new(404).set_body_json(serde_json::json!({"error": "Not found"})),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    let error = account(&server)
+        .hill_charts()
+        .get_version(100, 404)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), basecamp_sdk::ErrorCode::NotFound);
+}
+
+#[tokio::test]
 async fn lineup_delete_reaches_the_wire() {
     let server = MockServer::start().await;
     Mock::given(method("DELETE"))
@@ -1774,6 +1850,23 @@ error_case!(
 error_case!(
     hill_charts_get_maps_a_rejection,
     |account: basecamp_sdk::AccountClient| async move { account.hill_charts().get(100).await }
+);
+
+error_case!(
+    hill_charts_list_versions_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .hill_charts()
+            .list_versions(100, &Default::default())
+            .await
+    }
+);
+
+error_case!(
+    hill_charts_get_version_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.hill_charts().get_version(100, 200).await
+    }
 );
 
 error_case!(

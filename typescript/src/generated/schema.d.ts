@@ -4134,6 +4134,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/todosets/{todosetId}/hills/versions.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List the progress updates on a todoset's hill chart, newest first.
+         *
+         *     Each time someone updates a hill chart, Basecamp saves a progress update:
+         *     the note they wrote (`description`, rich text) and where each tracked
+         *     todolist sat on the hill at that moment (`dots`). Earlier updates are kept,
+         *     so this list is the hill chart's history. Discussion on an update is read
+         *     through its `comments_url`.
+         *
+         *     To collect updates across projects, read the progress report: events with
+         *     a `kind` of `hill_version_created` have a `url` that `GetHillChartVersion`
+         *     answers.
+         *
+         *     **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+         *     to fetch additional pages. X-Total-Count header provides total count.
+         */
+        get: operations["ListHillChartVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/todosets/{todosetId}/hills/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get one progress update from a todoset's hill chart */
+        get: operations["GetHillChartVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/todosets/{todosetId}/todolists.json": {
         parameters: {
             query?: never;
@@ -5985,6 +6034,7 @@ export interface components {
         GetGaugeNeedleResponseContent: components["schemas"]["GaugeNeedle"];
         GetGoogleDocumentResponseContent: components["schemas"]["GoogleDocument"];
         GetHillChartResponseContent: components["schemas"]["HillChart"];
+        GetHillChartVersionResponseContent: components["schemas"]["HillChartVersion"];
         GetInboxResponseContent: components["schemas"]["Inbox"];
         GetMessageBoardResponseContent: components["schemas"]["MessageBoard"];
         GetMessageResponseContent: components["schemas"]["Message"];
@@ -6139,6 +6189,11 @@ export interface components {
             app_update_url?: string;
             app_versions_url?: string;
             dots?: components["schemas"]["HillChartDot"][];
+            /**
+             * @description API URL of the chart's progress updates (`ListHillChartVersions`).
+             *     Present only when the chart has at least one progress update.
+             */
+            versions_url?: string;
         };
         HillChartDot: {
             /** Format: int64 */
@@ -6146,6 +6201,61 @@ export interface components {
             label: string;
             color: string;
             /** Format: int32 */
+            position: number;
+            url?: string;
+            app_url?: string;
+        };
+        /**
+         * @description A progress update on a hill chart: the note someone wrote when they
+         *     updated the chart, and where each tracked todolist sat at that moment.
+         */
+        HillChartVersion: {
+            /** Format: int64 */
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
+            bookmark_url?: string;
+            subscription_url?: string;
+            /** Format: int32 */
+            comments_count?: number;
+            comments_url?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            /** @description The note written with the update, as rich text. */
+            description?: string;
+            description_attachments: components["schemas"]["RichTextAttachment"][];
+            /**
+             * @description Where each tracked todolist sat on the hill when the update was made,
+             *     ordered by position.
+             */
+            dots: components["schemas"]["HillChartVersionDot"][];
+        };
+        /** @description A todolist's place on the hill in one progress update. */
+        HillChartVersionDot: {
+            /**
+             * Format: int64
+             * @description The todolist's ID, or null when it has since been permanently deleted
+             *     or moved to another project; `url` and `app_url` are then omitted.
+             */
+            id?: number | null;
+            /** @description The todolist's full name at the time of the update. */
+            label: string;
+            color: string;
+            /**
+             * Format: int32
+             * @description Position on the same 0–100 scale as the hill chart's dots.
+             */
             position: number;
             url?: string;
             app_url?: string;
@@ -6233,6 +6343,7 @@ export interface components {
         ListForwardsResponseContent: components["schemas"]["Forward"][];
         ListGaugeNeedlesResponseContent: components["schemas"]["GaugeNeedle"][];
         ListGaugesResponseContent: components["schemas"]["Gauge"][];
+        ListHillChartVersionsResponseContent: components["schemas"]["HillChartVersion"][];
         ListLineupMarkersResponseContent: components["schemas"]["LineupMarker"][];
         ListMessageTypesResponseContent: components["schemas"]["MessageType"][];
         ListMessagesResponseContent: components["schemas"]["Message"][];
@@ -26979,6 +27090,135 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListHillChartVersions: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
+            };
+            header?: never;
+            path: {
+                todosetId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListHillChartVersions 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListHillChartVersionsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetHillChartVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                todosetId: number;
+                versionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetHillChartVersion 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetHillChartVersionResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

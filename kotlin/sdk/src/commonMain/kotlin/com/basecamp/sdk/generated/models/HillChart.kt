@@ -17,5 +17,6 @@ data class HillChart(
     @SerialName("updated_at") val updatedAt: String? = null,
     @SerialName("app_update_url") val appUpdateUrl: String? = null,
     @SerialName("app_versions_url") val appVersionsUrl: String? = null,
-    val dots: List<HillChartDot>? = null
+    val dots: List<HillChartDot>? = null,
+    @SerialName("versions_url") val versionsUrl: String? = null
 )

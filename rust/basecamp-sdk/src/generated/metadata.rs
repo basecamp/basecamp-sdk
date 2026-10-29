@@ -362,6 +362,9 @@ pub static GET_GOOGLE_DOCUMENT: OperationMetadata = OperationMetadata { operatio
 /// `GetHillChart`.
 #[rustfmt::skip]
 pub static GET_HILL_CHART: OperationMetadata = OperationMetadata { operation: "GetHillChart", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `GetHillChartVersion`.
+#[rustfmt::skip]
+pub static GET_HILL_CHART_VERSION: OperationMetadata = OperationMetadata { operation: "GetHillChartVersion", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `GetInbox`.
 #[rustfmt::skip]
 pub static GET_INBOX: OperationMetadata = OperationMetadata { operation: "GetInbox", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -557,6 +560,9 @@ pub static LIST_GAUGE_NEEDLES: OperationMetadata = OperationMetadata { operation
 /// `ListGauges`.
 #[rustfmt::skip]
 pub static LIST_GAUGES: OperationMetadata = OperationMetadata { operation: "ListGauges", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `ListHillChartVersions`.
+#[rustfmt::skip]
+pub static LIST_HILL_CHART_VERSIONS: OperationMetadata = OperationMetadata { operation: "ListHillChartVersions", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `ListLineupMarkers`.
 #[rustfmt::skip]
 pub static LIST_LINEUP_MARKERS: OperationMetadata = OperationMetadata { operation: "ListLineupMarkers", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -1003,6 +1009,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &GET_GAUGE_NEEDLE,
     &GET_GOOGLE_DOCUMENT,
     &GET_HILL_CHART,
+    &GET_HILL_CHART_VERSION,
     &GET_INBOX,
     &GET_MESSAGE,
     &GET_MESSAGE_BOARD,
@@ -1068,6 +1075,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &LIST_FORWARDS,
     &LIST_GAUGE_NEEDLES,
     &LIST_GAUGES,
+    &LIST_HILL_CHART_VERSIONS,
     &LIST_LINEUP_MARKERS,
     &LIST_MESSAGE_TYPES,
     &LIST_MESSAGES,

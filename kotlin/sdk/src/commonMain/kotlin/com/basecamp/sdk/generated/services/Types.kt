@@ -714,6 +714,15 @@ data class UpdateHillChartSettingsBody(
     val untracked: List<Long>? = null
 )
 
+/** Options for ListHillChartVersions. */
+data class ListHillChartVersionsOptions(
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
+}
+
 /** Request body for CreateLineupMarker. */
 data class CreateLineupMarkerBody(
     val name: String,

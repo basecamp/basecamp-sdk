@@ -81,6 +81,8 @@ service Basecamp {
     GetTodoset,
     GetHillChart,
     UpdateHillChartSettings,
+    ListHillChartVersions,
+    GetHillChartVersion,
     ListTodolists,
     GetTodolistOrGroup,
     CreateTodolist,
@@ -1510,6 +1512,78 @@ structure UpdateHillChartSettingsOutput {
   hillChart: HillChart
 }
 
+/// List the progress updates on a todoset's hill chart, newest first.
+///
+/// Each time someone updates a hill chart, Basecamp saves a progress update:
+/// the note they wrote (`description`, rich text) and where each tracked
+/// todolist sat on the hill at that moment (`dots`). Earlier updates are kept,
+/// so this list is the hill chart's history. Discussion on an update is read
+/// through its `comments_url`.
+///
+/// To collect updates across projects, read the progress report: events with
+/// a `kind` of `hill_version_created` have a `url` that `GetHillChartVersion`
+/// answers.
+///
+/// **Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL
+/// to fetch additional pages. X-Total-Count header provides total count.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/todosets/{todosetId}/hills/versions.json")
+operation ListHillChartVersions {
+  input: ListHillChartVersionsInput
+  output: ListHillChartVersionsOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListHillChartVersionsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  todosetId: TodosetId
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure ListHillChartVersionsOutput {
+
+  versions: HillChartVersionList
+}
+
+/// Get one progress update from a todoset's hill chart
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/todosets/{todosetId}/hills/versions/{versionId}")
+operation GetHillChartVersion {
+  input: GetHillChartVersionInput
+  output: GetHillChartVersionOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure GetHillChartVersionInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  todosetId: TodosetId
+
+  @required
+  @httpLabel
+  versionId: HillChartVersionId
+}
+
+structure GetHillChartVersionOutput {
+
+  version: HillChartVersion
+}
+
 // ===== Hill Chart Shapes =====
 
 structure HillChart {
@@ -1526,6 +1600,10 @@ structure HillChart {
   app_versions_url: String
 
   dots: HillChartDotList
+
+  /// API URL of the chart's progress updates (`ListHillChartVersions`).
+  /// Present only when the chart has at least one progress update.
+  versions_url: String
 }
 
 structure HillChartDot {
@@ -1548,6 +1626,83 @@ structure HillChartDot {
 
 list HillChartDotList {
   member: HillChartDot
+}
+
+long HillChartVersionId
+
+list HillChartVersionList {
+  member: HillChartVersion
+}
+
+/// A progress update on a hill chart: the note someone wrote when they
+/// updated the chart, and where each tracked todolist sat at that moment.
+structure HillChartVersion {
+  @required
+  id: HillChartVersionId
+  @required
+  status: String
+  @required
+  visible_to_clients: Boolean
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  updated_at: ISO8601Timestamp
+  @required
+  title: String
+  @required
+  inherits_status: Boolean
+  @required
+  type: String
+  @required
+  url: String
+  @required
+  app_url: String
+  bookmark_url: String
+  subscription_url: String
+  comments_count: Integer
+  comments_url: String
+  boosts_count: Integer
+  boosts_url: String
+  @required
+  parent: RecordingParent
+  @required
+  bucket: TodoBucket
+  @required
+  creator: Person
+  /// The note written with the update, as rich text.
+  description: String
+  @required
+  description_attachments: RichTextAttachmentList
+  /// Where each tracked todolist sat on the hill when the update was made,
+  /// ordered by position.
+  @required
+  dots: HillChartVersionDotList
+}
+
+/// A todolist's place on the hill in one progress update.
+structure HillChartVersionDot {
+  /// The todolist's ID, or null when it has since been permanently deleted
+  /// or moved to another project; `url` and `app_url` are then omitted.
+  id: Long
+
+  /// The todolist's full name at the time of the update.
+  @required
+  label: String
+
+  @required
+  color: String
+
+  /// Position on the same 0–100 scale as the hill chart's dots.
+  @required
+  position: Integer
+
+  url: String
+
+  app_url: String
+}
+
+list HillChartVersionDotList {
+  member: HillChartVersionDot
 }
 
 list TodolistIdList {

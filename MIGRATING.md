@@ -11,6 +11,26 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Hill charts: reading a chart's progress updates
+
+`ListHillChartVersions` and `GetHillChartVersion` are new operations, and
+additive for every caller: the HillCharts service gains `listVersions` and
+`getVersion` (`ListVersions` and `GetVersion` in Go, `list_versions` and
+`get_version` in Python, Ruby and Rust). They break only Go code that
+implements the generated `ClientInterface` / `ClientWithResponsesInterface`
+itself, which gain `ListHillChartVersions` and `GetHillChartVersion` and their
+`...WithResponse` forms. A mock or fake of your own must add them.
+
+`HillChart` gains an optional `versions_url`, present only when the chart has a
+progress update. In Go it is the last field of both `basecamp.HillChart` and
+`generated.HillChart`, so only unkeyed struct literals break; switch them to
+keyed literals. Kotlin's generated `HillChart` adds `versionsUrl` as its last
+constructor parameter, with a default: source that names its arguments, or
+passes all of the current ones positionally, still compiles, but the
+constructor and `copy` signatures change at the binary level, so recompile.
+
 # v0.30.0
 
 ### Go: generated client interfaces gain project-logo methods

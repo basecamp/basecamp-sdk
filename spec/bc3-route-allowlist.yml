@@ -369,14 +369,6 @@ bc3_routes_not_modeled:
 
   # -- Registered in spec/api-gaps/, absorption pending (repin to b1f18fd182) --
 
-  - method: GET
-    path: /todosets/:id/hills/versions
-    registry: spec/api-gaps/hill-chart-progress-updates.md
-
-  - method: GET
-    path: /todosets/:id/hills/versions/:id
-    registry: spec/api-gaps/hill-chart-progress-updates.md
-
   - method: POST
     path: /buckets/:id/admissions
     registry: spec/api-gaps/project-join-admission.md

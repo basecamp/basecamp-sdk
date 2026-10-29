@@ -90,7 +90,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
         "Todos" to listOf("ListTodos", "CreateTodo", "CreateTodosetTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo"),
         "Todolists" to listOf("GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist", "RepositionTodolist"),
         "Todosets" to listOf("GetTodoset"),
-        "HillCharts" to listOf("GetHillChart", "UpdateHillChartSettings"),
+        "HillCharts" to listOf("GetHillChart", "UpdateHillChartSettings", "ListHillChartVersions", "GetHillChartVersion"),
         "TodolistGroups" to listOf("ListTodolistGroups", "CreateTodolistGroup", "RepositionTodolistGroup"),
     ),
     "Untagged" to mapOf(
@@ -292,6 +292,8 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "UpdateScheduleSettings" to "updateSettings",
     "GetHillChart" to "get",
     "UpdateHillChartSettings" to "updateSettings",
+    "ListHillChartVersions" to "listVersions",
+    "GetHillChartVersion" to "getVersion",
     "GetScheduleEntry" to "getEntry",
     // The plain `updateEntry` name belongs to the merge-safe composite; the raw
     // single-PUT path keeps a name that says what it does. Without the override
@@ -416,6 +418,8 @@ val TYPE_ALIASES = mapOf(
     "TimesheetEntry" to "TimesheetEntry",
     "HillChart" to "HillChart",
     "HillChartDot" to "HillChartDot",
+    "HillChartVersion" to "HillChartVersion",
+    "HillChartVersionDot" to "HillChartVersionDot",
     // The upcoming-schedule report's own reduced calendar projections. Reached
     // only through GetUpcomingScheduleResponseContent, which the supporting-type
     // scanner does not traverse (it seeds from TYPE_ALIASES, and response

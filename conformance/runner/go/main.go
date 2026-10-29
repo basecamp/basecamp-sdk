@@ -951,6 +951,22 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		embed, err := account.Embeds().Create(ctx, getStringParam(tc.RequestBody, "url"))
 		return operationResult{err: err, result: embed}
 
+	case "ListHillChartVersions":
+		result, err := account.HillCharts().ListVersions(ctx, getInt64Param(tc.PathParams, "todosetId"), nil)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{
+			meta: map[string]interface{}{
+				"totalCount": result.Meta.TotalCount,
+				"truncated":  result.Meta.Truncated,
+			},
+		}
+
+	case "GetHillChartVersion":
+		version, err := account.HillCharts().GetVersion(ctx, getInt64Param(tc.PathParams, "todosetId"), getInt64Param(tc.PathParams, "versionId"))
+		return operationResult{err: err, result: version}
+
 	case "GetEmbed":
 		embed, err := account.Embeds().Get(ctx, getStringParam(tc.PathParams, "sgid"))
 		return operationResult{err: err, result: embed}

@@ -812,6 +812,15 @@ async function executeOperation(
         return { result: embed };
       }
 
+      case "ListHillChartVersions":
+        await client.hillCharts.listVersions(Number(params.todosetId));
+        break;
+
+      case "GetHillChartVersion": {
+        const version = await client.hillCharts.getVersion(Number(params.todosetId), Number(params.versionId));
+        return { result: version };
+      }
+
       case "GetEmbed": {
         const embed = await client.embeds.get(String(params.sgid));
         return { result: embed };

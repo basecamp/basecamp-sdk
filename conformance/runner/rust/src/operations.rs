@@ -14,8 +14,8 @@ use std::time::Duration;
 use basecamp_sdk::models::*;
 use basecamp_sdk::pagination::PageItems;
 use basecamp_sdk::services::cards::UpdateCardRequest;
-use basecamp_sdk::services::recordings::RecordingRef;
 use basecamp_sdk::services::documents::UpdateDocumentRequest;
+use basecamp_sdk::services::recordings::RecordingRef;
 use basecamp_sdk::services::schedules::UpdateScheduleEntryRequest;
 use basecamp_sdk::services::todolists::UpdateTodolistRequest;
 use basecamp_sdk::services::todos::UpdateTodoRequest;
@@ -284,20 +284,39 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             };
             json(account.embeds().create(&request).await?)
         }
+        "ListHillChartVersions" => unit(
+            account
+                .hill_charts()
+                .list_versions(id("todosetId"), &Default::default())
+                .await,
+        ),
+        "GetHillChartVersion" => json(
+            account
+                .hill_charts()
+                .get_version(id("todosetId"), id("versionId"))
+                .await?,
+        ),
         "GetEmbed" => json(account.embeds().get(&string_param(path, "sgid")).await?),
         "GetTemplateLibraryTodolists" => {
             let library = account.templates().get_library_todolists().await?;
-            Ok(Outcome::Json(summarize_template_library_todolists(&library)))
+            Ok(Outcome::Json(summarize_template_library_todolists(
+                &library,
+            )))
         }
         "GetTemplateLibraryCardTables" => {
             let library = account.templates().get_library_card_tables().await?;
-            Ok(Outcome::Json(summarize_template_library_card_tables(&library)))
+            Ok(Outcome::Json(summarize_template_library_card_tables(
+                &library,
+            )))
         }
         "CreateTemplateLibraryCardTable" => {
             let request = CreateTemplateLibraryCardTableRequestContent {
                 name: string_param(body, "name"),
             };
-            let card_table = account.templates().create_library_card_table(&request).await?;
+            let card_table = account
+                .templates()
+                .create_library_card_table(&request)
+                .await?;
             Ok(Outcome::Json(summarize_card_table(&card_table)))
         }
         "CreateTemplateLibraryTodolist" => {
@@ -305,7 +324,10 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                 name: string_param(body, "name"),
                 description: optional_string_param(body, "description"),
             };
-            let todolist = account.templates().create_library_todolist(&request).await?;
+            let todolist = account
+                .templates()
+                .create_library_todolist(&request)
+                .await?;
             Ok(Outcome::Json(summarize_todolist(&todolist)))
         }
         "CreateTemplatification" => {

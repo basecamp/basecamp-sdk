@@ -184,6 +184,29 @@ targets:
     fixture: uploads/versions.json
     pointer: "/2"
     schema: UploadVersion
+  # Hill chart progress updates, the documented examples in bc3's
+  # doc/api/sections/hill_charts.md (BC3 #13620). The list response is validated
+  # whole against ListHillChartVersions; version-todolist-gone pins the dot whose
+  # todolist was deleted or moved away (`id` null, no url or app_url), which the
+  # strict decoders must accept.
+  - id: hill-chart-get
+    operation: GetHillChart
+    fixture: hill_charts/get.json
+  - id: hill-chart-versions-list
+    operation: ListHillChartVersions
+    fixture: hill_charts/versions.json
+  - id: hill-chart-version-get
+    fixture: hill_charts/version.json
+    pointer: ""
+    schema: HillChartVersion
+  - id: hill-chart-version-todolist-gone
+    fixture: hill_charts/version_todolist_gone.json
+    pointer: ""
+    schema: HillChartVersion
+  - id: hill-chart-version-dot-gone
+    fixture: hill_charts/version_todolist_gone.json
+    pointer: "/dots/1"
+    schema: HillChartVersionDot
   - id: cloud-file-get
     fixture: cloud_files/get.json
     pointer: ""
@@ -471,6 +494,8 @@ covered_schemas:
   UploadVersion: [upload-version-0, upload-version-recordable-gone]
   UploadVersionFile: [upload-version-file-0]
   CloudFile: [cloud-file-get]
+  HillChartVersion: [hill-chart-version-get, hill-chart-version-todolist-gone]
+  HillChartVersionDot: [hill-chart-version-dot-gone]
   GoogleDocument: [google-document-get]
   ScheduleEntry: [schedule-entry-get]
   UpcomingScheduleEntry: [upcoming-schedule-entry-0, upcoming-schedule-occurrence-0]

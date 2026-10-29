@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-10-27T22:05:31Z",
+  "generated": "2026-10-28T05:27:32Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -3613,6 +3613,33 @@
         "natural": true
       }
     },
+    "ListHillChartVersions": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "GetHillChartVersion": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
     "ListTodolists": {
       "retry": {
         "maxAttempts": 3,
@@ -4217,6 +4244,9 @@
     "GetGoogleDocument": [
       "creator"
     ],
+    "GetHillChartVersion": [
+      "creator"
+    ],
     "GetInbox": [
       "creator"
     ],
@@ -4451,6 +4481,9 @@
       "[].creator"
     ],
     "ListGauges": [
+      "[].creator"
+    ],
+    "ListHillChartVersions": [
       "[].creator"
     ],
     "ListMessages": [

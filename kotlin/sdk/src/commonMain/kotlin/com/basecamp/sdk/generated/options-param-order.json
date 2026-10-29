@@ -43,6 +43,7 @@
   "ListForwardsOptions": ["sort", "direction", "maxItems", "page"],
   "ListGaugeNeedlesOptions": ["page", "maxItems"],
   "ListGaugesOptions": ["bucketIds", "maxItems", "page"],
+  "ListHillChartVersionsOptions": ["page", "maxItems"],
   "ListMessagesOptions": ["sort", "direction", "maxItems", "page"],
   "ListMyBookmarksOptions": ["page", "maxItems"],
   "ListMyDraftsOptions": ["page", "maxItems"],

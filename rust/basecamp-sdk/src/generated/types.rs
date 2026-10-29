@@ -2981,6 +2981,9 @@ pub type GetGoogleDocumentResponseContent = GoogleDocument;
 /// `GetHillChartResponseContent`.
 pub type GetHillChartResponseContent = HillChart;
 
+/// `GetHillChartVersionResponseContent`.
+pub type GetHillChartVersionResponseContent = HillChartVersion;
+
 /// `GetInboxResponseContent`.
 pub type GetInboxResponseContent = Inbox;
 
@@ -3290,6 +3293,10 @@ pub struct HillChart {
     /// `dots`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dots: Option<Vec<HillChartDot>>,
+    /// API URL of the chart's progress updates (`ListHillChartVersions`).
+    /// Present only when the chart has at least one progress update.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub versions_url: Option<String>,
 }
 
 /// The `HillChartDot` shape of the Basecamp API.
@@ -3303,6 +3310,87 @@ pub struct HillChartDot {
     /// `color`.
     pub color: String,
     /// `position`.
+    pub position: i32,
+    /// `url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// `app_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_url: Option<String>,
+}
+
+/// A progress update on a hill chart: the note someone wrote when they
+/// updated the chart, and where each tracked todolist sat at that moment.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct HillChartVersion {
+    /// `id`.
+    pub id: i64,
+    /// `status`.
+    pub status: String,
+    /// `visible_to_clients`.
+    pub visible_to_clients: bool,
+    /// `created_at`.
+    pub created_at: DateTime,
+    /// `updated_at`.
+    pub updated_at: DateTime,
+    /// `title`.
+    pub title: String,
+    /// `inherits_status`.
+    pub inherits_status: bool,
+    /// `type`.
+    pub r#type: String,
+    /// `url`.
+    pub url: String,
+    /// `app_url`.
+    pub app_url: String,
+    /// `bookmark_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bookmark_url: Option<String>,
+    /// `subscription_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscription_url: Option<String>,
+    /// `comments_count`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub comments_count: Option<i32>,
+    /// `comments_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub comments_url: Option<String>,
+    /// `boosts_count`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub boosts_count: Option<i32>,
+    /// `boosts_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub boosts_url: Option<String>,
+    /// `parent`.
+    pub parent: RecordingParent,
+    /// `bucket`.
+    pub bucket: TodoBucket,
+    /// `creator`.
+    pub creator: Person,
+    /// The note written with the update, as rich text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// `description_attachments`.
+    pub description_attachments: Vec<RichTextAttachment>,
+    /// Where each tracked todolist sat on the hill when the update was made,
+    /// ordered by position.
+    pub dots: Vec<HillChartVersionDot>,
+}
+
+/// A todolist's place on the hill in one progress update.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct HillChartVersionDot {
+    /// The todolist's ID, or null when it has since been permanently deleted
+    /// or moved to another project; `url` and `app_url` are then omitted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<i64>,
+    /// The todolist's full name at the time of the update.
+    pub label: String,
+    /// `color`.
+    pub color: String,
+    /// Position on the same 0–100 scale as the hill chart's dots.
     pub position: i32,
     /// `url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3471,6 +3559,9 @@ pub type ListGaugeNeedlesResponseContent = Vec<GaugeNeedle>;
 
 /// `ListGaugesResponseContent`.
 pub type ListGaugesResponseContent = Vec<Gauge>;
+
+/// `ListHillChartVersionsResponseContent`.
+pub type ListHillChartVersionsResponseContent = Vec<HillChartVersion>;
 
 /// `ListLineupMarkersResponseContent`.
 pub type ListLineupMarkersResponseContent = Vec<LineupMarker>;

@@ -2018,6 +2018,10 @@ type GetGoogleDocumentResponseContent = GoogleDocument
 // GetHillChartResponseContent defines model for GetHillChartResponseContent.
 type GetHillChartResponseContent = HillChart
 
+// GetHillChartVersionResponseContent A progress update on a hill chart: the note someone wrote when they
+// updated the chart, and where each tracked todolist sat at that moment.
+type GetHillChartVersionResponseContent = HillChartVersion
+
 // GetInboxResponseContent defines model for GetInboxResponseContent.
 type GetInboxResponseContent = Inbox
 
@@ -2278,6 +2282,10 @@ type HillChart struct {
 	Enabled        bool           `json:"enabled"`
 	Stale          bool           `json:"stale"`
 	UpdatedAt      *time.Time     `json:"updated_at,omitempty"`
+
+	// VersionsUrl API URL of the chart's progress updates (`ListHillChartVersions`).
+	// Present only when the chart has at least one progress update.
+	VersionsUrl *string `json:"versions_url,omitempty"`
 }
 
 // HillChartDot defines model for HillChartDot.
@@ -2286,6 +2294,55 @@ type HillChartDot struct {
 	Color    string  `json:"color"`
 	Id       int64   `json:"id"`
 	Label    string  `json:"label"`
+	Position int32   `json:"position"`
+	Url      *string `json:"url,omitempty"`
+}
+
+// HillChartVersion A progress update on a hill chart: the note someone wrote when they
+// updated the chart, and where each tracked todolist sat at that moment.
+type HillChartVersion struct {
+	AppUrl        string     `json:"app_url"`
+	BookmarkUrl   *string    `json:"bookmark_url,omitempty"`
+	BoostsCount   *int32     `json:"boosts_count,omitempty"`
+	BoostsUrl     *string    `json:"boosts_url,omitempty"`
+	Bucket        TodoBucket `json:"bucket"`
+	CommentsCount *int32     `json:"comments_count,omitempty"`
+	CommentsUrl   *string    `json:"comments_url,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	Creator       Person     `json:"creator"`
+
+	// Description The note written with the update, as rich text.
+	Description            *string              `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+
+	// Dots Where each tracked todolist sat on the hill when the update was made,
+	// ordered by position.
+	Dots             []HillChartVersionDot `json:"dots"`
+	Id               int64                 `json:"id"`
+	InheritsStatus   bool                  `json:"inherits_status"`
+	Parent           RecordingParent       `json:"parent"`
+	Status           string                `json:"status"`
+	SubscriptionUrl  *string               `json:"subscription_url,omitempty"`
+	Title            string                `json:"title"`
+	Type             string                `json:"type"`
+	UpdatedAt        time.Time             `json:"updated_at"`
+	Url              string                `json:"url"`
+	VisibleToClients bool                  `json:"visible_to_clients"`
+}
+
+// HillChartVersionDot A todolist's place on the hill in one progress update.
+type HillChartVersionDot struct {
+	AppUrl *string `json:"app_url,omitempty"`
+	Color  string  `json:"color"`
+
+	// Id The todolist's ID, or null when it has since been permanently deleted
+	// or moved to another project; `url` and `app_url` are then omitted.
+	Id *int64 `json:"id,omitempty"`
+
+	// Label The todolist's full name at the time of the update.
+	Label string `json:"label"`
+
+	// Position Position on the same 0–100 scale as the hill chart's dots.
 	Position int32   `json:"position"`
 	Url      *string `json:"url,omitempty"`
 }
@@ -2414,6 +2471,9 @@ type ListGaugeNeedlesResponseContent = []GaugeNeedle
 
 // ListGaugesResponseContent defines model for ListGaugesResponseContent.
 type ListGaugesResponseContent = []Gauge
+
+// ListHillChartVersionsResponseContent defines model for ListHillChartVersionsResponseContent.
+type ListHillChartVersionsResponseContent = []HillChartVersion
 
 // ListLineupMarkersResponseContent defines model for ListLineupMarkersResponseContent.
 type ListLineupMarkersResponseContent = []LineupMarker
@@ -6034,6 +6094,12 @@ type GetEverythingUnassignedTodosParams struct {
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
+// ListHillChartVersionsParams defines parameters for ListHillChartVersions.
+type ListHillChartVersionsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // ListTodolistsParams defines parameters for ListTodolists.
 type ListTodolistsParams struct {
 	// Status active|archived|trashed
@@ -7935,6 +8001,12 @@ type ClientInterface interface {
 	UpdateHillChartSettingsWithBody(ctx context.Context, accountId string, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateHillChartSettings(ctx context.Context, accountId string, todosetId int64, body UpdateHillChartSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListHillChartVersions request
+	ListHillChartVersions(ctx context.Context, accountId string, todosetId int64, params *ListHillChartVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetHillChartVersion request
+	GetHillChartVersion(ctx context.Context, accountId string, todosetId int64, versionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTodolists request
 	ListTodolists(ctx context.Context, accountId string, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -12015,6 +12087,26 @@ func (c *Client) UpdateHillChartSettings(ctx context.Context, accountId string, 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateHillChartSettingsRequest(c.Server, accountId, todosetId, body)
 	}, true, "UpdateHillChartSettings", reqEditors...)
+
+}
+
+// ListHillChartVersions is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListHillChartVersions(ctx context.Context, accountId string, todosetId int64, params *ListHillChartVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListHillChartVersionsRequest(c.Server, accountId, todosetId, params)
+	}, true, "ListHillChartVersions", reqEditors...)
+
+}
+
+// GetHillChartVersion is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetHillChartVersion(ctx context.Context, accountId string, todosetId int64, versionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetHillChartVersionRequest(c.Server, accountId, todosetId, versionId)
+	}, true, "GetHillChartVersion", reqEditors...)
 
 }
 
@@ -27164,6 +27256,117 @@ func NewUpdateHillChartSettingsRequestWithBody(server string, accountId string, 
 	return req, nil
 }
 
+// NewListHillChartVersionsRequest generates requests for ListHillChartVersions
+func NewListHillChartVersionsRequest(server string, accountId string, todosetId int64, params *ListHillChartVersionsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todosetId", runtime.ParamLocationPath, todosetId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/todosets/%s/hills/versions.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetHillChartVersionRequest generates requests for GetHillChartVersion
+func NewGetHillChartVersionRequest(server string, accountId string, todosetId int64, versionId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todosetId", runtime.ParamLocationPath, todosetId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "versionId", runtime.ParamLocationPath, versionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/todosets/%s/hills/versions/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListTodolistsRequest generates requests for ListTodolists
 func NewListTodolistsRequest(server string, accountId string, todosetId int64, params *ListTodolistsParams) (*http.Request, error) {
 	var err error
@@ -28370,6 +28573,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetTodoset":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetHillChart":                       {Idempotent: true, HasSensitiveParams: false},
 	"UpdateHillChartSettings":            {Idempotent: true, HasSensitiveParams: false},
+	"ListHillChartVersions":              {Idempotent: true, HasSensitiveParams: false},
+	"GetHillChartVersion":                {Idempotent: true, HasSensitiveParams: false},
 	"ListTodolists":                      {Idempotent: true, HasSensitiveParams: false},
 	"CreateTodolist":                     {Idempotent: false, HasSensitiveParams: false},
 	"GetUpload":                          {Idempotent: true, HasSensitiveParams: false},
@@ -28671,6 +28876,8 @@ var operationRetryMax = map[string]int{
 	"GetTodoset":                         3,
 	"GetHillChart":                       3,
 	"UpdateHillChartSettings":            3,
+	"ListHillChartVersions":              3,
+	"GetHillChartVersion":                3,
 	"ListTodolists":                      3,
 	"CreateTodolist":                     2,
 	"GetUpload":                          3,
@@ -28970,6 +29177,8 @@ var operationRetryOn = map[string][]int{
 	"GetTodoset":                         {429, 503},
 	"GetHillChart":                       {429, 503},
 	"UpdateHillChartSettings":            {429, 503},
+	"ListHillChartVersions":              {429, 503},
+	"GetHillChartVersion":                {429, 503},
 	"ListTodolists":                      {429, 503},
 	"CreateTodolist":                     {429, 503},
 	"GetUpload":                          {429, 503},
@@ -31141,6 +31350,12 @@ type ClientWithResponsesInterface interface {
 	UpdateHillChartSettingsWithBodyWithResponse(ctx context.Context, accountId string, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateHillChartSettingsResponse, error)
 
 	UpdateHillChartSettingsWithResponse(ctx context.Context, accountId string, todosetId int64, body UpdateHillChartSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateHillChartSettingsResponse, error)
+
+	// ListHillChartVersionsWithResponse request
+	ListHillChartVersionsWithResponse(ctx context.Context, accountId string, todosetId int64, params *ListHillChartVersionsParams, reqEditors ...RequestEditorFn) (*ListHillChartVersionsResponse, error)
+
+	// GetHillChartVersionWithResponse request
+	GetHillChartVersionWithResponse(ctx context.Context, accountId string, todosetId int64, versionId int64, reqEditors ...RequestEditorFn) (*GetHillChartVersionResponse, error)
 
 	// ListTodolistsWithResponse request
 	ListTodolistsWithResponse(ctx context.Context, accountId string, todosetId int64, params *ListTodolistsParams, reqEditors ...RequestEditorFn) (*ListTodolistsResponse, error)
@@ -40660,6 +40875,75 @@ func (r UpdateHillChartSettingsResponse) ContentType() string {
 	return ""
 }
 
+type ListHillChartVersionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListHillChartVersionsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListHillChartVersionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListHillChartVersionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListHillChartVersionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetHillChartVersionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetHillChartVersionResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetHillChartVersionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetHillChartVersionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetHillChartVersionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTodolistsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -44458,6 +44742,24 @@ func (c *ClientWithResponses) UpdateHillChartSettingsWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseUpdateHillChartSettingsResponse(rsp)
+}
+
+// ListHillChartVersionsWithResponse request returning *ListHillChartVersionsResponse
+func (c *ClientWithResponses) ListHillChartVersionsWithResponse(ctx context.Context, accountId string, todosetId int64, params *ListHillChartVersionsParams, reqEditors ...RequestEditorFn) (*ListHillChartVersionsResponse, error) {
+	rsp, err := c.ListHillChartVersions(ctx, accountId, todosetId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListHillChartVersionsResponse(rsp)
+}
+
+// GetHillChartVersionWithResponse request returning *GetHillChartVersionResponse
+func (c *ClientWithResponses) GetHillChartVersionWithResponse(ctx context.Context, accountId string, todosetId int64, versionId int64, reqEditors ...RequestEditorFn) (*GetHillChartVersionResponse, error) {
+	rsp, err := c.GetHillChartVersion(ctx, accountId, todosetId, versionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetHillChartVersionResponse(rsp)
 }
 
 // ListTodolistsWithResponse request returning *ListTodolistsResponse
@@ -59154,6 +59456,112 @@ func ParseUpdateHillChartSettingsResponse(rsp *http.Response) (*UpdateHillChartS
 		var dest ValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseListHillChartVersionsResponse parses an HTTP response from a ListHillChartVersionsWithResponse call
+func ParseListHillChartVersionsResponse(rsp *http.Response) (*ListHillChartVersionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListHillChartVersionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListHillChartVersionsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetHillChartVersionResponse parses an HTTP response from a GetHillChartVersionWithResponse call
+func ParseGetHillChartVersionResponse(rsp *http.Response) (*GetHillChartVersionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetHillChartVersionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetHillChartVersionResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

@@ -1235,7 +1235,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All `292` operations in `behavior-model.json` use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` and `CreateEmbed` (`[503]` — each one's 429 is a verdict, the seat limit and the hourly new-embed limit, §7 Gate 3). <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
+All `294` operations in `behavior-model.json` use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` and `CreateEmbed` (`[503]` — each one's 429 is a verdict, the seat limit and the hourly new-embed limit, §7 Gate 3). <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -2107,7 +2107,7 @@ END
 
 ### Hop-1 Retry `[conformance]`
 
-The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `292` operations but `UpdateProjectClientAccess` and `CreateEmbed`, and never governing `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `294` operations but `UpdateProjectClientAccess` and `CreateEmbed`, and never governing `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
 
 That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does — `downloads.json` pins all four statuses. The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds, which not every download path yet gives them (#775).
 
@@ -3136,6 +3136,7 @@ the category slug is the filename (basename, `_` written as `-`).
 | downloads | `downloads.json` | §14 Download |
 | error-mapping | `error-mapping.json` | §6 Error Taxonomy |
 | event-feed | `event_feed.json` | §23 Event Feed Connector (Wire Operations), §6 Error Taxonomy, §11 Response Semantics |
+| hill-chart-versions | `hill_chart_versions.json` | §3 Client Architecture (account path construction), §6 Error Taxonomy, §10 Type Fidelity (a nullable id on an optional member) |
 | idempotency | `idempotency.json` | §7 Retry (Gate 2) |
 | integer-precision | `integer-precision.json` | §10 Type Fidelity |
 | live-my-surface | `live-my-surface.json` | External governance (CONTRIBUTING.md, live canary — opt-in via `BASECAMP_LIVE`) |
@@ -5451,6 +5452,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `project_constructions.json` | Project construction from a template: attributes nested under the `project` envelope, `start_date` carried when given and absent when omitted (2 cases) | §3, §10, §11 |
 | `boosts_write.json` | Updating a boost: the flat `PUT /boosts/{id}` route with `content` alone, and 403, 404 and a bodiless 422 mapped to their codes (4 cases) | §6, §11 |
 | `embeds.json` | The Embeds service: a create with `url` alone answering 200 for a new pending embed and for an existing active one, a 422 as `validation` with the server's message, a 429 surfacing on the first attempt as `rate_limit`, a read by sgid, and a 404 (6 cases) | §6, §7, §11 |
+| `hill_chart_versions.json` | A hill chart's progress updates: the list path, a read by id decoding the documented example, a dot whose todolist is gone (`id` null, no `url`), and a 404 (4 cases) | §3, §6, §10 |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 <!-- @fixture-section-map:end -->
 
@@ -5498,7 +5500,7 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: `292` <!-- @operation-count -->
+- Total operations: `294` <!-- @operation-count -->
 - Idempotent: 103 (flagged with `idempotent: true`)
 - Non-idempotent: 189 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` and `CreateEmbed` (`[503]`)

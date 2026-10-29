@@ -169,6 +169,8 @@ let methodNameOverrides: [String: String] = [
     "GetScheduleEntryOccurrence": "getEntryOccurrence",
     "GetHillChart": "get",
     "UpdateHillChartSettings": "updateSettings",
+    "ListHillChartVersions": "listVersions",
+    "GetHillChartVersion": "getVersion",
 ]
 
 // MARK: - Simple Resources
