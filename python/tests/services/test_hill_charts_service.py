@@ -15,7 +15,7 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client
-from basecamp.errors import NotFoundError
+from basecamp.errors import NotFoundError, ValidationError
 
 BASE = "https://3.basecampapi.com/12345"
 FIXTURES = Path(__file__).resolve().parents[3] / "spec" / "fixtures" / "hill_charts"
@@ -147,3 +147,45 @@ class TestGetVersion:
 
         with pytest.raises(NotFoundError):
             await _async_hill_charts().get_version(todoset_id=1, version_id=999)
+
+
+class TestCreateVersion:
+    @respx.mock
+    def test_posts_the_documented_request(self):
+        request = _fixture("create-version-request.json")
+        route = respx.post(VERSIONS).mock(return_value=httpx.Response(201, json=_fixture("create-version.json")))
+
+        version = _hill_charts().create_version(todoset_id=1069479829, **request)
+
+        assert json.loads(route.calls.last.request.content) == request
+        assert version["id"] == 1069480194
+        assert version["description"] == '<div dir="auto">Research is done. Building starts Monday.</div>'
+        assert version["dots"][0]["position"] == 55
+
+    @respx.mock
+    def test_nothing_given_posts_an_empty_object(self):
+        route = respx.post(VERSIONS).mock(return_value=httpx.Response(201, json=_fixture("create-version.json")))
+
+        _hill_charts().create_version(todoset_id=1069479829)
+
+        assert json.loads(route.calls.last.request.content) == {}
+
+    @respx.mock
+    def test_422_is_validation_with_the_servers_message(self):
+        respx.post(VERSIONS).mock(
+            return_value=httpx.Response(422, json={"error": "Not tracked on the hill chart: 1069479511"})
+        )
+
+        with pytest.raises(ValidationError, match="Not tracked on the hill chart: 1069479511"):
+            _hill_charts().create_version(todoset_id=1069479829, dots=[{"id": 1069479511, "position": 50}])
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_posts_the_documented_request(self):
+        request = _fixture("create-version-request.json")
+        route = respx.post(VERSIONS).mock(return_value=httpx.Response(201, json=_fixture("create-version.json")))
+
+        version = await _async_hill_charts().create_version(todoset_id=1069479829, **request)
+
+        assert json.loads(route.calls.last.request.content) == request
+        assert version["dots"][0]["position"] == 55

@@ -81,6 +81,31 @@ class HillChartsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Post a progress update on a todoset's hill chart.
+     * @param todosetId The todoset ID
+     * @param body Request body
+     */
+    suspend fun createVersion(todosetId: Long, body: CreateHillChartVersionBody): HillChartVersion {
+        val info = OperationInfo(
+            service = "HillCharts",
+            operation = "CreateHillChartVersion",
+            resourceType = "hill_chart_version",
+            isMutation = true,
+            projectId = null,
+            resourceId = todosetId,
+        )
+        return request(info, {
+            httpPost("/todosets/${todosetId}/hills/versions.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.dots?.let { put("dots", kotlinx.serialization.json.JsonArray(it)) }
+                body.subscriptions?.let { put("subscriptions", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<HillChartVersion>(body)
+        }
+    }
+
+    /**
      * Get one progress update from a todoset's hill chart
      * @param todosetId The todoset ID
      * @param versionId The version ID

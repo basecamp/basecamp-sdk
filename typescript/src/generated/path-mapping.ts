@@ -213,6 +213,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/todosets/{todosetId}/hill.json": "GetHillChart",
   "PUT:/{accountId}/todosets/{todosetId}/hills/settings.json": "UpdateHillChartSettings",
   "GET:/{accountId}/todosets/{todosetId}/hills/versions.json": "ListHillChartVersions",
+  "POST:/{accountId}/todosets/{todosetId}/hills/versions.json": "CreateHillChartVersion",
   "GET:/{accountId}/todosets/{todosetId}/hills/versions/{versionId}": "GetHillChartVersion",
   "GET:/{accountId}/todosets/{todosetId}/todolists.json": "ListTodolists",
   "POST:/{accountId}/todosets/{todosetId}/todolists.json": "CreateTodolist",

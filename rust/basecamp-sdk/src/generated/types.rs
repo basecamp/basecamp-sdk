@@ -1343,6 +1343,25 @@ pub struct CreateGoogleDocumentRequestContent {
 /// `CreateGoogleDocumentResponseContent`.
 pub type CreateGoogleDocumentResponseContent = GoogleDocument;
 
+/// The `CreateHillChartVersionRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreateHillChartVersionRequestContent {
+    /// A note about the update, as rich text (HTML).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Todolists to move, each with its ID and new position. Todolists left
+    /// out keep their current position.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dots: Option<Vec<HillChartDotPosition>>,
+    /// People to notify of the update and subscribe to it. If absent, nobody
+    /// else is notified.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscriptions: Option<Vec<i64>>,
+}
+
+/// `CreateHillChartVersionResponseContent`.
+pub type CreateHillChartVersionResponseContent = HillChartVersion;
+
 /// The `CreateLineupMarkerRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateLineupMarkerRequestContent {
@@ -3317,6 +3336,15 @@ pub struct HillChartDot {
     /// `app_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub app_url: Option<String>,
+}
+
+/// Where to move one tracked todolist in a progress update.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct HillChartDotPosition {
+    /// The todolist's ID. It must be tracked on the hill chart.
+    pub id: i64,
+    /// A whole number from 0 to 100, on the same scale as the hill chart's dots.
+    pub position: i32,
 }
 
 /// A progress update on a hill chart: the note someone wrote when they

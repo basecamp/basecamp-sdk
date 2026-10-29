@@ -43,6 +43,7 @@ object Metadata {
         "CreateFolder" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "CreateGaugeNeedle" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateGoogleDocument" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
+        "CreateHillChartVersion" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateLineupMarker" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateMessage" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateMessageType" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),

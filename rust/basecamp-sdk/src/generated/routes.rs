@@ -484,6 +484,26 @@ pub static CREATE_GOOGLE_DOCUMENT: Route = Route {
     metadata: &metadata::CREATE_GOOGLE_DOCUMENT,
 };
 
+/// `POST /todosets/{todosetId}/hills/versions.json`.
+pub static CREATE_HILL_CHART_VERSION: Route = Route {
+    id: "CreateHillChartVersion",
+    service: "HillCharts",
+    method: Method::POST,
+    path: "/todosets/{todosetId}/hills/versions.json",
+    pattern: "/todosets/{todosetId}/hills/versions",
+    resource_type: "hill_chart_version",
+    params: &[RouteParam {
+        name: "todosetId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::CREATE_HILL_CHART_VERSION,
+};
+
 /// `POST /lineup/markers.json`.
 pub static CREATE_LINEUP_MARKER: Route = Route {
     id: "CreateLineupMarker",
@@ -6119,6 +6139,7 @@ pub static ROUTES: &[&Route] = &[
     &CREATE_FOLDER,
     &CREATE_GAUGE_NEEDLE,
     &CREATE_GOOGLE_DOCUMENT,
+    &CREATE_HILL_CHART_VERSION,
     &CREATE_LINEUP_MARKER,
     &CREATE_MESSAGE,
     &CREATE_MESSAGE_TYPE,

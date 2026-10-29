@@ -207,6 +207,13 @@ targets:
     fixture: hill_charts/version_todolist_gone.json
     pointer: "/dots/1"
     schema: HillChartVersionDot
+  # Posting a progress update (BC3 #14214) answers 201 with the shape
+  # GetHillChartVersion returns. bc3 documents the request, not a separate
+  # response, so this is the documented read example with that request
+  # applied: its note and the dot moved to 55.
+  - id: hill-chart-version-create
+    operation: CreateHillChartVersion
+    fixture: hill_charts/create-version.json
   - id: cloud-file-get
     fixture: cloud_files/get.json
     pointer: ""

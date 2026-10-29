@@ -1276,6 +1276,22 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
         }
 
+        // A key the fixture omits stays null and `?.let` keeps it off the wire,
+        // so an empty fixture body posts {}.
+        "CreateHillChartVersion" -> {
+            val rb = tc.requestBody
+            val version = account.hillCharts.createVersion(
+                tc.pathParams.longParam("todosetId"),
+                CreateHillChartVersionBody(
+                    description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+                    dots = rb?.get("dots")?.jsonArray?.map { element -> element.jsonObject },
+                    subscriptions = rb?.get("subscriptions")?.jsonArray
+                        ?.map { element -> element.jsonPrimitive.long },
+                ),
+            )
+            DispatchResult(resultJson = Json.encodeToJsonElement(HillChartVersion.serializer(), version))
+        }
+
         "GetHillChartVersion" -> {
             val version = account.hillCharts.getVersion(
                 tc.pathParams.longParam("todosetId"),

@@ -171,6 +171,7 @@ let methodNameOverrides: [String: String] = [
     "UpdateHillChartSettings": "updateSettings",
     "ListHillChartVersions": "listVersions",
     "GetHillChartVersion": "getVersion",
+    "CreateHillChartVersion": "createVersion",
 ]
 
 // MARK: - Simple Resources

@@ -1,10 +1,12 @@
 package basecamp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -322,5 +324,109 @@ func TestHillChartsService_ListVersions_NotFound(t *testing.T) {
 	apiErr, ok := errors.AsType[*Error](err)
 	if !ok || apiErr.Code != CodeNotFound {
 		t.Errorf("expected %s, got: %v", CodeNotFound, err)
+	}
+}
+
+func TestHillChartsService_CreateVersion(t *testing.T) {
+	var got map[string]any
+	svc := testHillChartsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" || r.URL.Path != "/99999/todosets/1069479829/hills/versions.json" {
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(loadHillChartsFixture(t, "create-version.json"))
+	})
+
+	subscriptions := []int64{1049715913}
+	v, err := svc.CreateVersion(context.Background(), 1069479829, &CreateHillChartVersionRequest{
+		Description:   "<div>Research is done. Building starts Monday.</div>",
+		Dots:          []HillChartDotPosition{{ID: 1069479863, Position: 55}},
+		Subscriptions: &subscriptions,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The wire body is bc3's documented request, exactly.
+	var want map[string]any
+	if err := json.Unmarshal(loadHillChartsFixture(t, "create-version-request.json"), &want); err != nil {
+		t.Fatalf("decode request fixture: %v", err)
+	}
+	gotJSON, _ := json.Marshal(got)
+	wantJSON, _ := json.Marshal(want)
+	if string(gotJSON) != string(wantJSON) {
+		t.Errorf("request body\n got %s\nwant %s", gotJSON, wantJSON)
+	}
+
+	if v.ID != 1069480194 || len(v.Dots) != 1 || v.Dots[0].Position != 55 {
+		t.Errorf("unexpected version: %+v", v)
+	}
+	if v.Description != `<div dir="auto">Research is done. Building starts Monday.</div>` {
+		t.Errorf("unexpected description %q", v.Description)
+	}
+}
+
+func TestHillChartsService_CreateVersion_Empty(t *testing.T) {
+	var body []byte
+	svc := testHillChartsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		if body, err = io.ReadAll(r.Body); err != nil {
+			t.Fatalf("read request body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(loadHillChartsFixture(t, "create-version.json"))
+	})
+
+	for _, req := range []*CreateHillChartVersionRequest{nil, {}} {
+		if _, err := svc.CreateVersion(context.Background(), 1069479829, req); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(bytes.TrimSpace(body)) != "{}" {
+			t.Errorf("an empty request posts {}, got %s", body)
+		}
+	}
+}
+
+func TestHillChartsService_CreateVersion_PositionOffTheHill(t *testing.T) {
+	requests := 0
+	svc := testHillChartsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+	})
+
+	for _, position := range []int{-1, 101, 1000} {
+		_, err := svc.CreateVersion(context.Background(), 1069479829, &CreateHillChartVersionRequest{
+			Dots: []HillChartDotPosition{{ID: 1069479863, Position: position}},
+		})
+		apiErr, ok := errors.AsType[*Error](err)
+		if !ok || apiErr.Code != CodeUsage {
+			t.Errorf("position %d: expected %s, got: %v", position, CodeUsage, err)
+		}
+	}
+	if requests != 0 {
+		t.Errorf("expected no request for a position off the hill, got %d", requests)
+	}
+}
+
+func TestHillChartsService_CreateVersion_Validation(t *testing.T) {
+	svc := testHillChartsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Write([]byte(`{"error":"Not tracked on the hill chart: 1069479511"}`))
+	})
+
+	_, err := svc.CreateVersion(context.Background(), 1069479829, &CreateHillChartVersionRequest{
+		Dots: []HillChartDotPosition{{ID: 1069479511, Position: 50}},
+	})
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeValidation {
+		t.Fatalf("expected %s, got: %v", CodeValidation, err)
+	}
+	if apiErr.Message != "Not tracked on the hill chart: 1069479511" {
+		t.Errorf("expected the server's message, got %q", apiErr.Message)
 	}
 }

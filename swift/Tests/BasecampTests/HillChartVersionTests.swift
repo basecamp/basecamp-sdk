@@ -2,7 +2,7 @@ import XCTest
 
 @testable import Basecamp
 
-/// A hill chart's progress updates (BC3 #13620). Bodies are the shared
+/// A hill chart's progress updates (BC3 #13620, and posting one, BC3 #14214). Bodies are the shared
 /// fixtures in `spec/fixtures/hill_charts/`: bc3's documented examples, plus
 /// one dot whose todolist is gone, read relative to this file.
 final class HillChartVersionTests: XCTestCase {
@@ -74,6 +74,56 @@ final class HillChartVersionTests: XCTestCase {
             XCTFail("Expected a not-found error")
         } catch let error as BasecampError {
             guard case .notFound = error else { return XCTFail("Expected .notFound, got \(error)") }
+        }
+    }
+
+    func testCreateVersionPostsTheDocumentedRequest() async throws {
+        let transport = MockTransport(statusCode: 201, data: try fixture("create-version"))
+        let account = makeTestAccountClient(transport: transport)
+
+        let version = try await account.hillCharts.createVersion(
+            todosetId: 1069479829,
+            req: CreateHillChartVersionRequest(
+                description: "<div>Research is done. Building starts Monday.</div>",
+                dots: [HillChartDotPosition(id: 1069479863, position: 55)],
+                subscriptions: [1049715913]))
+
+        let request = try XCTUnwrap(transport.lastRequest?.request)
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertEqual(request.url?.path, "/999999999/todosets/1069479829/hills/versions.json")
+        let sent = try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? NSDictionary
+        let expected = try JSONSerialization.jsonObject(with: fixture("create-version-request")) as? NSDictionary
+        XCTAssertEqual(sent, expected)
+        XCTAssertEqual(version.id, 1069480194)
+        XCTAssertEqual(version.dots.first?.position, 55)
+    }
+
+    func testCreateVersionWithNothingPostsAnEmptyObject() async throws {
+        let transport = MockTransport(statusCode: 201, data: try fixture("create-version"))
+        let account = makeTestAccountClient(transport: transport)
+
+        _ = try await account.hillCharts.createVersion(todosetId: 1069479829, req: CreateHillChartVersionRequest())
+
+        let body = try XCTUnwrap(transport.lastRequest?.request.httpBody)
+        let sent = try JSONSerialization.jsonObject(with: body) as? NSDictionary
+        XCTAssertEqual(sent, NSDictionary())
+    }
+
+    func testCreateVersionValidationError() async throws {
+        let transport = MockTransport(
+            statusCode: 422, data: Data(#"{"error":"Not tracked on the hill chart: 1069479511"}"#.utf8))
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.hillCharts.createVersion(
+                todosetId: 1069479829,
+                req: CreateHillChartVersionRequest(dots: [HillChartDotPosition(id: 1069479511, position: 50)]))
+            XCTFail("Expected a validation error")
+        } catch let error as BasecampError {
+            guard case .validation(let message, _, _, _, _) = error else {
+                return XCTFail("Expected .validation, got \(error)")
+            }
+            XCTAssertEqual(message, "Not tracked on the hill chart: 1069479511")
         }
     }
 }

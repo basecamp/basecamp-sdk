@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-10-28T05:27:32Z",
+  "generated": "2026-10-29T20:43:56Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -3629,6 +3629,17 @@
         "maxPageSize": 50
       }
     },
+    "CreateHillChartVersion": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
     "GetHillChartVersion": {
       "retry": {
         "maxAttempts": 3,
@@ -3915,6 +3926,9 @@
       "creator"
     ],
     "CreateGoogleDocument": [
+      "creator"
+    ],
+    "CreateHillChartVersion": [
       "creator"
     ],
     "CreateMessage": [

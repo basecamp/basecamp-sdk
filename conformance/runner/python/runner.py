@@ -864,6 +864,11 @@ class OperationMapper:
                 return self._account.embeds.create(url=body["url"])
             case "ListHillChartVersions":
                 return self._account.hill_charts.list_versions(todoset_id=path_params["todosetId"])
+            case "CreateHillChartVersion":
+                return self._account.hill_charts.create_version(
+                    todoset_id=path_params["todosetId"],
+                    **{key: body[key] for key in ("description", "dots", "subscriptions") if key in body},
+                )
             case "GetHillChartVersion":
                 return self._account.hill_charts.get_version(
                     todoset_id=path_params["todosetId"], version_id=path_params["versionId"]

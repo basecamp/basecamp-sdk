@@ -464,6 +464,9 @@ class OperationMapper
       @account.embeds.create(url: body["url"])
     when "ListHillChartVersions"
       @account.hill_charts.list_versions(todoset_id: path_params["todosetId"]).to_a
+    when "CreateHillChartVersion"
+      fields = body.slice("description", "dots", "subscriptions").transform_keys(&:to_sym)
+      @account.hill_charts.create_version(todoset_id: path_params["todosetId"], **fields)
     when "GetHillChartVersion"
       @account.hill_charts.get_version(todoset_id: path_params["todosetId"], version_id: path_params["versionId"])
     when "GetEmbed"

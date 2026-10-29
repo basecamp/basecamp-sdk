@@ -90,7 +90,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
         "Todos" to listOf("ListTodos", "CreateTodo", "CreateTodosetTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo"),
         "Todolists" to listOf("GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist", "RepositionTodolist"),
         "Todosets" to listOf("GetTodoset"),
-        "HillCharts" to listOf("GetHillChart", "UpdateHillChartSettings", "ListHillChartVersions", "GetHillChartVersion"),
+        "HillCharts" to listOf("GetHillChart", "UpdateHillChartSettings", "ListHillChartVersions", "GetHillChartVersion", "CreateHillChartVersion"),
         "TodolistGroups" to listOf("ListTodolistGroups", "CreateTodolistGroup", "RepositionTodolistGroup"),
     ),
     "Untagged" to mapOf(
@@ -294,6 +294,7 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "UpdateHillChartSettings" to "updateSettings",
     "ListHillChartVersions" to "listVersions",
     "GetHillChartVersion" to "getVersion",
+    "CreateHillChartVersion" to "createVersion",
     "GetScheduleEntry" to "getEntry",
     // The plain `updateEntry` name belongs to the merge-safe composite; the raw
     // single-PUT path keeps a name that says what it does. Without the override
