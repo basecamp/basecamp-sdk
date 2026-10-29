@@ -437,6 +437,9 @@ pub static GET_QUESTION_REMINDERS: OperationMetadata = OperationMetadata { opera
 /// `GetQuestionnaire`.
 #[rustfmt::skip]
 pub static GET_QUESTIONNAIRE: OperationMetadata = OperationMetadata { operation: "GetQuestionnaire", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `GetRecording`.
+#[rustfmt::skip]
+pub static GET_RECORDING: OperationMetadata = OperationMetadata { operation: "GetRecording", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `GetRecordingTimesheet`.
 #[rustfmt::skip]
 pub static GET_RECORDING_TIMESHEET: OperationMetadata = OperationMetadata { operation: "GetRecordingTimesheet", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -1034,6 +1037,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &GET_QUESTION,
     &GET_QUESTION_REMINDERS,
     &GET_QUESTIONNAIRE,
+    &GET_RECORDING,
     &GET_RECORDING_TIMESHEET,
     &GET_SCHEDULE,
     &GET_SCHEDULE_ENTRY,

@@ -296,6 +296,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                 .get_version(id("todosetId"), id("versionId"))
                 .await?,
         ),
+        "GetRecording" => json(account.recordings().get(id("recordingId")).await?),
         "GetEmbed" => json(account.embeds().get(&string_param(path, "sgid")).await?),
         "GetTemplateLibraryTodolists" => {
             let library = account.templates().get_library_todolists().await?;

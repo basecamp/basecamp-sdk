@@ -294,6 +294,13 @@ targets:
     fixture: recordings/get.json
     pointer: ""
     schema: Recording
+  - id: recording-get-operation
+    operation: GetRecording
+    fixture: recordings/get.json
+  # A dock tool read by GetRecording has no parent: its partial renders none.
+  - id: recording-get-tool
+    operation: GetRecording
+    fixture: recordings/get_tool.json
   # bubble_up_url is optional on Recording — recordings/_recording.json.jbuilder
   # emits it only when the caller passes bubbleupable, and todolists/_todolist is
   # the only partial that does. recordings/get.json is a Message and correctly

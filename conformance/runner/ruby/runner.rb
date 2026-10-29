@@ -466,6 +466,8 @@ class OperationMapper
       @account.hill_charts.list_versions(todoset_id: path_params["todosetId"]).to_a
     when "GetHillChartVersion"
       @account.hill_charts.get_version(todoset_id: path_params["todosetId"], version_id: path_params["versionId"])
+    when "GetRecording"
+      @account.recordings.get(recording_id: path_params["recordingId"])
     when "GetEmbed"
       @account.embeds.get(sgid: path_params["sgid"])
     when "GetTemplateLibraryTodolists"

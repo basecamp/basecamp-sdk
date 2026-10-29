@@ -356,10 +356,6 @@ bc3_routes_not_modeled:
   # the documented "Legacy project-scoped routes" alias as well.
 
   - method: GET
-    path: /recordings/:id
-    registry: spec/api-gaps/recording-show-unscoped.md
-
-  - method: GET
     path: /recordings/:id/backlinks
     registry: spec/api-gaps/recording-backlinks.md
 

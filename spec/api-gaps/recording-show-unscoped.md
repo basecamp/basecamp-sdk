@@ -1,9 +1,11 @@
 ---
 gap: recording-show-unscoped
-status: addressed-in-bc3-pr-10158
+status: absorbed-in-sdk
 detected: 2026-09-15
 sdk_demand: medium
 bc3_pr: 10158
+smithy_refs:
+  - GetRecording
 bc3_refs:
   introduced_in: "Add unscoped recording show route (BC3 #10158, 87a3d3603c1)"
   routes:
@@ -75,3 +77,13 @@ plus a `spec/fixtures/recordings/get.json` operation entry in the manifest
 (the pointer entry for `Recording` already exists). Go regains
 `RecordingsService.Get`. The CLI's `show` command can then drop its raw-path
 fallback for the generic lookup.
+
+## Absorbed
+
+`GetRecording` on the `Recordings` service (`get` in every SDK; Go
+`Recordings().Get`), modeled on the flat form and returning the existing
+`Recording` structure. A dock tool has no `parent`, so
+`spec/fixtures/recordings/get_tool.json` holds a message board beside the
+message in `get.json`, and both are manifest entries for the operation.
+`conformance/tests/recordings_get.json` runs a recording, a dock tool and a
+404 in every SDK. The route-allowlist entry is deleted.

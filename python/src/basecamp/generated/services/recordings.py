@@ -65,6 +65,29 @@ class RecordingsService(BaseService):
             operation="ListRecordings",
         )
 
+    def get(self, *, recording_id: int) -> dict[str, Any]:
+        """Get any recording by its id, without knowing its type.
+
+        Returns the recording's own JSON, as its type-specific read would, plus
+        `bookmark_url` and `subscription_url`. `type` names the kind of recording,
+        so a caller holding only an id can follow up with the type-specific read.
+        `parent` names the recording it sits in, by id and type, and `bucket` its
+        project. A dock tool itself (a message board, card table, Docs & Files,
+        schedule, and so on) has no `parent`.
+
+        404 when the recording does not exist, is deleted, or the caller cannot
+        see it, and for plumbing recordings that have no URL of their own.
+
+        Args:
+            recording_id: The recording id.
+        """
+        return self._request(
+            OperationInfo(service="recordings", operation="get", is_mutation=False, resource_id=recording_id),
+            "GET",
+            f"/recordings/{recording_id}",
+            operation="GetRecording",
+        )
+
     def copy(
         self,
         *,
@@ -353,6 +376,29 @@ class AsyncRecordingsService(AsyncBaseService):
             params=self._compact(type=type, bucket=bucket, status=status, sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListRecordings",
+        )
+
+    async def get(self, *, recording_id: int) -> dict[str, Any]:
+        """Get any recording by its id, without knowing its type.
+
+        Returns the recording's own JSON, as its type-specific read would, plus
+        `bookmark_url` and `subscription_url`. `type` names the kind of recording,
+        so a caller holding only an id can follow up with the type-specific read.
+        `parent` names the recording it sits in, by id and type, and `bucket` its
+        project. A dock tool itself (a message board, card table, Docs & Files,
+        schedule, and so on) has no `parent`.
+
+        404 when the recording does not exist, is deleted, or the caller cannot
+        see it, and for plumbing recordings that have no URL of their own.
+
+        Args:
+            recording_id: The recording id.
+        """
+        return await self._request(
+            OperationInfo(service="recordings", operation="get", is_mutation=False, resource_id=recording_id),
+            "GET",
+            f"/recordings/{recording_id}",
+            operation="GetRecording",
         )
 
     async def copy(

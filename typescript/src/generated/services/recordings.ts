@@ -154,6 +154,36 @@ export class RecordingsService extends BaseService {
   }
 
   /**
+   * Get any recording by its id, without knowing its type.
+   * @param recordingId - The recording ID
+   * @returns The Recording
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.recordings.get(123);
+   * ```
+   */
+  async get(recordingId: number): Promise<Recording> {
+    const response = await this.request(
+      {
+        service: "Recordings",
+        operation: "GetRecording",
+        resourceType: "recording",
+        isMutation: false,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.GET("/recordings/{recordingId}", {
+          params: {
+            path: { recordingId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
    * Start copying a recording into another project; poll GetFiling for the result.
    * @param recordingId - The recording ID
    * @param req - Recording request parameters

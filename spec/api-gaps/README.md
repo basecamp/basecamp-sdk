@@ -83,7 +83,7 @@ making the absorption journey publicly auditable.
 | [delegated-events-performed-by](delegated-events-performed-by.md) | absorbed-in-sdk | master | low |
 | [recording-bubble-up-write](recording-bubble-up-write.md) | partial-coverage | master | medium |
 | [project-client-users](project-client-users.md) | absorbed-in-sdk | master | high |
-| [recording-show-unscoped](recording-show-unscoped.md) | addressed-in-bc3-pr-10158 | master | medium |
+| [recording-show-unscoped](recording-show-unscoped.md) | absorbed-in-sdk | master | medium |
 | [recording-backlinks](recording-backlinks.md) | addressed-in-bc3-pr-13121 | master | medium |
 | [account-people-enrollment](account-people-enrollment.md) | addressed-in-bc3-pr-9962 | master | medium |
 | [pings](pings.md) | absorbed-in-sdk | master | high |

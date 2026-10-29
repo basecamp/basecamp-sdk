@@ -501,6 +501,10 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
             todosetId: pathParams.longParam("todosetId"), versionId: pathParams.longParam("versionId"))
         return DispatchResult(resultJSON: try resultJSON(version))
 
+    case "GetRecording":
+        let recording = try await account.recordings.get(recordingId: pathParams.longParam("recordingId"))
+        return DispatchResult(resultJSON: try resultJSON(recording))
+
     case "GetEmbed":
         let embed = try await account.embeds.get(sgid: pathParams.stringParam("sgid"))
         return DispatchResult(resultJSON: try resultJSON(embed))

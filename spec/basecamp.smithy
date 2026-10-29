@@ -228,6 +228,7 @@ service Basecamp {
     DeleteWebhook,
     ListEvents,
     ListRecordings,
+    GetRecording,
     SpotlightRecording,
     UnspotlightRecording,
     TrashRecording,
@@ -8192,6 +8193,40 @@ structure ListRecordingsInput {
 structure ListRecordingsOutput {
 
   recordings: RecordingList
+}
+
+/// Get any recording by its id, without knowing its type.
+///
+/// Returns the recording's own JSON, as its type-specific read would, plus
+/// `bookmark_url` and `subscription_url`. `type` names the kind of recording,
+/// so a caller holding only an id can follow up with the type-specific read.
+/// `parent` names the recording it sits in, by id and type, and `bucket` its
+/// project. A dock tool itself (a message board, card table, Docs & Files,
+/// schedule, and so on) has no `parent`.
+///
+/// 404 when the recording does not exist, is deleted, or the caller cannot
+/// see it, and for plumbing recordings that have no URL of their own.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}")
+operation GetRecording {
+  input: GetRecordingInput
+  output: GetRecordingOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetRecordingInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+}
+
+structure GetRecordingOutput {
+  recording: Recording
 }
 
 /// Put a recording's card in the spotlight area on its project or template home page.

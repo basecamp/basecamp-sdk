@@ -1284,6 +1284,11 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult(resultJson = Json.encodeToJsonElement(HillChartVersion.serializer(), version))
         }
 
+        "GetRecording" -> {
+            val recording = account.recordings.get(tc.pathParams.longParam("recordingId"))
+            DispatchResult(resultJson = Json.encodeToJsonElement(Recording.serializer(), recording))
+        }
+
         "GetEmbed" -> {
             val embed = account.embeds.get(tc.pathParams.stringParam("sgid"))
             DispatchResult(resultJson = Json.encodeToJsonElement(Embed.serializer(), embed))

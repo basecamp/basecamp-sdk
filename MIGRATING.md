@@ -11,6 +11,26 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Recordings: reading any recording by id
+
+`GetRecording` is a new operation, and additive for every caller: the
+Recordings service gains `get` (`Get` in Go). It reads any recording by id
+without knowing its type. `type` names the kind of recording, `parent` the
+recording it sits in, and `bucket` its project. A dock tool, such as a message
+board, has no `parent`. A recording that does not exist, is deleted, or that
+you cannot see raises the not-found error.
+
+The operation of the same name removed in v0.13.0 (#619) always answered 404,
+because Basecamp had no API view for it. Basecamp now serves one. If you scan
+`recordings.list` type by type to resolve an id, call `recordings.get`
+instead.
+
+It breaks only Go code that implements the generated `ClientInterface` /
+`ClientWithResponsesInterface` itself, which gain `GetRecording` and
+`GetRecordingWithResponse`. A mock or fake of your own must add them.
+
 # v0.33.0
 
 ### Hill charts: reading a chart's progress updates
@@ -2763,7 +2783,7 @@ nothing that worked stops working. `GetClientApproval` and
   show does not exist. The bucket-scoped show is drawn, but
   `app/views/api/recordings/` holds only partials, so it cannot render on the API
   host either. There is no correct path in any shape. See
-  [Known gaps](#recordingsget-has-no-generic-replacement).
+  [Recordings: reading any recording by id](#recordings-reading-any-recording-by-id).
 - **`CreateForwardReply`** — the flat create was never drawn
   (`resources :inbox_forwards, only: %i[show]`). The bucket-scoped create exists
   but is undocumented with no upstream coverage, so it was not substituted in.
@@ -3337,7 +3357,7 @@ the removal; nothing catches the wrong choice.
 ### `Recordings().Get` removed (#619)
 
 Use `Recordings().List(ctx, recordingType, opts)` and filter, or the
-type-specific service. See [Known gaps](#recordingsget-has-no-generic-replacement).
+type-specific service. See [Recordings: reading any recording by id](#recordings-reading-any-recording-by-id).
 
 ### `Forwards().CreateReply` and `CreateForwardReplyRequest` removed (#619)
 
@@ -3720,7 +3740,7 @@ deleteChatbot}`, `clientApprovals.list`, `clientCorrespondences.list`,
 `clientCorrespondences.get(correspondenceId:)` stay flat.
 
 Removed: `recordings.get(recordingId:)` (no replacement — see
-[Known gaps](#recordingsget-has-no-generic-replacement)),
+[Recordings: reading any recording by id](#recordings-reading-any-recording-by-id)),
 `todos.trash(todoId:)` (→ `recordings.archive(recordingId:)` to preserve
 behaviour, `recordings.trash(recordingId:)` to actually trash), and
 `forwards.createReply` with `CreateForwardReplyRequest` (no supported
@@ -4059,7 +4079,7 @@ Decide per call site; do not sed one into the other.
 No generic recording read remains. Use `account.todos.get(todo_id=…)` /
 `messages.get` / `documents.get`, or enumerate with
 `account.recordings.list(type="Todo", …)`. See
-[Known gaps](#recordingsget-has-no-generic-replacement).
+[Recordings: reading any recording by id](#recordings-reading-any-recording-by-id).
 
 ### `forwards.create_reply()` removed, with `CreateForwardReplyRequestContent` (#619)
 
@@ -4634,7 +4654,7 @@ not apply to it.
 ### Three operations removed (#619)
 
 `recordings.get` (no replacement — see
-[Known gaps](#recordingsget-has-no-generic-replacement)), `todos.trash`
+[Recordings: reading any recording by id](#recordings-reading-any-recording-by-id)), `todos.trash`
 (→ `recordings.trash(todoId)`, which is what the name promised;
 `recordings.archive` is what the old call actually did), `forwards.createReply`
 (no supported substitute — see
@@ -4752,53 +4772,6 @@ structure too. The decision is now approvable rather than blocked.
 ---
 
 # Known gaps
-
-## `recordings.get` has no generic replacement
-
-`GetRecording` was removed with nothing equivalent behind it (see
-[Route corrections](#619--three-operations-removed)). If you hold a recording ID
-and already know its type, use the type-specific getter — `todos.get`,
-`messages.get`, `documents.get`, and so on. That is the intended path and it is
-strictly better than the old call, which 404'd.
-
-If you hold an ID whose type you **do not** know, there is no direct read. The
-only route left is list-and-filter, and it is expensive enough that you should
-treat it as a last resort rather than a migration:
-
-```go
-// Go — scan one type at a time; there is no "any type" list.
-for _, t := range []basecamp.RecordingType{
-    basecamp.RecordingTypeTodo, basecamp.RecordingTypeMessage, basecamp.RecordingTypeDocument,
-    basecamp.RecordingTypeComment, basecamp.RecordingTypeUpload, basecamp.RecordingTypeVault,
-    basecamp.RecordingTypeScheduleEntry, basecamp.RecordingTypeQuestionAnswer,
-    basecamp.RecordingTypeTodolist, basecamp.RecordingTypeKanbanCard,
-    basecamp.RecordingTypeKanbanStep, basecamp.RecordingTypeDoor,
-} {
-    res, err := ac.Recordings().List(ctx, t, &basecamp.RecordingsListOptions{
-        Bucket: []int64{projectID},   // narrow it if you can
-        Status: "active",             // "archived" and "trashed" need separate passes
-    })
-    if err != nil { return err }
-    for _, r := range res.Recordings {
-        if r.ID == wanted { return handle(r) }
-    }
-}
-```
-
-Costs to be clear about: twelve list operations, each paginated across the whole
-account unless you can narrow `Bucket`; `Status` defaults to `"active"`, so an
-archived or trashed recording needs additional passes; and the polymorphic
-`Recording` projection is thinner than the type-specific one, so you may need a
-second, typed read once you know the type.
-
-**The durable fix is on your side: persist the type next to the ID.** Every
-recording the API hands you carries `type` — `Recording.Type` in Go,
-`recording["type"]` elsewhere — and it is the discriminator the type-specific
-getters need. An ID stored without its type is an ID you cannot cheaply resolve,
-and that was already true at v0.12.0; the removed operation did not resolve it
-either, because it 404'd.
-
-This is a real gap and it is recorded as one, not papered over.
 
 ## There is no raw-wire migration path
 

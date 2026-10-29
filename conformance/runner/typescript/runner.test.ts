@@ -821,6 +821,11 @@ async function executeOperation(
         return { result: version };
       }
 
+      case "GetRecording": {
+        const recording = await client.recordings.get(Number(params.recordingId));
+        return { result: recording };
+      }
+
       case "GetEmbed": {
         const embed = await client.embeds.get(String(params.sgid));
         return { result: embed };

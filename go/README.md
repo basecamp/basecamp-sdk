@@ -588,7 +588,7 @@ for both.
 |---------|---------|
 | `Webhooks()` | List, Get, Create, Update, Delete |
 | `Subscriptions()` | List, Subscribe, Unsubscribe, Update |
-| `Recordings()` | Archive, Unarchive, Trash, Summarize, Move, Copy, MoveAndWait, CopyAndWait, GetFiling |
+| `Recordings()` | Get, Archive, Unarchive, Trash, Summarize, Move, Copy, MoveAndWait, CopyAndWait, GetFiling |
 
 ### Client Portal
 

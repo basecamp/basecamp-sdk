@@ -802,3 +802,58 @@ func TestRecordingsServiceGetFilingNotFound(t *testing.T) {
 		t.Fatalf("expected not_found, got: %v", err)
 	}
 }
+
+func TestRecordingsServiceGet(t *testing.T) {
+	tests := []struct {
+		fixture    string
+		id         int64
+		wantType   string
+		wantParent *Parent
+	}{
+		{"get.json", 1069479351, "Message", &Parent{
+			ID:     1069479338,
+			Title:  "Message Board",
+			Type:   "Message::Board",
+			URL:    "https://3.basecampapi.com/195539477/buckets/2085958499/message_boards/1069479338.json",
+			AppURL: "https://3.basecamp.com/195539477/buckets/2085958499/message_boards/1069479338",
+		}},
+		{"get_tool.json", 1069479338, "Message::Board", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.fixture, func(t *testing.T) {
+			svc := testRecordingsServiceClient(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet || r.URL.Path != "/99999/recordings/456" {
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(loadRecordingsFixture(t, tt.fixture))
+			})
+
+			recording, err := svc.Get(context.Background(), 456)
+			if err != nil {
+				t.Fatalf("Get failed: %v", err)
+			}
+			if recording.ID != tt.id || recording.Type != tt.wantType {
+				t.Errorf("got recording %d %q, want %d %q", recording.ID, recording.Type, tt.id, tt.wantType)
+			}
+			if (recording.Parent == nil) != (tt.wantParent == nil) || (tt.wantParent != nil && *recording.Parent != *tt.wantParent) {
+				t.Errorf("parent = %+v, want %+v", recording.Parent, tt.wantParent)
+			}
+			want := Bucket{ID: 2085958499, Name: "The Leto Laptop", Type: "Project"}
+			if recording.Bucket == nil || *recording.Bucket != want {
+				t.Errorf("bucket = %+v, want %+v", recording.Bucket, want)
+			}
+		})
+	}
+}
+
+func TestRecordingsServiceGetNotFound(t *testing.T) {
+	svc := testRecordingsServiceClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	_, err := svc.Get(context.Background(), 456)
+	if apiErr, ok := errors.AsType[*Error](err); !ok || apiErr.Code != CodeNotFound {
+		t.Fatalf("expected not_found, got: %v", err)
+	}
+}

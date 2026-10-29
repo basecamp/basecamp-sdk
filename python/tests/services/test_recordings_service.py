@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -17,6 +18,64 @@ RECORDING = {"id": 456, "type": "Message", "title": "Launch", "status": "active"
 def make_account():
     client = Client(access_token="test-token")
     return client, client.for_account("12345")
+
+
+FIXTURES = Path(__file__).resolve().parents[3] / "spec" / "fixtures" / "recordings"
+
+
+def load_fixture(name):
+    return json.loads((FIXTURES / name).read_text())
+
+
+class TestRecordingGet:
+    @respx.mock
+    def test_get_reads_a_recording_without_its_type(self):
+        respx.get(f"{BASE}/recordings/1069479351").mock(
+            return_value=httpx.Response(200, json=load_fixture("get.json"))
+        )
+
+        client, account = make_account()
+        recording = account.recordings.get(recording_id=1069479351)
+        client.close()
+
+        assert recording["type"] == "Message"
+        assert recording["parent"]["type"] == "Message::Board"
+        assert recording["bucket"]["id"] == 2085958499
+
+    @respx.mock
+    def test_get_dock_tool_has_no_parent(self):
+        respx.get(f"{BASE}/recordings/1069479338").mock(
+            return_value=httpx.Response(200, json=load_fixture("get_tool.json"))
+        )
+
+        client, account = make_account()
+        recording = account.recordings.get(recording_id=1069479338)
+        client.close()
+
+        assert recording["type"] == "Message::Board"
+        assert "parent" not in recording
+
+    @respx.mock
+    def test_get_surfaces_not_found(self):
+        respx.get(f"{BASE}/recordings/9999").mock(return_value=httpx.Response(404))
+
+        client, account = make_account()
+        with pytest.raises(NotFoundError):
+            account.recordings.get(recording_id=9999)
+        client.close()
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_get(self):
+        respx.get(f"{BASE}/recordings/1069479351").mock(
+            return_value=httpx.Response(200, json=load_fixture("get.json"))
+        )
+
+        client = AsyncClient(access_token="test-token")
+        recording = await client.for_account("12345").recordings.get(recording_id=1069479351)
+        await client.close()
+
+        assert recording["type"] == "Message"
 
 
 class TestRecordingSpotlights:
