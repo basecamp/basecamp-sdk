@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.33.0
 
 ### Hill charts: reading a chart's progress updates
 
