@@ -204,7 +204,10 @@ class HillChartsServiceTest < Minitest::Test
 
     @account.hill_charts.create_version(todoset_id: 1)
 
-    assert_requested(:post, "https://3.basecampapi.com/12345/todosets/1/hills/versions.json", body: {})
+    # WebMock treats `body: {}` as matching any body, so parse it instead.
+    assert_requested(:post, "https://3.basecampapi.com/12345/todosets/1/hills/versions.json") do |req|
+      JSON.parse(req.body) == {}
+    end
   end
 
   def test_create_version_validation_error
