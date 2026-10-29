@@ -30,9 +30,7 @@ def load_fixture(name):
 class TestRecordingGet:
     @respx.mock
     def test_get_reads_a_recording_without_its_type(self):
-        respx.get(f"{BASE}/recordings/1069479351").mock(
-            return_value=httpx.Response(200, json=load_fixture("get.json"))
-        )
+        respx.get(f"{BASE}/recordings/1069479351").mock(return_value=httpx.Response(200, json=load_fixture("get.json")))
 
         client, account = make_account()
         recording = account.recordings.get(recording_id=1069479351)
@@ -67,9 +65,7 @@ class TestRecordingGet:
     @pytest.mark.asyncio
     @respx.mock
     async def test_async_get(self):
-        respx.get(f"{BASE}/recordings/1069479351").mock(
-            return_value=httpx.Response(200, json=load_fixture("get.json"))
-        )
+        respx.get(f"{BASE}/recordings/1069479351").mock(return_value=httpx.Response(200, json=load_fixture("get.json")))
 
         client = AsyncClient(access_token="test-token")
         recording = await client.for_account("12345").recordings.get(recording_id=1069479351)

@@ -8,12 +8,12 @@
  * paying for its full payload: an agent connector's admission step, an MCP tool
  * answering "what is this?".
  *
- * The SDK has no untyped recording read (BC3 has no such route), so the type is
- * the routing key: `comment.created` reads a comment, `card.created` reads a
- * card, and so on — one typed read per type. Chat lines are the exception,
- * because their read needs the Campfire id and the pointer does not carry it;
- * `summarize` discovers the Campfire first (see {@link RecordingsService.summarize}
- * and the discovery notes further down).
+ * The pointer already names the type, so `get`, the read for an id whose type is
+ * unknown, is not needed here; the type is the routing key: `comment.created`
+ * reads a comment, `card.created` reads a card, and so on — one typed read per
+ * type. Chat lines are the exception, because their read needs the Campfire id
+ * and the pointer does not carry it; `summarize` discovers the Campfire first
+ * (see {@link RecordingsService.summarize} and the discovery notes further down).
  *
  * This is hand-written composition over the generated services (SPEC §18,
  * Appendix F). It makes no wire request of its own, and it mints no operation

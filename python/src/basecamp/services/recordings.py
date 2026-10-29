@@ -6,11 +6,12 @@ through the typed read that type names. It exists for consumers that must decide
 something about a recording without paying for its full payload: an agent
 connector's admission step, an MCP tool answering "what is this?".
 
-The SDK has no untyped recording read (BC3 has no such route), so the type is
-the routing key: ``comment.created`` reads a comment, ``card.created`` reads a
-card, and so on -- one typed read per type. Chat lines are the exception,
-because their read needs the Campfire id and the pointer does not carry it;
-``summarize`` discovers the Campfire first (see
+The pointer already names the type, so ``get``, the read for an id whose
+type is unknown, is not needed here; the type is the routing key:
+``comment.created`` reads a comment, ``card.created`` reads a card, and so
+on -- one typed read per type. Chat lines are the exception, because their
+read needs the Campfire id and the pointer does not carry it; ``summarize``
+discovers the Campfire first (see
 :mod:`basecamp.services._campfire_index`).
 
 This is hand-written composition over the generated services (AGENTS.md;

@@ -8,10 +8,11 @@ import Foundation
 /// paying for its full payload: an agent connector's admission step, an MCP tool
 /// answering "what is this?".
 ///
-/// The SDK has no untyped recording read (BC3 has no such route), so the type is
-/// the routing key: `comment.created` reads a comment, `card.created` reads a
-/// card, and so on — one typed read per type. Chat lines are the exception,
-/// because their read needs the Campfire id and the pointer does not carry it;
+/// The pointer already names the type, so `get(recordingId:)`, the read for an
+/// id whose type is unknown, is not needed here; the type is the routing key:
+/// `comment.created` reads a comment, `card.created` reads a card, and so on —
+/// one typed read per type. Chat lines are the exception, because their read
+/// needs the Campfire id and the pointer does not carry it;
 /// ``RecordingsService/summarize(_:)`` discovers the Campfire first (see
 /// ``CampfireIndex``).
 ///
