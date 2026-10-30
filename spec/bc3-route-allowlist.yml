@@ -95,23 +95,6 @@ scope_aliases:
 # probably just incomplete" is not evidence.
 # ---------------------------------------------------------------------------
 sdk_routes_absent_from_bc3_docs:
-  - method: POST
-    path: /todosets/:id/hills/versions
-    reason: >-
-      CreateHillChartVersion, adopted ahead of the pin from BC3 #14214 (head
-      f0f63e7d43), which is not yet on bc3 master: this PR must not merge or
-      release before it does. There it is documented at
-      doc/api/sections/hill_charts.md:240 ("Create a hill chart progress
-      update"), drawn flat by widening `resources :versions` to `only: %i[
-      index show create ]` (config/routes.rb:107, inside `resources :todosets`
-      at :100, not bucket-scoped), answered by
-      Todosets::Hills::VersionsController#create's format.json branch
-      (`render :show, status: :created`, :32-34, so the API view is the
-      existing app/views/api/todosets/hills/versions/show.json.jbuilder), and
-      covered at test/api/todosets/hills/versions_controller_api_test.rb:134
-      ("create a progress update", asserts :created). Delete this entry at the
-      repin past #14214: the route is then in spec/bc3-routes.json, and the
-      gate fails this entry as stale until it goes.
   - method: GET
     path: /card_tables/steps/:id
     reason: >-

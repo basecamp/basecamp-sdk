@@ -119,12 +119,44 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `2a47a419594` (2026-10-27). <!-- @bc3-pin -->
+> The provenance pin is `4303f1dafd4` (2026-10-30). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
+>
+> The `2a47a419594..4303f1dafd4` range is **85 commits** (23 merges) by
+> `git log`, read from a local bc3 checkout. Nine files under `doc/api` and
+> one under `app/views/api` change, and the vendored route table moves from 430
+> routes to 431 across the same 73 sections. The one new route:
+>
+> - BC3 **#14214** (`4303f1dafd4`, the commit this repin moves to) —
+>   `POST /todosets/:id/hills/versions.json`, posting a hill chart progress
+>   update, documented in `hill_charts.md`. **Absorbed** in this change as
+>   `CreateHillChartVersion` on the `HillCharts` service. Its direction 1
+>   waiver, which carried it ahead of the pin, is deleted.
+>
+> The other two API changes add no route and no field and are **recorded, not
+> registered**:
+>
+> - BC3 **#14191** (`1e58633714d`) answers `422` when a comment, card, to-do,
+>   check-in answer or to-do list group is created under a recording that's in
+>   the trash, and has a move bring a trashed recording, card, column or to-do
+>   out of the trash as if it had been restored (`recordings.md`,
+>   `card_table_cards.md`, `card_table_columns.md`, `comments.md`,
+>   `question_answers.md`, `todolist_groups.md`, `todos.md`). Every one of
+>   those create operations already lists `ValidationError`, and the restore is
+>   server behavior with no change to a request or response shape.
+> - BC3 **#14176** (`6a3bfc50c0e`) puts a `reply_token` on the `callback_url`
+>   of a chatbot command sent from a Ping the chatbot isn't in, and documents
+>   in `chatbots.md` that the URL must be used whole and that other Pings
+>   answer `404`. The SDK models managing chatbots, not receiving their
+>   commands or posting lines by a chatbot key, so no modelled operation or
+>   shape changes.
+>
+> The `bc3-four` compatibility pin does not move: this sync re-verifies only
+> `master`.
 >
 > The `4958288166a..2a47a419594` range is **962 commits** (202 merges) by
 > `git log`, read from a local bc3 checkout. Fifteen files under `doc/api`
