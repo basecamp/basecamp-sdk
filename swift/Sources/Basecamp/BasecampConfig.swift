@@ -24,7 +24,7 @@ public struct BasecampConfig: Sendable {
     public let timeoutInterval: TimeInterval
 
     /// SDK version string.
-    public static let version = "0.33.0"
+    public static let version = "0.34.0"
 
     /// Basecamp API version this SDK targets.
     public static let apiVersion = "2026-10-30"
