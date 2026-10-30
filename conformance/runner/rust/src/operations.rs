@@ -290,6 +290,33 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                 .list_versions(id("todosetId"), &Default::default())
                 .await,
         ),
+        "CreateHillChartVersion" => {
+            // A key the fixture omits stays None and never reaches the wire, so an
+            // empty fixture body posts {}.
+            let dots = body.get("dots").and_then(Value::as_array).map(|dots| {
+                dots.iter()
+                    .map(|dot| HillChartDotPosition {
+                        id: dot.get("id").and_then(Value::as_i64).unwrap_or_default(),
+                        position: dot
+                            .get("position")
+                            .and_then(Value::as_i64)
+                            .and_then(|position| i32::try_from(position).ok())
+                            .unwrap_or_default(),
+                    })
+                    .collect()
+            });
+            let request = CreateHillChartVersionRequestContent {
+                description: optional_string_param(body, "description"),
+                dots,
+                subscriptions: optional_int64_list_param(body, "subscriptions"),
+            };
+            json(
+                account
+                    .hill_charts()
+                    .create_version(id("todosetId"), &request)
+                    .await?,
+            )
+        }
         "GetHillChartVersion" => json(
             account
                 .hill_charts()

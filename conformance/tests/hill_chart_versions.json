@@ -403,5 +403,430 @@
       "get",
       "error-mapping"
     ]
+  },
+  {
+    "name": "CreateHillChartVersion posts the note, the dots it moves and who to notify",
+    "description": "POST /todosets/{todosetId}/hills/versions.json with bc3's documented request (doc/api/sections/hill_charts.md), sent exactly as given. bc3 answers 201 with the new progress update in the GetHillChartVersion shape; this body is the documented read example with that request applied.",
+    "operation": "CreateHillChartVersion",
+    "method": "POST",
+    "path": "/todosets/{todosetId}/hills/versions.json",
+    "pathParams": {
+      "todosetId": 1069479829
+    },
+    "requestBody": {
+      "description": "<div>Research is done. Building starts Monday.</div>",
+      "dots": [
+        {
+          "id": 1069479863,
+          "position": 55
+        }
+      ],
+      "subscriptions": [
+        1049715913
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069480194,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-10-01T15:10:47.717Z",
+          "updated_at": "2026-10-01T15:10:47.740Z",
+          "title": "Hill Chart: Progress update",
+          "inherits_status": true,
+          "type": "Hill::Version",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958505/todosets/1069479829/hills/versions/1069480194.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/todosets/1069479829/hills/versions#__recording_1069480194",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiLmdpZDovL2JjMy9SZWNvcmRpbmcvMTA2OTQ4MDE5ND9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--0a88b14af225cad8f5b204fe79773cff49fc0f83.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958505/recordings/1069480194/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958505/recordings/1069480194/comments.json",
+          "boosts_count": 0,
+          "boosts_url": "https://3.basecampapi.com/195539477/buckets/2085958505/recordings/1069480194/boosts.json",
+          "parent": {
+            "id": 1069479829,
+            "title": "To-dos",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958505/todosets/1069479829.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/todosets/1069479829"
+          },
+          "bucket": {
+            "id": 2085958505,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "attachable_sgid": "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxMz9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--e627c45e6b34e08862da23906862412620e4d5d9",
+            "name": "Victor Cooper",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "tagline": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2026-10-01T15:09:21.537Z",
+            "updated_at": "2026-10-01T15:09:22.123Z",
+            "email_address": "victor@honchodesign.com",
+            "bio": "Don't let your dreams be dreams",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecampapi.com/195539477/people/BAhpBMlkkT4=--5fe7b70fbee7a7f0e2e1e19df7579e5d880c753d/avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true,
+            "can_access_timesheet": true,
+            "can_access_hill_charts": true
+          },
+          "description": "<div dir=\"auto\">Research is done. Building starts Monday.</div>",
+          "description_attachments": [],
+          "dots": [
+            {
+              "id": 1069479863,
+              "label": "Background and research",
+              "color": "blue",
+              "position": 55,
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958505/todolists/1069479863.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/todolists/1069479863"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todosets/1069479829/hills/versions.json"
+      },
+      {
+        "type": "requestBody",
+        "expected": {
+          "description": "<div>Research is done. Building starts Monday.</div>",
+          "dots": [
+            {
+              "id": 1069479863,
+              "position": 55
+            }
+          ],
+          "subscriptions": [
+            1049715913
+          ]
+        }
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069480194
+      },
+      {
+        "type": "responseBody",
+        "path": "description",
+        "expected": "<div dir=\"auto\">Research is done. Building starts Monday.</div>"
+      },
+      {
+        "type": "responseBody",
+        "path": "dots.0.id",
+        "expected": 1069479863
+      },
+      {
+        "type": "responseBody",
+        "path": "dots.0.position",
+        "expected": 55
+      }
+    ],
+    "tags": [
+      "hill-charts",
+      "create",
+      "path"
+    ]
+  },
+  {
+    "name": "CreateHillChartVersion with nothing in it sends an empty object",
+    "description": "Every field is optional: an update with none records the chart as it stands, and the SDK sends {} rather than nulls for the fields it was not given.",
+    "operation": "CreateHillChartVersion",
+    "method": "POST",
+    "path": "/todosets/{todosetId}/hills/versions.json",
+    "pathParams": {
+      "todosetId": 1069479829
+    },
+    "requestBody": {},
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069480194,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-10-01T15:10:47.717Z",
+          "updated_at": "2026-10-01T15:10:47.740Z",
+          "title": "Hill Chart: Progress update",
+          "inherits_status": true,
+          "type": "Hill::Version",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958505/todosets/1069479829/hills/versions/1069480194.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/todosets/1069479829/hills/versions#__recording_1069480194",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiLmdpZDovL2JjMy9SZWNvcmRpbmcvMTA2OTQ4MDE5ND9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--0a88b14af225cad8f5b204fe79773cff49fc0f83.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958505/recordings/1069480194/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958505/recordings/1069480194/comments.json",
+          "boosts_count": 0,
+          "boosts_url": "https://3.basecampapi.com/195539477/buckets/2085958505/recordings/1069480194/boosts.json",
+          "parent": {
+            "id": 1069479829,
+            "title": "To-dos",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958505/todosets/1069479829.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/todosets/1069479829"
+          },
+          "bucket": {
+            "id": 2085958505,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "attachable_sgid": "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxMz9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--e627c45e6b34e08862da23906862412620e4d5d9",
+            "name": "Victor Cooper",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "tagline": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2026-10-01T15:09:21.537Z",
+            "updated_at": "2026-10-01T15:09:22.123Z",
+            "email_address": "victor@honchodesign.com",
+            "bio": "Don't let your dreams be dreams",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecampapi.com/195539477/people/BAhpBMlkkT4=--5fe7b70fbee7a7f0e2e1e19df7579e5d880c753d/avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true,
+            "can_access_timesheet": true,
+            "can_access_hill_charts": true
+          },
+          "description": "<div dir=\"auto\">Research is done. Building starts Monday.</div>",
+          "description_attachments": [],
+          "dots": [
+            {
+              "id": 1069479863,
+              "label": "Background and research",
+              "color": "blue",
+              "position": 55,
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958505/todolists/1069479863.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/todolists/1069479863"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestBody",
+        "expected": {}
+      }
+    ],
+    "tags": [
+      "hill-charts",
+      "create"
+    ]
+  },
+  {
+    "name": "CreateHillChartVersion 422 maps to validation with the server's message",
+    "description": "A todolist that isn't tracked on the chart answers 422 with an error body, and nothing is saved.",
+    "operation": "CreateHillChartVersion",
+    "method": "POST",
+    "path": "/todosets/{todosetId}/hills/versions.json",
+    "pathParams": {
+      "todosetId": 1069479829
+    },
+    "requestBody": {
+      "dots": [
+        {
+          "id": 1069479511,
+          "position": 50
+        }
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Not tracked on the hill chart: 1069479511"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 422
+      },
+      {
+        "type": "errorMessage",
+        "expected": "Not tracked on the hill chart: 1069479511"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "hill-charts",
+      "create",
+      "error-mapping"
+    ]
+  },
+  {
+    "name": "CreateHillChartVersion is not retried on 503",
+    "description": "Posting a progress update is not idempotent: a retry after a 503 the server may have acted on could save the update twice. The operation is attempted once.",
+    "operation": "CreateHillChartVersion",
+    "method": "POST",
+    "path": "/todosets/{todosetId}/hills/versions.json",
+    "pathParams": {
+      "todosetId": 1069479829
+    },
+    "requestBody": {
+      "description": "<div>Still testing</div>"
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      },
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069480194,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-10-01T15:10:47.717Z",
+          "updated_at": "2026-10-01T15:10:47.740Z",
+          "title": "Hill Chart: Progress update",
+          "inherits_status": true,
+          "type": "Hill::Version",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958505/todosets/1069479829/hills/versions/1069480194.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/todosets/1069479829/hills/versions#__recording_1069480194",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiLmdpZDovL2JjMy9SZWNvcmRpbmcvMTA2OTQ4MDE5ND9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--0a88b14af225cad8f5b204fe79773cff49fc0f83.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958505/recordings/1069480194/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958505/recordings/1069480194/comments.json",
+          "boosts_count": 0,
+          "boosts_url": "https://3.basecampapi.com/195539477/buckets/2085958505/recordings/1069480194/boosts.json",
+          "parent": {
+            "id": 1069479829,
+            "title": "To-dos",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958505/todosets/1069479829.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/todosets/1069479829"
+          },
+          "bucket": {
+            "id": 2085958505,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "attachable_sgid": "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxMz9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--e627c45e6b34e08862da23906862412620e4d5d9",
+            "name": "Victor Cooper",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "tagline": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2026-10-01T15:09:21.537Z",
+            "updated_at": "2026-10-01T15:09:22.123Z",
+            "email_address": "victor@honchodesign.com",
+            "bio": "Don't let your dreams be dreams",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecampapi.com/195539477/people/BAhpBMlkkT4=--5fe7b70fbee7a7f0e2e1e19df7579e5d880c753d/avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true,
+            "can_access_timesheet": true,
+            "can_access_hill_charts": true
+          },
+          "description": "<div dir=\"auto\">Research is done. Building starts Monday.</div>",
+          "description_attachments": [],
+          "dots": [
+            {
+              "id": 1069479863,
+              "label": "Background and research",
+              "color": "blue",
+              "position": 55,
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958505/todolists/1069479863.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/todolists/1069479863"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "statusCode",
+        "expected": 503
+      }
+    ],
+    "tags": [
+      "hill-charts",
+      "create",
+      "no-retry"
+    ]
   }
 ]

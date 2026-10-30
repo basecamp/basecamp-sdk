@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-28T05:27:32Z
+# Generated: 2026-10-30T06:06:06Z
 
 require "json"
 require "time"
@@ -2573,6 +2573,33 @@ module Basecamp
           "position" => @position,
           "app_url" => @app_url,
           "url" => @url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # HillChartDotPosition
+    class HillChartDotPosition
+      include TypeHelpers
+      attr_accessor :id, :position
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id position].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @position = parse_integer(data["position"])
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "position" => @position,
         }.compact
       end
 

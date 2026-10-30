@@ -235,6 +235,7 @@ not_grouped:
   - CreateFolder
   - CreateGaugeNeedle
   - CreateGoogleDocument
+  - CreateHillChartVersion
   - CreateLineupMarker
   - CreateMessageType
   - CreatePing

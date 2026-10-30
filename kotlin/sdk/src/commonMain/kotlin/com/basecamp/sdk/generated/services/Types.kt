@@ -723,6 +723,13 @@ data class ListHillChartVersionsOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
+/** Request body for CreateHillChartVersion. */
+data class CreateHillChartVersionBody(
+    val description: String? = null,
+    val dots: List<JsonObject>? = null,
+    val subscriptions: List<Long>? = null
+)
+
 /** Request body for CreateLineupMarker. */
 data class CreateLineupMarkerBody(
     val name: String,

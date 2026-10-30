@@ -39,6 +39,7 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     "CreateEventBoost": (("booster",),),
     "CreateGaugeNeedle": (("creator",),),
     "CreateGoogleDocument": (("creator",),),
+    "CreateHillChartVersion": (("creator",),),
     "CreateMessage": (("creator",),),
     "CreatePing": (("people", "[]"),),
     "CreateQuestion": (("creator",),),

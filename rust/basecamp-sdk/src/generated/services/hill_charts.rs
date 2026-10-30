@@ -38,6 +38,34 @@ impl<'a> HillChartsService<'a> {
         self.client
     }
 
+    /// Post a progress update on a todoset's hill chart.
+    ///
+    /// Moves the todolists named in `dots` and saves a progress update, as
+    /// updating the hill chart in Basecamp does. Todolists left out of `dots` keep
+    /// their current position, so one dot can move without sending the others.
+    /// Every field is optional: with none, the update records the chart as it
+    /// stands. To track or untrack a todolist, use `UpdateHillChartSettings`.
+    ///
+    /// Answers 201 with the new progress update, in the shape
+    /// `GetHillChartVersion` returns, including where every tracked todolist now
+    /// sits. Answers 422, with an `error` message and nothing saved, when `dots`
+    /// isn't a list of objects, a todolist appears in it more than once or isn't
+    /// tracked on the chart, a `position` isn't a whole number from 0 to 100, or
+    /// the chart tracks no todolists.
+    ///
+    /// `POST /todosets/{todosetId}/hills/versions.json` — not idempotent, sent exactly once.
+    pub async fn create_version(
+        &self,
+        todoset_id: i64,
+        body: &CreateHillChartVersionRequestContent,
+    ) -> Result<CreateHillChartVersionResponseContent, Error> {
+        let mut operation = self
+            .client
+            .operation(&routes::CREATE_HILL_CHART_VERSION, &[&todoset_id]);
+        operation.json(body)?;
+        self.client.send(operation).await
+    }
+
     /// Get the hill chart for a todoset
     ///
     /// `GET /todosets/{todosetId}/hill.json` — idempotent; retries up to 3 attempt(s) on 429, 503.

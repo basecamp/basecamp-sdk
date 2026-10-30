@@ -496,6 +496,28 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         let versions = try await account.hillCharts.listVersions(todosetId: pathParams.longParam("todosetId"))
         return DispatchResult(totalCount: versions.meta.totalCount, truncated: versions.meta.truncated)
 
+    case "CreateHillChartVersion":
+        var dots: [HillChartDotPosition]?
+        if let raw = rb?["dots"] {
+            guard let array = raw.arrayValue else {
+                throw RunnerError.badParameter("parameter \"dots\" must be an array, got \(raw.display)")
+            }
+            dots = try array.map { element in
+                let dot = element.objectValue
+                guard let position = Int32(exactly: try dot.longParam("position")) else {
+                    throw RunnerError.badParameter("dot position out of range: \(element.display)")
+                }
+                return HillChartDotPosition(id: try dot.longParam("id"), position: position)
+            }
+        }
+        let version = try await account.hillCharts.createVersion(
+            todosetId: pathParams.longParam("todosetId"),
+            req: CreateHillChartVersionRequest(
+                description: rb.optString("description"),
+                dots: dots,
+                subscriptions: rb.intArray("subscriptions")))
+        return DispatchResult(resultJSON: try resultJSON(version))
+
     case "GetHillChartVersion":
         let version = try await account.hillCharts.getVersion(
             todosetId: pathParams.longParam("todosetId"), versionId: pathParams.longParam("versionId"))

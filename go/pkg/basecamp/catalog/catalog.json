@@ -1289,6 +1289,87 @@
       "bodyRequired": true
     },
     {
+      "operationId": "CreateHillChartVersion",
+      "tag": "Todos",
+      "method": "POST",
+      "path": "/{accountId}/todosets/{todosetId}/hills/versions.json",
+      "doc": "Post a progress update on a todoset's hill chart.\n\nMoves the todolists named in `dots` and saves a progress update, as\nupdating the hill chart in Basecamp does. Todolists left out of `dots` keep\ntheir current position, so one dot can move without sending the others.\nEvery field is optional: with none, the update records the chart as it\nstands. To track or untrack a todolist, use `UpdateHillChartSettings`.\n\nAnswers 201 with the new progress update, in the shape\n`GetHillChartVersion` returns, including where every tracked todolist now\nsits. Answers 422, with an `error` message and nothing saved, when `dots`\nisn't a list of objects, a todolist appears in it more than once or isn't\ntracked on the chart, a `position` isn't a whole number from 0 to 100, or\nthe chart tracks no todolists.",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "todosetId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "description": {
+            "description": "A note about the update, as rich text (HTML).",
+            "type": "string"
+          },
+          "dots": {
+            "description": "Todolists to move, each with its ID and new position. Todolists left\nout keep their current position.",
+            "items": {
+              "description": "Where to move one tracked todolist in a progress update.",
+              "properties": {
+                "id": {
+                  "description": "The todolist's ID. It must be tracked on the hill chart.",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "position": {
+                  "description": "A whole number from 0 to 100, on the same scale as the hill chart's dots.",
+                  "format": "int32",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "position"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "subscriptions": {
+            "description": "People to notify of the update and subscribe to it. If absent, nobody\nelse is notified.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
       "operationId": "CreateLineupMarker",
       "tag": "Lineup",
       "method": "POST",

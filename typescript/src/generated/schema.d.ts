@@ -4159,7 +4159,23 @@ export interface paths {
          */
         get: operations["ListHillChartVersions"];
         put?: never;
-        post?: never;
+        /**
+         * @description Post a progress update on a todoset's hill chart.
+         *
+         *     Moves the todolists named in `dots` and saves a progress update, as
+         *     updating the hill chart in Basecamp does. Todolists left out of `dots` keep
+         *     their current position, so one dot can move without sending the others.
+         *     Every field is optional: with none, the update records the chart as it
+         *     stands. To track or untrack a todolist, use `UpdateHillChartSettings`.
+         *
+         *     Answers 201 with the new progress update, in the shape
+         *     `GetHillChartVersion` returns, including where every tracked todolist now
+         *     sits. Answers 422, with an `error` message and nothing saved, when `dots`
+         *     isn't a list of objects, a todolist appears in it more than once or isn't
+         *     tracked on the chart, a `position` isn't a whole number from 0 to 100, or
+         *     the chart tracks no todolists.
+         */
+        post: operations["CreateHillChartVersion"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5068,6 +5084,21 @@ export interface components {
             visible_to_clients?: boolean;
         };
         CreateGoogleDocumentResponseContent: components["schemas"]["GoogleDocument"];
+        CreateHillChartVersionRequestContent: {
+            /** @description A note about the update, as rich text (HTML). */
+            description?: string;
+            /**
+             * @description Todolists to move, each with its ID and new position. Todolists left
+             *     out keep their current position.
+             */
+            dots?: components["schemas"]["HillChartDotPosition"][];
+            /**
+             * @description People to notify of the update and subscribe to it. If absent, nobody
+             *     else is notified.
+             */
+            subscriptions?: number[];
+        };
+        CreateHillChartVersionResponseContent: components["schemas"]["HillChartVersion"];
         CreateLineupMarkerRequestContent: {
             name: string;
             date: string;
@@ -6204,6 +6235,19 @@ export interface components {
             position: number;
             url?: string;
             app_url?: string;
+        };
+        /** @description Where to move one tracked todolist in a progress update. */
+        HillChartDotPosition: {
+            /**
+             * Format: int64
+             * @description The todolist's ID. It must be tracked on the hill chart.
+             */
+            id: number;
+            /**
+             * Format: int32
+             * @description A whole number from 0 to 100, on the same scale as the hill chart's dots.
+             */
+            position: number;
         };
         /**
          * @description A progress update on a hill chart: the note someone wrote when they
@@ -27151,6 +27195,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateHillChartVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                todosetId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CreateHillChartVersionRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateHillChartVersion 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateHillChartVersionResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

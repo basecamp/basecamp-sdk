@@ -816,6 +816,19 @@ async function executeOperation(
         await client.hillCharts.listVersions(Number(params.todosetId));
         break;
 
+      case "CreateHillChartVersion": {
+        const version = await client.hillCharts.createVersion(Number(params.todosetId), {
+          ...(body.description !== undefined ? { description: String(body.description) } : {}),
+          ...(body.dots !== undefined
+            ? { dots: body.dots as { id: number; position: number }[] }
+            : {}),
+          ...(body.subscriptions !== undefined
+            ? { subscriptions: body.subscriptions as number[] }
+            : {}),
+        });
+        return { result: version };
+      }
+
       case "GetHillChartVersion": {
         const version = await client.hillCharts.getVersion(Number(params.todosetId), Number(params.versionId));
         return { result: version };

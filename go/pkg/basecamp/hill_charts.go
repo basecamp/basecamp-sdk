@@ -93,6 +93,31 @@ type HillChartVersionDot struct {
 	AppURL   string `json:"app_url,omitempty"`
 }
 
+// HillChartDotPosition moves one tracked todolist in a progress update.
+type HillChartDotPosition struct {
+	// ID is the todolist's ID. It must be tracked on the hill chart.
+	ID int64 `json:"id"`
+	// Position is a whole number from 0 to 100, on the same scale as
+	// HillChartDot.Position.
+	Position int `json:"position"`
+}
+
+// CreateHillChartVersionRequest specifies a progress update to post on a hill
+// chart. Every field is optional: an empty request records the chart as it
+// stands.
+type CreateHillChartVersionRequest struct {
+	// Description is a note about the update, as rich text (HTML). Empty
+	// omits it.
+	Description string `json:"description,omitempty"`
+	// Dots moves tracked todolists. Todolists left out keep their current
+	// position, so one dot can move without sending the others. To track or
+	// untrack a todolist, use HillChartsService.UpdateSettings.
+	Dots []HillChartDotPosition `json:"dots,omitempty"`
+	// Subscriptions controls who is notified of the update and subscribed to it.
+	// nil: field omitted, and nobody else is notified. &[]int64{1,2}: those people.
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+}
+
 // HillChartVersionListOptions specifies options for listing progress updates.
 type HillChartVersionListOptions struct {
 	// Limit is the maximum number of progress updates to return.
@@ -314,6 +339,68 @@ func (s *HillChartsService) GetVersion(ctx context.Context, todosetID, versionID
 	}
 
 	version := hillChartVersionFromGenerated(*resp.JSON200)
+	return &version, nil
+}
+
+// CreateVersion posts a progress update on a todoset's hill chart: it moves
+// the todolists named in req.Dots and saves the update, as updating the hill
+// chart in Basecamp does. req may be nil, which records the chart as it
+// stands.
+//
+// Returns the new progress update, including where every tracked todolist now
+// sits. The API answers 422 (a validation error, nothing saved) when a
+// todolist in Dots appears more than once or isn't tracked on the chart, or
+// when the chart tracks no todolists. A position outside 0–100 is refused
+// here as a usage error before any request is sent.
+func (s *HillChartsService) CreateVersion(ctx context.Context, todosetID int64, req *CreateHillChartVersionRequest) (result *HillChartVersion, err error) {
+	op := OperationInfo{
+		Service: "HillCharts", Operation: "CreateVersion",
+		ResourceType: "hill_chart_version", IsMutation: true,
+		ResourceID: todosetID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	body := generated.CreateHillChartVersionJSONRequestBody{}
+	if req != nil {
+		body.Description = omitzero(req.Description)
+		body.Subscriptions = req.Subscriptions
+		// nil omits dots; a non-nil slice reaches the wire, even when empty.
+		if req.Dots != nil {
+			dots := make([]generated.HillChartDotPosition, 0, len(req.Dots))
+			for _, d := range req.Dots {
+				if d.Position < 0 || d.Position > 100 {
+					err = ErrUsage(fmt.Sprintf("hill chart position for todolist %d must be a whole number from 0 to 100, got %d", d.ID, d.Position))
+					return nil, err
+				}
+				dots = append(dots, generated.HillChartDotPosition{
+					Id:       d.ID,
+					Position: int32(d.Position), // #nosec G115 -- bounds checked above
+				})
+			}
+			body.Dots = &dots
+		}
+	}
+
+	resp, err := s.client.parent.gen.CreateHillChartVersionWithResponse(ctx, s.client.accountID, todosetID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	version := hillChartVersionFromGenerated(*resp.JSON201)
 	return &version, nil
 }
 

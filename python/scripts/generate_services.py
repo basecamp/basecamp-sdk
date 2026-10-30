@@ -128,7 +128,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
         "Todolists": ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist", "RepositionTodolist"],
         "Todosets": ["GetTodoset"],
         "TodolistGroups": ["ListTodolistGroups", "CreateTodolistGroup", "RepositionTodolistGroup"],
-        "HillCharts": ["GetHillChart", "UpdateHillChartSettings", "ListHillChartVersions", "GetHillChartVersion"],
+        "HillCharts": ["GetHillChart", "UpdateHillChartSettings", "ListHillChartVersions", "GetHillChartVersion", "CreateHillChartVersion"],
     },
     "Untagged": {
         "Timeline": ["GetProjectTimeline"],
@@ -271,6 +271,7 @@ METHOD_NAME_OVERRIDES = {
     "UpdateHillChartSettings": "update_settings",
     "ListHillChartVersions": "list_versions",
     "GetHillChartVersion": "get_version",
+    "CreateHillChartVersion": "create_version",
 }
 
 # Verb patterns for extracting method names

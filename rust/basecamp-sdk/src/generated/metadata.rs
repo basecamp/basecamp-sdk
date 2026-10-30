@@ -74,6 +74,9 @@ pub static CREATE_GAUGE_NEEDLE: OperationMetadata = OperationMetadata { operatio
 /// `CreateGoogleDocument`.
 #[rustfmt::skip]
 pub static CREATE_GOOGLE_DOCUMENT: OperationMetadata = OperationMetadata { operation: "CreateGoogleDocument", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `CreateHillChartVersion`.
+#[rustfmt::skip]
+pub static CREATE_HILL_CHART_VERSION: OperationMetadata = OperationMetadata { operation: "CreateHillChartVersion", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `CreateLineupMarker`.
 #[rustfmt::skip]
 pub static CREATE_LINEUP_MARKER: OperationMetadata = OperationMetadata { operation: "CreateLineupMarker", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -913,6 +916,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &CREATE_FOLDER,
     &CREATE_GAUGE_NEEDLE,
     &CREATE_GOOGLE_DOCUMENT,
+    &CREATE_HILL_CHART_VERSION,
     &CREATE_LINEUP_MARKER,
     &CREATE_MESSAGE,
     &CREATE_MESSAGE_TYPE,

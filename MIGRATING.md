@@ -11,6 +11,18 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Hill charts: posting a progress update
+
+`CreateHillChartVersion` is a new operation, and additive for every caller:
+the HillCharts service gains `createVersion` (`CreateVersion` in Go,
+`create_version` in Python, Ruby and Rust), with the new `HillChartDotPosition`
+shape for the dots it moves. It breaks only Go code that implements the
+generated `ClientInterface` / `ClientWithResponsesInterface` itself, which gain
+`CreateHillChartVersion` and `CreateHillChartVersionWithBody` and their
+`...WithResponse` forms. A mock or fake of your own must add them.
+
 # v0.33.0
 
 ### Hill charts: reading a chart's progress updates

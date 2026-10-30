@@ -3146,7 +3146,8 @@
       "pattern": "/{accountId}/todosets/{todosetId}/hills/versions",
       "resource": "Todos",
       "operations": {
-        "GET": "ListHillChartVersions"
+        "GET": "ListHillChartVersions",
+        "POST": "CreateHillChartVersion"
       },
       "params": {
         "accountId": {

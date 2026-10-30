@@ -963,6 +963,29 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 			},
 		}
 
+	case "CreateHillChartVersion":
+		// A key the fixture omits stays unset and never reaches the wire, so an
+		// empty fixture body posts {}.
+		req := &basecamp.CreateHillChartVersionRequest{
+			Description: getStringParam(tc.RequestBody, "description"),
+		}
+		if raw, ok := tc.RequestBody["dots"].([]interface{}); ok {
+			req.Dots = make([]basecamp.HillChartDotPosition, 0, len(raw))
+			for _, d := range raw {
+				dot, _ := d.(map[string]interface{})
+				req.Dots = append(req.Dots, basecamp.HillChartDotPosition{
+					ID:       getInt64Param(dot, "id"),
+					Position: int(getInt64Param(dot, "position")),
+				})
+			}
+		}
+		if raw, ok := tc.RequestBody["subscriptions"]; ok {
+			ids := toInt64Slice(raw)
+			req.Subscriptions = &ids
+		}
+		version, err := account.HillCharts().CreateVersion(ctx, getInt64Param(tc.PathParams, "todosetId"), req)
+		return operationResult{err: err, result: version}
+
 	case "GetHillChartVersion":
 		version, err := account.HillCharts().GetVersion(ctx, getInt64Param(tc.PathParams, "todosetId"), getInt64Param(tc.PathParams, "versionId"))
 		return operationResult{err: err, result: version}
@@ -2853,8 +2876,15 @@ func toInt64Slice(raw interface{}) []int64 {
 	}
 	out := make([]int64, 0, len(items))
 	for _, item := range items {
-		if f, isNum := item.(float64); isNum {
-			out = append(out, int64(f))
+		// Fixtures decode with UseNumber, so ids arrive as json.Number; a
+		// float64-only switch dropped every one of them and sent [].
+		switch n := item.(type) {
+		case json.Number:
+			if i, err := n.Int64(); err == nil {
+				out = append(out, i)
+			}
+		case float64:
+			out = append(out, int64(n))
 		}
 	}
 	return out

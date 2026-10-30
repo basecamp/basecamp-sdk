@@ -39,6 +39,20 @@ module Basecamp
         end
       end
 
+      # Post a progress update on a todoset's hill chart.
+      # @param todoset_id [Integer] todoset id ID
+      # @param description [String, nil] A note about the update, as rich text (HTML).
+      # @param dots [Array, nil] Todolists to move, each with its ID and new position. Todolists left
+      #   out keep their current position.
+      # @param subscriptions [Array, nil] People to notify of the update and subscribe to it. If absent, nobody
+      #   else is notified.
+      # @return [Hash] response data
+      def create_version(todoset_id:, description: nil, dots: nil, subscriptions: nil)
+        with_operation(service: "hillcharts", operation: "create_version", is_mutation: true, resource_id: todoset_id) do
+          http_post("/todosets/#{todoset_id}/hills/versions.json", body: compact_params(description: description, dots: dots, subscriptions: subscriptions)).json(operation: "CreateHillChartVersion")
+        end
+      end
+
       # Get one progress update from a todoset's hill chart
       # @param todoset_id [Integer] todoset id ID
       # @param version_id [Integer] version id ID

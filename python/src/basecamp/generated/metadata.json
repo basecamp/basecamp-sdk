@@ -258,6 +258,17 @@
       ]
     }
   },
+  "CreateHillChartVersion": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "CreateLineupMarker": {
     "retry": {
       "backoff": "exponential",

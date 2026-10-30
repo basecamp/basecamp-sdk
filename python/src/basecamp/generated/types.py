@@ -528,6 +528,12 @@ class CreateGoogleDocumentRequestContent(TypedDict):
     visible_to_clients: NotRequired[bool]
 
 
+class CreateHillChartVersionRequestContent(TypedDict):
+    description: NotRequired[str]
+    dots: NotRequired[list[HillChartDotPosition]]
+    subscriptions: NotRequired[list[int]]
+
+
 class CreateLineupMarkerRequestContent(TypedDict):
     date: str
     name: str
@@ -1121,6 +1127,11 @@ class HillChartDot(TypedDict):
     label: str
     position: int
     url: NotRequired[str]
+
+
+class HillChartDotPosition(TypedDict):
+    id: int
+    position: int
 
 
 class HillChartVersion(TypedDict):

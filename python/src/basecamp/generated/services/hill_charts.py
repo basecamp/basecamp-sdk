@@ -71,6 +71,45 @@ class HillChartsService(BaseService):
             operation="ListHillChartVersions",
         )
 
+    def create_version(
+        self,
+        *,
+        todoset_id: int,
+        description: str | None = None,
+        dots: list[dict] | None = None,
+        subscriptions: list[int] | None = None,
+    ) -> dict[str, Any]:
+        """Post a progress update on a todoset's hill chart.
+
+        Moves the todolists named in `dots` and saves a progress update, as
+        updating the hill chart in Basecamp does. Todolists left out of `dots` keep
+        their current position, so one dot can move without sending the others.
+        Every field is optional: with none, the update records the chart as it
+        stands. To track or untrack a todolist, use `UpdateHillChartSettings`.
+
+        Answers 201 with the new progress update, in the shape
+        `GetHillChartVersion` returns, including where every tracked todolist now
+        sits. Answers 422, with an `error` message and nothing saved, when `dots`
+        isn't a list of objects, a todolist appears in it more than once or isn't
+        tracked on the chart, a `position` isn't a whole number from 0 to 100, or
+        the chart tracks no todolists.
+
+        Args:
+            todoset_id: The todoset id.
+            description: A note about the update, as rich text (HTML).
+            dots: Todolists to move, each with its ID and new position. Todolists left out keep
+                their current position.
+            subscriptions: People to notify of the update and subscribe to it. If absent, nobody
+                else is notified.
+        """
+        return self._request(
+            OperationInfo(service="hillcharts", operation="create_version", is_mutation=True, resource_id=todoset_id),
+            "POST",
+            f"/todosets/{todoset_id}/hills/versions.json",
+            json_body=self._compact(description=description, dots=dots, subscriptions=subscriptions),
+            operation="CreateHillChartVersion",
+        )
+
     def get_version(self, *, todoset_id: int, version_id: int) -> dict[str, Any]:
         """Get one progress update from a todoset's hill chart.
 
@@ -147,6 +186,45 @@ class AsyncHillChartsService(AsyncBaseService):
             params=self._compact(page=page),
             max_items=max_items,
             operation="ListHillChartVersions",
+        )
+
+    async def create_version(
+        self,
+        *,
+        todoset_id: int,
+        description: str | None = None,
+        dots: list[dict] | None = None,
+        subscriptions: list[int] | None = None,
+    ) -> dict[str, Any]:
+        """Post a progress update on a todoset's hill chart.
+
+        Moves the todolists named in `dots` and saves a progress update, as
+        updating the hill chart in Basecamp does. Todolists left out of `dots` keep
+        their current position, so one dot can move without sending the others.
+        Every field is optional: with none, the update records the chart as it
+        stands. To track or untrack a todolist, use `UpdateHillChartSettings`.
+
+        Answers 201 with the new progress update, in the shape
+        `GetHillChartVersion` returns, including where every tracked todolist now
+        sits. Answers 422, with an `error` message and nothing saved, when `dots`
+        isn't a list of objects, a todolist appears in it more than once or isn't
+        tracked on the chart, a `position` isn't a whole number from 0 to 100, or
+        the chart tracks no todolists.
+
+        Args:
+            todoset_id: The todoset id.
+            description: A note about the update, as rich text (HTML).
+            dots: Todolists to move, each with its ID and new position. Todolists left out keep
+                their current position.
+            subscriptions: People to notify of the update and subscribe to it. If absent, nobody
+                else is notified.
+        """
+        return await self._request(
+            OperationInfo(service="hillcharts", operation="create_version", is_mutation=True, resource_id=todoset_id),
+            "POST",
+            f"/todosets/{todoset_id}/hills/versions.json",
+            json_body=self._compact(description=description, dots=dots, subscriptions=subscriptions),
+            operation="CreateHillChartVersion",
         )
 
     async def get_version(self, *, todoset_id: int, version_id: int) -> dict[str, Any]:

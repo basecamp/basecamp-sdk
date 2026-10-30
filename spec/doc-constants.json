@@ -82,7 +82,7 @@
   "unmarkedPinCitations": {
     "spec/api-gaps/README.md": {
       "count": 2,
-      "reason": "the current range triage names its own endpoint twice: in 4958288166a..2a47a419594, and as the merge commit of BC3 #14188, which is the commit this repin moved to. Both are as-of facts bound to this repin and remain true after the pin advances. The pin sentence is separately marked <!-- @bc3-pin --> and is the only class-A claim in the file",
+      "reason": "the current range triage names its own endpoint twice: in 2a47a419594..4303f1dafd4, and as the merge commit of BC3 #14214, which is the commit this repin moved to. Both are as-of facts bound to this repin and remain true after the pin advances. The pin sentence is separately marked <!-- @bc3-pin --> and is the only class-A claim in the file",
       "$comment": "This reason restates the range it grants, so its endpoint is itself an as-of fact of this repin."
     }
   }

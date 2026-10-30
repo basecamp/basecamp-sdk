@@ -56,6 +56,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "CreateGoogleDocument": [
     "creator"
   ],
+  "CreateHillChartVersion": [
+    "creator"
+  ],
   "CreateMessage": [
     "creator"
   ],

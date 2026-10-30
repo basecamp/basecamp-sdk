@@ -14,6 +14,16 @@ public struct ListVersionsHillChartOptions: Sendable {
 
 
 public final class HillChartsService: BaseService, @unchecked Sendable {
+    public func createVersion(todosetId: Int, req: CreateHillChartVersionRequest) async throws -> HillChartVersion {
+        return try await request(
+            OperationInfo(service: "HillCharts", operation: "CreateHillChartVersion", resourceType: "hill_chart_version", isMutation: true, resourceId: todosetId),
+            method: "POST",
+            path: "/todosets/\(todosetId)/hills/versions.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CreateHillChartVersion")
+        )
+    }
+
     public func get(todosetId: Int) async throws -> HillChart {
         return try await request(
             OperationInfo(service: "HillCharts", operation: "GetHillChart", resourceType: "hill_chart", isMutation: false, resourceId: todosetId),

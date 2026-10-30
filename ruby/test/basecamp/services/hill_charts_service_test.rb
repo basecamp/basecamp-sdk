@@ -176,4 +176,48 @@ class HillChartsServiceTest < Minitest::Test
       @account.hill_charts.get_version(todoset_id: 1, version_id: 999)
     end
   end
+
+  def test_create_version
+    request = load_fixture("hill_charts/create-version-request.json")
+    stub_request(:post, "https://3.basecampapi.com/12345/todosets/1069479829/hills/versions.json")
+      .with(body: request.to_json)
+      .to_return(status: 201, body: load_fixture("hill_charts/create-version.json").to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    version = @account.hill_charts.create_version(
+      todoset_id: 1069479829,
+      description: request["description"],
+      dots: request["dots"],
+      subscriptions: request["subscriptions"]
+    )
+
+    assert_requested(:post, "https://3.basecampapi.com/12345/todosets/1069479829/hills/versions.json", body: request)
+    assert_equal 1069480194, version["id"]
+    assert_equal "<div dir=\"auto\">Research is done. Building starts Monday.</div>", version["description"]
+    assert_equal 55, version["dots"][0]["position"]
+  end
+
+  def test_create_version_with_nothing_posts_an_empty_object
+    stub_request(:post, "https://3.basecampapi.com/12345/todosets/1/hills/versions.json")
+      .to_return(status: 201, body: load_fixture("hill_charts/create-version.json").to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    @account.hill_charts.create_version(todoset_id: 1)
+
+    # WebMock treats `body: {}` as matching any body, so parse it instead.
+    assert_requested(:post, "https://3.basecampapi.com/12345/todosets/1/hills/versions.json") do |req|
+      JSON.parse(req.body) == {}
+    end
+  end
+
+  def test_create_version_validation_error
+    stub_request(:post, "https://3.basecampapi.com/12345/todosets/1/hills/versions.json")
+      .to_return(status: 422, body: { "error" => "Not tracked on the hill chart: 1069479511" }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @account.hill_charts.create_version(todoset_id: 1, dots: [ { "id" => 1069479511, "position" => 50 } ])
+    end
+    assert_equal "Not tracked on the hill chart: 1069479511", error.message
+  end
 end

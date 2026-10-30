@@ -11,6 +11,8 @@ import hillChartFixture from "../../../spec/fixtures/hill_charts/get.json" with 
 import versionsFixture from "../../../spec/fixtures/hill_charts/versions.json" with { type: "json" };
 import versionFixture from "../../../spec/fixtures/hill_charts/version.json" with { type: "json" };
 import versionGoneFixture from "../../../spec/fixtures/hill_charts/version_todolist_gone.json" with { type: "json" };
+import createVersionFixture from "../../../spec/fixtures/hill_charts/create-version.json" with { type: "json" };
+import createVersionRequestFixture from "../../../spec/fixtures/hill_charts/create-version-request.json" with { type: "json" };
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -236,6 +238,50 @@ describe("HillChartsService", () => {
       );
 
       await expect(client.hillCharts.getVersion(1, 999)).rejects.toMatchObject({ code: "not_found" });
+    });
+  });
+
+  describe("createVersion", () => {
+    it("posts a progress update and returns it", async () => {
+      let body: unknown;
+      server.use(
+        http.post(`${BASE_URL}/todosets/1069479829/hills/versions.json`, async ({ request }) => {
+          body = await request.json();
+          return HttpResponse.json(createVersionFixture, { status: 201 });
+        })
+      );
+
+      const version = await client.hillCharts.createVersion(1069479829, createVersionRequestFixture);
+      expect(body).toEqual(createVersionRequestFixture);
+      expect(version.id).toBe(1069480194);
+      expect(version.description).toBe('<div dir="auto">Research is done. Building starts Monday.</div>');
+      expect(version.dots[0].id).toBe(1069479863);
+      expect(version.dots[0].position).toBe(55);
+    });
+
+    it("posts an empty object when nothing is given", async () => {
+      let body: unknown;
+      server.use(
+        http.post(`${BASE_URL}/todosets/1069479829/hills/versions.json`, async ({ request }) => {
+          body = await request.json();
+          return HttpResponse.json(createVersionFixture, { status: 201 });
+        })
+      );
+
+      await client.hillCharts.createVersion(1069479829, {});
+      expect(body).toEqual({});
+    });
+
+    it("should throw validation with the server's message", async () => {
+      server.use(
+        http.post(`${BASE_URL}/todosets/1069479829/hills/versions.json`, () =>
+          HttpResponse.json({ error: "Not tracked on the hill chart: 1069479511" }, { status: 422 })
+        )
+      );
+
+      await expect(
+        client.hillCharts.createVersion(1069479829, { dots: [{ id: 1069479511, position: 50 }] })
+      ).rejects.toMatchObject({ code: "validation", message: "Not tracked on the hill chart: 1069479511" });
     });
   });
 });

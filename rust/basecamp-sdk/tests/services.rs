@@ -8,8 +8,9 @@
 mod support;
 
 use basecamp_sdk::models::{
-    CopyRecordingRequestContent, MoveRecordingRequestContent, UpdateCardRequestContent,
-    UpdateCardStepRequestContent, UpdateSubtaskRequestContent,
+    CopyRecordingRequestContent, CreateHillChartVersionRequestContent, HillChartDotPosition,
+    MoveRecordingRequestContent, UpdateCardRequestContent, UpdateCardStepRequestContent,
+    UpdateSubtaskRequestContent,
 };
 use basecamp_sdk::{Date, DateChange};
 use support::account;
@@ -723,6 +724,65 @@ async fn hill_charts_get_version_reads_a_dot_whose_todolist_is_gone() {
         (gone.id, gone.url.as_deref(), gone.label.as_str()),
         (None, None, "Old research list")
     );
+}
+
+#[tokio::test]
+async fn hill_charts_create_version_posts_the_documented_request() {
+    let server = MockServer::start().await;
+    let request: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/fixtures/hill_charts/create-version-request.json"
+    ))
+    .unwrap();
+    let body: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/fixtures/hill_charts/create-version.json"
+    ))
+    .unwrap();
+    Mock::given(method("POST"))
+        .and(path("/999/todosets/100/hills/versions.json"))
+        .and(header("Content-Type", "application/json"))
+        .and(body_json(request))
+        .respond_with(ResponseTemplate::new(201).set_body_json(body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let version = account(&server)
+        .hill_charts()
+        .create_version(
+            100,
+            &CreateHillChartVersionRequestContent {
+                description: Some("<div>Research is done. Building starts Monday.</div>".into()),
+                dots: Some(vec![HillChartDotPosition {
+                    id: 1_069_479_863,
+                    position: 55,
+                }]),
+                subscriptions: Some(vec![1_049_715_913]),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(version.id, 1_069_480_194);
+    assert_eq!(version.dots[0].position, 55);
+}
+
+#[tokio::test]
+async fn hill_charts_create_version_with_nothing_posts_an_empty_object() {
+    let server = MockServer::start().await;
+    let body: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/fixtures/hill_charts/create-version.json"
+    ))
+    .unwrap();
+    Mock::given(method("POST"))
+        .and(path("/999/todosets/100/hills/versions.json"))
+        .and(body_json(serde_json::json!({})))
+        .respond_with(ResponseTemplate::new(201).set_body_json(body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    account(&server)
+        .hill_charts()
+        .create_version(100, &CreateHillChartVersionRequestContent::default())
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -1866,6 +1926,16 @@ error_case!(
     hill_charts_get_version_maps_a_rejection,
     |account: basecamp_sdk::AccountClient| async move {
         account.hill_charts().get_version(100, 200).await
+    }
+);
+
+error_case!(
+    hill_charts_create_version_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .hill_charts()
+            .create_version(100, &CreateHillChartVersionRequestContent::default())
+            .await
     }
 );
 

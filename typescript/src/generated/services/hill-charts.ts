@@ -32,6 +32,20 @@ export interface ListVersionsHillChartOptions extends PaginationOptions {
   page?: number;
 }
 
+/**
+ * Request parameters for createVersion.
+ */
+export interface CreateVersionHillChartRequest {
+  /** A note about the update, as rich text (HTML). */
+  description?: string;
+  /** Todolists to move, each with its ID and new position. Todolists left
+out keep their current position. */
+  dots?: components["schemas"]["HillChartDotPosition"][];
+  /** People to notify of the update and subscribe to it. If absent, nobody
+else is notified. */
+  subscriptions?: number[];
+}
+
 
 // =============================================================================
 // Service
@@ -139,6 +153,42 @@ export class HillChartsService extends BaseService {
         })
       , options
     );
+  }
+
+  /**
+   * Post a progress update on a todoset's hill chart.
+   * @param todosetId - The todoset ID
+   * @param req - Hill_chart_version creation parameters
+   * @returns The hill_chart_version
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.hillCharts.createVersion(123, { });
+   * ```
+   */
+  async createVersion(todosetId: number, req: CreateVersionHillChartRequest): Promise<components["schemas"]["CreateHillChartVersionResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "HillCharts",
+        operation: "CreateHillChartVersion",
+        resourceType: "hill_chart_version",
+        isMutation: true,
+        resourceId: todosetId,
+      },
+      () =>
+        this.client.POST("/todosets/{todosetId}/hills/versions.json", {
+          params: {
+            path: { todosetId },
+          },
+          body: {
+            description: req.description,
+            dots: req.dots,
+            subscriptions: req.subscriptions,
+          },
+        })
+    );
+    return response;
   }
 
   /**

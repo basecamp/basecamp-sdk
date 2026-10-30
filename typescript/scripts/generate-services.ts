@@ -250,7 +250,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
     Todos: ["ListTodos", "CreateTodo", "CreateTodosetTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo"],
     Todolists: ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist", "RepositionTodolist"],
     Todosets: ["GetTodoset"],
-    HillCharts: ["GetHillChart", "UpdateHillChartSettings", "ListHillChartVersions", "GetHillChartVersion"],
+    HillCharts: ["GetHillChart", "UpdateHillChartSettings", "ListHillChartVersions", "GetHillChartVersion", "CreateHillChartVersion"],
     TodolistGroups: ["ListTodolistGroups", "CreateTodolistGroup", "RepositionTodolistGroup"],
   },
   Untagged: {
@@ -482,6 +482,7 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   UpdateHillChartSettings: "updateSettings",
   ListHillChartVersions: "listVersions",
   GetHillChartVersion: "getVersion",
+  CreateHillChartVersion: "createVersion",
 };
 
 /**
