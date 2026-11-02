@@ -102,7 +102,7 @@ jobs:
 
       - name: Set up Java
         if: steps.secrets.outputs.configured == 'true'
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -115,7 +115,7 @@ jobs:
 
       - name: Set up Ruby
         if: steps.secrets.outputs.configured == 'true'
-        uses: ruby/setup-ruby@e81a8fa391b11a595c1b7ed84177cc0fe02faf83 # v1.328.0
+        uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
         with:
           ruby-version: '3.3'
           bundler-cache: true
@@ -123,7 +123,7 @@ jobs:
 
       - name: Install uv (Python)
         if: steps.secrets.outputs.configured == 'true'
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
 
       - name: Build TypeScript SDK
         if: steps.secrets.outputs.configured == 'true'
