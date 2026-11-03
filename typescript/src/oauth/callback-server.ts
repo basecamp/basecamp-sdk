@@ -7,6 +7,7 @@
 
 import { createServer, type Server } from "node:http";
 import { BasecampError } from "../errors.js";
+import { requireNodeRuntime } from "./node-runtime.js";
 
 /**
  * Result from a successful OAuth callback.
@@ -49,6 +50,10 @@ const ERROR_HTML = `<!DOCTYPE html>
 /**
  * Starts a local HTTP server to receive the OAuth callback.
  *
+ * Node.js only: it listens with `node:http`. Outside Node it throws a `usage`
+ * BasecampError before doing anything else, provided this module loaded at
+ * all: a bundler that refuses the `node:http` import fails at import instead.
+ *
  * The server listens for a single GET /callback request, validates
  * the state parameter, and extracts the authorization code.
  * It auto-closes after receiving the callback or on timeout.
@@ -77,6 +82,8 @@ export async function startCallbackServer(
     timeoutMs = 120_000,
     expectedState,
   } = options;
+
+  requireNodeRuntime("startCallbackServer (local HTTP callback server)");
 
   let resolve: (result: CallbackResult) => void;
   let reject: (err: Error) => void;
