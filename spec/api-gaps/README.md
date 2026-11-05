@@ -119,12 +119,41 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `4303f1dafd4` (2026-10-30). <!-- @bc3-pin -->
+> The provenance pin is `6ceece6f69b` (2026-11-05). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
+>
+> The `4303f1dafd4..6ceece6f69b` range is **368 commits** (83 merges) by
+> `git log`, read from a local bc3 checkout. Two files under `doc/api` and
+> three under `app/views/api` change, and the vendored route table moves from
+> 431 routes to 434 across the same 73 sections. The three new routes:
+>
+> - BC3 **#14314** (`6ceece6f69b`, the commit this repin moves to) —
+>   `GET /buckets/:id/dock/doors.json`, and `GET`, `PUT` and
+>   `DELETE /dock/doors/:id.json`, the external links (doors) API, documented
+>   in `external_links.md`. **Absorbed** in this change as `ListDoors`,
+>   `GetDoor`, `UpdateDoor` and `DeleteDoor` (with `CreateDoor` on the
+>   already-documented `POST /buckets/:id/dock/doors.json`) on the `Doors`
+>   service. Their four direction 1 waivers, which carried them ahead of the
+>   pin, are deleted. The bucket-scoped `GET /buckets/:id/dock/doors/:id`
+>   leaves the table: `external_links.md` now describes it as the redirector
+>   to the outside address, not a JSON read, and it stays unmodelled.
+>
+> The other two API changes add no route and no field and are **recorded, not
+> registered**:
+>
+> - BC3 **#14147** (`04be5799fef`) restricts which tokens may authenticate an
+>   event feed connection in the handshake's `Authorization` header to
+>   Basecamp's own apps and personal access tokens (`event_feed.md`); any
+>   other client's token is refused with `"reconnect":false`. The SDK's
+>   connectors authenticate with a stream ticket (`CreateStreamTicket`), so no
+>   modelled operation or behavior changes.
+> - BC3 **#13195** (`ed1ed7f9c69`) bumps the cache key of
+>   `my/readings/_reading.json.jbuilder` with a comment line; the rendered
+>   shape is unchanged.
 >
 > The `2a47a419594..4303f1dafd4` range is **85 commits** (23 merges) by
 > `git log`, read from a local bc3 checkout. Nine files under `doc/api` and

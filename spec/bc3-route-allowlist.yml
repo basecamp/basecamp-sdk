@@ -150,47 +150,6 @@ sdk_routes_absent_from_bc3_docs:
       so no API view is needed; covered by the "destroy json" case in
       test/controllers/recordings/bubble_ups_controller_test.rb.
 
-  # -- External links (doors), adopted ahead of the pin from bc3#14314 (branch
-  #    doors-api, head 64c0d3fa1fe and later). bc3 documents all four at that
-  #    branch in doc/api/sections/external_links.md; the pinned revision does
-  #    not. This PR must not merge before bc3#14314 does. Delete these four
-  #    entries at the repin past it: the stale-entry check forces it. --
-
-  - method: GET
-    path: /buckets/:id/dock/doors
-    reason: >-
-      ListDoors. bc3#14314 documents it at external_links.md:39 and serves it
-      from the bucket-scoped `resources :doors` draw (config/routes.rb:1101)
-      through Docks::DoorsController#index, rendering
-      app/views/api/docks/doors/index.json.jbuilder; covered by
-      test/api/docks/doors_controller_api_test.rb ("list the doors in a
-      project's dock").
-  - method: GET
-    path: /dock/doors/:id
-    reason: >-
-      GetDoor. Not a scope alias of the documented bucket-scoped GET, which
-      stays a 302 redirector to the outside address: bc3#14314 draws a
-      separate flat `resources :doors, only: %i[ show update destroy ], path:
-      "dock/doors"` (config/routes.rb:302) whose #show renders JSON
-      (app/views/api/docks/doors/show.json.jbuilder). Documented at
-      external_links.md:207, which also says the bucket-scoped form is the
-      redirector (:280); covered by test/api/docks/doors_controller_api_test.rb
-      ("show a door", and "show through the bucket-scoped route still
-      redirects to the door's URL").
-  - method: PUT
-    path: /dock/doors/:id
-    reason: >-
-      UpdateDoor. Same flat draw as GetDoor (config/routes.rb:302), #update
-      rendering the show template. Documented at external_links.md:342;
-      covered by test/api/docks/doors_controller_api_test.rb ("update a door",
-      "update a door's client visibility alone").
-  - method: DELETE
-    path: /dock/doors/:id
-    reason: >-
-      DeleteDoor. Same flat draw (config/routes.rb:302), #destroy answering 204.
-      Documented at external_links.md:390; covered by
-      test/api/docks/doors_controller_api_test.rb ("delete a door").
-
 # ---------------------------------------------------------------------------
 # Known-defective SDK routes — bc3 does NOT serve these, and we know it.
 #
