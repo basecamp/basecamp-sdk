@@ -1253,6 +1253,39 @@ pub struct CreateDocumentRequestContent {
 /// `CreateDocumentResponseContent`.
 pub type CreateDocumentResponseContent = Document;
 
+/// The `CreateDoorPayload` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreateDoorPayload {
+    /// Short identifier for the external service: figma, dropbox, google_drive,
+    /// github, notion, trello, slack, zoom, airtable, jira, miro, … or `other`
+    /// for a generic link.
+    pub service: String,
+    /// The address the link points to. Supply an HTTP or HTTPS URL; a value
+    /// without a scheme is prefixed with `https://`.
+    pub url: String,
+    /// Name shown in the External links section. Defaults to "Untitled".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Rich-text (HTML) description shown beneath the title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+/// The `CreateDoorRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreateDoorRequestContent {
+    /// `door`.
+    pub door: CreateDoorPayload,
+    /// Whether the project's clients can see the external link. Omitted means
+    /// false: the link is private to the team. A client caller always creates a
+    /// client-visible link regardless of what is sent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visible_to_clients: Option<bool>,
+}
+
+/// `CreateDoorResponseContent`.
+pub type CreateDoorResponseContent = Door;
+
 /// The `CreateEmbedRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateEmbedRequestContent {
@@ -1966,6 +1999,56 @@ pub struct Document {
     /// `boosts_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boosts_url: Option<String>,
+}
+
+/// An external link (`Door` recording), as ListDoors, GetDoor, CreateDoor and
+/// UpdateDoor render it: the shared recording envelope plus the outside `url`,
+/// the `service` struct and `description`. Docked, so it carries no `parent`.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Door {
+    /// `id`.
+    pub id: i64,
+    /// `status`.
+    pub status: String,
+    /// `visible_to_clients`.
+    pub visible_to_clients: bool,
+    /// `created_at`.
+    pub created_at: DateTime,
+    /// `updated_at`.
+    pub updated_at: DateTime,
+    /// `title`.
+    pub title: String,
+    /// `inherits_status`.
+    pub inherits_status: bool,
+    /// `type`.
+    pub r#type: String,
+    /// The external link's outside address (e.g. the Figma URL) — NOT this
+    /// record's API URL. The door partial renders the shared recording partial
+    /// and then `json.(recording.recordable, :url, :service, :description)`,
+    /// which overwrites the recording's url key. `app_url` is still this record's
+    /// Basecamp URL (a redirector to the outside address).
+    pub url: String,
+    /// `app_url`.
+    pub app_url: String,
+    /// `bookmark_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bookmark_url: Option<String>,
+    /// `subscription_url`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscription_url: Option<String>,
+    /// Ordinal position within the project's External links section.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<i32>,
+    /// `bucket`.
+    pub bucket: RecordingBucket,
+    /// `creator`.
+    pub creator: Person,
+    /// `service`.
+    pub service: DoorService,
+    /// Rich-text (HTML) description shown beneath the link.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 /// Metadata describing the recognized external service backing an external link
@@ -2928,6 +3011,9 @@ pub type GetCommentResponseContent = Comment;
 /// `GetDocumentResponseContent`.
 pub type GetDocumentResponseContent = Document;
 
+/// `GetDoorResponseContent`.
+pub type GetDoorResponseContent = Door;
+
 /// `GetEmbedResponseContent`.
 pub type GetEmbedResponseContent = Embed;
 
@@ -3566,6 +3652,9 @@ pub type ListCommentsResponseContent = Vec<Comment>;
 
 /// `ListDocumentsResponseContent`.
 pub type ListDocumentsResponseContent = Vec<Document>;
+
+/// `ListDoorsResponseContent`.
+pub type ListDoorsResponseContent = Vec<Door>;
 
 /// `ListEventBoostsResponseContent`.
 pub type ListEventBoostsResponseContent = Vec<Boost>;
@@ -7001,6 +7090,38 @@ pub struct UpdateCommentRequestContent {
 
 /// `UpdateCommentResponseContent`.
 pub type UpdateCommentResponseContent = Comment;
+
+/// The `UpdateDoorPayload` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct UpdateDoorPayload {
+    /// Short identifier for the external service, as for CreateDoor.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub service: Option<String>,
+    /// The address the link points to.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Name shown in the External links section.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Rich-text (HTML) description shown beneath the title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+/// The `UpdateDoorRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct UpdateDoorRequestContent {
+    /// `door`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub door: Option<UpdateDoorPayload>,
+    /// Whether the project's clients can see the external link. Omitted keeps
+    /// the current visibility.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visible_to_clients: Option<bool>,
+}
+
+/// `UpdateDoorResponseContent`.
+pub type UpdateDoorResponseContent = Door;
 
 /// The `UpdateFolderRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

@@ -402,6 +402,12 @@ class AsyncAccountClient:
         return self._service("tools", lambda: AsyncToolsService(self))
 
     @property
+    def doors(self):
+        from basecamp.generated.services.doors import AsyncDoorsService
+
+        return self._service("doors", lambda: AsyncDoorsService(self))
+
+    @property
     def lineup(self):
         from basecamp.generated.services.lineup import AsyncLineupService
 

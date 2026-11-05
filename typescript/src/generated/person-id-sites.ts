@@ -47,6 +47,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "CreateDocument": [
     "creator"
   ],
+  "CreateDoor": [
+    "creator"
+  ],
   "CreateEventBoost": [
     "booster"
   ],
@@ -241,6 +244,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
     "creator"
   ],
   "GetDocument": [
+    "creator"
+  ],
+  "GetDoor": [
     "creator"
   ],
   "GetEverythingCheckins": [
@@ -606,6 +612,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   "ListDocuments": [
     "[].creator"
   ],
+  "ListDoors": [
+    "[].creator"
+  ],
   "ListEventBoosts": [
     "[].booster"
   ],
@@ -766,6 +775,9 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
     "creator"
   ],
   "UpdateComment": [
+    "creator"
+  ],
+  "UpdateDoor": [
     "creator"
   ],
   "UpdateGaugeNeedle": [

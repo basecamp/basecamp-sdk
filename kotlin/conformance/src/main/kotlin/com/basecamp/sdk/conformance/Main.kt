@@ -1300,6 +1300,47 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult(resultJson = Json.encodeToJsonElement(HillChartVersion.serializer(), version))
         }
 
+        "ListDoors" -> {
+            account.doors.list(tc.pathParams.longParam("bucketId"))
+            DispatchResult()
+        }
+
+        "GetDoor" -> {
+            val door = account.doors.get(tc.pathParams.longParam("doorId"))
+            DispatchResult(resultJson = Json.encodeToJsonElement(Door.serializer(), door))
+        }
+
+        // The fixture's door object is the payload as written; a key it omits
+        // never reaches the wire.
+        "CreateDoor" -> {
+            val rb = tc.requestBody
+            val door = account.doors.create(
+                tc.pathParams.longParam("bucketId"),
+                CreateDoorBody(
+                    door = rb?.get("door")?.jsonObject ?: error("CreateDoor fixture needs a door"),
+                    visibleToClients = rb?.get("visible_to_clients")?.jsonPrimitive?.booleanOrNull,
+                ),
+            )
+            DispatchResult(resultJson = Json.encodeToJsonElement(Door.serializer(), door))
+        }
+
+        "UpdateDoor" -> {
+            val rb = tc.requestBody
+            val door = account.doors.update(
+                tc.pathParams.longParam("doorId"),
+                UpdateDoorBody(
+                    door = rb?.get("door")?.jsonObject,
+                    visibleToClients = rb?.get("visible_to_clients")?.jsonPrimitive?.booleanOrNull,
+                ),
+            )
+            DispatchResult(resultJson = Json.encodeToJsonElement(Door.serializer(), door))
+        }
+
+        "DeleteDoor" -> {
+            account.doors.delete(tc.pathParams.longParam("doorId"))
+            DispatchResult()
+        }
+
         "GetEmbed" -> {
             val embed = account.embeds.get(tc.pathParams.stringParam("sgid"))
             DispatchResult(resultJson = Json.encodeToJsonElement(Embed.serializer(), embed))

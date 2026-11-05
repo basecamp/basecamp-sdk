@@ -235,6 +235,11 @@ apply DeleteTool @tags(["Dock"])
 apply EnableTool @tags(["Dock"])
 apply DisableTool @tags(["Dock"])
 apply RepositionTool @tags(["Dock"])
+apply ListDoors @tags(["Dock"])
+apply GetDoor @tags(["Dock"])
+apply CreateDoor @tags(["Dock"])
+apply UpdateDoor @tags(["Dock"])
+apply DeleteDoor @tags(["Dock"])
 
 // Lineup (account-wide schedule markers)
 //

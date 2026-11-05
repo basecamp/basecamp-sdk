@@ -59,6 +59,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
     ),
     "Dock" to mapOf(
         "Tools" to listOf("GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"),
+        "Doors" to listOf("ListDoors", "GetDoor", "CreateDoor", "UpdateDoor", "DeleteDoor"),
     ),
     "Recordings" to mapOf(
         "Events" to listOf("ListEvents"),
@@ -406,6 +407,7 @@ val TYPE_ALIASES = mapOf(
     "MessageType" to "MessageType",
     "Event" to "Event",
     "Tool" to "Tool",
+    "Door" to "Door",
     "LineupMarker" to "LineupMarker",
     "ClientApproval" to "ClientApproval",
     "ClientCorrespondence" to "ClientCorrespondence",
@@ -486,6 +488,7 @@ val SIMPLE_RESOURCES = setOf(
     "embed", "embeds",
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
+    "door", "doors",
 )
 
 /**

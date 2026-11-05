@@ -523,6 +523,49 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
             todosetId: pathParams.longParam("todosetId"), versionId: pathParams.longParam("versionId"))
         return DispatchResult(resultJSON: try resultJSON(version))
 
+    case "ListDoors":
+        let doors = try await account.doors.list(bucketId: pathParams.longParam("bucketId"))
+        return DispatchResult(resultJSON: try resultJSON(doors))
+
+    case "GetDoor":
+        let door = try await account.doors.get(doorId: pathParams.longParam("doorId"))
+        return DispatchResult(resultJSON: try resultJSON(door))
+
+    case "CreateDoor":
+        let fields = rb?["door"]?.objectValue
+        let door = try await account.doors.create(
+            bucketId: pathParams.longParam("bucketId"),
+            req: CreateDoorRequest(
+                door: CreateDoorPayload(
+                    service: fields.stringParam("service"),
+                    url: fields.stringParam("url"),
+                    description: fields.optString("description"),
+                    title: fields.optString("title")),
+                visibleToClients: rb.optBool("visible_to_clients")))
+        return DispatchResult(resultJSON: try resultJSON(door))
+
+    case "UpdateDoor":
+        var payload: UpdateDoorPayload?
+        if let raw = rb?["door"] {
+            guard let fields = raw.objectValue else {
+                throw RunnerError.badParameter("parameter \"door\" must be an object, got \(raw.display)")
+            }
+            let door: [String: JSON]? = fields
+            payload = UpdateDoorPayload(
+                description: try door.optString("description"),
+                service: try door.optString("service"),
+                title: try door.optString("title"),
+                url: try door.optString("url"))
+        }
+        let door = try await account.doors.update(
+            doorId: pathParams.longParam("doorId"),
+            req: UpdateDoorRequest(door: payload, visibleToClients: rb.optBool("visible_to_clients")))
+        return DispatchResult(resultJSON: try resultJSON(door))
+
+    case "DeleteDoor":
+        try await account.doors.delete(doorId: pathParams.longParam("doorId"))
+        return DispatchResult()
+
     case "GetEmbed":
         let embed = try await account.embeds.get(sgid: pathParams.stringParam("sgid"))
         return DispatchResult(resultJSON: try resultJSON(embed))

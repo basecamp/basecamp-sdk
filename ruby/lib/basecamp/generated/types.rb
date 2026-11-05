@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-10-30T06:06:06Z
+# Generated: 2026-11-05T14:39:01Z
 
 require "json"
 require "time"
@@ -1427,6 +1427,37 @@ module Basecamp
       end
     end
 
+    # CreateDoorPayload
+    class CreateDoorPayload
+      include TypeHelpers
+      attr_accessor :service, :url, :description, :title
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[service url].freeze
+      end
+
+      def initialize(data = {})
+        @service = data["service"]
+        @url = data["url"]
+        @description = data["description"]
+        @title = data["title"]
+      end
+
+      def to_h
+        {
+          "service" => @service,
+          "url" => @url,
+          "description" => @description,
+          "title" => @title,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
     # CreatePersonRequest
     class CreatePersonRequest
       include TypeHelpers
@@ -1552,6 +1583,63 @@ module Basecamp
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
           "content" => @content,
+          "position" => @position,
+          "subscription_url" => @subscription_url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Door
+    class Door
+      include TypeHelpers
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :service, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :description, :position, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status service status title type updated_at url visible_to_clients].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @service = parse_type(data["service"], "DoorService")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
+        @description = data["description"]
+        @position = parse_integer(data["position"])
+        @subscription_url = data["subscription_url"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "bucket" => @bucket,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "service" => @service,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
+          "description" => @description,
           "position" => @position,
           "subscription_url" => @subscription_url,
         }.compact
@@ -5927,6 +6015,32 @@ module Basecamp
           "avatar_url" => @avatar_url,
           "id" => @id,
           "name" => @name,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # UpdateDoorPayload
+    class UpdateDoorPayload
+      include TypeHelpers
+      attr_accessor :description, :service, :title, :url
+
+      def initialize(data = {})
+        @description = data["description"]
+        @service = data["service"]
+        @title = data["title"]
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "description" => @description,
+          "service" => @service,
+          "title" => @title,
+          "url" => @url,
         }.compact
       end
 

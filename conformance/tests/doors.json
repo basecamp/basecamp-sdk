@@ -1,0 +1,885 @@
+[
+  {
+    "name": "ListDoors reads a project's external links",
+    "description": "GET /buckets/{bucketId}/dock/doors.json, not paginated. The body is bc3's documented example (doc/api/sections/external_links.md).",
+    "operation": "ListDoors",
+    "method": "GET",
+    "path": "/buckets/{bucketId}/dock/doors.json",
+    "pathParams": {
+      "bucketId": 2085958504
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": 1069480290,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2026-07-22T15:51:54.872Z",
+            "updated_at": "2026-07-22T15:51:54.886Z",
+            "title": "Design system",
+            "inherits_status": true,
+            "type": "Door",
+            "url": "https://www.figma.com/file/abc123/Design-system",
+            "app_url": "https://3.basecampapi.com/195539477/buckets/2085958504/dock/doors/1069480290",
+            "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiLmdpZDovL2JjMy9SZWNvcmRpbmcvMTA2OTQ4MDI5MD9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--01c7c586d5f3a3e368c70860a5055ff3ca520d55.json",
+            "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958504/recordings/1069480290/subscription.json",
+            "position": 8,
+            "bucket": {
+              "id": 2085958504,
+              "name": "The Leto Laptop",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715913,
+              "attachable_sgid": "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxMz9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--e627c45e6b34e08862da23906862412620e4d5d9",
+              "name": "Victor Cooper",
+              "personable_type": "User",
+              "title": "Chief Strategist",
+              "tagline": "Don't let your dreams be dreams",
+              "location": "Chicago, IL",
+              "created_at": "2026-07-22T15:48:06.186Z",
+              "updated_at": "2026-07-22T15:48:07.012Z",
+              "email_address": "victor@honchodesign.com",
+              "bio": "Don't let your dreams be dreams",
+              "admin": true,
+              "owner": true,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecampapi.com/195539477/people/BAhpBMlkkT4=--5fe7b70fbee7a7f0e2e1e19df7579e5d880c753d/avatar",
+              "company": {
+                "id": 1033447817,
+                "name": "Honcho Design"
+              },
+              "can_ping": true,
+              "can_manage_projects": true,
+              "can_manage_people": true,
+              "can_access_timesheet": true,
+              "can_access_hill_charts": true
+            },
+            "service": {
+              "name": "Figma",
+              "example_url": "https://www.figma.com/file/aGVsbG8gZmlnbWEgZmlsZQ",
+              "code": "figma",
+              "valid_patterns": [
+                "(.*?\\.)?figma\\.com(\\/.*)?"
+              ],
+              "supporting_text": "a file or project on Figma"
+            },
+            "description": "<div>Shared Figma workspace</div>"
+          }
+        ]
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958504/dock/doors.json"
+      }
+    ],
+    "tags": [
+      "doors",
+      "list",
+      "path"
+    ]
+  },
+  {
+    "name": "GetDoor reads one external link from the flat path",
+    "description": "GET /dock/doors/{doorId}, with no bucket in the path. `url` is the outside address the link points to, not an API URL.",
+    "operation": "GetDoor",
+    "method": "GET",
+    "path": "/dock/doors/{doorId}",
+    "pathParams": {
+      "doorId": 1069480290
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069480290,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-07-22T15:51:54.872Z",
+          "updated_at": "2026-07-22T15:51:54.886Z",
+          "title": "Design system",
+          "inherits_status": true,
+          "type": "Door",
+          "url": "https://www.figma.com/file/abc123/Design-system",
+          "app_url": "https://3.basecampapi.com/195539477/buckets/2085958504/dock/doors/1069480290",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiLmdpZDovL2JjMy9SZWNvcmRpbmcvMTA2OTQ4MDI5MD9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--01c7c586d5f3a3e368c70860a5055ff3ca520d55.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958504/recordings/1069480290/subscription.json",
+          "position": 8,
+          "bucket": {
+            "id": 2085958504,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "attachable_sgid": "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxMz9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--e627c45e6b34e08862da23906862412620e4d5d9",
+            "name": "Victor Cooper",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "tagline": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2026-07-22T15:48:06.186Z",
+            "updated_at": "2026-07-22T15:48:07.012Z",
+            "email_address": "victor@honchodesign.com",
+            "bio": "Don't let your dreams be dreams",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecampapi.com/195539477/people/BAhpBMlkkT4=--5fe7b70fbee7a7f0e2e1e19df7579e5d880c753d/avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true,
+            "can_access_timesheet": true,
+            "can_access_hill_charts": true
+          },
+          "service": {
+            "name": "Figma",
+            "example_url": "https://www.figma.com/file/aGVsbG8gZmlnbWEgZmlsZQ",
+            "code": "figma",
+            "valid_patterns": [
+              "(.*?\\.)?figma\\.com(\\/.*)?"
+            ],
+            "supporting_text": "a file or project on Figma"
+          },
+          "description": "<div>Shared Figma workspace</div>"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/dock/doors/1069480290"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069480290
+      },
+      {
+        "type": "responseBody",
+        "path": "url",
+        "expected": "https://www.figma.com/file/abc123/Design-system"
+      },
+      {
+        "type": "responseBody",
+        "path": "service.code",
+        "expected": "figma"
+      }
+    ],
+    "tags": [
+      "doors",
+      "get",
+      "path"
+    ]
+  },
+  {
+    "name": "GetDoor 404 maps to not_found",
+    "description": "An unknown id, the id of a recording that is not a door, or a door hidden from a client answers 404.",
+    "operation": "GetDoor",
+    "method": "GET",
+    "path": "/dock/doors/{doorId}",
+    "pathParams": {
+      "doorId": 1
+    },
+    "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Not found"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "not_found"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 404
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "doors",
+      "get",
+      "error-mapping"
+    ]
+  },
+  {
+    "name": "CreateDoor wraps the link under door and puts visible_to_clients beside it",
+    "description": "POST /buckets/{bucketId}/dock/doors.json with bc3's documented request, sent exactly as given. bc3 answers 201 with the new external link.",
+    "operation": "CreateDoor",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/dock/doors.json",
+    "pathParams": {
+      "bucketId": 2085958504
+    },
+    "requestBody": {
+      "door": {
+        "service": "github",
+        "title": "Source code",
+        "url": "https://github.com/honcho/leto-laptop",
+        "description": "<div>Firmware and tooling</div>"
+      },
+      "visible_to_clients": false
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069480290,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-07-22T15:51:54.872Z",
+          "updated_at": "2026-07-22T15:51:54.886Z",
+          "title": "Design system",
+          "inherits_status": true,
+          "type": "Door",
+          "url": "https://www.figma.com/file/abc123/Design-system",
+          "app_url": "https://3.basecampapi.com/195539477/buckets/2085958504/dock/doors/1069480290",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiLmdpZDovL2JjMy9SZWNvcmRpbmcvMTA2OTQ4MDI5MD9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--01c7c586d5f3a3e368c70860a5055ff3ca520d55.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958504/recordings/1069480290/subscription.json",
+          "position": 8,
+          "bucket": {
+            "id": 2085958504,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "attachable_sgid": "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxMz9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--e627c45e6b34e08862da23906862412620e4d5d9",
+            "name": "Victor Cooper",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "tagline": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2026-07-22T15:48:06.186Z",
+            "updated_at": "2026-07-22T15:48:07.012Z",
+            "email_address": "victor@honchodesign.com",
+            "bio": "Don't let your dreams be dreams",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecampapi.com/195539477/people/BAhpBMlkkT4=--5fe7b70fbee7a7f0e2e1e19df7579e5d880c753d/avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true,
+            "can_access_timesheet": true,
+            "can_access_hill_charts": true
+          },
+          "service": {
+            "name": "Figma",
+            "example_url": "https://www.figma.com/file/aGVsbG8gZmlnbWEgZmlsZQ",
+            "code": "figma",
+            "valid_patterns": [
+              "(.*?\\.)?figma\\.com(\\/.*)?"
+            ],
+            "supporting_text": "a file or project on Figma"
+          },
+          "description": "<div>Shared Figma workspace</div>"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958504/dock/doors.json"
+      },
+      {
+        "type": "requestBody",
+        "expected": {
+          "door": {
+            "service": "github",
+            "title": "Source code",
+            "url": "https://github.com/honcho/leto-laptop",
+            "description": "<div>Firmware and tooling</div>"
+          },
+          "visible_to_clients": false
+        }
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069480290
+      }
+    ],
+    "tags": [
+      "doors",
+      "create",
+      "path"
+    ]
+  },
+  {
+    "name": "CreateDoor without visible_to_clients leaves it off the wire",
+    "description": "Omitting visible_to_clients keeps the new link private to the team, so the SDK must not send a default of its own.",
+    "operation": "CreateDoor",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/dock/doors.json",
+    "pathParams": {
+      "bucketId": 2085958504
+    },
+    "requestBody": {
+      "door": {
+        "service": "other",
+        "url": "https://example.com"
+      }
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069480290,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-07-22T15:51:54.872Z",
+          "updated_at": "2026-07-22T15:51:54.886Z",
+          "title": "Design system",
+          "inherits_status": true,
+          "type": "Door",
+          "url": "https://www.figma.com/file/abc123/Design-system",
+          "app_url": "https://3.basecampapi.com/195539477/buckets/2085958504/dock/doors/1069480290",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiLmdpZDovL2JjMy9SZWNvcmRpbmcvMTA2OTQ4MDI5MD9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--01c7c586d5f3a3e368c70860a5055ff3ca520d55.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958504/recordings/1069480290/subscription.json",
+          "position": 8,
+          "bucket": {
+            "id": 2085958504,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "attachable_sgid": "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxMz9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--e627c45e6b34e08862da23906862412620e4d5d9",
+            "name": "Victor Cooper",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "tagline": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2026-07-22T15:48:06.186Z",
+            "updated_at": "2026-07-22T15:48:07.012Z",
+            "email_address": "victor@honchodesign.com",
+            "bio": "Don't let your dreams be dreams",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecampapi.com/195539477/people/BAhpBMlkkT4=--5fe7b70fbee7a7f0e2e1e19df7579e5d880c753d/avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true,
+            "can_access_timesheet": true,
+            "can_access_hill_charts": true
+          },
+          "service": {
+            "name": "Figma",
+            "example_url": "https://www.figma.com/file/aGVsbG8gZmlnbWEgZmlsZQ",
+            "code": "figma",
+            "valid_patterns": [
+              "(.*?\\.)?figma\\.com(\\/.*)?"
+            ],
+            "supporting_text": "a file or project on Figma"
+          },
+          "description": "<div>Shared Figma workspace</div>"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestBody",
+        "expected": {
+          "door": {
+            "service": "other",
+            "url": "https://example.com"
+          }
+        }
+      }
+    ],
+    "tags": [
+      "doors",
+      "create"
+    ]
+  },
+  {
+    "name": "CreateDoor 422 maps to validation",
+    "description": "An unusable url (a javascript: address, say) answers 422 with field-keyed errors, and nothing is saved.",
+    "operation": "CreateDoor",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/dock/doors.json",
+    "pathParams": {
+      "bucketId": 2085958504
+    },
+    "requestBody": {
+      "door": {
+        "service": "other",
+        "url": "javascript:alert(1)"
+      }
+    },
+    "mockResponses": [
+      {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "errors": {
+            "url": [
+              "is invalid"
+            ]
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 422
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "doors",
+      "create",
+      "error-mapping"
+    ]
+  },
+  {
+    "name": "CreateDoor is not retried on 503",
+    "description": "Creating an external link is not idempotent: a retry after a 503 the server may have acted on could add the link twice. The operation is attempted once.",
+    "operation": "CreateDoor",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/dock/doors.json",
+    "pathParams": {
+      "bucketId": 2085958504
+    },
+    "requestBody": {
+      "door": {
+        "service": "other",
+        "url": "https://example.com"
+      }
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      },
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069480290,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-07-22T15:51:54.872Z",
+          "updated_at": "2026-07-22T15:51:54.886Z",
+          "title": "Design system",
+          "inherits_status": true,
+          "type": "Door",
+          "url": "https://www.figma.com/file/abc123/Design-system",
+          "app_url": "https://3.basecampapi.com/195539477/buckets/2085958504/dock/doors/1069480290",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiLmdpZDovL2JjMy9SZWNvcmRpbmcvMTA2OTQ4MDI5MD9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--01c7c586d5f3a3e368c70860a5055ff3ca520d55.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958504/recordings/1069480290/subscription.json",
+          "position": 8,
+          "bucket": {
+            "id": 2085958504,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "attachable_sgid": "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxMz9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--e627c45e6b34e08862da23906862412620e4d5d9",
+            "name": "Victor Cooper",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "tagline": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2026-07-22T15:48:06.186Z",
+            "updated_at": "2026-07-22T15:48:07.012Z",
+            "email_address": "victor@honchodesign.com",
+            "bio": "Don't let your dreams be dreams",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecampapi.com/195539477/people/BAhpBMlkkT4=--5fe7b70fbee7a7f0e2e1e19df7579e5d880c753d/avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true,
+            "can_access_timesheet": true,
+            "can_access_hill_charts": true
+          },
+          "service": {
+            "name": "Figma",
+            "example_url": "https://www.figma.com/file/aGVsbG8gZmlnbWEgZmlsZQ",
+            "code": "figma",
+            "valid_patterns": [
+              "(.*?\\.)?figma\\.com(\\/.*)?"
+            ],
+            "supporting_text": "a file or project on Figma"
+          },
+          "description": "<div>Shared Figma workspace</div>"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "statusCode",
+        "expected": 503
+      }
+    ],
+    "tags": [
+      "doors",
+      "create",
+      "no-retry"
+    ]
+  },
+  {
+    "name": "UpdateDoor puts the partial change to the flat path",
+    "description": "PUT /dock/doors/{doorId} with bc3's documented request, sent exactly as given: only the fields that change, under door.",
+    "operation": "UpdateDoor",
+    "method": "PUT",
+    "path": "/dock/doors/{doorId}",
+    "pathParams": {
+      "doorId": 1069480290
+    },
+    "requestBody": {
+      "door": {
+        "title": "Firmware",
+        "url": "https://github.com/honcho/leto-laptop-firmware"
+      },
+      "visible_to_clients": true
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069480290,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-07-22T15:51:54.872Z",
+          "updated_at": "2026-07-22T15:51:54.886Z",
+          "title": "Design system",
+          "inherits_status": true,
+          "type": "Door",
+          "url": "https://www.figma.com/file/abc123/Design-system",
+          "app_url": "https://3.basecampapi.com/195539477/buckets/2085958504/dock/doors/1069480290",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiLmdpZDovL2JjMy9SZWNvcmRpbmcvMTA2OTQ4MDI5MD9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--01c7c586d5f3a3e368c70860a5055ff3ca520d55.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958504/recordings/1069480290/subscription.json",
+          "position": 8,
+          "bucket": {
+            "id": 2085958504,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "attachable_sgid": "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxMz9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--e627c45e6b34e08862da23906862412620e4d5d9",
+            "name": "Victor Cooper",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "tagline": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2026-07-22T15:48:06.186Z",
+            "updated_at": "2026-07-22T15:48:07.012Z",
+            "email_address": "victor@honchodesign.com",
+            "bio": "Don't let your dreams be dreams",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecampapi.com/195539477/people/BAhpBMlkkT4=--5fe7b70fbee7a7f0e2e1e19df7579e5d880c753d/avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true,
+            "can_access_timesheet": true,
+            "can_access_hill_charts": true
+          },
+          "service": {
+            "name": "Figma",
+            "example_url": "https://www.figma.com/file/aGVsbG8gZmlnbWEgZmlsZQ",
+            "code": "figma",
+            "valid_patterns": [
+              "(.*?\\.)?figma\\.com(\\/.*)?"
+            ],
+            "supporting_text": "a file or project on Figma"
+          },
+          "description": "<div>Shared Figma workspace</div>"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/dock/doors/1069480290"
+      },
+      {
+        "type": "requestBody",
+        "expected": {
+          "door": {
+            "title": "Firmware",
+            "url": "https://github.com/honcho/leto-laptop-firmware"
+          },
+          "visible_to_clients": true
+        }
+      }
+    ],
+    "tags": [
+      "doors",
+      "update",
+      "path"
+    ]
+  },
+  {
+    "name": "UpdateDoor can change only visible_to_clients",
+    "description": "With no door key bc3 keeps every field of the link and changes only its visibility, so the SDK sends no empty door wrapper.",
+    "operation": "UpdateDoor",
+    "method": "PUT",
+    "path": "/dock/doors/{doorId}",
+    "pathParams": {
+      "doorId": 1069480290
+    },
+    "requestBody": {
+      "visible_to_clients": true
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069480290,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-07-22T15:51:54.872Z",
+          "updated_at": "2026-07-22T15:51:54.886Z",
+          "title": "Design system",
+          "inherits_status": true,
+          "type": "Door",
+          "url": "https://www.figma.com/file/abc123/Design-system",
+          "app_url": "https://3.basecampapi.com/195539477/buckets/2085958504/dock/doors/1069480290",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiLmdpZDovL2JjMy9SZWNvcmRpbmcvMTA2OTQ4MDI5MD9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--01c7c586d5f3a3e368c70860a5055ff3ca520d55.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958504/recordings/1069480290/subscription.json",
+          "position": 8,
+          "bucket": {
+            "id": 2085958504,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "attachable_sgid": "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxMz9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--e627c45e6b34e08862da23906862412620e4d5d9",
+            "name": "Victor Cooper",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "tagline": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2026-07-22T15:48:06.186Z",
+            "updated_at": "2026-07-22T15:48:07.012Z",
+            "email_address": "victor@honchodesign.com",
+            "bio": "Don't let your dreams be dreams",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecampapi.com/195539477/people/BAhpBMlkkT4=--5fe7b70fbee7a7f0e2e1e19df7579e5d880c753d/avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true,
+            "can_access_timesheet": true,
+            "can_access_hill_charts": true
+          },
+          "service": {
+            "name": "Figma",
+            "example_url": "https://www.figma.com/file/aGVsbG8gZmlnbWEgZmlsZQ",
+            "code": "figma",
+            "valid_patterns": [
+              "(.*?\\.)?figma\\.com(\\/.*)?"
+            ],
+            "supporting_text": "a file or project on Figma"
+          },
+          "description": "<div>Shared Figma workspace</div>"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestBody",
+        "expected": {
+          "visible_to_clients": true
+        }
+      }
+    ],
+    "tags": [
+      "doors",
+      "update"
+    ]
+  },
+  {
+    "name": "DeleteDoor answers 204",
+    "description": "DELETE /dock/doors/{doorId}. The link's status becomes deleted; the response has no body.",
+    "operation": "DeleteDoor",
+    "method": "DELETE",
+    "path": "/dock/doors/{doorId}",
+    "pathParams": {
+      "doorId": 1069480290
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "DELETE"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/dock/doors/1069480290"
+      }
+    ],
+    "tags": [
+      "doors",
+      "delete",
+      "path"
+    ]
+  }
+]

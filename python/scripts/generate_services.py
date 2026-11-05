@@ -85,6 +85,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
     },
     "Dock": {
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
+        "Doors": ["ListDoors", "GetDoor", "CreateDoor", "UpdateDoor", "DeleteDoor"],
     },
     "Recordings": {
         "Events": ["ListEvents"],
@@ -316,7 +317,7 @@ SIMPLE_RESOURCES = {
     "clientreplies", "forwardreply", "forwardreplies", "campfireline", "campfirelines",
     "todolistgroup", "todolistgroups", "todolistorgroup", "uploadversions",
     "wormhole", "wormholes", "subtask", "subtasks", "ping", "pings",
-    "embed", "embeds",
+    "embed", "embeds", "door", "doors",
 }
 
 

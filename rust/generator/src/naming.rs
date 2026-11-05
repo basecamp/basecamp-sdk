@@ -144,6 +144,8 @@ const SIMPLE_RESOURCES: &[&str] = &[
     "hillcharts",
     "wormhole",
     "wormholes",
+    "door",
+    "doors",
 ];
 
 impl Naming {

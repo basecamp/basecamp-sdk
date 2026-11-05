@@ -203,8 +203,8 @@ tracing::info!(?safe, "response headers");
 ## Retry Behavior
 
 Retry eligibility is decided per *operation*, not per HTTP method. `behavior-model.json` classifies
-all `295` operations: the 140 GETs are retryable by method, and 103 mutations are flagged <!-- @operation-count -->
-`idempotent: true` — all 58 PUTs, all 31 DELETEs, and 14 POSTs (`CompleteTodo`, `PauseQuestion`,
+all `300` operations: the 142 GETs are retryable by method, and 105 mutations are flagged <!-- @operation-count -->
+`idempotent: true` — all 59 PUTs, all 32 DELETEs, and 14 POSTs (`CompleteTodo`, `PauseQuestion`,
 `SubscribeToCardColumn`, `Subscribe`, `EnableCardColumnOnHold`, `CreateBookmark`, `PrioritizeAssignment`,
 `SpotlightRecording`, `RecordProjectVisit`, `CreateBubbleUp`, `EnableProjectClients`, `CreateStreamTicket`, `CompleteSubtask`,
 `CreateEmbed`). The other 51 POSTs are attempted exactly once. SPEC.md §7 specifies the

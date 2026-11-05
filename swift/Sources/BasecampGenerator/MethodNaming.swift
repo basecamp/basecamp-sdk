@@ -199,6 +199,7 @@ private let simpleResources: Set<String> = [
     "embed", "embeds",
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
+    "door", "doors",
 ]
 
 /// Extracts the method name for an operationId.

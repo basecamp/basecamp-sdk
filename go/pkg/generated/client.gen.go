@@ -748,6 +748,39 @@ type CreateDocumentRequestContent struct {
 // CreateDocumentResponseContent defines model for CreateDocumentResponseContent.
 type CreateDocumentResponseContent = Document
 
+// CreateDoorPayload defines model for CreateDoorPayload.
+type CreateDoorPayload struct {
+	// Description Rich-text (HTML) description shown beneath the title.
+	Description *string `json:"description,omitempty"`
+
+	// Service Short identifier for the external service: figma, dropbox, google_drive,
+	// github, notion, trello, slack, zoom, airtable, jira, miro, … or `other`
+	// for a generic link.
+	Service string `json:"service"`
+
+	// Title Name shown in the External links section. Defaults to "Untitled".
+	Title *string `json:"title,omitempty"`
+
+	// Url The address the link points to. Supply an HTTP or HTTPS URL; a value
+	// without a scheme is prefixed with `https://`.
+	Url string `json:"url"`
+}
+
+// CreateDoorRequestContent defines model for CreateDoorRequestContent.
+type CreateDoorRequestContent struct {
+	Door CreateDoorPayload `json:"door"`
+
+	// VisibleToClients Whether the project's clients can see the external link. Omitted means
+	// false: the link is private to the team. A client caller always creates a
+	// client-visible link regardless of what is sent.
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
+}
+
+// CreateDoorResponseContent An external link (`Door` recording), as ListDoors, GetDoor, CreateDoor and
+// UpdateDoor render it: the shared recording envelope plus the outside `url`,
+// the `service` struct and `description`. Docked, so it carries no `parent`.
+type CreateDoorResponseContent = Door
+
 // CreateEmbedRequestContent defines model for CreateEmbedRequestContent.
 type CreateEmbedRequestContent struct {
 	// Url The URL of the content to embed.
@@ -1349,6 +1382,44 @@ type Document struct {
 	UpdatedAt          time.Time            `json:"updated_at"`
 	Url                string               `json:"url"`
 	VisibleToClients   bool                 `json:"visible_to_clients"`
+}
+
+// Door An external link (`Door` recording), as ListDoors, GetDoor, CreateDoor and
+// UpdateDoor render it: the shared recording envelope plus the outside `url`,
+// the `service` struct and `description`. Docked, so it carries no `parent`.
+type Door struct {
+	AppUrl      string          `json:"app_url"`
+	BookmarkUrl *string         `json:"bookmark_url,omitempty"`
+	Bucket      RecordingBucket `json:"bucket"`
+	CreatedAt   time.Time       `json:"created_at"`
+	Creator     Person          `json:"creator"`
+
+	// Description Rich-text (HTML) description shown beneath the link.
+	Description    *string `json:"description,omitempty"`
+	Id             int64   `json:"id"`
+	InheritsStatus bool    `json:"inherits_status"`
+
+	// Position Ordinal position within the project's External links section.
+	Position *int32 `json:"position,omitempty"`
+
+	// Service Metadata describing the recognized external service backing an external link
+	// (`Door` recording): its display name, a canonical example URL, a short code,
+	// the URL patterns Basecamp recognizes for it, and human supporting text. `code`
+	// is `other` for a generic link.
+	Service         DoorService `json:"service"`
+	Status          string      `json:"status"`
+	SubscriptionUrl *string     `json:"subscription_url,omitempty"`
+	Title           string      `json:"title"`
+	Type            string      `json:"type"`
+	UpdatedAt       time.Time   `json:"updated_at"`
+
+	// Url The external link's outside address (e.g. the Figma URL) — NOT this
+	// record's API URL. The door partial renders the shared recording partial
+	// and then `json.(recording.recordable, :url, :service, :description)`,
+	// which overwrites the recording's url key. `app_url` is still this record's
+	// Basecamp URL (a redirector to the outside address).
+	Url              string `json:"url"`
+	VisibleToClients bool   `json:"visible_to_clients"`
 }
 
 // DoorService Metadata describing the recognized external service backing an external link
@@ -1957,6 +2028,11 @@ type GetCommentResponseContent = Comment
 // GetDocumentResponseContent defines model for GetDocumentResponseContent.
 type GetDocumentResponseContent = Document
 
+// GetDoorResponseContent An external link (`Door` recording), as ListDoors, GetDoor, CreateDoor and
+// UpdateDoor render it: the shared recording envelope plus the outside `url`,
+// the `service` struct and `description`. Docked, so it carries no `parent`.
+type GetDoorResponseContent = Door
+
 // GetEmbedResponseContent Content from another site, such as a YouTube video, that rich text shows
 // inline. Put it in rich text as `<bc-attachment sgid="SGID"></bc-attachment>`
 // once its status is `active`; an embed that is not active shows as a link to
@@ -2477,6 +2553,9 @@ type ListCommentsResponseContent = []Comment
 
 // ListDocumentsResponseContent defines model for ListDocumentsResponseContent.
 type ListDocumentsResponseContent = []Document
+
+// ListDoorsResponseContent defines model for ListDoorsResponseContent.
+type ListDoorsResponseContent = []Door
 
 // ListEventBoostsResponseContent defines model for ListEventBoostsResponseContent.
 type ListEventBoostsResponseContent = []Boost
@@ -4913,6 +4992,35 @@ type UpdateCommentRequestContent struct {
 // UpdateCommentResponseContent defines model for UpdateCommentResponseContent.
 type UpdateCommentResponseContent = Comment
 
+// UpdateDoorPayload defines model for UpdateDoorPayload.
+type UpdateDoorPayload struct {
+	// Description Rich-text (HTML) description shown beneath the title.
+	Description *string `json:"description,omitempty"`
+
+	// Service Short identifier for the external service, as for CreateDoor.
+	Service *string `json:"service,omitempty"`
+
+	// Title Name shown in the External links section.
+	Title *string `json:"title,omitempty"`
+
+	// Url The address the link points to.
+	Url *string `json:"url,omitempty"`
+}
+
+// UpdateDoorRequestContent defines model for UpdateDoorRequestContent.
+type UpdateDoorRequestContent struct {
+	Door *UpdateDoorPayload `json:"door,omitempty"`
+
+	// VisibleToClients Whether the project's clients can see the external link. Omitted keeps
+	// the current visibility.
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
+}
+
+// UpdateDoorResponseContent An external link (`Door` recording), as ListDoors, GetDoor, CreateDoor and
+// UpdateDoor render it: the shared recording envelope plus the outside `url`,
+// the `service` struct and `description`. Docked, so it carries no `parent`.
+type UpdateDoorResponseContent = Door
+
 // UpdateFolderRequestContent defines model for UpdateFolderRequestContent.
 type UpdateFolderRequestContent struct {
 	// Name The folder's new name. Blank is rejected with 422 — unlike create, update
@@ -6184,6 +6292,9 @@ type CreateChatbotJSONRequestBody = CreateChatbotRequestContent
 // UpdateChatbotJSONRequestBody defines body for UpdateChatbot for application/json ContentType.
 type UpdateChatbotJSONRequestBody = UpdateChatbotRequestContent
 
+// CreateDoorJSONRequestBody defines body for CreateDoor for application/json ContentType.
+type CreateDoorJSONRequestBody = CreateDoorRequestContent
+
 // CreateToolJSONRequestBody defines body for CreateTool for application/json ContentType.
 type CreateToolJSONRequestBody = CreateToolRequestContent
 
@@ -6249,6 +6360,9 @@ type UpdateCloudFileJSONRequestBody = UpdateCloudFileRequestContent
 
 // UpdateCommentJSONRequestBody defines body for UpdateComment for application/json ContentType.
 type UpdateCommentJSONRequestBody = UpdateCommentRequestContent
+
+// UpdateDoorJSONRequestBody defines body for UpdateDoor for application/json ContentType.
+type UpdateDoorJSONRequestBody = UpdateDoorRequestContent
 
 // UpdateToolJSONRequestBody defines body for UpdateTool for application/json ContentType.
 type UpdateToolJSONRequestBody = UpdateToolRequestContent
@@ -7125,6 +7239,14 @@ type ClientInterface interface {
 	// GetClientReply request
 	GetClientReply(ctx context.Context, accountId string, bucketId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListDoors request
+	ListDoors(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDoorWithBody request with any body
+	CreateDoorWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateDoor(ctx context.Context, accountId string, bucketId int64, body CreateDoorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateToolWithBody request with any body
 	CreateToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -7330,6 +7452,17 @@ type ClientInterface interface {
 	UpdateCommentWithBody(ctx context.Context, accountId string, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateComment(ctx context.Context, accountId string, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteDoor request
+	DeleteDoor(ctx context.Context, accountId string, doorId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDoor request
+	GetDoor(ctx context.Context, accountId string, doorId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateDoorWithBody request with any body
+	UpdateDoorWithBody(ctx context.Context, accountId string, doorId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateDoor(ctx context.Context, accountId string, doorId int64, body UpdateDoorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTool request
 	DeleteTool(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8505,6 +8638,46 @@ func (c *Client) GetClientReply(ctx context.Context, accountId string, bucketId 
 
 }
 
+// ListDoors is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListDoors(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListDoorsRequest(c.Server, accountId, bucketId)
+	}, true, "ListDoors", reqEditors...)
+
+}
+
+// CreateDoorWithBody executes the CreateDoor operation.
+
+func (c *Client) CreateDoorWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateDoorRequestWithBody(c.Server, accountId, bucketId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateDoor(ctx context.Context, accountId string, bucketId int64, body CreateDoorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateDoorRequest(c.Server, accountId, bucketId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
 // CreateToolWithBody executes the CreateTool operation.
 
 func (c *Client) CreateToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -9392,6 +9565,44 @@ func (c *Client) UpdateComment(ctx context.Context, accountId string, commentId 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCommentRequest(c.Server, accountId, commentId, body)
 	}, true, "UpdateComment", reqEditors...)
+
+}
+
+// DeleteDoor is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteDoor(ctx context.Context, accountId string, doorId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteDoorRequest(c.Server, accountId, doorId)
+	}, true, "DeleteDoor", reqEditors...)
+
+}
+
+// GetDoor is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetDoor(ctx context.Context, accountId string, doorId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetDoorRequest(c.Server, accountId, doorId)
+	}, true, "GetDoor", reqEditors...)
+
+}
+
+// UpdateDoorWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateDoorWithBody(ctx context.Context, accountId string, doorId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateDoorRequestWithBody(c.Server, accountId, doorId, contentType, body)
+	}, true, "UpdateDoor", reqEditors...)
+
+}
+
+func (c *Client) UpdateDoor(ctx context.Context, accountId string, doorId int64, body UpdateDoorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateDoorRequest(c.Server, accountId, doorId, body)
+	}, true, "UpdateDoor", reqEditors...)
 
 }
 
@@ -13991,6 +14202,101 @@ func NewGetClientReplyRequest(server string, accountId string, bucketId int64, r
 	return req, nil
 }
 
+// NewListDoorsRequest generates requests for ListDoors
+func NewListDoorsRequest(server string, accountId string, bucketId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/doors.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateDoorRequest calls the generic CreateDoor builder with application/json body
+func NewCreateDoorRequest(server string, accountId string, bucketId int64, body CreateDoorJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateDoorRequestWithBody(server, accountId, bucketId, "application/json", bodyReader)
+}
+
+// NewCreateDoorRequestWithBody generates requests for CreateDoor with any type of body
+func NewCreateDoorRequestWithBody(server string, accountId string, bucketId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/doors.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateToolRequest calls the generic CreateTool builder with application/json body
 func NewCreateToolRequest(server string, accountId string, bucketId int64, body CreateToolJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -16975,6 +17281,142 @@ func NewUpdateCommentRequestWithBody(server string, accountId string, commentId 
 	}
 
 	operationPath := fmt.Sprintf("/%s/comments/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteDoorRequest generates requests for DeleteDoor
+func NewDeleteDoorRequest(server string, accountId string, doorId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "doorId", runtime.ParamLocationPath, doorId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/dock/doors/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDoorRequest generates requests for GetDoor
+func NewGetDoorRequest(server string, accountId string, doorId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "doorId", runtime.ParamLocationPath, doorId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/dock/doors/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateDoorRequest calls the generic UpdateDoor builder with application/json body
+func NewUpdateDoorRequest(server string, accountId string, doorId int64, body UpdateDoorJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateDoorRequestWithBody(server, accountId, doorId, "application/json", bodyReader)
+}
+
+// NewUpdateDoorRequestWithBody generates requests for UpdateDoor with any type of body
+func NewUpdateDoorRequestWithBody(server string, accountId string, doorId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "doorId", runtime.ParamLocationPath, doorId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/dock/doors/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -28445,6 +28887,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"ListClientCorrespondences":          {Idempotent: true, HasSensitiveParams: false},
 	"ListClientReplies":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetClientReply":                     {Idempotent: true, HasSensitiveParams: false},
+	"ListDoors":                          {Idempotent: true, HasSensitiveParams: false},
+	"CreateDoor":                         {Idempotent: false, HasSensitiveParams: false},
 	"CreateTool":                         {Idempotent: false, HasSensitiveParams: false},
 	"CreateTemplatification":             {Idempotent: false, HasSensitiveParams: false},
 	"GetTemplatification":                {Idempotent: true, HasSensitiveParams: false},
@@ -28499,6 +28943,9 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetEverythingComments":              {Idempotent: true, HasSensitiveParams: false},
 	"GetComment":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateComment":                      {Idempotent: true, HasSensitiveParams: false},
+	"DeleteDoor":                         {Idempotent: true, HasSensitiveParams: false},
+	"GetDoor":                            {Idempotent: true, HasSensitiveParams: false},
+	"UpdateDoor":                         {Idempotent: true, HasSensitiveParams: false},
 	"DeleteTool":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetTool":                            {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
@@ -28749,6 +29196,8 @@ var operationRetryMax = map[string]int{
 	"ListClientCorrespondences":          3,
 	"ListClientReplies":                  3,
 	"GetClientReply":                     3,
+	"ListDoors":                          3,
+	"CreateDoor":                         2,
 	"CreateTool":                         2,
 	"CreateTemplatification":             2,
 	"GetTemplatification":                3,
@@ -28803,6 +29252,9 @@ var operationRetryMax = map[string]int{
 	"GetEverythingComments":              3,
 	"GetComment":                         3,
 	"UpdateComment":                      3,
+	"DeleteDoor":                         3,
+	"GetDoor":                            3,
+	"UpdateDoor":                         3,
 	"DeleteTool":                         3,
 	"GetTool":                            3,
 	"UpdateTool":                         3,
@@ -29051,6 +29503,8 @@ var operationRetryOn = map[string][]int{
 	"ListClientCorrespondences":          {429, 503},
 	"ListClientReplies":                  {429, 503},
 	"GetClientReply":                     {429, 503},
+	"ListDoors":                          {429, 503},
+	"CreateDoor":                         {429, 503},
 	"CreateTool":                         {429, 503},
 	"CreateTemplatification":             {429, 503},
 	"GetTemplatification":                {429, 503},
@@ -29105,6 +29559,9 @@ var operationRetryOn = map[string][]int{
 	"GetEverythingComments":              {429, 503},
 	"GetComment":                         {429, 503},
 	"UpdateComment":                      {429, 503},
+	"DeleteDoor":                         {429, 503},
+	"GetDoor":                            {429, 503},
+	"UpdateDoor":                         {429, 503},
 	"DeleteTool":                         {429, 503},
 	"GetTool":                            {429, 503},
 	"UpdateTool":                         {429, 503},
@@ -30566,6 +31023,14 @@ type ClientWithResponsesInterface interface {
 	// GetClientReplyWithResponse request
 	GetClientReplyWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error)
 
+	// ListDoorsWithResponse request
+	ListDoorsWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListDoorsResponse, error)
+
+	// CreateDoorWithBodyWithResponse request with any body
+	CreateDoorWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDoorResponse, error)
+
+	CreateDoorWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateDoorJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDoorResponse, error)
+
 	// CreateToolWithBodyWithResponse request with any body
 	CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error)
 
@@ -30771,6 +31236,17 @@ type ClientWithResponsesInterface interface {
 	UpdateCommentWithBodyWithResponse(ctx context.Context, accountId string, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
 
 	UpdateCommentWithResponse(ctx context.Context, accountId string, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
+
+	// DeleteDoorWithResponse request
+	DeleteDoorWithResponse(ctx context.Context, accountId string, doorId int64, reqEditors ...RequestEditorFn) (*DeleteDoorResponse, error)
+
+	// GetDoorWithResponse request
+	GetDoorWithResponse(ctx context.Context, accountId string, doorId int64, reqEditors ...RequestEditorFn) (*GetDoorResponse, error)
+
+	// UpdateDoorWithBodyWithResponse request with any body
+	UpdateDoorWithBodyWithResponse(ctx context.Context, accountId string, doorId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDoorResponse, error)
+
+	UpdateDoorWithResponse(ctx context.Context, accountId string, doorId int64, body UpdateDoorJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDoorResponse, error)
 
 	// DeleteToolWithResponse request
 	DeleteToolWithResponse(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error)
@@ -32506,6 +32982,77 @@ func (r GetClientReplyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetClientReplyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListDoorsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListDoorsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListDoorsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListDoorsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListDoorsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateDoorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateDoorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateDoorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateDoorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateDoorResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -34366,6 +34913,110 @@ func (r UpdateCommentResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteDoorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteDoorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteDoorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteDoorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetDoorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetDoorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDoorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDoorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDoorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateDoorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateDoorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateDoorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateDoorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateDoorResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -42020,6 +42671,32 @@ func (c *ClientWithResponses) GetClientReplyWithResponse(ctx context.Context, ac
 	return ParseGetClientReplyResponse(rsp)
 }
 
+// ListDoorsWithResponse request returning *ListDoorsResponse
+func (c *ClientWithResponses) ListDoorsWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListDoorsResponse, error) {
+	rsp, err := c.ListDoors(ctx, accountId, bucketId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListDoorsResponse(rsp)
+}
+
+// CreateDoorWithBodyWithResponse request with arbitrary body returning *CreateDoorResponse
+func (c *ClientWithResponses) CreateDoorWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDoorResponse, error) {
+	rsp, err := c.CreateDoorWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDoorResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateDoorWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateDoorJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDoorResponse, error) {
+	rsp, err := c.CreateDoor(ctx, accountId, bucketId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDoorResponse(rsp)
+}
+
 // CreateToolWithBodyWithResponse request with arbitrary body returning *CreateToolResponse
 func (c *ClientWithResponses) CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error) {
 	rsp, err := c.CreateToolWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
@@ -42680,6 +43357,41 @@ func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, acc
 		return nil, err
 	}
 	return ParseUpdateCommentResponse(rsp)
+}
+
+// DeleteDoorWithResponse request returning *DeleteDoorResponse
+func (c *ClientWithResponses) DeleteDoorWithResponse(ctx context.Context, accountId string, doorId int64, reqEditors ...RequestEditorFn) (*DeleteDoorResponse, error) {
+	rsp, err := c.DeleteDoor(ctx, accountId, doorId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteDoorResponse(rsp)
+}
+
+// GetDoorWithResponse request returning *GetDoorResponse
+func (c *ClientWithResponses) GetDoorWithResponse(ctx context.Context, accountId string, doorId int64, reqEditors ...RequestEditorFn) (*GetDoorResponse, error) {
+	rsp, err := c.GetDoor(ctx, accountId, doorId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDoorResponse(rsp)
+}
+
+// UpdateDoorWithBodyWithResponse request with arbitrary body returning *UpdateDoorResponse
+func (c *ClientWithResponses) UpdateDoorWithBodyWithResponse(ctx context.Context, accountId string, doorId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDoorResponse, error) {
+	rsp, err := c.UpdateDoorWithBody(ctx, accountId, doorId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateDoorResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateDoorWithResponse(ctx context.Context, accountId string, doorId int64, body UpdateDoorJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDoorResponse, error) {
+	rsp, err := c.UpdateDoor(ctx, accountId, doorId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateDoorResponse(rsp)
 }
 
 // DeleteToolWithResponse request returning *DeleteToolResponse
@@ -46622,6 +47334,124 @@ func ParseGetClientReplyResponse(rsp *http.Response) (*GetClientReplyResponse, e
 	return response, nil
 }
 
+// ParseListDoorsResponse parses an HTTP response from a ListDoorsWithResponse call
+func ParseListDoorsResponse(rsp *http.Response) (*ListDoorsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListDoorsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListDoorsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateDoorResponse parses an HTTP response from a CreateDoorWithResponse call
+func ParseCreateDoorResponse(rsp *http.Response) (*CreateDoorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateDoorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateDoorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest FieldValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateToolResponse parses an HTTP response from a CreateToolWithResponse call
 func ParseCreateToolResponse(rsp *http.Response) (*CreateToolResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -49470,6 +50300,170 @@ func ParseUpdateCommentResponse(rsp *http.Response) (*UpdateCommentResponse, err
 		var dest ValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteDoorResponse parses an HTTP response from a DeleteDoorWithResponse call
+func ParseDeleteDoorResponse(rsp *http.Response) (*DeleteDoorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteDoorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDoorResponse parses an HTTP response from a GetDoorWithResponse call
+func ParseGetDoorResponse(rsp *http.Response) (*GetDoorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDoorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetDoorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateDoorResponse parses an HTTP response from a UpdateDoorWithResponse call
+func ParseUpdateDoorResponse(rsp *http.Response) (*UpdateDoorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateDoorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateDoorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest FieldValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

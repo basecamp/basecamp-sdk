@@ -352,6 +352,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/buckets/{bucketId}/dock/doors.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List the active external links in a project
+         *     They come in the order they appear in the project's External links section.
+         *     Not paginated: a project has a handful at most. Clients see only the
+         *     external links visible to them. Listing needs only access to the project,
+         *     not permission to edit it.
+         */
+        get: operations["ListDoors"];
+        put?: never;
+        /**
+         * @description Create an external link in a project
+         *     It goes at the end of the project's External links section. The link's
+         *     fields go under the `door` key and `visible_to_clients` sits beside it.
+         *     Omitting `visible_to_clients` keeps the link private to the team, whatever
+         *     the visibility of the project's other tools; a client caller always creates
+         *     a client-visible link. An unusable `url` (e.g. a `javascript:` address) is a
+         *     field-keyed 422. Needs permission to edit the project. The `door[image]`
+         *     thumbnail is multipart-only and not modelled.
+         */
+        post: operations["CreateDoor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buckets/{bucketId}/dock/tools.json": {
         parameters: {
             query?: never;
@@ -1172,6 +1205,40 @@ export interface paths {
         put: operations["UpdateComment"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dock/doors/{doorId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get an external link by id
+         *     A door hidden from a client, an unknown id, or the id of a recording that is
+         *     not a door is a 404.
+         */
+        get: operations["GetDoor"];
+        /**
+         * @description Update an external link
+         *     A partial update: every field is optional, and those left out keep their
+         *     values. Omit `door` entirely to change only `visible_to_clients`; omit
+         *     `visible_to_clients` to keep the current visibility. An unusable `url` is a
+         *     field-keyed 422. Needs permission to edit the project.
+         */
+        put: operations["UpdateDoor"];
+        post?: never;
+        /**
+         * @description Delete an external link (returns 204 No Content)
+         *     Its status becomes "deleted" and it leaves the project's External links section. It does not
+         *     go to the trash: Basecamp permanently destroys it about five days later.
+         *     Needs permission to edit the project.
+         */
+        delete: operations["DeleteDoor"];
         options?: never;
         head?: never;
         patch?: never;
@@ -5026,6 +5093,33 @@ export interface components {
             visible_to_clients?: boolean;
         };
         CreateDocumentResponseContent: components["schemas"]["Document"];
+        CreateDoorPayload: {
+            /**
+             * @description Short identifier for the external service: figma, dropbox, google_drive,
+             *     github, notion, trello, slack, zoom, airtable, jira, miro, … or `other`
+             *     for a generic link.
+             */
+            service: string;
+            /**
+             * @description The address the link points to. Supply an HTTP or HTTPS URL; a value
+             *     without a scheme is prefixed with `https://`.
+             */
+            url: string;
+            /** @description Name shown in the External links section. Defaults to "Untitled". */
+            title?: string;
+            /** @description Rich-text (HTML) description shown beneath the title. */
+            description?: string;
+        };
+        CreateDoorRequestContent: {
+            door: components["schemas"]["CreateDoorPayload"];
+            /**
+             * @description Whether the project's clients can see the external link. Omitted means
+             *     false: the link is private to the team. A client caller always creates a
+             *     client-visible link regardless of what is sent.
+             */
+            visible_to_clients?: boolean;
+        };
+        CreateDoorResponseContent: components["schemas"]["Door"];
         CreateEmbedRequestContent: {
             /** @description The URL of the content to embed. */
             url: string;
@@ -5448,6 +5542,43 @@ export interface components {
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
+        };
+        /**
+         * @description An external link (`Door` recording), as ListDoors, GetDoor, CreateDoor and
+         *     UpdateDoor render it: the shared recording envelope plus the outside `url`,
+         *     the `service` struct and `description`. Docked, so it carries no `parent`.
+         */
+        Door: {
+            /** Format: int64 */
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            /**
+             * @description The external link's outside address (e.g. the Figma URL) — NOT this
+             *     record's API URL. The door partial renders the shared recording partial
+             *     and then `json.(recording.recordable, :url, :service, :description)`,
+             *     which overwrites the recording's url key. `app_url` is still this record's
+             *     Basecamp URL (a redirector to the outside address).
+             */
+            url: string;
+            app_url: string;
+            bookmark_url?: string;
+            subscription_url?: string;
+            /**
+             * Format: int32
+             * @description Ordinal position within the project's External links section.
+             */
+            position?: number;
+            bucket: components["schemas"]["RecordingBucket"];
+            creator: components["schemas"]["Person"];
+            service: components["schemas"]["DoorService"];
+            /** @description Rich-text (HTML) description shown beneath the link. */
+            description?: string;
         };
         /**
          * @description Metadata describing the recognized external service backing an external link
@@ -6041,6 +6172,7 @@ export interface components {
         GetCloudFileResponseContent: components["schemas"]["CloudFile"];
         GetCommentResponseContent: components["schemas"]["Comment"];
         GetDocumentResponseContent: components["schemas"]["Document"];
+        GetDoorResponseContent: components["schemas"]["Door"];
         GetEmbedResponseContent: components["schemas"]["Embed"];
         GetEverythingCheckinsResponseContent: components["schemas"]["Recording"][];
         GetEverythingCommentsResponseContent: components["schemas"]["Recording"][];
@@ -6380,6 +6512,7 @@ export interface components {
         ListClientRepliesResponseContent: components["schemas"]["ClientReply"][];
         ListCommentsResponseContent: components["schemas"]["Comment"][];
         ListDocumentsResponseContent: components["schemas"]["Document"][];
+        ListDoorsResponseContent: components["schemas"]["Door"][];
         ListEventBoostsResponseContent: components["schemas"]["Boost"][];
         ListEventsResponseContent: components["schemas"]["Event"][];
         ListFoldersResponseContent: components["schemas"]["Folder"][];
@@ -8679,6 +8812,25 @@ export interface components {
             content: string;
         };
         UpdateCommentResponseContent: components["schemas"]["Comment"];
+        UpdateDoorPayload: {
+            /** @description Short identifier for the external service, as for CreateDoor. */
+            service?: string;
+            /** @description The address the link points to. */
+            url?: string;
+            /** @description Name shown in the External links section. */
+            title?: string;
+            /** @description Rich-text (HTML) description shown beneath the title. */
+            description?: string;
+        };
+        UpdateDoorRequestContent: {
+            door?: components["schemas"]["UpdateDoorPayload"];
+            /**
+             * @description Whether the project's clients can see the external link. Omitted keeps
+             *     the current visibility.
+             */
+            visible_to_clients?: boolean;
+        };
+        UpdateDoorResponseContent: components["schemas"]["Door"];
         UpdateFolderRequestContent: {
             /**
              * @description The folder's new name. Blank is rejected with 422 — unlike create, update
@@ -10924,6 +11076,153 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListDoors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bucketId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListDoors 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListDoorsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateDoor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bucketId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDoorRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateDoor 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateDoorResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description FieldValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -14498,6 +14797,209 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetDoor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doorId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetDoor 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetDoorResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateDoor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doorId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateDoorRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateDoor 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateDoorResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description FieldValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DeleteDoor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doorId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DeleteDoor 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

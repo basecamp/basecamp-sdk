@@ -21,6 +21,7 @@ pub mod client_visibility;
 pub mod cloud_files;
 pub mod comments;
 pub mod documents;
+pub mod doors;
 pub mod drafts;
 pub mod embeds;
 pub mod event_feed;

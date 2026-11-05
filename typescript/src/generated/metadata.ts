@@ -36,7 +36,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-10-30T06:06:06.171Z",
+  "generated": "2026-11-05T14:39:00.627Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -405,6 +405,28 @@ const metadata: MetadataOutput = {
     "GetClientReply": {
       "retry": {
         "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "ListDoors": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateDoor": {
+      "retry": {
+        "maxAttempts": 2,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -1092,6 +1114,45 @@ const metadata: MetadataOutput = {
       }
     },
     "UpdateComment": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "GetDoor": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateDoor": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "DeleteDoor": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,

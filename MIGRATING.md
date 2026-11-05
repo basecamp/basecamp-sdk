@@ -11,6 +11,23 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### External links (doors): a service of their own
+
+`ListDoors`, `GetDoor`, `CreateDoor`, `UpdateDoor` and `DeleteDoor` are new
+operations, and additive for every caller: a new Doors service (`Doors()` in
+Go, `doors` elsewhere) with `list`, `get`, `create`, `update` and `delete`, and
+a `Door` shape. They break only Go code that implements the generated
+`ClientInterface` / `ClientWithResponsesInterface` itself, which gain the five
+operations, `CreateDoorWithBody` and `UpdateDoorWithBody`, and their
+`...WithResponse` forms. A mock or fake of your own must add them.
+
+If you created external links through the web app because the API answered
+create with a 302, or read them through `ListRecordings` with `type=Door`, both
+still work; the Doors service is now the direct path. A create that leaves out
+`visible_to_clients` makes a link private to the team.
+
 # v0.34.0
 
 ### Hill charts: posting a progress update

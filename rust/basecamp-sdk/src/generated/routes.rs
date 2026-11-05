@@ -378,6 +378,26 @@ pub static CREATE_DOCUMENT: Route = Route {
     metadata: &metadata::CREATE_DOCUMENT,
 };
 
+/// `POST /buckets/{bucketId}/dock/doors.json`.
+pub static CREATE_DOOR: Route = Route {
+    id: "CreateDoor",
+    service: "Doors",
+    method: Method::POST,
+    path: "/buckets/{bucketId}/dock/doors.json",
+    pattern: "/buckets/{bucketId}/dock/doors",
+    resource_type: "door",
+    params: &[RouteParam {
+        name: "bucketId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::CREATE_DOOR,
+};
+
 /// `POST /embeds.json`.
 pub static CREATE_EMBED: Route = Route {
     id: "CreateEmbed",
@@ -1152,6 +1172,26 @@ pub static DELETE_CHATBOT: Route = Route {
     write: None,
     deprecated: false,
     metadata: &metadata::DELETE_CHATBOT,
+};
+
+/// `DELETE /dock/doors/{doorId}`.
+pub static DELETE_DOOR: Route = Route {
+    id: "DeleteDoor",
+    service: "Doors",
+    method: Method::DELETE,
+    path: "/dock/doors/{doorId}",
+    pattern: "/dock/doors/{doorId}",
+    resource_type: "door",
+    params: &[RouteParam {
+        name: "doorId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::DELETE_DOOR,
 };
 
 /// `DELETE /stacks/{folderId}`.
@@ -2008,6 +2048,26 @@ pub static GET_DOCUMENT: Route = Route {
     write: None,
     deprecated: false,
     metadata: &metadata::GET_DOCUMENT,
+};
+
+/// `GET /dock/doors/{doorId}`.
+pub static GET_DOOR: Route = Route {
+    id: "GetDoor",
+    service: "Doors",
+    method: Method::GET,
+    path: "/dock/doors/{doorId}",
+    pattern: "/dock/doors/{doorId}",
+    resource_type: "door",
+    params: &[RouteParam {
+        name: "doorId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::GET_DOOR,
 };
 
 /// `GET /embeds/{sgid}`.
@@ -3714,6 +3774,26 @@ pub static LIST_DOCUMENTS: Route = Route {
     write: None,
     deprecated: false,
     metadata: &metadata::LIST_DOCUMENTS,
+};
+
+/// `GET /buckets/{bucketId}/dock/doors.json`.
+pub static LIST_DOORS: Route = Route {
+    id: "ListDoors",
+    service: "Doors",
+    method: Method::GET,
+    path: "/buckets/{bucketId}/dock/doors.json",
+    pattern: "/buckets/{bucketId}/dock/doors",
+    resource_type: "door",
+    params: &[RouteParam {
+        name: "bucketId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::LIST_DOORS,
 };
 
 /// `GET /recordings/{recordingId}/events/{eventId}/boosts.json`.
@@ -5545,6 +5625,26 @@ pub static UPDATE_COMMENT: Route = Route {
     metadata: &metadata::UPDATE_COMMENT,
 };
 
+/// `PUT /dock/doors/{doorId}`.
+pub static UPDATE_DOOR: Route = Route {
+    id: "UpdateDoor",
+    service: "Doors",
+    method: Method::PUT,
+    path: "/dock/doors/{doorId}",
+    pattern: "/dock/doors/{doorId}",
+    resource_type: "door",
+    params: &[RouteParam {
+        name: "doorId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::UPDATE_DOOR,
+};
+
 /// `PUT /stacks/{folderId}`.
 pub static UPDATE_FOLDER: Route = Route {
     id: "UpdateFolder",
@@ -6134,6 +6234,7 @@ pub static ROUTES: &[&Route] = &[
     &CREATE_CLOUD_FILE,
     &CREATE_COMMENT,
     &CREATE_DOCUMENT,
+    &CREATE_DOOR,
     &CREATE_EMBED,
     &CREATE_EVENT_BOOST,
     &CREATE_FOLDER,
@@ -6172,6 +6273,7 @@ pub static ROUTES: &[&Route] = &[
     &DELETE_BUBBLE_UP,
     &DELETE_CAMPFIRE_LINE,
     &DELETE_CHATBOT,
+    &DELETE_DOOR,
     &DELETE_FOLDER,
     &DELETE_LINEUP_MARKER,
     &DELETE_MESSAGE_TYPE,
@@ -6212,6 +6314,7 @@ pub static ROUTES: &[&Route] = &[
     &GET_CLOUD_FILE,
     &GET_COMMENT,
     &GET_DOCUMENT,
+    &GET_DOOR,
     &GET_EMBED,
     &GET_EVERYTHING_CHECKINS,
     &GET_EVERYTHING_COMMENTS,
@@ -6295,6 +6398,7 @@ pub static ROUTES: &[&Route] = &[
     &LIST_CLIENT_REPLIES,
     &LIST_COMMENTS,
     &LIST_DOCUMENTS,
+    &LIST_DOORS,
     &LIST_EVENT_BOOSTS,
     &LIST_EVENTS,
     &LIST_FOLDERS,
@@ -6383,6 +6487,7 @@ pub static ROUTES: &[&Route] = &[
     &UPDATE_CHATBOT,
     &UPDATE_CLOUD_FILE,
     &UPDATE_COMMENT,
+    &UPDATE_DOOR,
     &UPDATE_FOLDER,
     &UPDATE_GAUGE_NEEDLE,
     &UPDATE_GOOGLE_DOCUMENT,

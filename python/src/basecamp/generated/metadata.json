@@ -203,6 +203,17 @@
       ]
     }
   },
+  "CreateDoor": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "CreateEmbed": {
     "idempotent": true,
     "retry": {
@@ -616,6 +627,18 @@
     }
   },
   "DeleteChatbot": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "DeleteDoor": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",
@@ -1074,6 +1097,17 @@
     }
   },
   "GetDocument": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "GetDoor": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,
@@ -1987,6 +2021,17 @@
     }
   },
   "ListDocuments": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "ListDoors": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,
@@ -2999,6 +3044,18 @@
     }
   },
   "UpdateComment": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "UpdateDoor": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",

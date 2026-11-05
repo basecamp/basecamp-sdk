@@ -548,6 +548,13 @@ export {
   type Tool,
 } from "./generated/services/tools.js";
 
+export {
+  DoorsService,
+  type Door,
+  type CreateDoorRequest,
+  type UpdateDoorRequest,
+} from "./generated/services/doors.js";
+
 // Boosts service - generated
 export {
   BoostsService,

@@ -374,6 +374,18 @@ data class CreateDocumentBody(
     val visibleToClients: Boolean? = null
 )
 
+/** Request body for CreateDoor. */
+data class CreateDoorBody(
+    val door: JsonObject,
+    val visibleToClients: Boolean? = null
+)
+
+/** Request body for UpdateDoor. */
+data class UpdateDoorBody(
+    val door: JsonObject? = null,
+    val visibleToClients: Boolean? = null
+)
+
 /** Options for ListMyDrafts. */
 data class ListMyDraftsOptions(
     /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */

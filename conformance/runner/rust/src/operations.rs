@@ -323,6 +323,30 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                 .get_version(id("todosetId"), id("versionId"))
                 .await?,
         ),
+        "ListDoors" => json(account.doors().list(id("bucketId")).await?),
+        "GetDoor" => json(account.doors().get(id("doorId")).await?),
+        "CreateDoor" => {
+            // The fixture's door object is the payload as written; a key it
+            // omits stays None and never reaches the wire.
+            let door = serde_json::from_value(body.get("door").cloned().unwrap_or_default())
+                .expect("CreateDoor fixture needs a door with service and url");
+            let request = CreateDoorRequestContent {
+                door,
+                visible_to_clients: optional_bool_param(body, "visible_to_clients"),
+            };
+            json(account.doors().create(id("bucketId"), &request).await?)
+        }
+        "UpdateDoor" => {
+            let door = body
+                .get("door")
+                .map(|door| serde_json::from_value(door.clone()).expect("UpdateDoor fixture door"));
+            let request = UpdateDoorRequestContent {
+                door,
+                visible_to_clients: optional_bool_param(body, "visible_to_clients"),
+            };
+            json(account.doors().update(id("doorId"), &request).await?)
+        }
+        "DeleteDoor" => unit(account.doors().delete(id("doorId")).await),
         "GetEmbed" => json(account.embeds().get(&string_param(path, "sgid")).await?),
         "GetTemplateLibraryTodolists" => {
             let library = account.templates().get_library_todolists().await?;

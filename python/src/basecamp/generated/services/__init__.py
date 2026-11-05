@@ -22,6 +22,7 @@ from basecamp.generated.services.client_visibility import ClientVisibilityServic
 from basecamp.generated.services.cloud_files import CloudFilesService, AsyncCloudFilesService
 from basecamp.generated.services.comments import CommentsService, AsyncCommentsService
 from basecamp.generated.services.documents import DocumentsService, AsyncDocumentsService
+from basecamp.generated.services.doors import DoorsService, AsyncDoorsService
 from basecamp.generated.services.drafts import DraftsService, AsyncDraftsService
 from basecamp.generated.services.embeds import EmbedsService, AsyncEmbedsService
 from basecamp.generated.services.event_feed import EventFeedService, AsyncEventFeedService
@@ -100,6 +101,8 @@ __all__ = [
     "AsyncCommentsService",
     "DocumentsService",
     "AsyncDocumentsService",
+    "DoorsService",
+    "AsyncDoorsService",
     "DraftsService",
     "AsyncDraftsService",
     "EmbedsService",
