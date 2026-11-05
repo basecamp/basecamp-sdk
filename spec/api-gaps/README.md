@@ -129,7 +129,8 @@ making the absorption journey publicly auditable.
 > The `4303f1dafd4..6ceece6f69b` range is **368 commits** (83 merges) by
 > `git log`, read from a local bc3 checkout. Two files under `doc/api` and
 > three under `app/views/api` change, and the vendored route table moves from
-> 431 routes to 434 across the same 73 sections. The three new routes:
+> 431 routes to 434 across the same 73 sections: four new routes and one
+> that leaves the table.
 >
 > - BC3 **#14314** (`6ceece6f69b`, the commit this repin moves to) —
 >   `GET /buckets/:id/dock/doors.json`, and `GET`, `PUT` and
