@@ -1301,8 +1301,8 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         }
 
         "ListDoors" -> {
-            account.doors.list(tc.pathParams.longParam("bucketId"))
-            DispatchResult()
+            val doors = account.doors.list(tc.pathParams.longParam("bucketId"))
+            DispatchResult(resultJson = JsonArray(doors.map { Json.encodeToJsonElement(Door.serializer(), it) }))
         }
 
         "GetDoor" -> {

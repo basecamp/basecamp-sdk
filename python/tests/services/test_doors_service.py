@@ -132,6 +132,13 @@ class TestUpdate:
 
         assert json.loads(route.calls.last.request.content) == {"visible_to_clients": True}
 
+    @respx.mock
+    def test_forbidden(self):
+        respx.put(f"{BASE}/dock/doors/1").mock(return_value=httpx.Response(403, json={"error": "Forbidden"}))
+
+        with pytest.raises(ForbiddenError):
+            _doors().update(door_id=1, door={"title": "x"})
+
 
 class TestDelete:
     @respx.mock

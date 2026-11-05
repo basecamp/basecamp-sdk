@@ -23,6 +23,14 @@ class DoorsServiceTest < Minitest::Test
     assert_equal 8, doors[0]["position"]
   end
 
+  def test_list_forbidden
+    stub_request(:get, "https://3.basecampapi.com/12345/buckets/1/dock/doors.json")
+      .to_return(status: 403, body: { "error" => "Forbidden" }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    assert_raises(Basecamp::ForbiddenError) { @account.doors.list(bucket_id: 1).to_a }
+  end
+
   def test_get_returns_the_full_shape
     stub_request(:get, "https://3.basecampapi.com/12345/dock/doors/1069480290")
       .to_return(status: 200, body: load_fixture("doors/get.json").to_json,
@@ -66,7 +74,7 @@ class DoorsServiceTest < Minitest::Test
 
     @account.doors.create(bucket_id: 1, door: { "service" => "other", "url" => "https://example.com" })
 
-    # WebMock treats a hash body as a subset match, so parse it instead.
+    # Parse the body so the assertion checks the exact JSON, visible_to_clients absent included.
     assert_requested(:post, "https://3.basecampapi.com/12345/buckets/1/dock/doors.json") do |req|
       JSON.parse(req.body) == { "door" => { "service" => "other", "url" => "https://example.com" } }
     end

@@ -329,7 +329,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             // The fixture's door object is the payload as written; a key it
             // omits stays None and never reaches the wire.
             let door = serde_json::from_value(body.get("door").cloned().unwrap_or_default())
-                .expect("CreateDoor fixture needs a door with service and url");
+                .map_err(|error| harness(format!("CreateDoor fixture door: {error}")))?;
             let request = CreateDoorRequestContent {
                 door,
                 visible_to_clients: optional_bool_param(body, "visible_to_clients"),
@@ -339,7 +339,10 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
         "UpdateDoor" => {
             let door = body
                 .get("door")
-                .map(|door| serde_json::from_value(door.clone()).expect("UpdateDoor fixture door"));
+                .cloned()
+                .map(serde_json::from_value)
+                .transpose()
+                .map_err(|error| harness(format!("UpdateDoor fixture door: {error}")))?;
             let request = UpdateDoorRequestContent {
                 door,
                 visible_to_clients: optional_bool_param(body, "visible_to_clients"),

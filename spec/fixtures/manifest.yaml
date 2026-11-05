@@ -235,6 +235,12 @@ targets:
   - id: door-get-response
     operation: GetDoor
     fixture: doors/get.json
+  - id: door-create-response
+    operation: CreateDoor
+    fixture: doors/get.json
+  - id: door-update-response
+    operation: UpdateDoor
+    fixture: doors/get.json
   - id: schedule-entry-get
     fixture: schedules/entry_get.json
     pointer: ""

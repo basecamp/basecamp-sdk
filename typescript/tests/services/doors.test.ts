@@ -151,6 +151,14 @@ describe("DoorsService", () => {
 
       expect(received).toEqual({ visible_to_clients: true });
     });
+
+    it("throws forbidden for a 403 response", async () => {
+      server.use(
+        http.put(`${BASE_URL}/dock/doors/1`, () => HttpResponse.json({ error: "Forbidden" }, { status: 403 })),
+      );
+
+      await expect(service.update(1, { door: { title: "x" } })).rejects.toMatchObject({ code: "forbidden" });
+    });
   });
 
   describe("delete", () => {

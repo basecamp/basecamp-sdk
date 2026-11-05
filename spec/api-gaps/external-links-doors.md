@@ -1,6 +1,6 @@
 ---
 gap: external-links-doors
-status: absorbed-in-sdk
+status: partial-coverage
 detected: 2026-07-22
 sdk_demand: low
 bc3_pr: 14314
@@ -64,16 +64,20 @@ What this closes, against the residuals recorded below:
   separate action from the bucket-scoped redirector, which stays out of scope
   (see "Disposition" below).
 
-What stays unmodeled, and why it does not keep this entry open:
+What stays unmodeled:
 
-- **`door[image]`** is `multipart/form-data` only. The SDK has no multipart
-  request path in any generated operation, so a multipart-only field is outside
-  its transport model rather than a gap in this resource; a JSON caller gets
-  every other field. The operation docs say so.
+- **`door[image]`**, the thumbnail, is `multipart/form-data` only, and neither
+  `CreateDoor` nor `UpdateDoor` models it. The SDK does send multipart uploads
+  elsewhere (the project and account logos and the project wallpaper), so this
+  is a real residual, not a transport limit, and it is why this entry stays
+  `partial-coverage`. Every other field reaches a JSON caller. Demand is low;
+  model it when someone asks for thumbnails.
 - **The door-scoped `GET /buckets/:b/dock/doors/:id`** redirector, permanently,
   for the reasons recorded below.
 - **A create-and-discover composite (SPEC §18)** is moot: create returns the new
   link and its id.
+
+`door[image]` is the only open item. The redirector is closed, not open.
 
 The `type=Door` `ListRecordings` query and the dock-tool `GetTool` /
 `UpdateTool` / `DeleteTool` operations absorbed earlier keep working; the

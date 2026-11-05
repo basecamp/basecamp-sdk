@@ -26,7 +26,8 @@ operations, `CreateDoorWithBody` and `UpdateDoorWithBody`, and their
 If you created external links through the web app because the API answered
 create with a 302, or read them through `ListRecordings` with `type=Door`, both
 still work; the Doors service is now the direct path. A create that leaves out
-`visible_to_clients` makes a link private to the team.
+`visible_to_clients` makes a link private to the team when a team member makes
+it; a client's create is always visible to clients.
 
 # v0.34.0
 

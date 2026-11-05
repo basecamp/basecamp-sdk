@@ -532,7 +532,11 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         return DispatchResult(resultJSON: try resultJSON(door))
 
     case "CreateDoor":
-        let fields = rb?["door"]?.objectValue
+        guard let object = rb?["door"]?.objectValue else {
+            throw RunnerError.badParameter(
+                "parameter \"door\" must be an object, got \(rb?["door"]?.display ?? "nothing")")
+        }
+        let fields: [String: JSON]? = object
         let door = try await account.doors.create(
             bucketId: pathParams.longParam("bucketId"),
             req: CreateDoorRequest(
