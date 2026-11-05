@@ -958,10 +958,10 @@ extension RecordingsService {
         RecordingSummary(
             id: id, status: status, type: type, title: title, appUrl: appUrl, parent: parent,
             bucket: bucket, creator: creator,
-            // An empty assignee list is absent, not present-and-empty: Go's
-            // `omitempty` drops it, and the projection must not depend on which
-            // SDK rendered it.
-            assignees: (assignees?.isEmpty ?? true) ? nil : assignees,
+            // Passed through as read: absent stays nil, and a server-sent
+            // empty list stays empty, as Go's `omitzero` keeps it, so the
+            // projection doesn't depend on which SDK rendered it.
+            assignees: assignees,
             mentionedPersonIds: mentionedPersonIds ?? Mentions.personIds(in: content),
             content: content, updatedAt: updatedAt, campfireId: campfireId)
     }

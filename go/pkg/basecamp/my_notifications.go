@@ -39,8 +39,8 @@ type Notification struct {
 	UnreadURL              string                  `json:"unread_url,omitempty"`
 	SubscriptionURL        string                  `json:"subscription_url,omitempty"`
 	Creator                *Person                 `json:"creator,omitempty"`
-	Participants           []Person                `json:"participants,omitempty"`
-	PreviewableAttachments []PreviewableAttachment `json:"previewable_attachments,omitempty"`
+	Participants           []Person                `json:"participants,omitzero"`
+	PreviewableAttachments []PreviewableAttachment `json:"previewable_attachments,omitzero"`
 	CreatedAt              time.Time               `json:"created_at"`
 	UpdatedAt              time.Time               `json:"updated_at"`
 	// ReadAt and UnreadAt are the read/unread transition times. Both are
@@ -68,17 +68,17 @@ type PreviewableAttachment struct {
 
 // NotificationsResult contains the notifications grouped by status.
 type NotificationsResult struct {
-	Unreads  []Notification `json:"unreads,omitempty"`
-	Reads    []Notification `json:"reads,omitempty"`
-	Memories []Notification `json:"memories,omitempty"`
+	Unreads  []Notification `json:"unreads,omitzero"`
+	Reads    []Notification `json:"reads,omitzero"`
+	Memories []Notification `json:"memories,omitzero"`
 	// BubbleUps is the BC5-added list of Bubble Up notifications. BC3 also
 	// populates Memories as an alias for BC4-API consumer compat; new
 	// integrations should prefer BubbleUps.
-	BubbleUps []Notification `json:"bubble_ups,omitempty"`
+	BubbleUps []Notification `json:"bubble_ups,omitzero"`
 	// ScheduledBubbleUps is the BC5-added list of scheduled Bubble Up
 	// notifications (resurface time in the future). Omitted from the response
 	// entirely when the request sets limit_bubble_ups=true.
-	ScheduledBubbleUps []Notification `json:"scheduled_bubble_ups,omitempty"`
+	ScheduledBubbleUps []Notification `json:"scheduled_bubble_ups,omitzero"`
 	// BubbleUpsCount is the total number of current bubble-ups, independent of
 	// the limit_bubble_ups cap on the BubbleUps array.
 	BubbleUpsCount int32 `json:"bubble_ups_count"`
@@ -93,9 +93,9 @@ type BubbleUpsResult struct {
 	// BubbleUps is the combined list of current bubble-ups (first, ordered by
 	// most recently bubbled up) followed by scheduled bubble-ups (ordered by
 	// scheduled time).
-	BubbleUps []Notification
+	BubbleUps []Notification `json:"bubble_ups"`
 	// Meta contains pagination metadata (total count, truncation).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // MyNotificationsService handles notification operations for the current user.

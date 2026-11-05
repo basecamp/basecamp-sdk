@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -36,7 +37,7 @@ type TimelineEvent struct {
 	SummaryExcerpt    string  `json:"summary_excerpt"`
 	// AvatarsSample holds avatar URLs of participants, populated for
 	// chat_transcript_rollup events and empty otherwise.
-	AvatarsSample []string `json:"avatars_sample,omitempty"`
+	AvatarsSample []string `json:"avatars_sample,omitzero"`
 	Bucket        *Bucket  `json:"bucket,omitempty"`
 	// Data carries schedule-entry timing, present only for schedule_entry_created
 	// and schedule_entry_rescheduled events.
@@ -46,7 +47,7 @@ type TimelineEvent struct {
 	// other recordings contribute rich-text attachment/blob partials. Each
 	// element is an optional-field superset; only the fields of the variant it
 	// represents are populated.
-	Attachments []TimelineAttachment `json:"attachments,omitempty"`
+	Attachments []TimelineAttachment `json:"attachments,omitzero"`
 }
 
 // TimelineEventData carries schedule-entry timing for schedule_entry_* events.
@@ -139,16 +140,16 @@ type TimelineListOptions struct {
 // TimelineListResult contains the results from listing timeline events.
 type TimelineListResult struct {
 	// Events is the list of timeline events returned.
-	Events []TimelineEvent
+	Events []TimelineEvent `json:"events"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // PersonProgressResult contains a person's activity timeline with pagination metadata.
 type PersonProgressResult struct {
-	Person *Person
-	Events []TimelineEvent
-	Meta   ListMeta
+	Person *Person         `json:"person"`
+	Events []TimelineEvent `json:"events"`
+	Meta   ListMeta        `json:"meta"`
 }
 
 // TimelineService handles timeline and progress operations.
@@ -519,9 +520,7 @@ func timelineEventFromGenerated(ge generated.TimelineEvent) TimelineEvent {
 		}
 	}
 
-	if ge.AvatarsSample != nil {
-		e.AvatarsSample = append([]string(nil), ge.AvatarsSample...)
-	}
+	e.AvatarsSample = slices.Clone(ge.AvatarsSample)
 
 	// data is present only on schedule_entry_* events.
 	if ge.Data != nil {

@@ -22,7 +22,7 @@ type HillChart struct {
 	UpdatedAt      *time.Time     `json:"updated_at,omitempty"`
 	AppUpdateURL   string         `json:"app_update_url,omitempty"`
 	AppVersionsURL string         `json:"app_versions_url,omitempty"`
-	Dots           []HillChartDot `json:"dots,omitempty"`
+	Dots           []HillChartDot `json:"dots,omitzero"`
 	// VersionsURL is the API URL of the chart's progress updates (see
 	// HillChartsService.ListVersions). Present only when the chart has at
 	// least one progress update.
@@ -134,9 +134,9 @@ type HillChartVersionListOptions struct {
 // HillChartVersionListResult contains the results from listing progress updates.
 type HillChartVersionListResult struct {
 	// Versions is the list of progress updates returned, newest first.
-	Versions []HillChartVersion
+	Versions []HillChartVersion `json:"versions"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // HillChartsService handles hill chart operations.
@@ -477,7 +477,7 @@ func hillChartFromGenerated(ghc generated.HillChart) HillChart {
 		AppVersionsURL: deref(ghc.AppVersionsUrl),
 	}
 
-	if len(ghc.Dots) > 0 {
+	if ghc.Dots != nil {
 		hc.Dots = make([]HillChartDot, 0, len(ghc.Dots))
 		for _, gd := range ghc.Dots {
 			hc.Dots = append(hc.Dots, HillChartDot{

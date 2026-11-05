@@ -28,9 +28,9 @@ type EventListOptions struct {
 // EventListResult contains the results from listing events.
 type EventListResult struct {
 	// Events is the list of events returned.
-	Events []Event
+	Events []Event `json:"events"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // Event represents a recording change event in Basecamp.
@@ -54,11 +54,11 @@ type Event struct {
 // EventDetails contains action-specific information for an event.
 type EventDetails struct {
 	// AddedPersonIDs is populated for assignment_changed actions.
-	AddedPersonIDs []int64 `json:"added_person_ids,omitempty"`
+	AddedPersonIDs []int64 `json:"added_person_ids,omitzero"`
 	// RemovedPersonIDs is populated for assignment_changed actions.
-	RemovedPersonIDs []int64 `json:"removed_person_ids,omitempty"`
+	RemovedPersonIDs []int64 `json:"removed_person_ids,omitzero"`
 	// NotifiedRecipientIDs is populated for completion events.
-	NotifiedRecipientIDs []int64 `json:"notified_recipient_ids,omitempty"`
+	NotifiedRecipientIDs []int64 `json:"notified_recipient_ids,omitzero"`
 }
 
 // EventsService handles event operations.

@@ -69,9 +69,9 @@ type CommentListOptions struct {
 // CommentListResult contains the results from listing comments.
 type CommentListResult struct {
 	// Comments is the list of comments returned.
-	Comments []Comment
+	Comments []Comment `json:"comments"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // CommentsService handles comment operations.

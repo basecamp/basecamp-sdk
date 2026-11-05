@@ -209,6 +209,44 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertFalse(encoded.contains("\"assignees\""), encoded)
     }
 
+    /// A server-sent empty assignee list stays an empty list, as Go's
+    /// `omitzero` keeps it; only an absent list is left out.
+    func testAServerSentEmptyAssigneeListStaysEmpty() async throws {
+        let todo: [String: Any] = [
+            "id": 9, "status": "active", "visible_to_clients": false, "inherits_status": true,
+            "title": "Buy milk", "type": "Todo", "content": "Buy milk", "completed": false,
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+            "url": "https://3.basecampapi.com/999999999/buckets/1/todos/9.json",
+            "app_url": "https://3.basecamp.com/999999999/buckets/1/todos/9",
+            "parent": [
+                "id": 2, "title": "Todolist", "type": "Todolist",
+                "url": "https://3.basecampapi.com/999999999/buckets/1/todolists/2.json",
+                "app_url": "https://3.basecamp.com/999999999/buckets/1/todolists/2",
+            ] as [String: Any],
+            "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
+            "creator": ["id": 1, "name": "Test User"] as [String: Any],
+            "assignees": [] as [Any],
+        ]
+        let body = try JSONSerialization.data(withJSONObject: todo)
+        let account = makeTestAccountClient(
+            transport: MockTransport { request in
+                (
+                    body,
+                    makeHTTPResponse(
+                        url: request.url!.absoluteString, statusCode: 200,
+                        headers: ["Content-Type": "application/json"])
+                )
+            })
+
+        let summary = try await account.recordings.summarize(
+            RecordingRef(bucketId: 1, recordingId: 9, recordingType: "Todo"))
+
+        XCTAssertEqual(summary.assignees?.count, 0, "[] from the server is an empty list, not absent")
+        let encoded = try XCTUnwrap(
+            String(data: try BaseService.encoder.encode(summary), encoding: .utf8))
+        XCTAssertTrue(encoded.contains("\"assignees\":[]"), encoded)
+    }
+
     func testRequiresBothIds() async {
         let server = RecordingServer()
         let account = makeTestAccountClient(transport: server.makeTransport())

@@ -49,9 +49,9 @@ type ClientReply struct {
 // ClientReplyListResult contains the results from listing client replies.
 type ClientReplyListResult struct {
 	// Replies is the list of client replies returned.
-	Replies []ClientReply
+	Replies []ClientReply `json:"replies"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // ClientRepliesService handles client reply operations.

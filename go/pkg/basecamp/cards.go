@@ -37,14 +37,14 @@ type CardTable struct {
 	PublicLinkURL string       `json:"public_link_url,omitempty"`
 	Bucket        *Bucket      `json:"bucket,omitempty"`
 	Creator       *Person      `json:"creator,omitempty"`
-	Subscribers   []Person     `json:"subscribers,omitempty"`
-	Lists         []CardColumn `json:"lists,omitempty"`
+	Subscribers   []Person     `json:"subscribers,omitzero"`
+	Lists         []CardColumn `json:"lists,omitzero"`
 	// Wormholes are the card table's shortcuts for sending cards to other card
 	// tables, usually in other projects. Only wormholes whose destination the
 	// requester can reach are listed; the rest are omitted, not shown unlinked.
 	// Not needed to move a card within its project; CardsService.Move reaches
 	// any column there directly.
-	Wormholes []Wormhole `json:"wormholes,omitempty"`
+	Wormholes []Wormhole `json:"wormholes,omitzero"`
 }
 
 // CardColumn represents a column in a card table.
@@ -71,7 +71,7 @@ type CardColumn struct {
 	Parent           *Parent           `json:"parent,omitempty"`
 	Bucket           *Bucket           `json:"bucket,omitempty"`
 	Creator          *Person           `json:"creator,omitempty"`
-	Subscribers      []Person          `json:"subscribers,omitempty"`
+	Subscribers      []Person          `json:"subscribers,omitzero"`
 }
 
 // CardColumnOnHold represents the on-hold section of a card column.
@@ -127,9 +127,9 @@ type Card struct {
 	Parent                 *Parent   `json:"parent,omitempty"`
 	Bucket                 *Bucket   `json:"bucket,omitempty"`
 	Creator                *Person   `json:"creator,omitempty"`
-	Assignees              []Person  `json:"assignees,omitempty"`
-	CompletionSubscribers  []Person  `json:"completion_subscribers,omitempty"`
-	Steps                  []Subtask `json:"steps,omitempty"`
+	Assignees              []Person  `json:"assignees,omitzero"`
+	CompletionSubscribers  []Person  `json:"completion_subscribers,omitzero"`
+	Steps                  []Subtask `json:"steps,omitzero"`
 
 	// Completion is nil unless the card is completed.
 	Completion *RecordingCompletion `json:"completion,omitempty"`
@@ -161,7 +161,7 @@ type Subtask struct {
 	Parent           *Parent   `json:"parent,omitempty"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
-	Assignees        []Person  `json:"assignees,omitempty"`
+	Assignees        []Person  `json:"assignees,omitzero"`
 
 	// Completion is nil unless the subtask is completed.
 	Completion *RecordingCompletion `json:"completion,omitempty"`
@@ -236,9 +236,9 @@ type CardListOptions struct {
 // CardListResult contains the results from listing cards.
 type CardListResult struct {
 	// Cards is the list of cards returned.
-	Cards []Card
+	Cards []Card `json:"cards"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // CreateColumnRequest specifies the parameters for creating a column.
@@ -1462,26 +1462,11 @@ func cardTableFromGenerated(gc generated.CardTable) CardTable {
 		ct.Creator = &creator
 	}
 
-	if len(gc.Subscribers) > 0 {
-		ct.Subscribers = make([]Person, 0, len(gc.Subscribers))
-		for _, gs := range gc.Subscribers {
-			ct.Subscribers = append(ct.Subscribers, personFromGenerated(gs))
-		}
-	}
+	ct.Subscribers = mapSlice(gc.Subscribers, personFromGenerated)
 
-	if len(gc.Lists) > 0 {
-		ct.Lists = make([]CardColumn, 0, len(gc.Lists))
-		for _, gl := range gc.Lists {
-			ct.Lists = append(ct.Lists, cardColumnFromGenerated(gl))
-		}
-	}
+	ct.Lists = mapSlice(gc.Lists, cardColumnFromGenerated)
 
-	if len(gc.Wormholes) > 0 {
-		ct.Wormholes = make([]Wormhole, 0, len(gc.Wormholes))
-		for _, gw := range gc.Wormholes {
-			ct.Wormholes = append(ct.Wormholes, wormholeFromGenerated(gw))
-		}
-	}
+	ct.Wormholes = mapSlice(gc.Wormholes, wormholeFromGenerated)
 
 	return ct
 }
@@ -1548,12 +1533,7 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 		}
 	}
 
-	if len(gc.Subscribers) > 0 {
-		cc.Subscribers = make([]Person, 0, len(gc.Subscribers))
-		for _, gs := range gc.Subscribers {
-			cc.Subscribers = append(cc.Subscribers, personFromGenerated(gs))
-		}
-	}
+	cc.Subscribers = mapSlice(gc.Subscribers, personFromGenerated)
 
 	return cc
 }
@@ -1621,26 +1601,11 @@ func cardFromGenerated(gc generated.Card) Card {
 		c.Creator = &creator
 	}
 
-	if len(gc.Assignees) > 0 {
-		c.Assignees = make([]Person, 0, len(gc.Assignees))
-		for _, ga := range gc.Assignees {
-			c.Assignees = append(c.Assignees, personFromGenerated(ga))
-		}
-	}
+	c.Assignees = mapSlice(gc.Assignees, personFromGenerated)
 
-	if len(gc.CompletionSubscribers) > 0 {
-		c.CompletionSubscribers = make([]Person, 0, len(gc.CompletionSubscribers))
-		for _, gs := range gc.CompletionSubscribers {
-			c.CompletionSubscribers = append(c.CompletionSubscribers, personFromGenerated(gs))
-		}
-	}
+	c.CompletionSubscribers = mapSlice(gc.CompletionSubscribers, personFromGenerated)
 
-	if len(gc.Steps) > 0 {
-		c.Steps = make([]Subtask, 0, len(gc.Steps))
-		for _, gs := range gc.Steps {
-			c.Steps = append(c.Steps, subtaskFromGenerated(gs))
-		}
-	}
+	c.Steps = mapSlice(gc.Steps, subtaskFromGenerated)
 
 	c.DescriptionAttachments = richTextAttachmentsFromGenerated(gc.DescriptionAttachments)
 
@@ -1699,12 +1664,7 @@ func subtaskFromGenerated(gs generated.Subtask) Subtask {
 		s.Creator = &creator
 	}
 
-	if len(gs.Assignees) > 0 {
-		s.Assignees = make([]Person, 0, len(gs.Assignees))
-		for _, ga := range gs.Assignees {
-			s.Assignees = append(s.Assignees, personFromGenerated(ga))
-		}
-	}
+	s.Assignees = mapSlice(gs.Assignees, personFromGenerated)
 
 	return s
 }

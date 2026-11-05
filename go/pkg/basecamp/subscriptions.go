@@ -177,12 +177,7 @@ func subscriptionFromGenerated(gs generated.Subscription) Subscription {
 		URL:        gs.Url,
 	}
 
-	if len(gs.Subscribers) > 0 {
-		s.Subscribers = make([]Person, 0, len(gs.Subscribers))
-		for _, gp := range gs.Subscribers {
-			s.Subscribers = append(s.Subscribers, personFromGenerated(gp))
-		}
-	}
+	s.Subscribers = mapSlice(gs.Subscribers, personFromGenerated)
 
 	return s
 }

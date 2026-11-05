@@ -47,9 +47,9 @@ data class RecordingRef(
  * vanish.
  *
  *  - [parent], [bucket], [creator], [assignees] and [campfireId] declare
- *    `= null` and so are omitted. [assignees] needs one more step to get there,
- *    in [summaryOf]: an empty list is not the default, so it is narrowed to
- *    null before it can be left out.
+ *    `= null` and so are omitted when absent. [assignees] is passed through
+ *    as read: a server-sent `[]` is not the default, so it is written as `[]`,
+ *    as Go's `omitzero` keeps it; only an absent or null list is left out.
  *  - Every other property has no default and is always written, including when
  *    it is empty. A vault reads `"content": ""` because the projection passes a
  *    literal `""` for the types that carry no rich text.
@@ -61,9 +61,9 @@ data class RecordingRef(
  * `RecordingsService.UntypedRecording`, whose own `title` defaults to `""` for
  * the two cloud-storage types that have no typed model.
  *
- * The reference reaches the missing-key half differently — `omitempty`, keyed
- * on emptiness rather than on a default — while saying the same thing about its
- * struct: "fields a type does not have are zero".
+ * The reference reaches the missing-key half differently — `omitempty` and
+ * `omitzero`, keyed on zero values rather than on a default — while saying
+ * the same thing about its struct: "fields a type does not have are zero".
  *
  * @property type The recording type as BC3 spells it (`Comment`, `Kanban::Card`).
  * @property parent The recording this one hangs off — the commented recording
@@ -284,10 +284,10 @@ internal fun summaryOf(
     parent = parent,
     bucket = bucket,
     creator = creator,
-    // Empty and absent are one thing here, as Go's `omitempty` makes them: a
-    // type with no assignees emits no key rather than an empty array, so the
+    // Passed through as read: absent stays null (and is omitted), and a
+    // server-sent `[]` stays `[]`, as Go's `omitzero` keeps it, so the
     // projection reads the same in every SDK.
-    assignees = assignees?.takeIf { it.isNotEmpty() },
+    assignees = assignees,
     mentionedPersonIds = mentions,
     content = content,
     updatedAt = updatedAt,

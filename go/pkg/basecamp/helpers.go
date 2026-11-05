@@ -408,6 +408,27 @@ func ptr[T any](v T) *T {
 	return Ptr(v)
 }
 
+// mapSlice converts a generated list to its SDK form, preserving the
+// difference between an absent list and an empty one. A nil input (the key was
+// absent or null) stays nil; a non-nil input — including the empty slice
+// encoding/json decodes from a server-sent [] — yields a non-nil slice of the
+// same length, so the SDK hands callers [] where the API sent [] and, paired
+// with an omitzero tag, marshals it back as [].
+//
+// Converters build every optional list through this one helper rather than
+// guarding with len(x) > 0, which collapsed [] to nil (and then to null, or a
+// dropped key, on marshal).
+func mapSlice[G, T any](in []G, f func(G) T) []T {
+	if in == nil {
+		return nil
+	}
+	out := make([]T, len(in))
+	for i, g := range in {
+		out[i] = f(g)
+	}
+	return out
+}
+
 // intPtrFrom converts an optional generated int32 pointer to the SDK's *int,
 // preserving nil. Widening through deref would manufacture a pointer to zero
 // and destroy the absence the pointer exists to carry.
@@ -428,11 +449,11 @@ func intPtrFrom[T ~int32](p *T) *int {
 type ListMeta struct {
 	// TotalCount is the total number of items available (from X-Total-Count header).
 	// Zero if the header was not present or could not be parsed.
-	TotalCount int
+	TotalCount int `json:"total_count"`
 	// Truncated is true when results were capped by MaxPages or Limit, either
 	// because more pages are available on the server or because items were
 	// dropped within a page due to the limit.
-	Truncated bool
+	Truncated bool `json:"truncated"`
 }
 
 // pageParam narrows a wrapper's Page option to the *int32 the generated params

@@ -11,6 +11,35 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Empty lists stay empty, and every result type marshals in snake_case
+
+A list the API sends as `[]` now reaches you as an empty list, not as nil,
+null or a missing key. Absent and null lists are unchanged.
+
+- **Go.** Converters keep a server-sent `[]` as a non-nil empty slice:
+  `Subscription.Subscribers`, `OverdueTodosResponse`'s four lists, a to-do's,
+  card's or step's `Assignees`, `Steps` and `CompletionSubscribers`, a card
+  table's `Lists`, `Subscribers` and `Wormholes`, a project's or template's
+  `Dock`, and the rest. Response types' list fields are tagged `omitzero`
+  rather than `omitempty`, so `json.Marshal` writes `[]` for them and still
+  leaves out a nil list. Code that tested `len(x) == 0` is unaffected; code
+  that tested `x == nil` to mean "empty" now has to test the length.
+- **Go.** The page and result wrappers (`BubbleUpsResult`, every
+  `...ListResult`, `ListMeta`, `PersonProgressResult` and the rest) gained
+  snake_case json tags. They used to marshal under their Go names
+  (`{"BubbleUps":…,"Meta":{"TotalCount":…}}`); they now marshal as
+  `{"bubble_ups":…,"meta":{"total_count":…}}`. If you stored or parsed the old
+  spelling, update the reader.
+- **Recording summaries, every SDK.** `summarize` on a to-do, card or card
+  step whose `assignees` came back `[]` now reports `assignees: []` instead of
+  leaving the key off. TypeScript, Ruby, Kotlin, Swift and Go still leave the
+  key off when the read carried no list (a comment, say). Python and Rust
+  always write `assignees`: Python already did, and Rust's `Vec` can't tell
+  "absent" from "empty", so it now writes `[]` rather than dropping a
+  server-sent empty list.
+
 # v0.35.0
 
 ### External links (doors): a service of their own

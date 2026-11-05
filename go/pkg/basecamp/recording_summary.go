@@ -65,7 +65,7 @@ type RecordingSummary struct {
 	Bucket  *Bucket `json:"bucket,omitempty"`
 	Creator *Person `json:"creator,omitempty"`
 	// Assignees is set for the assignable types (to-dos, cards, card steps).
-	Assignees []Person `json:"assignees,omitempty"`
+	Assignees []Person `json:"assignees,omitzero"`
 	// MentionedPersonIDs are the people Content mentions, per MentionedPersonIDs.
 	// Never nil, so a JSON consumer reads [] rather than a missing key.
 	MentionedPersonIDs []int64 `json:"mentioned_person_ids"`

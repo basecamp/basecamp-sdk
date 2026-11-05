@@ -98,7 +98,7 @@ type CampfireLine struct {
 	BoostsCount      int                      `json:"boosts_count,omitempty"`
 	BoostsURL        string                   `json:"boosts_url,omitempty"`
 	Content          string                   `json:"content,omitempty"`
-	Attachments      []CampfireLineAttachment `json:"attachments,omitempty"`
+	Attachments      []CampfireLineAttachment `json:"attachments,omitzero"`
 	Parent           *Parent                  `json:"parent,omitempty"`
 	Bucket           *Bucket                  `json:"bucket,omitempty"`
 	Creator          *Person                  `json:"creator,omitempty"`
@@ -169,17 +169,17 @@ type UpdateChatbotRequest struct {
 // CampfireListResult contains the results from listing campfires.
 type CampfireListResult struct {
 	// Campfires is the list of campfires returned.
-	Campfires []Campfire
+	Campfires []Campfire `json:"campfires"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // CampfireLineListResult contains the results from listing campfire lines.
 type CampfireLineListResult struct {
 	// Lines is the list of campfire lines returned.
-	Lines []CampfireLine
+	Lines []CampfireLine `json:"lines"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // CampfiresService handles campfire operations.
@@ -736,9 +736,9 @@ type ChatbotListOptions struct {
 // ChatbotListResult contains the results from listing chatbots.
 type ChatbotListResult struct {
 	// Chatbots is the list of chatbots returned.
-	Chatbots []Chatbot
+	Chatbots []Chatbot `json:"chatbots"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // ListChatbots returns all chatbots for a campfire in the given project.
@@ -1038,7 +1038,7 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 
 	l.ID = gl.Id
 
-	if len(gl.Attachments) > 0 {
+	if gl.Attachments != nil {
 		l.Attachments = make([]CampfireLineAttachment, len(gl.Attachments))
 		for i, ga := range gl.Attachments {
 			l.Attachments[i] = CampfireLineAttachment{

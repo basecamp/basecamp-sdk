@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -121,7 +122,7 @@ type DoorService struct {
 	Name           string   `json:"name,omitempty"`
 	ExampleURL     string   `json:"example_url,omitempty"`
 	Code           string   `json:"code,omitempty"`
-	ValidPatterns  []string `json:"valid_patterns,omitempty"`
+	ValidPatterns  []string `json:"valid_patterns,omitzero"`
 	SupportingText string   `json:"supporting_text,omitempty"`
 }
 
@@ -160,9 +161,9 @@ type RecordingsListOptions struct {
 // RecordingListResult contains the results from listing recordings.
 type RecordingListResult struct {
 	// Recordings is the list of recordings returned.
-	Recordings []Recording
+	Recordings []Recording `json:"recordings"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // SetClientVisibilityRequest specifies the parameters for setting client visibility.
@@ -818,7 +819,7 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 			Name:           deref(gr.Service.Name),
 			ExampleURL:     deref(gr.Service.ExampleUrl),
 			Code:           deref(gr.Service.Code),
-			ValidPatterns:  append([]string(nil), gr.Service.ValidPatterns...),
+			ValidPatterns:  slices.Clone(gr.Service.ValidPatterns),
 			SupportingText: deref(gr.Service.SupportingText),
 		}
 	}

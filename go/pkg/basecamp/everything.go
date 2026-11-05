@@ -26,14 +26,14 @@ func NewEverythingService(client *AccountClient) *EverythingService {
 
 // RecordingsPage is a page-followed list of recordings with pagination metadata.
 type RecordingsPage struct {
-	Recordings []Recording
-	Meta       ListMeta
+	Recordings []Recording `json:"recordings"`
+	Meta       ListMeta    `json:"meta"`
 }
 
 // EverythingFilesPage is a page-followed list of files with pagination metadata.
 type EverythingFilesPage struct {
-	Files []EverythingFile
-	Meta  ListMeta
+	Files []EverythingFile `json:"files"`
+	Meta  ListMeta         `json:"meta"`
 }
 
 // EverythingFilesOptions specifies optional filters for the files feed.
@@ -453,14 +453,14 @@ type BucketCardsGroup struct {
 
 // BucketTodosGroupsPage is a page-followed list of to-do bucket groups.
 type BucketTodosGroupsPage struct {
-	Groups []BucketTodosGroup
-	Meta   ListMeta
+	Groups []BucketTodosGroup `json:"groups"`
+	Meta   ListMeta           `json:"meta"`
 }
 
 // BucketCardsGroupsPage is a page-followed list of card bucket groups.
 type BucketCardsGroupsPage struct {
-	Groups []BucketCardsGroup
-	Meta   ListMeta
+	Groups []BucketCardsGroup `json:"groups"`
+	Meta   ListMeta           `json:"meta"`
 }
 
 func bucketTodosGroupFromGenerated(g generated.BucketTodosGroup) BucketTodosGroup {

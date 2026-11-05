@@ -1899,8 +1899,8 @@ function projectRecording(
   const creator = withEmptyLabel(nestedIdentity(nested.creator, "a recording creator", "person"), "name");
   if (creator !== undefined) summary.creator = creator;
   // `assignees` is a LIST of them: Go refuses a non-array and a non-object
-  // element, and takes null as the nil slice. Go's own `omitempty` is why an
-  // empty list is dropped rather than emitted.
+  // element, and takes null as the nil slice. Go's `omitzero` drops only that
+  // nil slice: a server-sent `[]` is emitted as `[]`.
   // `wireItems` does the whole job: absent and null are the empty list, a
   // non-array fails the read, and each element goes through the same object
   // check the other three identities use. An earlier spelling wrapped every
@@ -1925,7 +1925,10 @@ function projectRecording(
   const typedAssignees = assignees.map(
     (assignee) => nestedIdentity(assignee, "a recording assignee", "person") as (typeof assignees)[number],
   );
-  if (typedAssignees.length > 0) summary.assignees = typedAssignees;
+  // Present when the read carried a list, empty or not: a to-do the server
+  // sent with `"assignees": []` projects `[]`, as Go's `omitzero` keeps it, and
+  // only an absent or null list leaves the key off.
+  if (Array.isArray(nested.assignees)) summary.assignees = typedAssignees;
   return summary;
 }
 

@@ -29,7 +29,7 @@ type Template struct {
 	Description string     `json:"description"`
 	URL         string     `json:"url,omitempty"`
 	AppURL      string     `json:"app_url,omitempty"`
-	Dock        []DockItem `json:"dock,omitempty"`
+	Dock        []DockItem `json:"dock,omitzero"`
 }
 
 // ProjectConstruction represents the status of a project being created from a template.
@@ -162,9 +162,9 @@ type CreateProjectFromTemplateRequest struct {
 // TemplateListResult contains the results from listing templates.
 type TemplateListResult struct {
 	// Templates is the list of templates returned.
-	Templates []Template
+	Templates []Template `json:"templates"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // TemplatesService handles template operations.
@@ -798,12 +798,7 @@ func templateFromGenerated(gt generated.Template) Template {
 		t.ID = gt.Id
 	}
 
-	if len(gt.Dock) > 0 {
-		t.Dock = make([]DockItem, 0, len(gt.Dock))
-		for _, gd := range gt.Dock {
-			t.Dock = append(t.Dock, dockItemFromGenerated(gd))
-		}
-	}
+	t.Dock = mapSlice(gt.Dock, dockItemFromGenerated)
 
 	return t
 }

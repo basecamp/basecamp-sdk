@@ -905,15 +905,19 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_raises(Basecamp::ApiError) { summarize(event_type: "todo.created") }
   end
 
-  def test_absent_or_empty_assignees_are_omitted_rather_than_refused
-    # The reference's +omitempty+ leaves an empty slice out of its summary too,
-    # so there is nothing to report and nothing malformed about it.
-    [ nil, [] ].each do |empty|
-      stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => empty))
+  def test_null_assignees_are_omitted_rather_than_refused
+    # Nothing to report and nothing malformed about it.
+    stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => nil))
 
-      assert_not_includes summarize(event_type: "todo.created").keys, "assignees"
-      WebMock.reset!
-    end
+    assert_not_includes summarize(event_type: "todo.created").keys, "assignees"
+  end
+
+  def test_a_server_sent_empty_assignee_list_stays_empty
+    # The reference's +omitzero+ keeps a server-sent [] as [], rather than
+    # reading it as absent.
+    stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => []))
+
+    assert_equal [], summarize(event_type: "todo.created")["assignees"]
   end
 
   def test_the_dock_is_read_as_a_whole_rather_than_per_surviving_entry

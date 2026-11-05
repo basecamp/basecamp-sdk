@@ -115,8 +115,10 @@ pub struct RecordingSummary {
     /// Who created it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creator: Option<Person>,
-    /// Set for the assignable types (to-dos, cards, card steps).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    /// Set for the assignable types (to-dos, cards, card steps). Always serialized, so a
+    /// server-sent `[]` reaches a JSON consumer as `[]` rather than a missing key; a type
+    /// with no assignees serializes `[]` too, since a `Vec` can't tell absent from empty.
+    #[serde(default)]
     pub assignees: Vec<Person>,
     /// The people [`content`](RecordingSummary::content) mentions, per
     /// [`mentioned_person_ids`]. Always serialized, so a JSON consumer reads `[]` rather
@@ -1256,6 +1258,14 @@ mod tests {
 
     fn kind_of(reference: &RecordingRef) -> Result<Kind, RecordingSummaryError> {
         route(reference)
+    }
+
+    #[test]
+    fn a_server_sent_empty_assignee_list_serializes_as_an_empty_list() {
+        let summary = RecordingSummary::default();
+        assert!(summary.assignees.is_empty());
+        let json = serde_json::to_value(&summary).unwrap();
+        assert_eq!(json["assignees"], serde_json::json!([]), "{json}");
     }
 
     #[test]

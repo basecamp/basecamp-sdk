@@ -49,9 +49,9 @@ type UpdateMessageTypeRequest struct {
 // MessageTypeListResult contains the results from listing message types.
 type MessageTypeListResult struct {
 	// MessageTypes is the list of message types returned.
-	MessageTypes []MessageType
+	MessageTypes []MessageType `json:"message_types"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // MessageTypesService handles message type operations.

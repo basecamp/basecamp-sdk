@@ -59,9 +59,9 @@ type ClientCorrespondence struct {
 // ClientCorrespondenceListResult contains the results from listing client correspondences.
 type ClientCorrespondenceListResult struct {
 	// Correspondences is the list of client correspondences returned.
-	Correspondences []ClientCorrespondence
+	Correspondences []ClientCorrespondence `json:"correspondences"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // ClientCorrespondencesService handles client correspondence operations.
