@@ -43,7 +43,7 @@ SDK models all five operations on a `Doors` service (tag `Dock`):
 |---|---|---|
 | `ListDoors` | `GET /buckets/{bucketId}/dock/doors.json` | 200, the project's active links in section order, unpaginated |
 | `GetDoor` | `GET /dock/doors/{doorId}` | 200, the full `Door` shape; 404 for an unknown id, a non-door recording, or a link hidden from a client |
-| `CreateDoor` | `POST /buckets/{bucketId}/dock/doors.json` | **201** with the new `Door` (no longer a 302); 422 with field-keyed `errors` for an unusable `url` |
+| `CreateDoor` | `POST /buckets/{bucketId}/dock/doors.json` | **201** with the new `Door` (no longer a 302); 422 for an unusable `url`, with Rails' default error body (no field-keyed `errors`) |
 | `UpdateDoor` | `PUT /dock/doors/{doorId}` | 200 with the `Door`; a partial update, 422 as for create |
 | `DeleteDoor` | `DELETE /dock/doors/{doorId}` | 204; `status` becomes `"deleted"` |
 

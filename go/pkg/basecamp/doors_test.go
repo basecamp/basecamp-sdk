@@ -196,15 +196,12 @@ func TestDoorsService_CreateRequiresURLAndService(t *testing.T) {
 }
 
 func TestDoorsService_CreateValidationError(t *testing.T) {
-	svc, _ := testDoorsServer(t, http.StatusUnprocessableEntity, []byte(`{"errors":{"url":["is invalid"]}}`))
+	svc, _ := testDoorsServer(t, http.StatusUnprocessableEntity, []byte(`{"status":422,"error":"Unprocessable Entity"}`))
 
 	_, err := svc.Create(context.Background(), 1, &CreateDoorRequest{Service: "other", URL: "javascript:alert(1)"})
 	var e *Error
 	if !errors.As(err, &e) || e.Code != CodeValidation {
 		t.Fatalf("err = %v, want a validation *Error", err)
-	}
-	if msgs := e.FieldErrors["url"]; len(msgs) != 1 || msgs[0] != "is invalid" {
-		t.Errorf("FieldErrors = %v", e.FieldErrors)
 	}
 }
 

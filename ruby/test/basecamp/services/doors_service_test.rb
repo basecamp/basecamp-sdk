@@ -82,7 +82,7 @@ class DoorsServiceTest < Minitest::Test
 
   def test_create_invalid_url
     stub_request(:post, "https://3.basecampapi.com/12345/buckets/1/dock/doors.json")
-      .to_return(status: 422, body: { "errors" => { "url" => [ "is invalid" ] } }.to_json,
+      .to_return(status: 422, body: { "status" => 422, "error" => "Unprocessable Entity" }.to_json,
                  headers: { "Content-Type" => "application/json" })
 
     assert_raises(Basecamp::ValidationError) do

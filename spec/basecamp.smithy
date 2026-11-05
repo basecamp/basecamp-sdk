@@ -10470,14 +10470,15 @@ structure GetDoorOutput {
 /// Omitting `visible_to_clients` keeps the link private to the team, whatever
 /// the visibility of the project's other tools; a client caller always creates
 /// a client-visible link. An unusable `url` (e.g. a `javascript:` address) is a
-/// field-keyed 422. Needs permission to edit the project. The `door[image]`
+/// 422 with Rails' default error body, which names no field. Needs permission
+/// to edit the project. The `door[image]`
 /// thumbnail is multipart-only and not modelled.
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/dock/doors.json", code: 201)
 operation CreateDoor {
   input: CreateDoorInput
   output: CreateDoorOutput
-  errors: [FieldValidationError, NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [ValidationError, NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateDoorInput {
@@ -10527,7 +10528,8 @@ structure CreateDoorOutput {
 /// A partial update: every field is optional, and those left out keep their
 /// values. Omit `door` entirely to change only `visible_to_clients`; omit
 /// `visible_to_clients` to keep the current visibility. An unusable `url` is a
-/// field-keyed 422. Needs permission to edit the project.
+/// 422 with Rails' default error body, as for CreateDoor. Needs permission to
+/// edit the project.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -10535,7 +10537,7 @@ structure CreateDoorOutput {
 operation UpdateDoor {
   input: UpdateDoorInput
   output: UpdateDoorOutput
-  errors: [NotFoundError, FieldValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure UpdateDoorInput {

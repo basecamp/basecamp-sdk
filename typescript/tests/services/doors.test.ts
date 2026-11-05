@@ -107,10 +107,10 @@ describe("DoorsService", () => {
       expect(received).toEqual({ door: { service: "other", url: "https://example.com" } });
     });
 
-    it("surfaces a field-keyed 422 as a validation error", async () => {
+    it("surfaces a 422 as a validation error", async () => {
       server.use(
         http.post(`${BASE_URL}/buckets/1/dock/doors.json`, () =>
-          HttpResponse.json({ errors: { url: ["is invalid"] } }, { status: 422 }),
+          HttpResponse.json({ status: 422, error: "Unprocessable Entity" }, { status: 422 }),
         ),
       );
 

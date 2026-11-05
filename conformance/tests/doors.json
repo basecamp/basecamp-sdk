@@ -483,7 +483,7 @@
   },
   {
     "name": "CreateDoor 422 maps to validation",
-    "description": "An unusable url (a javascript: address, say) answers 422 with field-keyed errors, and nothing is saved.",
+    "description": "An unusable url (a javascript: address, say) answers 422 with Rails' default error body, which names no field; the code is validation all the same.",
     "operation": "CreateDoor",
     "method": "POST",
     "path": "/buckets/{bucketId}/dock/doors.json",
@@ -503,11 +503,8 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "errors": {
-            "url": [
-              "is invalid"
-            ]
-          }
+          "status": 422,
+          "error": "Unprocessable Entity"
         }
       }
     ],

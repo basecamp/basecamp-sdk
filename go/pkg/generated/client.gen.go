@@ -33030,7 +33030,7 @@ type CreateDoorResponse struct {
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
-	JSON422      *FieldValidationErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -34994,7 +34994,7 @@ type UpdateDoorResponse struct {
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
-	JSON422      *FieldValidationErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -47430,7 +47430,7 @@ func ParseCreateDoorResponse(rsp *http.Response) (*CreateDoorResponse, error) {
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest FieldValidationErrorResponseContent
+		var dest ValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
 		}
@@ -50455,7 +50455,7 @@ func ParseUpdateDoorResponse(rsp *http.Response) (*UpdateDoorResponse, error) {
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest FieldValidationErrorResponseContent
+		var dest ValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
 		}

@@ -107,7 +107,7 @@ class TestCreate:
     @respx.mock
     def test_invalid_url(self):
         respx.post(f"{BASE}/buckets/1/dock/doors.json").mock(
-            return_value=httpx.Response(422, json={"errors": {"url": ["is invalid"]}})
+            return_value=httpx.Response(422, json={"status": 422, "error": "Unprocessable Entity"})
         )
 
         with pytest.raises(ValidationError):

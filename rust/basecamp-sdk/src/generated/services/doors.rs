@@ -36,7 +36,8 @@ impl<'a> DoorsService<'a> {
     /// Omitting `visible_to_clients` keeps the link private to the team, whatever
     /// the visibility of the project's other tools; a client caller always creates
     /// a client-visible link. An unusable `url` (e.g. a `javascript:` address) is a
-    /// field-keyed 422. Needs permission to edit the project. The `door\[image\]`
+    /// 422 with Rails' default error body, which names no field. Needs permission
+    /// to edit the project. The `door\[image\]`
     /// thumbnail is multipart-only and not modelled.
     ///
     /// `POST /buckets/{bucketId}/dock/doors.json` — not idempotent, sent exactly once.
@@ -87,7 +88,8 @@ impl<'a> DoorsService<'a> {
     /// A partial update: every field is optional, and those left out keep their
     /// values. Omit `door` entirely to change only `visible_to_clients`; omit
     /// `visible_to_clients` to keep the current visibility. An unusable `url` is a
-    /// field-keyed 422. Needs permission to edit the project.
+    /// 422 with Rails' default error body, as for CreateDoor. Needs permission to
+    /// edit the project.
     ///
     /// `PUT /dock/doors/{doorId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn update(
