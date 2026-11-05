@@ -25,10 +25,12 @@ use serde::{Deserialize, Serialize};
 use crate::client::AccountClient;
 use crate::error::{Error, ErrorCode};
 use crate::generated::types::{
-    CampfireLine, Person, RecordingBucket, RecordingParent, TodoBucket, TodoParent,
+    CampfireLine, CopyRecordingRequestContent, Filing, MoveRecordingRequestContent, Person,
+    RecordingBucket, RecordingParent, TodoBucket, TodoParent,
 };
 use crate::mentions::mentioned_person_ids;
 use crate::services::campfire_index::{MAX_CAMPFIRE_CANDIDATES, SourceRead, is_listing_overflow};
+use crate::services::filing_wait::{FilingWaitOptions, file_and_wait};
 use crate::types::DateTime;
 
 /// A pointer at one recording, the way an account event feed row carries it.
@@ -485,6 +487,51 @@ fn lookup(table: &[(&str, Kind)], key: &str) -> Option<Kind> {
 }
 
 impl RecordingsService<'_> {
+    /// Starts a move once, as [`move_recording`](Self::move_recording) does, and waits for
+    /// Basecamp to finish it, polling [`get_filing`](Self::get_filing) with backoff. Returns
+    /// the completed filing, whose `destination_recording` is the moved recording.
+    ///
+    /// # Errors
+    ///
+    /// An [`Error`] carrying a [`FilingError`](crate::services::filing_wait::FilingError),
+    /// matched with `FilingError::of`, saying how far the move got (SPEC Appendix F, Filing
+    /// Waits).
+    pub async fn move_and_wait(
+        &self,
+        recording_id: i64,
+        body: &MoveRecordingRequestContent,
+        options: Option<&FilingWaitOptions>,
+    ) -> Result<Filing, Error> {
+        file_and_wait(
+            self.move_recording(recording_id, body),
+            |id| self.get_filing(id),
+            options,
+        )
+        .await
+    }
+
+    /// Starts a copy once, as [`copy`](Self::copy) does, and waits for Basecamp to finish it.
+    /// Returns the completed filing, whose `destination_recording` is the copy.
+    ///
+    /// # Errors
+    ///
+    /// An [`Error`] carrying a [`FilingError`](crate::services::filing_wait::FilingError).
+    /// Only after `FilingError::Refused` is copying again safe; anything else may already have
+    /// made a copy.
+    pub async fn copy_and_wait(
+        &self,
+        recording_id: i64,
+        body: &CopyRecordingRequestContent,
+        options: Option<&FilingWaitOptions>,
+    ) -> Result<Filing, Error> {
+        file_and_wait(
+            self.copy(recording_id, body),
+            |id| self.get_filing(id),
+            options,
+        )
+        .await
+    }
+
     /// Resolves a recording pointer into a [`RecordingSummary`] through the typed read its
     /// type names. See [`RecordingRef`] for the routing inputs and the module docs for the
     /// design.

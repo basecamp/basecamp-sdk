@@ -18,6 +18,7 @@ pub mod campfire_index;
 pub mod cards;
 pub mod comments;
 pub mod documents;
+pub mod filing_wait;
 pub mod recordings;
 pub mod schedules;
 pub mod todolists;

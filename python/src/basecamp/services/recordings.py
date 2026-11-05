@@ -53,6 +53,7 @@ from basecamp.services._campfire_index import (
     _decoded_optional_bool,
     _decoded_optional_string,
 )
+from basecamp.services.filing_wait import async_file_and_wait, file_and_wait
 
 __all__ = [
     "MAX_CAMPFIRE_CANDIDATES",
@@ -549,6 +550,61 @@ def _stale_candidates(tried: list[int], dock: SourceRead, listed: SourceRead) ->
 class RecordingsService(_GeneratedRecordingsService):
     """Sync recordings service with the ``summarize`` composite."""
 
+    def move_and_wait(
+        self,
+        *,
+        recording_id: int,
+        filing_destination_id: int | None = None,
+        destination_project_id: int | None = None,
+        parent_id: int | None = None,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
+        """Start a move once, as ``move`` does, and wait for Basecamp to finish it.
+
+        Returns the completed filing, whose ``destination_recording`` is the
+        moved recording. Otherwise raises a ``FilingError`` subclass saying how
+        far it got (SPEC Appendix F, Filing Waits). ``timeout`` is in seconds and
+        defaults to a minute.
+        """
+        return file_and_wait(
+            lambda: self.move(
+                recording_id=recording_id,
+                filing_destination_id=filing_destination_id,
+                destination_project_id=destination_project_id,
+                parent_id=parent_id,
+            ),
+            lambda filing_id: self.get_filing(filing_id=filing_id),
+            timeout,
+        )
+
+    def copy_and_wait(
+        self,
+        *,
+        recording_id: int,
+        filing_destination_id: int | None = None,
+        destination_project_id: int | None = None,
+        parent_id: int | None = None,
+        include_comments: bool | None = None,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
+        """Start a copy once, as ``copy`` does, and wait for Basecamp to finish it.
+
+        Returns the completed filing, whose ``destination_recording`` is the
+        copy. Only after a ``FilingRefusedError`` is copying again safe; anything
+        else may already have made a copy.
+        """
+        return file_and_wait(
+            lambda: self.copy(
+                recording_id=recording_id,
+                filing_destination_id=filing_destination_id,
+                destination_project_id=destination_project_id,
+                parent_id=parent_id,
+                include_comments=include_comments,
+            ),
+            lambda filing_id: self.get_filing(filing_id=filing_id),
+            timeout,
+        )
+
     def summarize(
         self,
         *,
@@ -691,6 +747,61 @@ class RecordingsService(_GeneratedRecordingsService):
 
 class AsyncRecordingsService(_GeneratedAsyncRecordingsService):
     """Async recordings service with the ``summarize`` composite."""
+
+    async def move_and_wait(
+        self,
+        *,
+        recording_id: int,
+        filing_destination_id: int | None = None,
+        destination_project_id: int | None = None,
+        parent_id: int | None = None,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
+        """Start a move once, as ``move`` does, and wait for Basecamp to finish it.
+
+        Returns the completed filing, whose ``destination_recording`` is the
+        moved recording. Otherwise raises a ``FilingError`` subclass saying how
+        far it got (SPEC Appendix F, Filing Waits). ``timeout`` is in seconds and
+        defaults to a minute.
+        """
+        return await async_file_and_wait(
+            lambda: self.move(
+                recording_id=recording_id,
+                filing_destination_id=filing_destination_id,
+                destination_project_id=destination_project_id,
+                parent_id=parent_id,
+            ),
+            lambda filing_id: self.get_filing(filing_id=filing_id),
+            timeout,
+        )
+
+    async def copy_and_wait(
+        self,
+        *,
+        recording_id: int,
+        filing_destination_id: int | None = None,
+        destination_project_id: int | None = None,
+        parent_id: int | None = None,
+        include_comments: bool | None = None,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
+        """Start a copy once, as ``copy`` does, and wait for Basecamp to finish it.
+
+        Returns the completed filing, whose ``destination_recording`` is the
+        copy. Only after a ``FilingRefusedError`` is copying again safe; anything
+        else may already have made a copy.
+        """
+        return await async_file_and_wait(
+            lambda: self.copy(
+                recording_id=recording_id,
+                filing_destination_id=filing_destination_id,
+                destination_project_id=destination_project_id,
+                parent_id=parent_id,
+                include_comments=include_comments,
+            ),
+            lambda filing_id: self.get_filing(filing_id=filing_id),
+            timeout,
+        )
 
     async def summarize(
         self,
