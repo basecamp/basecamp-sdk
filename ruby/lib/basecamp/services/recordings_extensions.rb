@@ -645,17 +645,18 @@ module Basecamp
         # member was kept where the reference reads 0 and drops it.
         creator_member = read_member(summary["creator"], "name", "creator", kind: :person)
         creator_member.nil? ? summary.delete("creator") : summary["creator"] = creator_member
-        # Absent or empty is genuinely nothing to report — the reference's
-        # +omitempty+ leaves an empty slice out of its summary too, so the key
-        # goes. Anything else that is not an array of objects is a decode
-        # failure there and fails the read here.
+        # Absent (or null) is nothing to report, so the key goes. A list the
+        # server sent stays, empty or not: the reference's +omitzero+ keeps a
+        # server-sent [] as [], so a to-do with no assignees reads
+        # "assignees" => [] in every SDK. Anything else that is not an array of
+        # objects is a decode failure there and fails the read here.
         #
         # This comment used to say a malformed "assignees" was read as absent
         # "for the same reason a malformed bucket is". That reason stopped being
         # true when the bucket started raising, and the sentence survived the
         # change it contradicted — which is the whole hazard of writing an
         # invariant down next to the code instead of into a test.
-        if assignees.nil? || (assignees.is_a?(Array) && assignees.empty?)
+        if assignees.nil?
           summary.delete("assignees")
         else
           summary["assignees"] = read_assignees(assignees)

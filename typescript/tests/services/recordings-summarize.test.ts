@@ -343,6 +343,20 @@ describe("recordings.summarize", () => {
       expect(comment.assignees).toBeUndefined();
     });
 
+    it("keeps a server-sent empty assignee list as [] and leaves an absent one off", async () => {
+      server.use(
+        http.get(`${BASE_URL}/todos/1`, () => HttpResponse.json(recording(1, "Todo", { content: "T", assignees: [] }))),
+        http.get(`${BASE_URL}/todos/2`, () => HttpResponse.json(recording(2, "Todo", { content: "T" }))),
+      );
+
+      const empty = await client.recordings.summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Todo" });
+      expect(empty.assignees).toEqual([]);
+      expect(JSON.parse(JSON.stringify(empty)).assignees).toEqual([]);
+
+      const absent = await client.recordings.summarize({ bucketId: BUCKET, recordingId: 2, recordingType: "Todo" });
+      expect(absent.assignees).toBeUndefined();
+    });
+
     it("prefers a to-do's title over its content, and projects the description as the rich text", async () => {
       server.use(
         http.get(`${BASE_URL}/todos/1`, () =>

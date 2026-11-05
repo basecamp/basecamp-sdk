@@ -68,9 +68,9 @@ type ReplaceTodolistGroupRequest struct {
 // TodolistGroupListResult contains the results from listing todolist groups.
 type TodolistGroupListResult struct {
 	// Groups is the list of todolist groups returned.
-	Groups []TodolistGroup
+	Groups []TodolistGroup `json:"groups"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // TodolistGroupsService handles todolist group operations.

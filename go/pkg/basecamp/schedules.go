@@ -102,7 +102,7 @@ type ScheduleEntry struct {
 	Parent       *Parent  `json:"parent,omitempty"`
 	Bucket       *Bucket  `json:"bucket,omitempty"`
 	Creator      *Person  `json:"creator,omitempty"`
-	Participants []Person `json:"participants,omitempty"`
+	Participants []Person `json:"participants,omitzero"`
 }
 
 // CreateScheduleEntryRequest specifies the parameters for creating a schedule entry.
@@ -624,9 +624,9 @@ type UpdateScheduleSettingsRequest struct {
 // ScheduleEntryListResult contains the results from listing schedule entries.
 type ScheduleEntryListResult struct {
 	// Entries is the list of schedule entries returned.
-	Entries []ScheduleEntry
+	Entries []ScheduleEntry `json:"entries"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // SchedulesService handles schedule operations.
@@ -1297,12 +1297,7 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 	}
 
 	// Convert participants
-	if len(ge.Participants) > 0 {
-		e.Participants = make([]Person, 0, len(ge.Participants))
-		for _, gp := range ge.Participants {
-			e.Participants = append(e.Participants, personFromGenerated(gp))
-		}
-	}
+	e.Participants = mapSlice(ge.Participants, personFromGenerated)
 
 	e.DescriptionAttachments = richTextAttachmentsFromGenerated(ge.DescriptionAttachments)
 

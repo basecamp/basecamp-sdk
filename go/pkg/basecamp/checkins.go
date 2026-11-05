@@ -230,25 +230,25 @@ type UpdateQuestionNotificationSettingsRequest struct {
 // QuestionListResult contains the results from listing questions.
 type QuestionListResult struct {
 	// Questions is the list of questions returned.
-	Questions []Question
+	Questions []Question `json:"questions"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // AnswerListResult contains the results from listing answers.
 type AnswerListResult struct {
 	// Answers is the list of answers returned.
-	Answers []QuestionAnswer
+	Answers []QuestionAnswer `json:"answers"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // QuestionReminderListResult contains the results from listing question reminders.
 type QuestionReminderListResult struct {
 	// Reminders is the list of question reminders returned.
-	Reminders []QuestionReminder
+	Reminders []QuestionReminder `json:"reminders"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // CheckinsService handles automatic check-in operations.

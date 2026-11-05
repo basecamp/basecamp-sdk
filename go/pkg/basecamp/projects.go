@@ -29,7 +29,7 @@ type Project struct {
 	StarURL          string         `json:"star_url"`
 	URL              string         `json:"url"`
 	AppURL           string         `json:"app_url"`
-	Dock             []DockItem     `json:"dock,omitempty"`
+	Dock             []DockItem     `json:"dock,omitzero"`
 	Bookmarked       bool           `json:"bookmarked"`
 	Starred          bool           `json:"starred"`
 	ClientCompany    *ClientCompany `json:"client_company,omitempty"`
@@ -107,9 +107,9 @@ type ProjectListOptions struct {
 // ProjectListResult contains the results from listing projects.
 type ProjectListResult struct {
 	// Projects is the list of projects returned.
-	Projects []Project
+	Projects []Project `json:"projects"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // CreateProjectRequest specifies the parameters for creating a project.
@@ -708,12 +708,7 @@ func projectFromGenerated(gp generated.Project) Project {
 	}
 
 	// Convert dock items
-	if len(gp.Dock) > 0 {
-		p.Dock = make([]DockItem, 0, len(gp.Dock))
-		for _, gd := range gp.Dock {
-			p.Dock = append(p.Dock, dockItemFromGenerated(gd))
-		}
-	}
+	p.Dock = mapSlice(gp.Dock, dockItemFromGenerated)
 
 	// Convert client company
 	if gp.ClientCompany != nil {

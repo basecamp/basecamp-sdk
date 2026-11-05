@@ -19,7 +19,7 @@ type LineupMarker struct {
 
 // ListMarkersResult contains the results from listing lineup markers.
 type ListMarkersResult struct {
-	Markers []LineupMarker
+	Markers []LineupMarker `json:"markers"`
 }
 
 // CreateMarkerRequest specifies the parameters for creating a lineup marker.

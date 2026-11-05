@@ -84,7 +84,7 @@ type SearchResult struct {
 	// downloadable rich-text attachments it repeats the companion array above;
 	// for a chat upload line it is the bespoke six-key aggregate the line
 	// builds inline.
-	Attachments []SearchResultAttachment `json:"attachments,omitempty"`
+	Attachments []SearchResultAttachment `json:"attachments,omitzero"`
 	Subject     string                   `json:"subject,omitempty"`
 
 	// SubscriptionURL is emitted by the recording envelope for any
@@ -113,7 +113,7 @@ type SearchResult struct {
 
 	// Subscribers lists everyone subscribed to a kanban list, as full Person
 	// projections.
-	Subscribers []Person `json:"subscribers,omitempty"`
+	Subscribers []Person `json:"subscribers,omitzero"`
 	// Color of a kanban list or gauge needle; both branches emit the key
 	// unconditionally with a null value when unset, which collapses to "".
 	Color        string            `json:"color,omitempty"`
@@ -228,9 +228,9 @@ type SearchType struct {
 // SearchListResult contains the results from searching.
 type SearchListResult struct {
 	// Results is the list of search results returned.
-	Results []SearchResult
+	Results []SearchResult `json:"results"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // SearchOptions specifies optional parameters for search.
@@ -546,19 +546,9 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 		}
 	}
 
-	if len(gsr.Subscribers) > 0 {
-		sr.Subscribers = make([]Person, 0, len(gsr.Subscribers))
-		for _, gs := range gsr.Subscribers {
-			sr.Subscribers = append(sr.Subscribers, personFromGenerated(gs))
-		}
-	}
+	sr.Subscribers = mapSlice(gsr.Subscribers, personFromGenerated)
 
-	if len(gsr.Attachments) > 0 {
-		sr.Attachments = make([]SearchResultAttachment, 0, len(gsr.Attachments))
-		for _, ga := range gsr.Attachments {
-			sr.Attachments = append(sr.Attachments, searchResultAttachmentFromGenerated(ga))
-		}
-	}
+	sr.Attachments = mapSlice(gsr.Attachments, searchResultAttachmentFromGenerated)
 
 	// Convert nested types
 	if gsr.Parent != nil {

@@ -2,6 +2,7 @@ package com.basecamp.sdk.services
 
 import com.basecamp.sdk.BasecampClient
 import com.basecamp.sdk.BasecampException
+import com.basecamp.sdk.generated.models.Person
 import com.basecamp.sdk.generated.recordings
 import com.basecamp.sdk.testBasecampClient
 import io.ktor.client.engine.mock.MockEngine
@@ -658,9 +659,25 @@ class RecordingsSummarizeTest {
             RecordingRef(BUCKET, 1069479361, eventType = "comment.created"),
         )
         val json = Json.encodeToString(RecordingSummary.serializer(), summary)
-        assertTrue("assignees" !in json, "absent and empty are one thing, as Go's omitempty makes them: $json")
+        assertTrue("assignees" !in json, "a type with no assignees emits no key: $json")
         assertTrue("parent" in json && "campfire_id" !in json, json)
         client.close()
+    }
+
+    @Test
+    fun aServerSentEmptyAssigneeListStaysEmpty() {
+        // Go's omitzero keeps a server-sent [] as []; only an absent list is
+        // left out of the projection.
+        fun project(assignees: List<Person>?) = summaryOf(
+            id = 1, status = "active", type = "Todo", title = "T", appUrl = "https://example.test/1",
+            parent = null, bucket = null, creator = null, assignees = assignees,
+            content = "", updatedAt = "2022-10-30T01:01:58.169Z",
+        )
+        val empty = project(emptyList())
+        assertEquals(emptyList(), empty.assignees)
+        assertTrue("\"assignees\":[]" in Json.encodeToString(RecordingSummary.serializer(), empty))
+        val absent = project(null)
+        assertTrue("assignees" !in Json.encodeToString(RecordingSummary.serializer(), absent))
     }
 
     @Test

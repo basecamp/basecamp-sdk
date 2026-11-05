@@ -54,7 +54,7 @@ type Todo struct {
 	SubtasksCompletedCount int      `json:"subtasks_completed_count,omitempty"`
 	SubtasksURL            string   `json:"subtasks_url,omitempty"`
 	CompletionURL          string   `json:"completion_url,omitempty"`
-	Assignees              []Person `json:"assignees,omitempty"`
+	Assignees              []Person `json:"assignees,omitzero"`
 	// CompletionSubscribers distinguishes present-but-empty from absent:
 	// a non-nil zero-length slice means the server sent an empty list,
 	// nil means the property was absent from the response. Deliberately
@@ -64,7 +64,7 @@ type Todo struct {
 	Position              int      `json:"position"`
 	// Steps are the BC5-added subtasks embedded in a Todo response, the same
 	// Subtask shape a card embeds.
-	Steps []Subtask `json:"steps,omitempty"`
+	Steps []Subtask `json:"steps,omitzero"`
 
 	// Completion is nil unless the to-do is completed.
 	Completion *RecordingCompletion `json:"completion,omitempty"`
@@ -218,9 +218,9 @@ type TodoListOptions struct {
 // TodoListResult contains the results from listing todos.
 type TodoListResult struct {
 	// Todos is the list of todos returned.
-	Todos []Todo
+	Todos []Todo `json:"todos"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // CreateTodoRequest specifies the parameters for creating a todo.
@@ -976,12 +976,7 @@ func todoFromGenerated(gt generated.Todo) Todo {
 	}
 
 	// Convert assignees
-	if len(gt.Assignees) > 0 {
-		t.Assignees = make([]Person, 0, len(gt.Assignees))
-		for _, ga := range gt.Assignees {
-			t.Assignees = append(t.Assignees, personFromGenerated(ga))
-		}
-	}
+	t.Assignees = mapSlice(gt.Assignees, personFromGenerated)
 
 	// Convert completion subscribers, preserving the nil-vs-empty
 	// distinction: a server-sent [] becomes a non-nil zero-length slice,
@@ -1000,12 +995,7 @@ func todoFromGenerated(gt generated.Todo) Todo {
 	t.DescriptionAttachments = richTextAttachmentsFromGenerated(gt.DescriptionAttachments)
 
 	// BC5: convert embedded steps
-	if len(gt.Steps) > 0 {
-		t.Steps = make([]Subtask, 0, len(gt.Steps))
-		for _, gs := range gt.Steps {
-			t.Steps = append(t.Steps, subtaskFromGenerated(gs))
-		}
-	}
+	t.Steps = mapSlice(gt.Steps, subtaskFromGenerated)
 
 	return t
 }
@@ -1063,14 +1053,7 @@ func richTextAttachmentFromGenerated(ga generated.RichTextAttachment) RichTextAt
 // slice of the same length. Shared by every resource that pairs a rich text
 // attribute with a companion attachments array.
 func richTextAttachmentsFromGenerated(gas []generated.RichTextAttachment) []RichTextAttachment {
-	if gas == nil {
-		return nil
-	}
-	attachments := make([]RichTextAttachment, 0, len(gas))
-	for _, ga := range gas {
-		attachments = append(attachments, richTextAttachmentFromGenerated(ga))
-	}
-	return attachments
+	return mapSlice(gas, richTextAttachmentFromGenerated)
 }
 
 // richTextAttachmentsPtrFromGenerated is the pointer-to-slice variant used by

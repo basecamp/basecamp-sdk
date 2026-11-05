@@ -26,9 +26,9 @@ type VaultListOptions struct {
 // VaultListResult contains the results from listing vaults.
 type VaultListResult struct {
 	// Vaults is the list of vaults returned.
-	Vaults []Vault
+	Vaults []Vault `json:"vaults"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // DocumentListOptions specifies options for listing documents.
@@ -47,9 +47,9 @@ type DocumentListOptions struct {
 // DocumentListResult contains the results from listing documents.
 type DocumentListResult struct {
 	// Documents is the list of documents returned.
-	Documents []Document
+	Documents []Document `json:"documents"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // UploadListOptions specifies options for listing uploads.
@@ -68,9 +68,9 @@ type UploadListOptions struct {
 // UploadListResult contains the results from listing uploads.
 type UploadListResult struct {
 	// Uploads is the list of uploads returned.
-	Uploads []Upload
+	Uploads []Upload `json:"uploads"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // Vault represents a Basecamp vault (folder) in the Files tool.
@@ -1129,9 +1129,9 @@ func uploadVersionFromGenerated(g generated.UploadVersion) UploadVersion {
 // UploadVersionListResult contains the results from listing upload versions.
 type UploadVersionListResult struct {
 	// Versions is the list of upload versions returned.
-	Versions []UploadVersion
+	Versions []UploadVersion `json:"versions"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // ListVersions returns all versions of an upload.

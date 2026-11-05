@@ -125,9 +125,9 @@ type GaugeListOptions struct {
 // GaugeListResult contains the results from listing gauges.
 type GaugeListResult struct {
 	// Gauges is the list of gauges returned.
-	Gauges []Gauge
+	Gauges []Gauge `json:"gauges"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // GaugeNeedleListOptions specifies pagination for listing gauge needles.
@@ -146,9 +146,9 @@ type GaugeNeedleListOptions struct {
 // GaugeNeedleListResult contains the results from listing gauge needles.
 type GaugeNeedleListResult struct {
 	// Needles is the list of gauge needles returned.
-	Needles []GaugeNeedle
+	Needles []GaugeNeedle `json:"needles"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // GaugesService handles gauge operations.

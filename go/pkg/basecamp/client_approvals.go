@@ -57,7 +57,7 @@ type ClientApproval struct {
 	RepliesURL         string                   `json:"replies_url"`
 	ApprovalStatus     string                   `json:"approval_status"`
 	Approver           *Person                  `json:"approver,omitempty"`
-	Responses          []ClientApprovalResponse `json:"responses,omitempty"`
+	Responses          []ClientApprovalResponse `json:"responses,omitzero"`
 }
 
 // ClientApprovalResponse represents a response to a client approval.
@@ -85,9 +85,9 @@ type ClientApprovalResponse struct {
 // ClientApprovalListResult contains the results from listing client approvals.
 type ClientApprovalListResult struct {
 	// Approvals is the list of client approvals returned.
-	Approvals []ClientApproval
+	Approvals []ClientApproval `json:"approvals"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // ClientApprovalsService handles client approval operations.
@@ -287,7 +287,7 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 	}
 
 	// Convert responses
-	if len(ga.Responses) > 0 {
+	if ga.Responses != nil {
 		a.Responses = make([]ClientApprovalResponse, 0, len(ga.Responses))
 		for _, gr := range ga.Responses {
 			resp := ClientApprovalResponse{

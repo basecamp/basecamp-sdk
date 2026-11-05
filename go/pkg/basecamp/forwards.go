@@ -44,17 +44,17 @@ type ForwardReplyListOptions struct {
 // ForwardListResult contains the results from listing forwards.
 type ForwardListResult struct {
 	// Forwards is the list of forwards returned.
-	Forwards []Forward
+	Forwards []Forward `json:"forwards"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // ForwardReplyListResult contains the results from listing forward replies.
 type ForwardReplyListResult struct {
 	// Replies is the list of forward replies returned.
-	Replies []ForwardReply
+	Replies []ForwardReply `json:"replies"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // Inbox represents a Basecamp email inbox (forwards tool).

@@ -113,9 +113,9 @@ type MessageListOptions struct {
 // MessageListResult contains the results from listing messages.
 type MessageListResult struct {
 	// Messages is the list of messages returned.
-	Messages []Message
+	Messages []Message `json:"messages"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // MessagesService handles message operations.

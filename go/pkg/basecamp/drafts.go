@@ -47,8 +47,8 @@ type DraftParent struct {
 
 // DraftListResult contains a page (or all pages) of drafts plus metadata.
 type DraftListResult struct {
-	Drafts []Draft
-	Meta   ListMeta
+	Drafts []Draft  `json:"drafts"`
+	Meta   ListMeta `json:"meta"`
 }
 
 // DraftsService lists the current user's unpublished drafts.

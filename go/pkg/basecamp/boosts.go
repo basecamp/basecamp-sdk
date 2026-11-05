@@ -41,9 +41,9 @@ type BoostListOptions struct {
 // BoostListResult contains the results from listing boosts.
 type BoostListResult struct {
 	// Boosts is the list of boosts returned.
-	Boosts []Boost
+	Boosts []Boost `json:"boosts"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // BoostsService handles boost operations.

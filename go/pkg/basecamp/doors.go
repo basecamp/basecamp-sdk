@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -43,7 +44,7 @@ type Door struct {
 type DoorListResult struct {
 	// Doors are the project's active external links, in the order they
 	// appear in its External links section.
-	Doors []Door
+	Doors []Door `json:"doors"`
 }
 
 // CreateDoorRequest is the body for creating an external link.
@@ -320,7 +321,7 @@ func doorFromGenerated(gd generated.Door) Door {
 			Name:           deref(gd.Service.Name),
 			ExampleURL:     deref(gd.Service.ExampleUrl),
 			Code:           deref(gd.Service.Code),
-			ValidPatterns:  append([]string(nil), gd.Service.ValidPatterns...),
+			ValidPatterns:  slices.Clone(gd.Service.ValidPatterns),
 			SupportingText: deref(gd.Service.SupportingText),
 		},
 	}

@@ -21,8 +21,8 @@ type Bookmark struct {
 
 // BookmarkListResult contains a page (or all pages) of bookmarks plus metadata.
 type BookmarkListResult struct {
-	Bookmarks []Bookmark
-	Meta      ListMeta
+	Bookmarks []Bookmark `json:"bookmarks"`
+	Meta      ListMeta   `json:"meta"`
 }
 
 // BookmarksService handles the current user's personal bookmarks.

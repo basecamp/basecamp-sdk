@@ -51,9 +51,9 @@ type UpdateTimesheetEntryRequest struct {
 // TimesheetListResult contains the results from a timesheet report.
 type TimesheetListResult struct {
 	// Entries is the list of timesheet entries returned.
-	Entries []TimesheetEntry
+	Entries []TimesheetEntry `json:"entries"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // TimesheetReportOptions specifies options for timesheet reports.

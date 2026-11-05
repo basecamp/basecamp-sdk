@@ -68,9 +68,9 @@ type SubtaskListOptions struct {
 // SubtaskListResult contains the results from listing subtasks.
 type SubtaskListResult struct {
 	// Subtasks is the list of subtasks returned, in position order.
-	Subtasks []Subtask
+	Subtasks []Subtask `json:"subtasks"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // SubtasksService handles subtask operations.

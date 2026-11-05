@@ -123,9 +123,9 @@ type PeopleListOptions struct {
 // PeopleListResult contains the results from listing people.
 type PeopleListResult struct {
 	// People is the list of people returned.
-	People []Person
+	People []Person `json:"people"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // PeopleService handles people operations.

@@ -104,9 +104,9 @@ type TodolistListOptions struct {
 // TodolistListResult contains the results from listing todolists.
 type TodolistListResult struct {
 	// Todolists is the list of todolists returned.
-	Todolists []Todolist
+	Todolists []Todolist `json:"todolists"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // CreateTodolistRequest specifies the parameters for creating a todolist.

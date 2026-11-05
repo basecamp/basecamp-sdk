@@ -20,10 +20,10 @@ type MyAssignment struct {
 	StartsOn            string                 `json:"starts_on,omitempty"`
 	CommentsCount       int32                  `json:"comments_count,omitempty"`
 	AppURL              string                 `json:"app_url,omitempty"`
-	Assignees           []MyAssignmentAssignee `json:"assignees,omitempty"`
+	Assignees           []MyAssignmentAssignee `json:"assignees,omitzero"`
 	Bucket              MyAssignmentBucket     `json:"bucket,omitempty"`
 	Parent              MyAssignmentParent     `json:"parent,omitempty"`
-	Children            []MyAssignment         `json:"children,omitempty"`
+	Children            []MyAssignment         `json:"children,omitzero"`
 	PriorityRecordingID *int64                 `json:"priority_recording_id,omitempty"`
 }
 
@@ -50,8 +50,8 @@ type MyAssignmentParent struct {
 
 // MyAssignmentsResult contains priorities and non-priority assignments.
 type MyAssignmentsResult struct {
-	Priorities    []MyAssignment `json:"priorities,omitempty"`
-	NonPriorities []MyAssignment `json:"non_priorities,omitempty"`
+	Priorities    []MyAssignment `json:"priorities,omitzero"`
+	NonPriorities []MyAssignment `json:"non_priorities,omitzero"`
 }
 
 // MyAssignmentsService handles assignment operations for the current user.

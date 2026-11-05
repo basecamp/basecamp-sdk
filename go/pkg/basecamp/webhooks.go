@@ -31,7 +31,7 @@ type Webhook struct {
 	Types            []string          `json:"types"`
 	AppURL           string            `json:"app_url,omitempty"`
 	URL              string            `json:"url,omitempty"`
-	RecentDeliveries []WebhookDelivery `json:"recent_deliveries,omitempty"`
+	RecentDeliveries []WebhookDelivery `json:"recent_deliveries,omitzero"`
 }
 
 // WebhookDelivery represents a recent delivery attempt for a webhook.
@@ -82,9 +82,9 @@ type UpdateWebhookRequest struct {
 // WebhookListResult contains the results from listing webhooks.
 type WebhookListResult struct {
 	// Webhooks is the list of webhooks returned.
-	Webhooks []Webhook
+	Webhooks []Webhook `json:"webhooks"`
 	// Meta contains pagination metadata (total count, etc.).
-	Meta ListMeta
+	Meta ListMeta `json:"meta"`
 }
 
 // WebhooksService handles webhook operations.
@@ -361,7 +361,7 @@ func webhookFromGenerated(gw generated.Webhook) Webhook {
 		w.ID = gw.Id
 	}
 
-	if len(gw.RecentDeliveries) > 0 {
+	if gw.RecentDeliveries != nil {
 		w.RecentDeliveries = make([]WebhookDelivery, len(gw.RecentDeliveries))
 		for i, gd := range gw.RecentDeliveries {
 			d := WebhookDelivery{

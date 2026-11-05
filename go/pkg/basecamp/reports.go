@@ -148,22 +148,19 @@ func (s *ReportsService) OverdueTodos(ctx context.Context) (result *OverdueTodos
 		return nil, nil
 	}
 
-	result = &OverdueTodosResponse{}
+	overdue := overdueTodosFromGenerated(*resp.JSON200)
+	return &overdue, nil
+}
 
-	for _, gt := range resp.JSON200.UnderAWeekLate {
-		result.UnderAWeekLate = append(result.UnderAWeekLate, todoFromGenerated(gt))
+// overdueTodosFromGenerated converts the overdue report, keeping each
+// lateness bucket the server sent as [] an empty (non-nil) list.
+func overdueTodosFromGenerated(g generated.GetOverdueTodosResponseContent) OverdueTodosResponse {
+	return OverdueTodosResponse{
+		UnderAWeekLate:      mapSlice(g.UnderAWeekLate, todoFromGenerated),
+		OverAWeekLate:       mapSlice(g.OverAWeekLate, todoFromGenerated),
+		OverAMonthLate:      mapSlice(g.OverAMonthLate, todoFromGenerated),
+		OverThreeMonthsLate: mapSlice(g.OverThreeMonthsLate, todoFromGenerated),
 	}
-	for _, gt := range resp.JSON200.OverAWeekLate {
-		result.OverAWeekLate = append(result.OverAWeekLate, todoFromGenerated(gt))
-	}
-	for _, gt := range resp.JSON200.OverAMonthLate {
-		result.OverAMonthLate = append(result.OverAMonthLate, todoFromGenerated(gt))
-	}
-	for _, gt := range resp.JSON200.OverThreeMonthsLate {
-		result.OverThreeMonthsLate = append(result.OverThreeMonthsLate, todoFromGenerated(gt))
-	}
-
-	return result, nil
 }
 
 // The upcoming-schedule report renders BC3's reduced calendar partials
