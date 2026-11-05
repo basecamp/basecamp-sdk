@@ -19,3 +19,10 @@
 # live 404s (#588).
 /{accountId}/buckets/{bucketId}/client/approvals.json
 /{accountId}/buckets/{bucketId}/client/correspondences.json
+
+# A project's external links are its dock's doors, so the list is per-project by
+# construction: Docks::DoorsController#index lists Dock.exposed_doors of the
+# bucket's dock. bc3 draws no flat index (the flat `dock/doors` draw is only
+# show/update/destroy, config/routes.rb:302 at bc3#14314). The account-wide view is
+# ListRecordings with type=Door.
+/{accountId}/buckets/{bucketId}/dock/doors.json

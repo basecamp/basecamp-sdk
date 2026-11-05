@@ -8,6 +8,7 @@ export { CampfiresService } from "./campfires.js";
 export { ClientApprovalsService } from "./client-approvals.js";
 export { ClientCorrespondencesService } from "./client-correspondences.js";
 export { ClientRepliesService } from "./client-replies.js";
+export { DoorsService } from "./doors.js";
 export { ToolsService } from "./tools.js";
 export { TemplatesService } from "./templates.js";
 export { TodosService } from "./todos.js";

@@ -122,7 +122,8 @@ class ServiceGenerator
       'GoogleDocuments' => %w[GetGoogleDocument CreateGoogleDocument UpdateGoogleDocument]
     },
     'Dock' => {
-      'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool]
+      'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool],
+      'Doors' => %w[ListDoors GetDoor CreateDoor UpdateDoor DeleteDoor]
     },
     'Recordings' => {
       'Events' => %w[ListEvents]
@@ -371,7 +372,7 @@ class ServiceGenerator
     clientcorrespondences clientreply clientreplies forwardreply
     forwardreplies campfireline campfirelines todolistgroup todolistgroups
     todolistorgroup uploadversions hillchart hillcharts subtask subtasks ping pings
-    wormhole wormholes embed embeds
+    wormhole wormholes embed embeds door doors
   ].freeze
 
   def initialize(openapi_path)

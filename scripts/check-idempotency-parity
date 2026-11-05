@@ -168,8 +168,11 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # Hill chart progress updates (+2 ops): ListHillChartVersions and
 # GetHillChartVersion are readonly reads, so the union grows and the
 # idempotent set does not.
-expected_idempotent=103
-expected_union=243
+# External links (+5 ops): ListDoors and GetDoor are readonly (+2 union only);
+# UpdateDoor (a partial PUT) and DeleteDoor are naturally idempotent (+2 each);
+# CreateDoor adds another link on every call, so it is neither.
+expected_idempotent=105
+expected_union=247
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"

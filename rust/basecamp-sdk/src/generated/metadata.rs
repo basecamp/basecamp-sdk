@@ -59,6 +59,9 @@ pub static CREATE_COMMENT: OperationMetadata = OperationMetadata { operation: "C
 /// `CreateDocument`.
 #[rustfmt::skip]
 pub static CREATE_DOCUMENT: OperationMetadata = OperationMetadata { operation: "CreateDocument", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `CreateDoor`.
+#[rustfmt::skip]
+pub static CREATE_DOOR: OperationMetadata = OperationMetadata { operation: "CreateDoor", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `CreateEmbed`.
 #[rustfmt::skip]
 pub static CREATE_EMBED: OperationMetadata = OperationMetadata { operation: "CreateEmbed", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[503] } };
@@ -173,6 +176,9 @@ pub static DELETE_CAMPFIRE_LINE: OperationMetadata = OperationMetadata { operati
 /// `DeleteChatbot`.
 #[rustfmt::skip]
 pub static DELETE_CHATBOT: OperationMetadata = OperationMetadata { operation: "DeleteChatbot", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `DeleteDoor`.
+#[rustfmt::skip]
+pub static DELETE_DOOR: OperationMetadata = OperationMetadata { operation: "DeleteDoor", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `DeleteFolder`.
 #[rustfmt::skip]
 pub static DELETE_FOLDER: OperationMetadata = OperationMetadata { operation: "DeleteFolder", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -293,6 +299,9 @@ pub static GET_COMMENT: OperationMetadata = OperationMetadata { operation: "GetC
 /// `GetDocument`.
 #[rustfmt::skip]
 pub static GET_DOCUMENT: OperationMetadata = OperationMetadata { operation: "GetDocument", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `GetDoor`.
+#[rustfmt::skip]
+pub static GET_DOOR: OperationMetadata = OperationMetadata { operation: "GetDoor", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `GetEmbed`.
 #[rustfmt::skip]
 pub static GET_EMBED: OperationMetadata = OperationMetadata { operation: "GetEmbed", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -542,6 +551,9 @@ pub static LIST_COMMENTS: OperationMetadata = OperationMetadata { operation: "Li
 /// `ListDocuments`.
 #[rustfmt::skip]
 pub static LIST_DOCUMENTS: OperationMetadata = OperationMetadata { operation: "ListDocuments", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `ListDoors`.
+#[rustfmt::skip]
+pub static LIST_DOORS: OperationMetadata = OperationMetadata { operation: "ListDoors", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `ListEventBoosts`.
 #[rustfmt::skip]
 pub static LIST_EVENT_BOOSTS: OperationMetadata = OperationMetadata { operation: "ListEventBoosts", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -806,6 +818,9 @@ pub static UPDATE_CLOUD_FILE: OperationMetadata = OperationMetadata { operation:
 /// `UpdateComment`.
 #[rustfmt::skip]
 pub static UPDATE_COMMENT: OperationMetadata = OperationMetadata { operation: "UpdateComment", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `UpdateDoor`.
+#[rustfmt::skip]
+pub static UPDATE_DOOR: OperationMetadata = OperationMetadata { operation: "UpdateDoor", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `UpdateFolder`.
 #[rustfmt::skip]
 pub static UPDATE_FOLDER: OperationMetadata = OperationMetadata { operation: "UpdateFolder", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -911,6 +926,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &CREATE_CLOUD_FILE,
     &CREATE_COMMENT,
     &CREATE_DOCUMENT,
+    &CREATE_DOOR,
     &CREATE_EMBED,
     &CREATE_EVENT_BOOST,
     &CREATE_FOLDER,
@@ -949,6 +965,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &DELETE_BUBBLE_UP,
     &DELETE_CAMPFIRE_LINE,
     &DELETE_CHATBOT,
+    &DELETE_DOOR,
     &DELETE_FOLDER,
     &DELETE_LINEUP_MARKER,
     &DELETE_MESSAGE_TYPE,
@@ -989,6 +1006,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &GET_CLOUD_FILE,
     &GET_COMMENT,
     &GET_DOCUMENT,
+    &GET_DOOR,
     &GET_EMBED,
     &GET_EVERYTHING_CHECKINS,
     &GET_EVERYTHING_COMMENTS,
@@ -1072,6 +1090,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &LIST_CLIENT_REPLIES,
     &LIST_COMMENTS,
     &LIST_DOCUMENTS,
+    &LIST_DOORS,
     &LIST_EVENT_BOOSTS,
     &LIST_EVENTS,
     &LIST_FOLDERS,
@@ -1160,6 +1179,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &UPDATE_CHATBOT,
     &UPDATE_CLOUD_FILE,
     &UPDATE_COMMENT,
+    &UPDATE_DOOR,
     &UPDATE_FOLDER,
     &UPDATE_GAUGE_NEEDLE,
     &UPDATE_GOOGLE_DOCUMENT,

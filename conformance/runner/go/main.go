@@ -990,6 +990,46 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		version, err := account.HillCharts().GetVersion(ctx, getInt64Param(tc.PathParams, "todosetId"), getInt64Param(tc.PathParams, "versionId"))
 		return operationResult{err: err, result: version}
 
+	case "ListDoors":
+		result, err := account.Doors().List(ctx, getInt64Param(tc.PathParams, "bucketId"))
+		return operationResult{err: err, result: result}
+
+	case "GetDoor":
+		door, err := account.Doors().Get(ctx, getInt64Param(tc.PathParams, "doorId"))
+		return operationResult{err: err, result: door}
+
+	case "CreateDoor":
+		// A key the fixture omits stays unset and never reaches the wire.
+		fields, _ := tc.RequestBody["door"].(map[string]interface{})
+		door, err := account.Doors().Create(ctx, getInt64Param(tc.PathParams, "bucketId"), &basecamp.CreateDoorRequest{
+			Service:          getStringParam(fields, "service"),
+			URL:              getStringParam(fields, "url"),
+			Title:            getStringParam(fields, "title"),
+			Description:      getStringParam(fields, "description"),
+			VisibleToClients: getOptBoolParam(tc.RequestBody, "visible_to_clients"),
+		})
+		return operationResult{err: err, result: door}
+
+	case "UpdateDoor":
+		req := &basecamp.UpdateDoorRequest{
+			VisibleToClients: getOptBoolParam(tc.RequestBody, "visible_to_clients"),
+		}
+		if fields, ok := tc.RequestBody["door"].(map[string]interface{}); ok {
+			req.Service = getStringParam(fields, "service")
+			req.URL = getStringParam(fields, "url")
+			req.Title = getStringParam(fields, "title")
+			if _, present := fields["description"]; present {
+				description := getStringParam(fields, "description")
+				req.Description = &description
+			}
+		}
+		door, err := account.Doors().Update(ctx, getInt64Param(tc.PathParams, "doorId"), req)
+		return operationResult{err: err, result: door}
+
+	case "DeleteDoor":
+		err := account.Doors().Delete(ctx, getInt64Param(tc.PathParams, "doorId"))
+		return operationResult{err: err}
+
 	case "GetEmbed":
 		embed, err := account.Embeds().Get(ctx, getStringParam(tc.PathParams, "sgid"))
 		return operationResult{err: err, result: embed}

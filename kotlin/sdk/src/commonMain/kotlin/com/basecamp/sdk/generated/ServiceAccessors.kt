@@ -87,6 +87,10 @@ val AccountClient.comments: com.basecamp.sdk.services.CommentsService
 val AccountClient.documents: com.basecamp.sdk.services.DocumentsService
     get() = service("Documents") { com.basecamp.sdk.services.DocumentsService(this) }
 
+/** Doors operations. */
+val AccountClient.doors: DoorsService
+    get() = service("Doors") { DoorsService(this) }
+
 /** Drafts operations. */
 val AccountClient.drafts: DraftsService
     get() = service("Drafts") { DraftsService(this) }

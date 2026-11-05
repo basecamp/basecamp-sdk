@@ -222,6 +222,25 @@ targets:
     fixture: google_documents/get.json
     pointer: ""
     schema: GoogleDocument
+  # External links (doors), from bc3's doc/api/sections/external_links.md
+  # examples. The list is validated whole against ListDoors and the single link
+  # against both GetDoor and the Door schema; Create and Update answer with the same Door shape.
+  - id: door-list
+    operation: ListDoors
+    fixture: doors/list.json
+  - id: door-get
+    fixture: doors/get.json
+    pointer: ""
+    schema: Door
+  - id: door-get-response
+    operation: GetDoor
+    fixture: doors/get.json
+  - id: door-create-response
+    operation: CreateDoor
+    fixture: doors/get.json
+  - id: door-update-response
+    operation: UpdateDoor
+    fixture: doors/get.json
   - id: schedule-entry-get
     fixture: schedules/entry_get.json
     pointer: ""
@@ -504,6 +523,7 @@ covered_schemas:
   HillChartVersion: [hill-chart-version-get, hill-chart-version-todolist-gone]
   HillChartVersionDot: [hill-chart-version-dot-gone]
   GoogleDocument: [google-document-get]
+  Door: [door-get]
   ScheduleEntry: [schedule-entry-get]
   UpcomingScheduleEntry: [upcoming-schedule-entry-0, upcoming-schedule-occurrence-0]
   UpcomingAssignable: [upcoming-assignable-todo, upcoming-assignable-card]

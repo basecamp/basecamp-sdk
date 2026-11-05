@@ -403,6 +403,12 @@ class AccountClient:
         return self._service("tools", lambda: ToolsService(self))
 
     @property
+    def doors(self):
+        from basecamp.generated.services.doors import DoorsService
+
+        return self._service("doors", lambda: DoorsService(self))
+
+    @property
     def lineup(self):
         from basecamp.generated.services.lineup import LineupService
 

@@ -8,8 +8,9 @@
 mod support;
 
 use basecamp_sdk::models::{
-    CopyRecordingRequestContent, CreateHillChartVersionRequestContent, HillChartDotPosition,
-    MoveRecordingRequestContent, UpdateCardRequestContent, UpdateCardStepRequestContent,
+    CopyRecordingRequestContent, CreateDoorPayload, CreateDoorRequestContent,
+    CreateHillChartVersionRequestContent, HillChartDotPosition, MoveRecordingRequestContent,
+    UpdateCardRequestContent, UpdateCardStepRequestContent, UpdateDoorRequestContent,
     UpdateSubtaskRequestContent,
 };
 use basecamp_sdk::{Date, DateChange};
@@ -498,6 +499,83 @@ async fn comments_get_reaches_the_wire() {
         .mount(&server)
         .await;
     account(&server).comments().get(100).await.unwrap();
+}
+
+#[tokio::test]
+async fn doors_get_reaches_the_wire() {
+    let server = MockServer::start().await;
+    let body: serde_json::Value =
+        serde_json::from_str(include_str!("../../../spec/fixtures/doors/get.json")).unwrap();
+    Mock::given(method("GET"))
+        .and(path("/999/dock/doors/100"))
+        .and(header("Authorization", "Bearer test-token"))
+        .and(header("Accept", "application/json"))
+        .and(header(
+            "User-Agent",
+            basecamp_sdk::version::default_user_agent().as_str(),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let door = account(&server).doors().get(100).await.unwrap();
+    assert_eq!(door.url, "https://www.figma.com/file/abc123/Design-system");
+}
+
+#[tokio::test]
+async fn doors_create_wraps_the_door_and_puts_visibility_beside_it() {
+    let server = MockServer::start().await;
+    let request: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/fixtures/doors/create-request.json"
+    ))
+    .unwrap();
+    let body: serde_json::Value =
+        serde_json::from_str(include_str!("../../../spec/fixtures/doors/get.json")).unwrap();
+    Mock::given(method("POST"))
+        .and(path("/999/buckets/100/dock/doors.json"))
+        .and(header("Content-Type", "application/json"))
+        .and(body_json(&request))
+        .respond_with(ResponseTemplate::new(201).set_body_json(body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let door: CreateDoorPayload = serde_json::from_value(request["door"].clone()).unwrap();
+    account(&server)
+        .doors()
+        .create(
+            100,
+            &CreateDoorRequestContent {
+                door,
+                visible_to_clients: request["visible_to_clients"].as_bool(),
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn doors_update_can_change_only_visibility() {
+    let server = MockServer::start().await;
+    let body: serde_json::Value =
+        serde_json::from_str(include_str!("../../../spec/fixtures/doors/get.json")).unwrap();
+    Mock::given(method("PUT"))
+        .and(path("/999/dock/doors/100"))
+        .and(body_json(serde_json::json!({"visible_to_clients": true})))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .expect(1)
+        .mount(&server)
+        .await;
+    account(&server)
+        .doors()
+        .update(
+            100,
+            &UpdateDoorRequestContent {
+                door: None,
+                visible_to_clients: Some(true),
+            },
+        )
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -1859,6 +1937,11 @@ error_case!(
 error_case!(
     documents_get_maps_a_rejection,
     |account: basecamp_sdk::AccountClient| async move { account.documents().get(100).await }
+);
+
+error_case!(
+    doors_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.doors().get(100).await }
 );
 
 error_case!(

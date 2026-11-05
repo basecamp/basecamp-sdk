@@ -1,0 +1,9 @@
+{
+  "door": {
+    "service": "github",
+    "title": "Source code",
+    "url": "https://github.com/honcho/leto-laptop",
+    "description": "<div>Firmware and tooling</div>"
+  },
+  "visible_to_clients": false
+}

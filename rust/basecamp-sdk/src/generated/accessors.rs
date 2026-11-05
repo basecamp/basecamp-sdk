@@ -102,6 +102,11 @@ impl AccountClient {
         services::documents::DocumentsService::new(self)
     }
 
+    /// `Doors` operations.
+    pub fn doors(&self) -> services::doors::DoorsService<'_> {
+        services::doors::DoorsService::new(self)
+    }
+
     /// `Drafts` operations.
     pub fn drafts(&self) -> services::drafts::DraftsService<'_> {
         services::drafts::DraftsService::new(self)

@@ -869,6 +869,22 @@ class OperationMapper:
                     todoset_id=path_params["todosetId"],
                     **{key: body[key] for key in ("description", "dots", "subscriptions") if key in body},
                 )
+            case "ListDoors":
+                return self._account.doors.list(bucket_id=path_params["bucketId"])
+            case "GetDoor":
+                return self._account.doors.get(door_id=path_params["doorId"])
+            case "CreateDoor":
+                return self._account.doors.create(
+                    bucket_id=path_params["bucketId"],
+                    **{key: body[key] for key in ("door", "visible_to_clients") if key in body},
+                )
+            case "UpdateDoor":
+                return self._account.doors.update(
+                    door_id=path_params["doorId"],
+                    **{key: body[key] for key in ("door", "visible_to_clients") if key in body},
+                )
+            case "DeleteDoor":
+                return self._account.doors.delete(door_id=path_params["doorId"])
             case "GetHillChartVersion":
                 return self._account.hill_charts.get_version(
                     todoset_id=path_params["todosetId"], version_id=path_params["versionId"]

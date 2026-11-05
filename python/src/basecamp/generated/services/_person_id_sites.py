@@ -36,6 +36,7 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     "CreateCloudFile": (("creator",),),
     "CreateComment": (("creator",),),
     "CreateDocument": (("creator",),),
+    "CreateDoor": (("creator",),),
     "CreateEventBoost": (("booster",),),
     "CreateGaugeNeedle": (("creator",),),
     "CreateGoogleDocument": (("creator",),),
@@ -180,6 +181,7 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     "GetCloudFile": (("creator",),),
     "GetComment": (("creator",),),
     "GetDocument": (("creator",),),
+    "GetDoor": (("creator",),),
     "GetEverythingCheckins": (("[]", "creator"),),
     "GetEverythingComments": (("[]", "creator"),),
     "GetEverythingCompletedCards": (
@@ -469,6 +471,7 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     "ListClientReplies": (("[]", "creator"),),
     "ListComments": (("[]", "creator"),),
     "ListDocuments": (("[]", "creator"),),
+    "ListDoors": (("[]", "creator"),),
     "ListEventBoosts": (("[]", "booster"),),
     "ListEvents": (
         ("[]", "creator"),
@@ -575,6 +578,7 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
     ),
     "UpdateCloudFile": (("creator",),),
     "UpdateComment": (("creator",),),
+    "UpdateDoor": (("creator",),),
     "UpdateGaugeNeedle": (("creator",),),
     "UpdateGoogleDocument": (("creator",),),
     "UpdateMessage": (("creator",),),

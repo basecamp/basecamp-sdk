@@ -3,18 +3,24 @@ gap: external-links-doors
 status: partial-coverage
 detected: 2026-07-22
 sdk_demand: low
-bc3_pr: 12375
+bc3_pr: 14314
 smithy_refs:
-  - "Door in the documented recording type string (spec/basecamp.smithy:6223)"
-  - "Recording.position/description/service (spec/basecamp.smithy:6282-6293)"
-  - "DoorService (spec/basecamp.smithy:6309)"
+  - "ListDoors (spec/basecamp.smithy:10421)"
+  - "GetDoor (spec/basecamp.smithy:10447)"
+  - "CreateDoor (spec/basecamp.smithy:10477)"
+  - "UpdateDoor (spec/basecamp.smithy:10535)"
+  - "DeleteDoor (spec/basecamp.smithy:10584)"
+  - "Door (spec/basecamp.smithy:8997)"
+  - "DoorService (spec/basecamp.smithy:8978)"
+  - "Door in the documented recording type string, and Recording.position/description/service on the shared projection"
 bc3_refs:
   routes:
-    - GET /:account_id/projects/recordings.json?type=Door
+    - GET /:account_id/buckets/:bucket_id/dock/doors.json
+    - GET /:account_id/dock/doors/:id.json
     - POST /:account_id/buckets/:bucket_id/dock/doors.json
-    - GET /:account_id/dock/tools/:id.json
-    - PUT /:account_id/dock/tools/:id.json
-    - DELETE /:account_id/dock/tools/:id.json
+    - PUT /:account_id/dock/doors/:id.json
+    - DELETE /:account_id/dock/doors/:id.json
+    - GET /:account_id/projects/recordings.json?type=Door
   controllers:
     - app/controllers/docks/doors_controller.rb
     - app/controllers/docks/tools_controller.rb
@@ -27,6 +33,60 @@ bc3_refs:
 ---
 
 # External links (doors) API surface
+
+## Absorbed: the Doors API (bc3#14314)
+
+BC3 **#14314** serves external links as a JSON resource of their own, and the
+SDK models all five operations on a `Doors` service (tag `Dock`):
+
+| Operation | Route | Answers |
+|---|---|---|
+| `ListDoors` | `GET /buckets/{bucketId}/dock/doors.json` | 200, the project's active links in section order, unpaginated |
+| `GetDoor` | `GET /dock/doors/{doorId}` | 200, the full `Door` shape; 404 for an unknown id, a non-door recording, or a link hidden from a client |
+| `CreateDoor` | `POST /buckets/{bucketId}/dock/doors.json` | **201** with the new `Door` (no longer a 302); 422 for an unusable `url`, with Rails' default error body (no field-keyed `errors`) |
+| `UpdateDoor` | `PUT /dock/doors/{doorId}` | 200 with the `Door`; a partial update, 422 as for create |
+| `DeleteDoor` | `DELETE /dock/doors/{doorId}` | 204; `status` becomes `"deleted"` |
+
+The body wraps the link's fields under `door` (`params.require(:door)`) with
+`visible_to_clients` beside it. Create without `visible_to_clients` keeps the
+link private to the team; update without `door` changes only the visibility.
+Writes need permission to edit the project (403 otherwise); listing needs only
+access to it.
+
+What this closes, against the residuals recorded below:
+
+- **Create** is absorbed. The 302/empty-body blocker is gone: bc3 answers 201
+  with JSON, so no transport needs redirect suppression.
+- **Update of `url`/`service`/`description`** now exists (`UpdateDoor`). The
+  406-after-write behaviour of the door-scoped `PUT` described below no longer
+  applies to the flat route the SDK models.
+- **Get** has a JSON home at the flat `GET /dock/doors/{doorId}`. It is a
+  separate action from the bucket-scoped redirector, which stays out of scope
+  (see "Disposition" below).
+
+What stays unmodeled:
+
+- **`door[image]`**, the thumbnail, is `multipart/form-data` only, and neither
+  `CreateDoor` nor `UpdateDoor` models it. The SDK does send multipart uploads
+  elsewhere (the project and account logos and the project wallpaper), so this
+  is a real residual, not a transport limit, and it is why this entry stays
+  `partial-coverage`. Every other field reaches a JSON caller. Demand is low;
+  model it when someone asks for thumbnails.
+- **The door-scoped `GET /buckets/:b/dock/doors/:id`** redirector, permanently,
+  for the reasons recorded below.
+- **A create-and-discover composite (SPEC §18)** is moot: create returns the new
+  link and its id.
+
+`door[image]` is the only open item. The redirector is closed, not open.
+
+The `type=Door` `ListRecordings` query and the dock-tool `GetTool` /
+`UpdateTool` / `DeleteTool` operations absorbed earlier keep working; the
+`Doors` service is the direct path.
+
+The sections below are the entry's history up to bc3#14314, kept as the record
+of why create was deferred and why the redirector is never modeled. Where they
+describe bc3 (no JSON update path, a 302 create, no index template), they
+describe the revision pinned before #14314.
 
 ## What's missing
 
@@ -222,8 +282,11 @@ here argues for paying that cost soon. If it is ever paid, the create-and-discov
 composite (SPEC §18) becomes available in the same PR, since discovery of the new
 ID already works through `ListRecordings`.
 
-**Next reader:** the open item on this entry is create, and only create. `GET`
-on the door-scoped route is closed. Do not re-litigate the door redirector.
+**Next reader:** create was absorbed by bc3#14314 (see the top of this entry),
+which also removed both allowlist entries: `POST /dock/doors` is modeled as
+`CreateDoor`, and the redirector's key is covered in direction 2 by the flat
+`GetDoor`, so it needs no entry. `GET` on the door-scoped route stays closed. Do
+not re-litigate the door redirector.
 
 ## Compatibility
 

@@ -2,5 +2,5 @@
 
 module Basecamp
   VERSION = "0.34.0"
-  API_VERSION = "2026-10-30"
+  API_VERSION = "2026-11-05"
 end

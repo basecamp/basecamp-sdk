@@ -467,6 +467,18 @@ class OperationMapper
     when "CreateHillChartVersion"
       fields = body.slice("description", "dots", "subscriptions").transform_keys(&:to_sym)
       @account.hill_charts.create_version(todoset_id: path_params["todosetId"], **fields)
+    when "ListDoors"
+      @account.doors.list(bucket_id: path_params["bucketId"]).to_a
+    when "GetDoor"
+      @account.doors.get(door_id: path_params["doorId"])
+    when "CreateDoor"
+      fields = body.slice("door", "visible_to_clients").transform_keys(&:to_sym)
+      @account.doors.create(bucket_id: path_params["bucketId"], **fields)
+    when "UpdateDoor"
+      fields = body.slice("door", "visible_to_clients").transform_keys(&:to_sym)
+      @account.doors.update(door_id: path_params["doorId"], **fields)
+    when "DeleteDoor"
+      @account.doors.delete(door_id: path_params["doorId"])
     when "GetHillChartVersion"
       @account.hill_charts.get_version(todoset_id: path_params["todosetId"], version_id: path_params["versionId"])
     when "GetEmbed"

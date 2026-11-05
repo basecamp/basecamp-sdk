@@ -43,6 +43,7 @@ let typeAliases: [String: (name: String, kind: String)] = [
     "MessageType": ("MessageType", "entity"),
     "Event": ("Event", "entity"),
     "Tool": ("Tool", "entity"),
+    "Door": ("Door", "entity"),
     "LineupMarker": ("LineupMarker", "entity"),
     "ClientApproval": ("ClientApproval", "entity"),
     "ClientCorrespondence": ("ClientCorrespondence", "entity"),

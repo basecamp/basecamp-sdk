@@ -219,6 +219,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
   },
   Dock: {
     Tools: ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
+    Doors: ["ListDoors", "GetDoor", "CreateDoor", "UpdateDoor", "DeleteDoor"],
   },
   Recordings: {
     Events: ["ListEvents"],
@@ -513,6 +514,7 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   Upload: ["Upload", "entity"],
   UploadVersion: ["UploadVersion", "entity"],
   CloudFile: ["CloudFile", "entity"],
+  Door: ["Door", "entity"],
   GoogleDocument: ["GoogleDocument", "entity"],
   Schedule: ["Schedule", "entity"],
   ScheduleEntry: ["ScheduleEntry", "entity"],
@@ -773,6 +775,7 @@ function isSimpleResource(resource: string): boolean {
     "embed", "embeds",
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
+    "door", "doors",
   ];
   return simpleResources.includes(resource.toLowerCase());
 }

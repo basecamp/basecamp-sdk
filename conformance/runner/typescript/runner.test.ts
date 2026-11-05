@@ -834,6 +834,42 @@ async function executeOperation(
         return { result: version };
       }
 
+      case "ListDoors": {
+        const doors = await client.doors.list(Number(params.bucketId));
+        return { result: doors };
+      }
+
+      case "GetDoor": {
+        const door = await client.doors.get(Number(params.doorId));
+        return { result: door };
+      }
+
+      case "CreateDoor": {
+        const door = await client.doors.create(Number(params.bucketId), {
+          door: body.door as { service: string; url: string; title?: string; description?: string },
+          ...(body.visible_to_clients !== undefined
+            ? { visibleToClients: body.visible_to_clients as boolean }
+            : {}),
+        });
+        return { result: door };
+      }
+
+      case "UpdateDoor": {
+        const door = await client.doors.update(Number(params.doorId), {
+          ...(body.door !== undefined
+            ? { door: body.door as { service?: string; url?: string; title?: string; description?: string } }
+            : {}),
+          ...(body.visible_to_clients !== undefined
+            ? { visibleToClients: body.visible_to_clients as boolean }
+            : {}),
+        });
+        return { result: door };
+      }
+
+      case "DeleteDoor":
+        await client.doors.delete(Number(params.doorId));
+        break;
+
       case "GetEmbed": {
         const embed = await client.embeds.get(String(params.sgid));
         return { result: embed };

@@ -5,8 +5,8 @@
   "source": {
     "repo": "basecamp/bc3",
     "branch": "master",
-    "revision": "4303f1dafd416b1d6b743a23ccf3734ce39b2a68",
-    "date": "2026-10-30",
+    "revision": "6ceece6f69b95e84771434cd1e2aa727fd80df4e",
+    "date": "2026-11-05",
     "extracted_from": [
       "doc/api/sections/*.md"
     ],
@@ -236,10 +236,20 @@
     },
     {
       "method": "DELETE",
+      "path": "/dock/doors/:id",
+      "raw": "/dock/doors/2.json",
+      "sections": [
+        "external_links.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
       "path": "/dock/tools/:id",
       "raw": "/dock/tools/2.json",
       "sections": [
-        "external_links.md",
         "tools.md"
       ],
       "evidence": [
@@ -743,13 +753,14 @@
     },
     {
       "method": "GET",
-      "path": "/buckets/:id/dock/doors/:id",
-      "raw": "/buckets/1/dock/doors/2.json",
+      "path": "/buckets/:id/dock/doors",
+      "raw": "/buckets/1/dock/doors.json",
       "sections": [
         "external_links.md"
       ],
       "evidence": [
-        "bullet"
+        "bullet",
+        "example-marker"
       ]
     },
     {
@@ -1499,6 +1510,18 @@
       "raw": "/comments/2.json",
       "sections": [
         "comments.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/dock/doors/:id",
+      "raw": "/dock/doors/2.json",
+      "sections": [
+        "external_links.md"
       ],
       "evidence": [
         "bullet",
@@ -4428,6 +4451,17 @@
       "raw": "/comments/2.json",
       "sections": [
         "comments.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/dock/doors/:id",
+      "raw": "/dock/doors/2.json",
+      "sections": [
+        "external_links.md"
       ],
       "evidence": [
         "bullet"

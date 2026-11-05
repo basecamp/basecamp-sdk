@@ -1,0 +1,7 @@
+{
+  "door": {
+    "title": "Firmware",
+    "url": "https://github.com/honcho/leto-laptop-firmware"
+  },
+  "visible_to_clients": true
+}

@@ -21,6 +21,7 @@ extension AccountClient {
     public var cloudFiles: CloudFilesService { service("cloudFiles") { CloudFilesService(accountClient: self) } }
     public var comments: CommentsService { service("comments") { CommentsService(accountClient: self) } }
     public var documents: DocumentsService { service("documents") { DocumentsService(accountClient: self) } }
+    public var doors: DoorsService { service("doors") { DoorsService(accountClient: self) } }
     public var drafts: DraftsService { service("drafts") { DraftsService(accountClient: self) } }
     public var embeds: EmbedsService { service("embeds") { EmbedsService(accountClient: self) } }
     public var eventFeed: EventFeedService { service("eventFeed") { EventFeedService(accountClient: self) } }

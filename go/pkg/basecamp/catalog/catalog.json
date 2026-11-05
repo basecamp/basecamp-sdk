@@ -967,6 +967,84 @@
       "bodyRequired": true
     },
     {
+      "operationId": "CreateDoor",
+      "tag": "Dock",
+      "method": "POST",
+      "path": "/{accountId}/buckets/{bucketId}/dock/doors.json",
+      "doc": "Create an external link in a project\nIt goes at the end of the project's External links section. The link's\nfields go under the `door` key and `visible_to_clients` sits beside it.\nOmitting `visible_to_clients` keeps the link private to the team, whatever\nthe visibility of the project's other tools; a client caller always creates\na client-visible link. An unusable `url` (e.g. a `javascript:` address) is a\n422 with Rails' default error body, which names no field. Needs permission\nto edit the project. The `door[image]`\nthumbnail is multipart-only and not modelled.",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "bucketId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "door": {
+            "properties": {
+              "description": {
+                "description": "Rich-text (HTML) description shown beneath the title.",
+                "type": "string"
+              },
+              "service": {
+                "description": "Short identifier for the external service: figma, dropbox, google_drive,\ngithub, notion, trello, slack, zoom, airtable, jira, miro, … or `other`\nfor a generic link.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Name shown in the External links section. Defaults to \"Untitled\".",
+                "type": "string"
+              },
+              "url": {
+                "description": "The address the link points to. Supply an HTTP or HTTPS URL; a value\nwithout a scheme is prefixed with `https://`.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "service",
+              "url"
+            ],
+            "type": "object"
+          },
+          "visible_to_clients": {
+            "description": "Whether the project's clients can see the external link. Omitted means\nfalse: the link is private to the team. A client caller always creates a\nclient-visible link regardless of what is sent.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "door"
+        ],
+        "type": "object"
+      },
+      "bodyRequired": true
+    },
+    {
       "operationId": "CreateEmbed",
       "tag": "Embeds",
       "method": "POST",
@@ -3251,6 +3329,46 @@
       ]
     },
     {
+      "operationId": "DeleteDoor",
+      "tag": "Dock",
+      "method": "DELETE",
+      "path": "/{accountId}/dock/doors/{doorId}",
+      "doc": "Delete an external link (returns 204 No Content)\nIts status becomes \"deleted\" and it leaves the project's External links section. It does not\ngo to the trash: Basecamp permanently destroys it about five days later.\nNeeds permission to edit the project.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "doorId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "DeleteFolder",
       "tag": "Folders",
       "method": "DELETE",
@@ -4976,6 +5094,46 @@
         },
         {
           "name": "documentId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "operationId": "GetDoor",
+      "tag": "Dock",
+      "method": "GET",
+      "path": "/{accountId}/dock/doors/{doorId}",
+      "doc": "Get an external link by id\nA door hidden from a client, an unknown id, or the id of a recording that is\nnot a door is a 404.",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "doorId",
           "in": "path",
           "required": true,
           "schema": {
@@ -8960,6 +9118,46 @@
           "schema": {
             "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
             "format": "int32",
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "operationId": "ListDoors",
+      "tag": "Dock",
+      "method": "GET",
+      "path": "/{accountId}/buckets/{bucketId}/dock/doors.json",
+      "doc": "List the active external links in a project\nThey come in the order they appear in the project's External links section.\nNot paginated: a project has a handful at most. Clients see only the\nexternal links visible to them. Listing needs only access to the project,\nnot permission to edit it.",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "bucketId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
             "type": "integer"
           }
         }
@@ -13675,6 +13873,76 @@
         "type": "object"
       },
       "bodyRequired": true
+    },
+    {
+      "operationId": "UpdateDoor",
+      "tag": "Dock",
+      "method": "PUT",
+      "path": "/{accountId}/dock/doors/{doorId}",
+      "doc": "Update an external link\nA partial update: every field is optional, and those left out keep their\nvalues. Omit `door` entirely to change only `visible_to_clients`; omit\n`visible_to_clients` to keep the current visibility. An unusable `url` is a\n422 with Rails' default error body, as for CreateDoor. Needs permission to\nedit the project.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "doorId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "door": {
+            "properties": {
+              "description": {
+                "description": "Rich-text (HTML) description shown beneath the title.",
+                "type": "string"
+              },
+              "service": {
+                "description": "Short identifier for the external service, as for CreateDoor.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Name shown in the External links section.",
+                "type": "string"
+              },
+              "url": {
+                "description": "The address the link points to.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "visible_to_clients": {
+            "description": "Whether the project's clients can see the external link. Omitted keeps\nthe current visibility.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "operationId": "UpdateFolder",

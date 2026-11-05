@@ -73,6 +73,7 @@ import { TemplatesService } from "./generated/services/templates.js";
 import { LineupService } from "./generated/services/lineup.js";
 import { TodolistGroupsService } from "./generated/services/todolist-groups.js";
 import { ToolsService } from "./generated/services/tools.js";
+import { DoorsService } from "./generated/services/doors.js";
 import { TimesheetsService } from "./generated/services/timesheets.js";
 import { TimelineService } from "./generated/services/timeline.js";
 import { EverythingService } from "./generated/services/everything.js";
@@ -218,6 +219,8 @@ export interface BasecampClient extends RawClient {
   readonly todolistGroups: TodolistGroupsService;
   /** Tools service - manage project dock tools */
   readonly tools: ToolsService;
+  /** Doors service - manage a project's external links (dock doors) */
+  readonly doors: DoorsService;
   /** Timesheets service - get timesheet data */
   readonly timesheets: TimesheetsService;
   /** Timeline service - get project timeline */
@@ -278,7 +281,7 @@ export interface BasecampClientOptions {
 }
 
 export const VERSION = "0.34.0";
-export const API_VERSION = "2026-10-30";
+export const API_VERSION = "2026-11-05";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
 /**
@@ -532,6 +535,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("lineup", () => new LineupService(client, hooks, fetchPage, maxPages));
   defineService("todolistGroups", () => new TodolistGroupsService(client, hooks, fetchPage, maxPages));
   defineService("tools", () => new ToolsService(client, hooks, fetchPage, maxPages));
+  defineService("doors", () => new DoorsService(client, hooks, fetchPage, maxPages));
   defineService("timesheets", () => new TimesheetsService(client, hooks, fetchPage, maxPages));
   defineService("timeline", () => new TimelineService(client, hooks, fetchPage, maxPages));
   defineService("everything", () => new EverythingService(client, hooks, fetchPage, maxPages));
@@ -925,6 +929,7 @@ export function normalizeUrlPath(url: string): string {
     recordings: "{recordingId}",
     comments: "{commentId}",
     tools: "{toolId}",  // dock/tools/{toolId}
+    doors: "{doorId}",  // dock/doors/{doorId}
     documents: "{documentId}",
     cloud_files: "{cloudFileId}",
     google_documents: "{googleDocumentId}",
@@ -959,7 +964,7 @@ export function normalizeUrlPath(url: string): string {
   // override the placeholder from the default idMapping. This handles cases like
   // /buckets/{id}/webhooks → {bucketId} vs /buckets/{id}/timeline → {projectId}.
   const contextOverrides: Record<string, Record<string, string>> = {
-    buckets: { webhooks: "{bucketId}", categories: "{bucketId}" },
+    buckets: { webhooks: "{bucketId}", categories: "{bucketId}", dock: "{bucketId}" },
   };
 
   // Build normalized path by replacing IDs and dates based on context

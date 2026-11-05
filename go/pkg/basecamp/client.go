@@ -98,6 +98,7 @@ type AccountClient struct {
 	search                *SearchService
 	templates             *TemplatesService
 	tools                 *ToolsService
+	doors                 *DoorsService
 	lineup                *LineupService
 	subscriptions         *SubscriptionsService
 	bookmarks             *BookmarksService
@@ -1470,6 +1471,16 @@ func (ac *AccountClient) Tools() *ToolsService {
 		ac.tools = NewToolsService(ac)
 	}
 	return ac.tools
+}
+
+// Doors returns the DoorsService for external link (door) operations.
+func (ac *AccountClient) Doors() *DoorsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.doors == nil {
+		ac.doors = NewDoorsService(ac)
+	}
+	return ac.doors
 }
 
 // Lineup returns the LineupService for lineup marker operations.

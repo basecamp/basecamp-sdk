@@ -230,6 +230,7 @@ not_grouped:
   - CreateCardStep
   - CreateChatbot
   - CreateCloudFile
+  - CreateDoor
   - CreateEmbed
   - CreateEventBoost
   - CreateFolder
@@ -256,6 +257,7 @@ not_grouped:
   - DeleteBubbleUp
   - DeleteCampfireLine
   - DeleteChatbot
+  - DeleteDoor
   - DeleteFolder
   - DeleteLineupMarker
   - DeleteMessageType
@@ -290,6 +292,7 @@ not_grouped:
   - GetClientCorrespondence
   - GetClientReply
   - GetCloudFile
+  - GetDoor
   - GetEmbed
   - GetEverythingCheckins
   - GetEverythingComments
@@ -353,6 +356,7 @@ not_grouped:
   - ListClientApprovals
   - ListClientCorrespondences
   - ListClientReplies
+  - ListDoors
   - ListEventBoosts
   - ListFolders
   - ListForwardReplies
@@ -411,6 +415,7 @@ not_grouped:
   - UpdateCardStep
   - UpdateChatbot
   - UpdateCloudFile
+  - UpdateDoor
   - UpdateFolder
   - UpdateGaugeNeedle
   - UpdateGoogleDocument

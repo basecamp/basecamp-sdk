@@ -499,6 +499,18 @@ class CreateDocumentRequestContent(TypedDict):
     visible_to_clients: NotRequired[bool]
 
 
+class CreateDoorPayload(TypedDict):
+    description: NotRequired[str]
+    service: str
+    title: NotRequired[str]
+    url: str
+
+
+class CreateDoorRequestContent(TypedDict):
+    door: CreateDoorPayload
+    visible_to_clients: NotRequired[bool]
+
+
 class CreateEmbedRequestContent(TypedDict):
     url: str
 
@@ -738,6 +750,26 @@ class Document(TypedDict):
     inherits_status: bool
     parent: RecordingParent
     position: NotRequired[int]
+    status: str
+    subscription_url: NotRequired[str]
+    title: str
+    type: str
+    updated_at: str
+    url: str
+    visible_to_clients: bool
+
+
+class Door(TypedDict):
+    app_url: str
+    bookmark_url: NotRequired[str]
+    bucket: RecordingBucket
+    created_at: str
+    creator: Person
+    description: NotRequired[str]
+    id: int
+    inherits_status: bool
+    position: NotRequired[int]
+    service: DoorService
     status: str
     subscription_url: NotRequired[str]
     title: str
@@ -2389,6 +2421,18 @@ class UpdateCloudFileRequestContent(TypedDict):
 
 class UpdateCommentRequestContent(TypedDict):
     content: str
+
+
+class UpdateDoorPayload(TypedDict):
+    description: NotRequired[str]
+    service: NotRequired[str]
+    title: NotRequired[str]
+    url: NotRequired[str]
+
+
+class UpdateDoorRequestContent(TypedDict):
+    door: NotRequired[UpdateDoorPayload]
+    visible_to_clients: NotRequired[bool]
 
 
 class UpdateFolderRequestContent(TypedDict):

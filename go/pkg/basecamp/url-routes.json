@@ -332,6 +332,24 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{bucketId}/dock/doors",
+      "resource": "Dock",
+      "operations": {
+        "GET": "ListDoors",
+        "POST": "CreateDoor"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/buckets/{bucketId}/dock/tools",
       "resource": "Dock",
       "operations": {
@@ -1004,6 +1022,25 @@
           "type": "string"
         },
         "commentId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/dock/doors/{doorId}",
+      "resource": "Dock",
+      "operations": {
+        "DELETE": "DeleteDoor",
+        "GET": "GetDoor",
+        "PUT": "UpdateDoor"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "doorId": {
           "role": "recording",
           "type": "int64"
         }

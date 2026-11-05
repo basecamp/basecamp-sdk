@@ -52,7 +52,7 @@ use basecamp.traits#basecampClearable
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-10-30"
+  version: "2026-11-05"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -282,6 +282,11 @@ service Basecamp {
     EnableTool,
     DisableTool,
     RepositionTool,
+    ListDoors,
+    GetDoor,
+    CreateDoor,
+    UpdateDoor,
+    DeleteDoor,
     ListLineupMarkers,
     CreateLineupMarker,
     UpdateLineupMarker,
@@ -8978,6 +8983,63 @@ structure DoorService {
   supporting_text: String
 }
 
+// ===== Door (External Link) Shapes =====
+
+long DoorId
+
+list DoorList {
+  member: Door
+}
+
+/// An external link (`Door` recording), as ListDoors, GetDoor, CreateDoor and
+/// UpdateDoor render it: the shared recording envelope plus the outside `url`,
+/// the `service` struct and `description`. Docked, so it carries no `parent`.
+structure Door {
+  @required
+  id: DoorId
+  @required
+  status: String
+  @required
+  visible_to_clients: Boolean
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  updated_at: ISO8601Timestamp
+  @required
+  title: String
+  @required
+  inherits_status: Boolean
+  @required
+  type: String
+
+  /// The external link's outside address (e.g. the Figma URL) — NOT this
+  /// record's API URL. The door partial renders the shared recording partial
+  /// and then `json.(recording.recordable, :url, :service, :description)`,
+  /// which overwrites the recording's url key. `app_url` is still this record's
+  /// Basecamp URL (a redirector to the outside address).
+  @required
+  url: String
+  @required
+  app_url: String
+  bookmark_url: String
+  subscription_url: String
+
+  /// Ordinal position within the project's External links section.
+  position: Integer
+
+  @required
+  bucket: RecordingBucket
+  @required
+  creator: Person
+
+  /// The recognized external service the link points to.
+  @required
+  service: DoorService
+
+  /// Rich-text (HTML) description shown beneath the link.
+  description: String
+}
+
 // =============================================================================
 // BATCH 9 - Checkins (Questionnaires, Questions, Answers)
 // =============================================================================
@@ -10334,6 +10396,210 @@ structure RepositionToolInput {
 }
 
 structure RepositionToolOutput {}
+
+// ===== Door (External Link) Operations =====
+//
+// An external link (historically a "door") is a dock tool pointing at an
+// outside address: a Figma file, a Dropbox folder, a GitHub repository. These
+// five return its full shape (Door: the outside `url`, the `service` struct and
+// `description`). The generic dock-tool operations (GetTool, UpdateTool,
+// DeleteTool) also reach a door, but return the plain recording envelope.
+//
+// The bucket-scoped GET /{accountId}/buckets/{bucketId}/dock/doors/{doorId} is
+// NOT modelled and never will be: it is a 302 redirector to the door's outside
+// URL, for people. GetDoor is the flat /dock/doors/{doorId} JSON resource. See
+// spec/api-gaps/external-links-doors.md.
+
+/// List the active external links in a project
+/// They come in the order they appear in the project's External links section.
+/// Not paginated: a project has a handful at most. Clients see only the
+/// external links visible to them. Listing needs only access to the project,
+/// not permission to edit it.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/dock/doors.json")
+operation ListDoors {
+  input: ListDoorsInput
+  output: ListDoorsOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListDoorsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+}
+
+structure ListDoorsOutput {
+  doors: DoorList
+}
+
+/// Get an external link by id
+/// A door hidden from a client, an unknown id, or the id of a recording that is
+/// not a door is a 404.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/dock/doors/{doorId}")
+operation GetDoor {
+  input: GetDoorInput
+  output: GetDoorOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure GetDoorInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  doorId: DoorId
+}
+
+structure GetDoorOutput {
+  door: Door
+}
+
+/// Create an external link in a project
+/// It goes at the end of the project's External links section. The link's
+/// fields go under the `door` key and `visible_to_clients` sits beside it.
+/// Omitting `visible_to_clients` keeps the link private to the team, whatever
+/// the visibility of the project's other tools; a client caller always creates
+/// a client-visible link. An unusable `url` (e.g. a `javascript:` address) is a
+/// 422 with Rails' default error body, which names no field. Needs permission
+/// to edit the project. The `door[image]`
+/// thumbnail is multipart-only and not modelled.
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/dock/doors.json", code: 201)
+operation CreateDoor {
+  input: CreateDoorInput
+  output: CreateDoorOutput
+  errors: [ValidationError, NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateDoorInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  /// The external link's fields. bc3 reads them with
+  /// `params.require(:door)`, so the wrapper is required.
+  @required
+  door: CreateDoorPayload
+
+  /// Whether the project's clients can see the external link. Omitted means
+  /// false: the link is private to the team. A client caller always creates a
+  /// client-visible link regardless of what is sent.
+  visible_to_clients: Boolean
+}
+
+structure CreateDoorPayload {
+  /// Short identifier for the external service: figma, dropbox, google_drive,
+  /// github, notion, trello, slack, zoom, airtable, jira, miro, … or `other`
+  /// for a generic link.
+  @required
+  service: String
+
+  /// The address the link points to. Supply an HTTP or HTTPS URL; a value
+  /// without a scheme is prefixed with `https://`.
+  @required
+  url: String
+
+  /// Name shown in the External links section. Defaults to "Untitled".
+  title: String
+
+  /// Rich-text (HTML) description shown beneath the title.
+  description: String
+}
+
+structure CreateDoorOutput {
+  door: Door
+}
+
+/// Update an external link
+/// A partial update: every field is optional, and those left out keep their
+/// values. Omit `door` entirely to change only `visible_to_clients`; omit
+/// `visible_to_clients` to keep the current visibility. An unusable `url` is a
+/// 422 with Rails' default error body, as for CreateDoor. Needs permission to
+/// edit the project.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/dock/doors/{doorId}")
+operation UpdateDoor {
+  input: UpdateDoorInput
+  output: UpdateDoorOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure UpdateDoorInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  doorId: DoorId
+
+  /// The fields to change. Omit to change only `visible_to_clients`.
+  door: UpdateDoorPayload
+
+  /// Whether the project's clients can see the external link. Omitted keeps
+  /// the current visibility.
+  visible_to_clients: Boolean
+}
+
+structure UpdateDoorPayload {
+  /// Short identifier for the external service, as for CreateDoor.
+  service: String
+
+  /// The address the link points to.
+  url: String
+
+  /// Name shown in the External links section.
+  title: String
+
+  /// Rich-text (HTML) description shown beneath the title.
+  description: String
+}
+
+structure UpdateDoorOutput {
+  door: Door
+}
+
+/// Delete an external link (returns 204 No Content)
+/// Its status becomes "deleted" and it leaves the project's External links section. It does not
+/// go to the trash: Basecamp permanently destroys it about five days later.
+/// Needs permission to edit the project.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/dock/doors/{doorId}", code: 204)
+operation DeleteDoor {
+  input: DeleteDoorInput
+  output: DeleteDoorOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure DeleteDoorInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  doorId: DoorId
+}
+
+structure DeleteDoorOutput {}
 
 // ===== Lineup Marker Operations =====
 
