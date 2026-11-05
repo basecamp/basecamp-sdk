@@ -225,6 +225,8 @@ final class RecordingSummaryTests: XCTestCase {
             ] as [String: Any],
             "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
             "creator": ["id": 1, "name": "Test User"] as [String: Any],
+            "description": "", "description_attachments": [] as [Any],
+            "completion_subscribers": [] as [Any],
             "assignees": [] as [Any],
         ]
         let body = try JSONSerialization.data(withJSONObject: todo)
