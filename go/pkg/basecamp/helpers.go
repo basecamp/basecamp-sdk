@@ -415,9 +415,10 @@ func ptr[T any](v T) *T {
 // same length, so the SDK hands callers [] where the API sent [] and, paired
 // with an omitzero tag, marshals it back as [].
 //
-// Converters build every optional list through this one helper rather than
-// guarding with len(x) > 0, which collapsed [] to nil (and then to null, or a
-// dropped key, on marshal).
+// Converters whose element conversion is a plain function use this helper;
+// the few with inline loop bodies guard with x != nil instead. Neither guards
+// with len(x) > 0, which collapsed [] to nil (and then to null, or a dropped
+// key, on marshal). empty_lists_test.go holds every converter to this.
 func mapSlice[G, T any](in []G, f func(G) T) []T {
 	if in == nil {
 		return nil

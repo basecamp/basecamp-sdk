@@ -255,11 +255,22 @@ func TestConvertersKeepServerSentEmptyListsEmpty(t *testing.T) {
 			}
 			for _, path := range paths {
 				fv, ok := fieldByJSONPath(reflect.ValueOf(out), path)
-				if !ok || fv.Kind() != reflect.Slice {
+				if !ok {
 					continue // the SDK type doesn't carry this list under the API's key
 				}
-				checked++
 				key := strings.Join(path, ".")
+				if fv.Kind() == reflect.Pointer && fv.Type().Elem().Kind() == reflect.Slice {
+					checked++
+					if fv.IsNil() {
+						t.Errorf("%q was [] from the API but converted to a nil pointer", key)
+						continue
+					}
+					fv = fv.Elem()
+				} else if fv.Kind() == reflect.Slice {
+					checked++
+				} else {
+					continue
+				}
 				if fv.IsNil() {
 					t.Errorf("%q was [] from the API but converted to nil", key)
 				}
@@ -269,10 +280,13 @@ func TestConvertersKeepServerSentEmptyListsEmpty(t *testing.T) {
 			}
 		})
 	}
-	// Guards against the sweep passing vacuously (fixtures not reaching the
-	// converters, or every key mismatching).
+	// Guards against the sweep passing vacuously or losing reach: the floor is
+	// the count this sweep reached when written, so a new list field raises
+	// the count and a fixture or key that stops reaching a converter fails.
+	// Raise the floor when you add lists.
+	const minChecked = 87
 	t.Logf("checked %d list fields across %d converters", checked, len(emptyListCases()))
-	if checked < 70 {
+	if checked < minChecked {
 		t.Errorf("sweep checked only %d list fields; expected the converters' lists to be reached", checked)
 	}
 }

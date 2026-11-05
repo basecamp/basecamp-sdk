@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -61,8 +62,7 @@ func TestExportedStructFieldsHaveSnakeCaseJSONTags(t *testing.T) {
 		t.Fatal(err)
 	}
 	fset := token.NewFileSet()
-	structs, fields := 0, 0
-	seen := map[string]bool{}
+	var parsed []*ast.File
 	for _, file := range files {
 		if strings.HasSuffix(file, "_test.go") {
 			continue
@@ -71,6 +71,25 @@ func TestExportedStructFieldsHaveSnakeCaseJSONTags(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		parsed = append(parsed, af)
+	}
+	// Struct types declared here, so an untagged embedded field can be told
+	// apart: encoding/json flattens an embedded struct into its parent, but
+	// encodes any other embedded type under its Go type name.
+	localStructs := map[string]bool{}
+	for _, af := range parsed {
+		ast.Inspect(af, func(n ast.Node) bool {
+			if ts, ok := n.(*ast.TypeSpec); ok {
+				if _, ok := ts.Type.(*ast.StructType); ok {
+					localStructs[ts.Name.Name] = true
+				}
+			}
+			return true
+		})
+	}
+	structs, fields := 0, 0
+	seen := map[string]bool{}
+	for _, af := range parsed {
 		ast.Inspect(af, func(n ast.Node) bool {
 			ts, ok := n.(*ast.TypeSpec)
 			if !ok || !ts.Name.IsExported() {
@@ -87,7 +106,8 @@ func TestExportedStructFieldsHaveSnakeCaseJSONTags(t *testing.T) {
 			structs++
 			for _, f := range st.Fields.List {
 				if len(f.Names) == 0 {
-					continue // embedded: encoding/json flattens it into the parent
+					checkEmbeddedJSONField(t, fset, ts.Name.Name, f, localStructs)
+					continue
 				}
 				for _, name := range f.Names {
 					if !name.IsExported() {
@@ -118,5 +138,36 @@ func TestExportedStructFieldsHaveSnakeCaseJSONTags(t *testing.T) {
 	t.Logf("checked %d fields across %d exported structs", fields, structs)
 	if structs < 100 {
 		t.Errorf("checked only %d structs; is the test running in the package directory?", structs)
+	}
+}
+
+// checkEmbeddedJSONField holds an embedded field to the same rule: a tagged
+// one is encoded under its tag, which must be snake_case; an untagged one is
+// flattened only when it is a struct, so anything else needs a tag. An
+// embedded type from another package can't be resolved from source here and
+// has to carry a tag (or json:"-") to pass.
+func checkEmbeddedJSONField(t *testing.T, fset *token.FileSet, typeName string, f *ast.Field, localStructs map[string]bool) {
+	t.Helper()
+	tag := ""
+	if f.Tag != nil {
+		tag = reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("json")
+	}
+	if key, _, _ := strings.Cut(tag, ","); key != "" {
+		if key != "-" && !snakeCaseJSONName.MatchString(key) {
+			t.Errorf("%s: %s embeds a field tagged %q, which is not snake_case", fset.Position(f.Pos()), typeName, key)
+		}
+		return
+	}
+	expr := f.Type
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	ident, ok := expr.(*ast.Ident)
+	switch {
+	case ok && (!ident.IsExported() || localStructs[ident.Name]):
+		// A struct flattens; an unexported non-struct is ignored by encoding/json.
+		return
+	default:
+		t.Errorf("%s: %s embeds %s without a json tag; encoding/json would key it by its Go name", fset.Position(f.Pos()), typeName, types.ExprString(f.Type))
 	}
 }

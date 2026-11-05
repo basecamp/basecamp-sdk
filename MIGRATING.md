@@ -22,9 +22,12 @@ null or a missing key. Absent and null lists are unchanged.
   `Subscription.Subscribers`, `OverdueTodosResponse`'s four lists, a to-do's,
   card's or step's `Assignees`, `Steps` and `CompletionSubscribers`, a card
   table's `Lists`, `Subscribers` and `Wormholes`, a project's or template's
-  `Dock`, and the rest. Response types' list fields are tagged `omitzero`
-  rather than `omitempty`, so `json.Marshal` writes `[]` for them and still
-  leaves out a nil list. Code that tested `len(x) == 0` is unaffected; code
+  `Dock`, and the rest. Resource types' optional list fields are tagged
+  `omitzero` rather than `omitempty`, so `json.Marshal` writes `[]` for them
+  and still leaves out a nil list. Lists that were always written (the page
+  and result wrappers' lists, `Subscription.Subscribers`, the overdue report's
+  buckets) still are: `[]` when the server sent one, `null` when it sent
+  none. Code that tested `len(x) == 0` is unaffected; code
   that tested `x == nil` to mean "empty" now has to test the length.
 - **Go.** The page and result wrappers (`BubbleUpsResult`, every
   `...ListResult`, `ListMeta`, `PersonProgressResult` and the rest) gained

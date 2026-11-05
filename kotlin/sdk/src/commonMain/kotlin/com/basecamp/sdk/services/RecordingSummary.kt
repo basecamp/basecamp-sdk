@@ -285,8 +285,9 @@ internal fun summaryOf(
     bucket = bucket,
     creator = creator,
     // Passed through as read: absent stays null (and is omitted), and a
-    // server-sent `[]` stays `[]`, as Go's `omitzero` keeps it, so the
-    // projection reads the same in every SDK.
+    // server-sent `[]` stays `[]`, as Go's `omitzero` keeps it. TypeScript,
+    // Ruby, Swift and Go read the same; Python and Rust always write the key,
+    // so an absent list reads `[]` there.
     assignees = assignees,
     mentionedPersonIds = mentions,
     content = content,
