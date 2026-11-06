@@ -708,6 +708,12 @@ type CreateClientRequest struct {
 type CreateCloudFileRequestContent struct {
 	Description *string `json:"description,omitempty"`
 
+	// Notify Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+	//
+	// Omit both this and subscriptions to notify nobody. A subscriptions array sent
+	// without notify is read as "custom".
+	Notify *string `json:"notify,omitempty"`
+
 	// Service Short identifier for the external service — "dropbox", "google_doc",
 	// "figma", "other", … Derived from the CloudFile::Service subclass name, so it
 	// is always present. `other` accepts any well-formed HTTPS URL.
@@ -846,6 +852,12 @@ type CreateGoogleDocumentRequestContent struct {
 	// ({"errors": {"document_type": ["is not a valid document type"]}}) rather
 	// than reaching validation.
 	DocumentType string `json:"document_type"`
+
+	// Notify Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+	//
+	// Omit both this and subscriptions to notify nobody. A subscriptions array sent
+	// without notify is read as "custom".
+	Notify *string `json:"notify,omitempty"`
 
 	// Status active|drafted — defaults to drafted
 	Status        *string  `json:"status,omitempty"`
@@ -4972,6 +4984,14 @@ type UpdateChatbotResponseContent = Chatbot
 type UpdateCloudFileRequestContent struct {
 	Description *string `json:"description,omitempty"`
 
+	// Notify Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+	//
+	// Applies only to a drafted cloud file, whose subscribers it recomputes; a
+	// published one ignores it. Omit both this and subscriptions to keep a draft's
+	// current subscribers. A subscriptions array sent without notify is read as
+	// "custom".
+	Notify *string `json:"notify,omitempty"`
+
 	// Service Short identifier for the external service — "dropbox", "google_doc",
 	// "figma", "other", … Derived from the CloudFile::Service subclass name, so it
 	// is always present. `other` accepts any well-formed HTTPS URL.
@@ -5051,6 +5071,14 @@ type UpdateGoogleDocumentRequestContent struct {
 	// ({"errors": {"document_type": ["is not a valid document type"]}}) rather
 	// than reaching validation.
 	DocumentType string `json:"document_type"`
+
+	// Notify Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+	//
+	// Applies only to a drafted Google document, whose subscribers it recomputes; a
+	// published one ignores it. Omit both this and subscriptions to keep a draft's
+	// current subscribers. A subscriptions array sent without notify is read as
+	// "custom".
+	Notify *string `json:"notify,omitempty"`
 
 	// Status active|drafted
 	Status        *string  `json:"status,omitempty"`

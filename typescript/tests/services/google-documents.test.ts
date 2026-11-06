@@ -174,6 +174,24 @@ describe("GoogleDocumentsService", () => {
       expect(received).toMatchObject({ document_type: "doc" });
     });
 
+    it("sends notify, which recomputes a draft's subscribers", async () => {
+      let received: Record<string, unknown> | undefined;
+      server.use(
+        http.put(`${BASE_URL}/google_documents/2002`, async ({ request }) => {
+          received = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(googleDocument);
+        }),
+      );
+
+      await service.updateGoogleDocument(2002, {
+        url: "https://docs.google.com/document/d/abcd1234/edit",
+        documentType: "doc",
+        notify: "default",
+      });
+
+      expect(received?.notify).toBe("default");
+    });
+
     it("throws not_found for a 404 response", async () => {
       server.use(
         http.put(`${BASE_URL}/google_documents/9999`, () =>

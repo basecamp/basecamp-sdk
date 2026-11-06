@@ -3,6 +3,7 @@ import Foundation
 
 public struct CreateCloudFileRequest: Codable, Sendable {
     public var description: String?
+    public var notify: String?
     public let service: String
     public var subscriptions: [Int]?
     public var title: String?
@@ -11,6 +12,7 @@ public struct CreateCloudFileRequest: Codable, Sendable {
 
     public init(
         description: String? = nil,
+        notify: String? = nil,
         service: String,
         subscriptions: [Int]? = nil,
         title: String? = nil,
@@ -18,6 +20,7 @@ public struct CreateCloudFileRequest: Codable, Sendable {
         visibleToClients: Bool? = nil
     ) {
         self.description = description
+        self.notify = notify
         self.service = service
         self.subscriptions = subscriptions
         self.title = title

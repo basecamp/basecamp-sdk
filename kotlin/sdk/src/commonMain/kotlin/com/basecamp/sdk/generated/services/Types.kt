@@ -319,7 +319,8 @@ data class CreateCloudFileBody(
     val title: String? = null,
     val description: String? = null,
     val subscriptions: List<Long>? = null,
-    val visibleToClients: Boolean? = null
+    val visibleToClients: Boolean? = null,
+    val notify: String? = null
 )
 
 /** Request body for UpdateCloudFile. */
@@ -328,7 +329,8 @@ data class UpdateCloudFileBody(
     val service: String,
     val title: String? = null,
     val description: String? = null,
-    val subscriptions: List<Long>? = null
+    val subscriptions: List<Long>? = null,
+    val notify: String? = null
 )
 
 /** Request body for UpdateComment. */
@@ -707,7 +709,8 @@ data class CreateGoogleDocumentBody(
     val description: String? = null,
     val status: String? = null,
     val subscriptions: List<Long>? = null,
-    val visibleToClients: Boolean? = null
+    val visibleToClients: Boolean? = null,
+    val notify: String? = null
 )
 
 /** Request body for UpdateGoogleDocument. */
@@ -717,7 +720,8 @@ data class UpdateGoogleDocumentBody(
     val title: String? = null,
     val description: String? = null,
     val status: String? = null,
-    val subscriptions: List<Long>? = null
+    val subscriptions: List<Long>? = null,
+    val notify: String? = null
 )
 
 /** Request body for UpdateHillChartSettings. */

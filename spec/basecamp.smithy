@@ -3478,6 +3478,12 @@ structure CreateCloudFileInput {
   /// folder inherits the folder's visibility and ignores this. A client caller
   /// always creates client-visible records regardless of what is sent.
   visible_to_clients: Boolean
+
+  /// Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+  ///
+  /// Omit both this and subscriptions to notify nobody. A subscriptions array sent
+  /// without notify is read as "custom".
+  notify: String
 }
 
 structure CreateCloudFileOutput {
@@ -3527,6 +3533,14 @@ structure UpdateCloudFileInput {
   title: CloudFileTitle
   description: CloudFileDescription
   subscriptions: PersonIdList
+
+  /// Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+  ///
+  /// Applies only to a drafted cloud file, whose subscribers it recomputes; a
+  /// published one ignores it. Omit both this and subscriptions to keep a draft's
+  /// current subscribers. A subscriptions array sent without notify is read as
+  /// "custom".
+  notify: String
 }
 
 structure UpdateCloudFileOutput {
@@ -3609,6 +3623,12 @@ structure CreateGoogleDocumentInput {
   /// folder inherits the folder's visibility and ignores this. A client caller
   /// always creates client-visible records regardless of what is sent.
   visible_to_clients: Boolean
+
+  /// Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+  ///
+  /// Omit both this and subscriptions to notify nobody. A subscriptions array sent
+  /// without notify is read as "custom".
+  notify: String
 }
 
 structure CreateGoogleDocumentOutput {
@@ -3662,6 +3682,14 @@ structure UpdateGoogleDocumentInput {
   status: String
 
   subscriptions: PersonIdList
+
+  /// Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+  ///
+  /// Applies only to a drafted Google document, whose subscribers it recomputes; a
+  /// published one ignores it. Omit both this and subscriptions to keep a draft's
+  /// current subscribers. A subscriptions array sent without notify is read as
+  /// "custom".
+  notify: String
 }
 
 structure UpdateGoogleDocumentOutput {

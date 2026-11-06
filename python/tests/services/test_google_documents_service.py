@@ -10,6 +10,7 @@ spelling fails here the same way it would 404 in production.
 
 from __future__ import annotations
 
+import json
 import httpx
 import pytest
 import respx
@@ -72,6 +73,20 @@ class TestGoogleDocuments:
 
         assert result["id"] == 2002
         assert "document_type" in route.calls.last.request.content.decode()
+
+    @respx.mock
+    def test_create_sends_notify_only_when_given(self):
+        """bc3 defaults notify to "custom", so it is the only way to reach "default" or "everyone"."""
+        route = respx.post(f"{BASE}/buckets/2085958500/vaults/3001/google_documents.json").mock(
+            return_value=httpx.Response(201, json=_google_document())
+        )
+        link = {"url": "https://docs.google.com/document/d/abcd1234/edit", "document_type": "doc"}
+
+        _google_documents().create_google_document(bucket_id=2085958500, vault_id=3001, notify="default", **link)
+        _google_documents().create_google_document(bucket_id=2085958500, vault_id=3001, **link)
+
+        assert json.loads(route.calls[0].request.content)["notify"] == "default"
+        assert "notify" not in json.loads(route.calls[1].request.content)
 
     @respx.mock
     def test_create_surfaces_the_document_type_rejection(self):

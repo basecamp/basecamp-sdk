@@ -23,10 +23,14 @@ module Basecamp
       #   when creating directly in the tool's vault — an item created inside a
       #   folder inherits the folder's visibility and ignores this. A client caller
       #   always creates client-visible records regardless of what is sent.
+      # @param notify [String, nil] Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+      #
+      #   Omit both this and subscriptions to notify nobody. A subscriptions array sent
+      #   without notify is read as "custom".
       # @return [Hash] response data
-      def create_google_document(bucket_id:, vault_id:, url:, document_type:, title: nil, description: nil, status: nil, subscriptions: nil, visible_to_clients: nil)
+      def create_google_document(bucket_id:, vault_id:, url:, document_type:, title: nil, description: nil, status: nil, subscriptions: nil, visible_to_clients: nil, notify: nil)
         with_operation(service: "googledocuments", operation: "create_google_document", is_mutation: true, project_id: bucket_id, resource_id: vault_id) do
-          http_post("/buckets/#{bucket_id}/vaults/#{vault_id}/google_documents.json", body: compact_params(url: url, document_type: document_type, title: title, description: description, status: status, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json(operation: "CreateGoogleDocument")
+          http_post("/buckets/#{bucket_id}/vaults/#{vault_id}/google_documents.json", body: compact_params(url: url, document_type: document_type, title: title, description: description, status: status, subscriptions: subscriptions, visible_to_clients: visible_to_clients, notify: notify)).json(operation: "CreateGoogleDocument")
         end
       end
 
@@ -50,10 +54,16 @@ module Basecamp
       # @param description [String, nil] description
       # @param status [String, nil] active|drafted
       # @param subscriptions [Array, nil] subscriptions
+      # @param notify [String, nil] Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+      #
+      #   Applies only to a drafted Google document, whose subscribers it recomputes; a
+      #   published one ignores it. Omit both this and subscriptions to keep a draft's
+      #   current subscribers. A subscriptions array sent without notify is read as
+      #   "custom".
       # @return [Hash] response data
-      def update_google_document(google_document_id:, url:, document_type:, title: nil, description: nil, status: nil, subscriptions: nil)
+      def update_google_document(google_document_id:, url:, document_type:, title: nil, description: nil, status: nil, subscriptions: nil, notify: nil)
         with_operation(service: "googledocuments", operation: "update_google_document", is_mutation: true, resource_id: google_document_id) do
-          http_put("/google_documents/#{google_document_id}", body: compact_params(url: url, document_type: document_type, title: title, description: description, status: status, subscriptions: subscriptions)).json(operation: "UpdateGoogleDocument")
+          http_put("/google_documents/#{google_document_id}", body: compact_params(url: url, document_type: document_type, title: title, description: description, status: status, subscriptions: subscriptions, notify: notify)).json(operation: "UpdateGoogleDocument")
         end
       end
     end

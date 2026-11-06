@@ -815,6 +815,10 @@
           "description": {
             "type": "string"
           },
+          "notify": {
+            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nOmit both this and subscriptions to notify nobody. A subscriptions array sent\nwithout notify is read as \"custom\".",
+            "type": "string"
+          },
           "service": {
             "description": "Short identifier for the external service — \"dropbox\", \"google_doc\",\n\"figma\", \"other\", … Derived from the CloudFile::Service subclass name, so it\nis always present. `other` accepts any well-formed HTTPS URL.",
             "type": "string"
@@ -1334,6 +1338,10 @@
           },
           "document_type": {
             "description": "One of \"doc\", \"sheet\", \"slide\", \"other\". Backed by a Rails enum, so an\nunrecognized value is rejected up front with a field-keyed 422\n({\"errors\": {\"document_type\": [\"is not a valid document type\"]}}) rather\nthan reaching validation.",
+            "type": "string"
+          },
+          "notify": {
+            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nOmit both this and subscriptions to notify nobody. A subscriptions array sent\nwithout notify is read as \"custom\".",
             "type": "string"
           },
           "status": {
@@ -13796,6 +13804,10 @@
           "description": {
             "type": "string"
           },
+          "notify": {
+            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nApplies only to a drafted cloud file, whose subscribers it recomputes; a\npublished one ignores it. Omit both this and subscriptions to keep a draft's\ncurrent subscribers. A subscriptions array sent without notify is read as\n\"custom\".",
+            "type": "string"
+          },
           "service": {
             "description": "Short identifier for the external service — \"dropbox\", \"google_doc\",\n\"figma\", \"other\", … Derived from the CloudFile::Service subclass name, so it\nis always present. `other` accepts any well-formed HTTPS URL.",
             "type": "string"
@@ -14108,6 +14120,10 @@
           },
           "document_type": {
             "description": "One of \"doc\", \"sheet\", \"slide\", \"other\". Backed by a Rails enum, so an\nunrecognized value is rejected up front with a field-keyed 422\n({\"errors\": {\"document_type\": [\"is not a valid document type\"]}}) rather\nthan reaching validation.",
+            "type": "string"
+          },
+          "notify": {
+            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nApplies only to a drafted Google document, whose subscribers it recomputes; a\npublished one ignores it. Omit both this and subscriptions to keep a draft's\ncurrent subscribers. A subscriptions array sent without notify is read as\n\"custom\".",
             "type": "string"
           },
           "status": {

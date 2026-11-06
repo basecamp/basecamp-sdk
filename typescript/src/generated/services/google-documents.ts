@@ -39,6 +39,11 @@ when creating directly in the tool's vault — an item created inside a
 folder inherits the folder's visibility and ignores this. A client caller
 always creates client-visible records regardless of what is sent. */
   visibleToClients?: boolean;
+  /** Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+
+Omit both this and subscriptions to notify nobody. A subscriptions array sent
+without notify is read as "custom". */
+  notify?: string;
 }
 
 /**
@@ -60,6 +65,13 @@ than reaching validation. */
   status?: "active" | "drafted";
   /** Subscriptions */
   subscriptions?: number[];
+  /** Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+
+Applies only to a drafted Google document, whose subscribers it recomputes; a
+published one ignores it. Omit both this and subscriptions to keep a draft's
+current subscribers. A subscriptions array sent without notify is read as
+"custom". */
+  notify?: string;
 }
 
 
@@ -114,6 +126,7 @@ export class GoogleDocumentsService extends BaseService {
             status: req.status,
             subscriptions: req.subscriptions,
             visible_to_clients: req.visibleToClients,
+            notify: req.notify,
           },
         })
     );
@@ -188,6 +201,7 @@ export class GoogleDocumentsService extends BaseService {
             description: req.description,
             status: req.status,
             subscriptions: req.subscriptions,
+            notify: req.notify,
           },
         })
     );

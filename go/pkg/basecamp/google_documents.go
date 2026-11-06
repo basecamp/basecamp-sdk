@@ -72,6 +72,12 @@ type CreateGoogleDocumentRequest struct {
 	// the tool's vault — an item created inside a folder inherits the folder's
 	// visibility. A client caller always creates client-visible records.
 	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
+	// Notify selects who to notify: "default", "everyone", or "custom" (the
+	// people in Subscriptions). nil omits the field.
+	//
+	// Leave both this and Subscriptions nil to notify nobody. A Subscriptions
+	// list sent without Notify is read as "custom".
+	Notify *string `json:"notify,omitempty"`
 }
 
 // UpdateGoogleDocumentRequest is the body for replacing a Google document.
@@ -107,6 +113,14 @@ type UpdateGoogleDocumentRequest struct {
 	// Subscriptions replaces the subscriber list when addressed; omit both this
 	// and notify to leave a draft's subscribers alone.
 	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	// Notify selects who to notify: "default", "everyone", or "custom" (the
+	// people in Subscriptions). nil omits the field.
+	//
+	// It applies only to a drafted Google document, whose subscribers it recomputes;
+	// a published one ignores it. Leave both this and Subscriptions nil to keep
+	// a draft's current subscribers. A Subscriptions list sent without Notify is
+	// read as "custom".
+	Notify *string `json:"notify,omitempty"`
 }
 
 // GoogleDocumentsService handles Google document operations.
@@ -187,6 +201,7 @@ func (s *GoogleDocumentsService) Create(ctx context.Context, bucketID, vaultID i
 		Status:           omitzero(req.Status),
 		Subscriptions:    req.Subscriptions,
 		VisibleToClients: req.VisibleToClients,
+		Notify:           req.Notify,
 	}
 
 	resp, err := s.client.parent.gen.CreateGoogleDocumentWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
@@ -240,6 +255,7 @@ func (s *GoogleDocumentsService) Update(ctx context.Context, googleDocumentID in
 		Description:   omitzero(req.Description),
 		Status:        omitzero(req.Status),
 		Subscriptions: req.Subscriptions,
+		Notify:        req.Notify,
 	}
 
 	resp, err := s.client.parent.gen.UpdateGoogleDocumentWithResponse(ctx, s.client.accountID, googleDocumentID, body)

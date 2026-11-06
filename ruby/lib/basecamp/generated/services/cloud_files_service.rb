@@ -21,10 +21,14 @@ module Basecamp
       #   when creating directly in the tool's vault — an item created inside a
       #   folder inherits the folder's visibility and ignores this. A client caller
       #   always creates client-visible records regardless of what is sent.
+      # @param notify [String, nil] Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+      #
+      #   Omit both this and subscriptions to notify nobody. A subscriptions array sent
+      #   without notify is read as "custom".
       # @return [Hash] response data
-      def create_cloud_file(bucket_id:, vault_id:, url:, service:, title: nil, description: nil, subscriptions: nil, visible_to_clients: nil)
+      def create_cloud_file(bucket_id:, vault_id:, url:, service:, title: nil, description: nil, subscriptions: nil, visible_to_clients: nil, notify: nil)
         with_operation(service: "cloudfiles", operation: "create_cloud_file", is_mutation: true, project_id: bucket_id, resource_id: vault_id) do
-          http_post("/buckets/#{bucket_id}/vaults/#{vault_id}/cloud_files.json", body: compact_params(url: url, service: service, title: title, description: description, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json(operation: "CreateCloudFile")
+          http_post("/buckets/#{bucket_id}/vaults/#{vault_id}/cloud_files.json", body: compact_params(url: url, service: service, title: title, description: description, subscriptions: subscriptions, visible_to_clients: visible_to_clients, notify: notify)).json(operation: "CreateCloudFile")
         end
       end
 
@@ -46,10 +50,16 @@ module Basecamp
       # @param title [String, nil] title
       # @param description [String, nil] description
       # @param subscriptions [Array, nil] subscriptions
+      # @param notify [String, nil] Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+      #
+      #   Applies only to a drafted cloud file, whose subscribers it recomputes; a
+      #   published one ignores it. Omit both this and subscriptions to keep a draft's
+      #   current subscribers. A subscriptions array sent without notify is read as
+      #   "custom".
       # @return [Hash] response data
-      def update_cloud_file(cloud_file_id:, url:, service:, title: nil, description: nil, subscriptions: nil)
+      def update_cloud_file(cloud_file_id:, url:, service:, title: nil, description: nil, subscriptions: nil, notify: nil)
         with_operation(service: "cloudfiles", operation: "update_cloud_file", is_mutation: true, resource_id: cloud_file_id) do
-          http_put("/cloud_files/#{cloud_file_id}", body: compact_params(url: url, service: service, title: title, description: description, subscriptions: subscriptions)).json(operation: "UpdateCloudFile")
+          http_put("/cloud_files/#{cloud_file_id}", body: compact_params(url: url, service: service, title: title, description: description, subscriptions: subscriptions, notify: notify)).json(operation: "UpdateCloudFile")
         end
       end
     end

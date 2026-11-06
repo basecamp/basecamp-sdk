@@ -75,6 +75,21 @@ class CloudFilesServiceTest < Minitest::Test
     assert_equal 1001, result["id"]
   end
 
+  # bc3's Subscribers#find_subscribers defaults notify to "custom", so without it
+  # a caller can only notify the people it names — never "default" or "everyone".
+  def test_create_cloud_file_sends_notify
+    stub_request(:post, "https://3.basecampapi.com/12345/buckets/2085958500/vaults/3001/cloud_files.json")
+      .with(body: hash_including("notify" => "everyone"))
+      .to_return(status: 201, body: cloud_file.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.cloud_files.create_cloud_file(
+      bucket_id: 2085958500, vault_id: 3001,
+      url: "https://www.dropbox.com/s/abcd1234/brand.zip", service: "dropbox", notify: "everyone"
+    )
+
+    assert_equal 1001, result["id"]
+  end
+
   def test_create_cloud_file_surfaces_the_field_keyed_422
     stub_request(:post, "https://3.basecampapi.com/12345/buckets/2085958500/vaults/3001/cloud_files.json")
       .to_return(status: 422, body: { "errors" => { "url" => [ "is not a valid Dropbox url" ] } }.to_json,

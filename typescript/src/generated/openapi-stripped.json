@@ -30722,6 +30722,10 @@
           "visible_to_clients": {
             "type": "boolean",
             "description": "Whether the cloud file is visible to the project's clients. Applies only\nwhen creating directly in the tool's vault — an item created inside a\nfolder inherits the folder's visibility and ignores this. A client caller\nalways creates client-visible records regardless of what is sent."
+          },
+          "notify": {
+            "type": "string",
+            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nOmit both this and subscriptions to notify nobody. A subscriptions array sent\nwithout notify is read as \"custom\"."
           }
         },
         "required": [
@@ -30926,6 +30930,10 @@
           "visible_to_clients": {
             "type": "boolean",
             "description": "Whether the document is visible to the project's clients. Applies only\nwhen creating directly in the tool's vault — an item created inside a\nfolder inherits the folder's visibility and ignores this. A client caller\nalways creates client-visible records regardless of what is sent."
+          },
+          "notify": {
+            "type": "string",
+            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nOmit both this and subscriptions to notify nobody. A subscriptions array sent\nwithout notify is read as \"custom\"."
           }
         },
         "required": [
@@ -39215,6 +39223,10 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          "notify": {
+            "type": "string",
+            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nApplies only to a drafted cloud file, whose subscribers it recomputes; a\npublished one ignores it. Omit both this and subscriptions to keep a draft's\ncurrent subscribers. A subscriptions array sent without notify is read as\n\"custom\"."
           }
         },
         "required": [
@@ -39330,6 +39342,10 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          "notify": {
+            "type": "string",
+            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nApplies only to a drafted Google document, whose subscribers it recomputes; a\npublished one ignores it. Omit both this and subscriptions to keep a draft's\ncurrent subscribers. A subscriptions array sent without notify is read as\n\"custom\"."
           }
         },
         "required": [

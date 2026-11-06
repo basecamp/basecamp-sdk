@@ -133,6 +133,26 @@ describe("CloudFilesService", () => {
       expect(received).not.toHaveProperty("visibleToClients");
     });
 
+    it("sends notify when given and omits it otherwise", async () => {
+      const bodies: Record<string, unknown>[] = [];
+      server.use(
+        http.post(
+          `${BASE_URL}/buckets/2085958500/vaults/3001/cloud_files.json`,
+          async ({ request }) => {
+            bodies.push((await request.json()) as Record<string, unknown>);
+            return HttpResponse.json(cloudFile, { status: 201 });
+          },
+        ),
+      );
+
+      const link = { url: "https://www.dropbox.com/s/abcd1234/brand.zip", service: "dropbox" };
+      await service.createCloudFile(2085958500, 3001, { ...link, notify: "everyone" });
+      await service.createCloudFile(2085958500, 3001, link);
+
+      expect(bodies[0]?.notify).toBe("everyone");
+      expect(bodies[1]).not.toHaveProperty("notify");
+    });
+
     it("refuses the required replace fields before the wire", async () => {
       let called = false;
       server.use(
