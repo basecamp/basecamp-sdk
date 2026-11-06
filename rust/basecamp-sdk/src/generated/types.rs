@@ -1491,6 +1491,29 @@ pub struct CreateProjectRequestContent {
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// The project's color, used for it on calendars: white, red, orange,
+    /// yellow, green, blue, aqua, purple, gray, pink or brown. Omitted, Basecamp
+    /// derives one from the project's name. Basecamp answers a value outside the enum
+    /// with a server error, not a validation error.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// What kind of project it is: `topic` (a regular project, the default),
+    /// `team`, or `company_hq` (the account's Company HQ, at most one per
+    /// account; a second answers 422). BC3's enum also has `guide`, which marks
+    /// a project as a sample nobody can edit afterwards, so it isn't offered.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub purpose: Option<String>,
+    /// invite|employee|team
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub admissions: Option<String>,
+    /// Turn on the project's timesheet. Basecamp ignores this when the caller
+    /// can't use timesheets (the account lacks them, or the caller is a client).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timesheet_enabled: Option<bool>,
+    /// How a wallpaper uploaded later is laid out. UpdateProjectWallpaper
+    /// uploads one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wallpaper_mode: Option<String>,
 }
 
 /// `CreateProjectResponseContent`.
@@ -4616,6 +4639,16 @@ pub struct ProjectConstructionAttributes {
     /// processed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start_date: Option<String>,
+    /// Who can join the new project: invite, employee or team. Basecamp stores this with the construction
+    /// and applies it when the project is built, so a value outside the enum
+    /// isn't refused up front: the construction fails.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub admissions: Option<String>,
+    /// Turn on the new project's timesheet. Basecamp ignores this when the
+    /// caller can't use timesheets (the account lacks them, or the caller is a
+    /// client).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timesheet_enabled: Option<bool>,
 }
 
 /// The account has reached its project limit. Raised by CreateProject and by
@@ -7337,6 +7370,27 @@ pub struct UpdateProjectRequestContent {
     /// wallpaper already attached; UpdateProjectWallpaper uploads one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wallpaper_mode: Option<String>,
+    /// The project's color, used for it on calendars: white, red, orange,
+    /// yellow, green, blue, aqua, purple, gray, pink or brown. An empty string clears
+    /// it, and Basecamp derives one from the project's name again. A value
+    /// outside the enum answers a server error, not a validation error. The
+    /// `color` a project read returns is something else: the caller's own color
+    /// for the project on their home screen, null unless they set one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// What kind of project it is: `topic` (a regular project), `team`, or
+    /// `company_hq` (the account's Company HQ). Changing a `topic` to anything
+    /// else deletes the project's start and end dates. An account has at most
+    /// one `company_hq`; asking for a second answers 422. BC3's enum also has
+    /// `guide`, which marks a project as a sample nobody can edit afterwards,
+    /// so it isn't offered.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub purpose: Option<String>,
+    /// Turn the project's timesheet on or off. Basecamp ignores this when the
+    /// caller can't use timesheets (the account lacks them, or the caller is a
+    /// client).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timesheet_enabled: Option<bool>,
 }
 
 /// `UpdateProjectResponseContent`.

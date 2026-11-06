@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-11-05T15:43:15Z
+# Generated: 2026-11-06T23:09:04Z
 
 require "json"
 require "time"
@@ -3850,7 +3850,7 @@ module Basecamp
     # ProjectConstructionAttributes
     class ProjectConstructionAttributes
       include TypeHelpers
-      attr_accessor :name, :description, :start_date
+      attr_accessor :name, :admissions, :description, :start_date, :timesheet_enabled
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3859,15 +3859,19 @@ module Basecamp
 
       def initialize(data = {})
         @name = data["name"]
+        @admissions = data["admissions"]
         @description = data["description"]
         @start_date = data["start_date"]
+        @timesheet_enabled = parse_boolean(data["timesheet_enabled"])
       end
 
       def to_h
         {
           "name" => @name,
+          "admissions" => @admissions,
           "description" => @description,
           "start_date" => @start_date,
+          "timesheet_enabled" => @timesheet_enabled,
         }.compact
       end
 

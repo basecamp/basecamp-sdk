@@ -118,6 +118,22 @@ type CreateProjectRequest struct {
 	Name string `json:"name"`
 	// Description is an optional project description.
 	Description string `json:"description,omitempty"`
+	// Color is the project's color on calendars: white, red, orange, yellow,
+	// green, blue, aqua, purple, gray, pink or brown. Empty lets Basecamp
+	// derive one from the name. Basecamp answers any other value with a
+	// server error, not a validation error.
+	Color string `json:"color,omitempty"`
+	// Purpose is what kind of project it is: "topic" (a regular project, the
+	// default when empty), "team", or "company_hq" (the account's Company HQ;
+	// an account has at most one, and a second answers 422).
+	Purpose string `json:"purpose,omitempty"`
+	// Admissions specifies access policy (invite, employee, team).
+	Admissions string `json:"admissions,omitempty"`
+	// TimesheetEnabled turns on the project's timesheet. nil omits it.
+	// Basecamp ignores it when the caller can't use timesheets.
+	TimesheetEnabled *bool `json:"timesheet_enabled,omitempty"`
+	// WallpaperMode lays out a wallpaper uploaded later ("fill" or "tile").
+	WallpaperMode string `json:"wallpaper_mode,omitempty"`
 }
 
 // UpdateProjectRequest specifies the parameters for updating a project.
@@ -133,6 +149,19 @@ type UpdateProjectRequest struct {
 	// WallpaperMode lays out the attached wallpaper ("fill" or "tile").
 	// UpdateWallpaper uploads one.
 	WallpaperMode string `json:"wallpaper_mode,omitempty"`
+	// Color sets the project's color on calendars (see CreateProjectRequest).
+	// nil leaves it unchanged; a pointer to "" clears it, and Basecamp
+	// derives one from the name again. The color key in a project read's JSON
+	// is something else, the caller's own color for the project on their
+	// home screen, and Project doesn't expose it.
+	Color *string `json:"color,omitempty"`
+	// Purpose changes what kind of project it is ("topic", "team" or
+	// "company_hq"). Changing a topic to anything else deletes the project's
+	// start and end dates. Empty leaves it unchanged.
+	Purpose string `json:"purpose,omitempty"`
+	// TimesheetEnabled turns the project's timesheet on or off. nil leaves it
+	// unchanged. Basecamp ignores it when the caller can't use timesheets.
+	TimesheetEnabled *bool `json:"timesheet_enabled,omitempty"`
 }
 
 // UpdateProjectWallpaperOptions specifies optional parameters for UpdateWallpaper.
@@ -368,8 +397,13 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 	}
 
 	body := generated.CreateProjectJSONRequestBody{
-		Name:        req.Name,
-		Description: omitzero(req.Description),
+		Name:             req.Name,
+		Description:      omitzero(req.Description),
+		Color:            omitzero(req.Color),
+		Purpose:          omitzero(req.Purpose),
+		Admissions:       omitzero(req.Admissions),
+		TimesheetEnabled: req.TimesheetEnabled,
+		WallpaperMode:    omitzero(req.WallpaperMode),
 	}
 
 	resp, err := s.client.parent.gen.CreateProjectWithResponse(ctx, s.client.accountID, body)
@@ -422,6 +456,11 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 	if req.WallpaperMode != "" {
 		body.WallpaperMode = &req.WallpaperMode
 	}
+	body.Color = req.Color
+	if req.Purpose != "" {
+		body.Purpose = &req.Purpose
+	}
+	body.TimesheetEnabled = req.TimesheetEnabled
 	if req.ScheduleAttributes != nil {
 		sa := generated.ScheduleAttributes{}
 		if req.ScheduleAttributes.StartDate != "" {

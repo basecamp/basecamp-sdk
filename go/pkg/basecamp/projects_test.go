@@ -964,3 +964,99 @@ func TestProjectsService_RemoveLogoForbidden(t *testing.T) {
 		t.Errorf("error = %d/%q, want 403/%q", bcErr.HTTPStatus, bcErr.Code, CodeForbidden)
 	}
 }
+
+// TestProjectsService_CreateProjectFields verifies every optional create field
+// bc3's ProjectOperations#create_project_params permits reaches the wire, and
+// that a request leaving them unset sends none of them.
+func TestProjectsService_CreateProjectFields(t *testing.T) {
+	fixture := loadFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(fixture)
+	})
+
+	on := true
+	_, err := svc.Create(context.Background(), &CreateProjectRequest{
+		Name:             "Launch",
+		Color:            "aqua",
+		Purpose:          "team",
+		Admissions:       "employee",
+		TimesheetEnabled: &on,
+		WallpaperMode:    "tile",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := map[string]any{
+		"name": "Launch", "color": "aqua", "purpose": "team", "admissions": "employee",
+		"timesheet_enabled": true, "wallpaper_mode": "tile",
+	}
+	for key, value := range want {
+		if receivedBody[key] != value {
+			t.Errorf("%s = %v, want %v", key, receivedBody[key], value)
+		}
+	}
+
+	_, err = svc.Create(context.Background(), &CreateProjectRequest{Name: "Launch"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, key := range []string{"description", "color", "purpose", "admissions", "timesheet_enabled", "wallpaper_mode"} {
+		if _, present := receivedBody[key]; present {
+			t.Errorf("expected %q omitted when unset, got %v", key, receivedBody[key])
+		}
+	}
+}
+
+// TestProjectsService_UpdateColorPurposeTimesheet verifies the update fields
+// bc3 permits beyond name, description, admissions, schedule and wallpaper
+// mode: nil omits color and timesheet_enabled, a pointer to "" clears the
+// color, and a pointer to false turns the timesheet off.
+func TestProjectsService_UpdateColorPurposeTimesheet(t *testing.T) {
+	fixture := loadFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(fixture)
+	})
+
+	color, off := "purple", false
+	_, err := svc.Update(context.Background(), 12345, &UpdateProjectRequest{
+		Name: "My Project", Color: &color, Purpose: "company_hq", TimesheetEnabled: &off,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedBody["color"] != "purple" {
+		t.Errorf("color = %v, want purple", receivedBody["color"])
+	}
+	if receivedBody["purpose"] != "company_hq" {
+		t.Errorf("purpose = %v, want company_hq", receivedBody["purpose"])
+	}
+	if value, present := receivedBody["timesheet_enabled"]; !present || value != false {
+		t.Errorf("timesheet_enabled = %v (present %v), want false sent", value, present)
+	}
+
+	cleared := ""
+	_, err = svc.Update(context.Background(), 12345, &UpdateProjectRequest{Name: "My Project", Color: &cleared})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if value, present := receivedBody["color"]; !present || value != "" {
+		t.Errorf("color = %v (present %v), want \"\" sent to clear it", value, present)
+	}
+
+	_, err = svc.Update(context.Background(), 12345, &UpdateProjectRequest{Name: "My Project"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, key := range []string{"color", "purpose", "timesheet_enabled"} {
+		if _, present := receivedBody[key]; present {
+			t.Errorf("expected %q omitted when unset, got %v", key, receivedBody[key])
+		}
+	}
+}

@@ -742,6 +742,23 @@ structure CreateProjectInput {
   @required
   name: ProjectName
   description: ProjectDescription
+  /// The project's color, used for it on calendars: white, red, orange,
+  /// yellow, green, blue, aqua, purple, gray, pink or brown. Omitted, Basecamp
+  /// derives one from the project's name. Basecamp answers a value outside the enum
+  /// with a server error, not a validation error.
+  color: ProjectColor
+  /// What kind of project it is: `topic` (a regular project, the default),
+  /// `team`, or `company_hq` (the account's Company HQ, at most one per
+  /// account; a second answers 422). BC3's enum also has `guide`, which marks
+  /// a project as a sample nobody can edit afterwards, so it isn't offered.
+  purpose: ProjectPurpose
+  admissions: AdmissionsPolicy
+  /// Turn on the project's timesheet. Basecamp ignores this when the caller
+  /// can't use timesheets (the account lacks them, or the caller is a client).
+  timesheet_enabled: Boolean
+  /// How a wallpaper uploaded later is laid out. UpdateProjectWallpaper
+  /// uploads one.
+  wallpaper_mode: WallpaperMode
 }
 
 structure CreateProjectOutput {
@@ -777,6 +794,24 @@ structure UpdateProjectInput {
   /// How the project's wallpaper is laid out. Changes only the layout of a
   /// wallpaper already attached; UpdateProjectWallpaper uploads one.
   wallpaper_mode: WallpaperMode
+  /// The project's color, used for it on calendars: white, red, orange,
+  /// yellow, green, blue, aqua, purple, gray, pink or brown. An empty string clears
+  /// it, and Basecamp derives one from the project's name again. A value
+  /// outside the enum answers a server error, not a validation error. The
+  /// `color` a project read returns is something else: the caller's own color
+  /// for the project on their home screen, null unless they set one.
+  color: ProjectColor
+  /// What kind of project it is: `topic` (a regular project), `team`, or
+  /// `company_hq` (the account's Company HQ). Changing a `topic` to anything
+  /// else deletes the project's start and end dates. An account has at most
+  /// one `company_hq`; asking for a second answers 422. BC3's enum also has
+  /// `guide`, which marks a project as a sample nobody can edit afterwards,
+  /// so it isn't offered.
+  purpose: ProjectPurpose
+  /// Turn the project's timesheet on or off. Basecamp ignores this when the
+  /// caller can't use timesheets (the account lacks them, or the caller is a
+  /// client).
+  timesheet_enabled: Boolean
 }
 
 structure UpdateProjectOutput {
@@ -1071,6 +1106,12 @@ string AdmissionsPolicy
 
 @documentation("fill|tile")
 string WallpaperMode
+
+@documentation("white|red|orange|yellow|green|blue|aqua|purple|gray|pink|brown")
+string ProjectColor
+
+@documentation("topic|team|company_hq")
+string ProjectPurpose
 
 /// The project's wallpaper, included only in single-project responses when attached.
 /// Project lists and home responses omit it.
@@ -9939,6 +9980,16 @@ structure ProjectConstructionAttributes {
   /// Omitted, they are anchored to the week in which the construction is
   /// processed.
   start_date: ISO8601Date
+
+  /// Who can join the new project: invite, employee or team. Basecamp stores this with the construction
+  /// and applies it when the project is built, so a value outside the enum
+  /// isn't refused up front: the construction fails.
+  admissions: AdmissionsPolicy
+
+  /// Turn on the new project's timesheet. Basecamp ignores this when the
+  /// caller can't use timesheets (the account lacks them, or the caller is a
+  /// client).
+  timesheet_enabled: Boolean
 }
 
 structure CreateProjectFromTemplateOutput {
