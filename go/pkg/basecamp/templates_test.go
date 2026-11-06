@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -588,5 +589,45 @@ func TestTemplate_TimestampParsing(t *testing.T) {
 	}
 	if template.CreatedAt.Day() != 28 {
 		t.Errorf("expected day 28, got %d", template.CreatedAt.Day())
+	}
+}
+
+// TemplatesController#status_for_index reads status as active, archived or
+// trashed, and active when it is absent. It reaches the wire only when set,
+// beside page.
+func TestTemplatesService_List_Status(t *testing.T) {
+	cases := map[string]struct {
+		opts       *TemplateListOptions
+		wantStatus string
+		wantPage   string
+	}{
+		"archived":       {opts: &TemplateListOptions{Status: "archived"}, wantStatus: "archived"},
+		"trashed, paged": {opts: &TemplateListOptions{Status: "trashed", Page: 2}, wantStatus: "trashed", wantPage: "2"},
+		"unset":          {opts: &TemplateListOptions{}},
+		"nil options":    {opts: nil},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			var query map[string][]string
+			svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+				query = r.URL.Query()
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`[]`))
+			})
+			if _, err := svc.List(context.Background(), tc.opts); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			_, sent := query["status"]
+			if tc.wantStatus == "" && sent {
+				t.Errorf("expected no status param, got %q", query["status"])
+			}
+			if tc.wantStatus != "" && strings.Join(query["status"], "|") != tc.wantStatus {
+				t.Errorf("expected status=%q, got %q", tc.wantStatus, query["status"])
+			}
+			if got := strings.Join(query["page"], "|"); got != tc.wantPage {
+				t.Errorf("expected page=%q, got %q", tc.wantPage, got)
+			}
+		})
 	}
 }
