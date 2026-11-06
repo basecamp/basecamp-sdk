@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -200,11 +198,7 @@ func (s *GaugesService) List(ctx context.Context, opts *GaugeListOptions) (resul
 
 	var params *generated.ListGaugesParams
 	if opts != nil && len(opts.BucketIDs) > 0 {
-		ids := make([]string, len(opts.BucketIDs))
-		for i, id := range opts.BucketIDs {
-			ids[i] = strconv.FormatInt(id, 10)
-		}
-		params = &generated.ListGaugesParams{BucketIds: ptr(strings.Join(ids, ","))}
+		params = &generated.ListGaugesParams{BucketIds: joinInt64s(opts.BucketIDs)}
 	}
 	if opts != nil && opts.Page > 0 {
 		if params == nil {
