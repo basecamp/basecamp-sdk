@@ -47,9 +47,14 @@ null or a missing key. Absent and null lists are unchanged.
 
 `CreateCloudFile`, `UpdateCloudFile`, `CreateGoogleDocument` and
 `UpdateGoogleDocument` take an optional `notify` (`"default"`, `"everyone"` or
-`"custom"`). Leaving it out sends nothing, so behaviour is unchanged. The new
-member is source-compatible for callers who name their fields, with three
-exceptions:
+`"custom"`). `"default"` reaches the project's subscribers without clients,
+`"everyone"` everyone on the project who can see the item, and both leave out
+the caller; `"custom"` reaches the people in `subscriptions`. A caller that
+doesn't set `notify` sends the same request as before: on a create, no
+`subscriptions` either still notifies nobody, and `subscriptions` alone still
+reads as `"custom"`; on an update, a draft with neither keeps its subscribers.
+The new member is source-compatible for callers who name their fields, with
+three exceptions:
 
 - **Rust.** The four generated `...RequestContent` structs gain
   `notify: Option<String>`. An exhaustive struct literal no longer compiles:
