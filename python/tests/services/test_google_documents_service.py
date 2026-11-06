@@ -11,6 +11,7 @@ spelling fails here the same way it would 404 in production.
 from __future__ import annotations
 
 import json
+
 import httpx
 import pytest
 import respx
