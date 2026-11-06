@@ -389,6 +389,69 @@ class TestProjectWallpaper:
 
         assert json.loads(route.calls[0].request.content)["wallpaper_mode"] == "tile"
 
+    @respx.mock
+    def test_update_project_sends_color_purpose_and_timesheet_enabled(self):
+        route = respx.put(f"{BASE}/projects/42").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": 42,
+                    "name": "My Project",
+                    "status": "active",
+                    "created_at": "2024-01-15T10:00:00Z",
+                    "updated_at": "2024-01-15T10:00:00Z",
+                    "url": f"{BASE}/projects/42.json",
+                    "app_url": "https://3.basecamp.com/12345/projects/42",
+                },
+            )
+        )
+
+        _, account = make_account()
+        account.projects.update(project_id=42, name="My Project", color="", purpose="team", timesheet_enabled=False)
+
+        assert json.loads(route.calls[0].request.content) == {
+            "name": "My Project",
+            "color": "",
+            "purpose": "team",
+            "timesheet_enabled": False,
+        }
+
+    @respx.mock
+    def test_create_project_sends_color_purpose_admissions_timesheet_and_wallpaper_mode(self):
+        route = respx.post(f"{BASE}/projects.json").mock(
+            return_value=httpx.Response(
+                201,
+                json={
+                    "id": 42,
+                    "name": "Launch",
+                    "status": "active",
+                    "created_at": "2024-01-15T10:00:00Z",
+                    "updated_at": "2024-01-15T10:00:00Z",
+                    "url": f"{BASE}/projects/42.json",
+                    "app_url": "https://3.basecamp.com/12345/projects/42",
+                },
+            )
+        )
+
+        _, account = make_account()
+        account.projects.create(
+            name="Launch",
+            color="aqua",
+            purpose="topic",
+            admissions="employee",
+            timesheet_enabled=True,
+            wallpaper_mode="tile",
+        )
+
+        assert json.loads(route.calls[0].request.content) == {
+            "name": "Launch",
+            "color": "aqua",
+            "purpose": "topic",
+            "admissions": "employee",
+            "timesheet_enabled": True,
+            "wallpaper_mode": "tile",
+        }
+
     @pytest.mark.asyncio
     @respx.mock
     async def test_async_update_project_wallpaper_sends_mode(self):

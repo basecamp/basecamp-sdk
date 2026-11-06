@@ -35,6 +35,23 @@ export interface CreateProjectRequest {
   name: string;
   /** Rich text description (HTML) */
   description?: string;
+  /** The project's color, used for it on calendars. Omitted, Basecamp derives
+one from the project's name. Basecamp answers a value outside the enum
+with a server error, not a validation error. */
+  color?: string;
+  /** What kind of project it is: `topic` (a regular project, the default),
+`team`, or `company_hq` (the account's Company HQ, at most one per
+account; a second answers 422). BC3's enum also has `guide`, which marks
+a project as a sample nobody can edit afterwards, so it isn't offered. */
+  purpose?: string;
+  /** Admissions */
+  admissions?: "invite" | "employee" | "team";
+  /** Turn on the project's timesheet. Basecamp ignores this when the caller
+can't use timesheets (the account lacks them, or the caller is a client). */
+  timesheetEnabled?: boolean;
+  /** How a wallpaper uploaded later is laid out. UpdateProjectWallpaper
+uploads one. */
+  wallpaperMode?: string;
 }
 
 /**
@@ -52,6 +69,23 @@ export interface UpdateProjectRequest {
   /** How the project's wallpaper is laid out. Changes only the layout of a
 wallpaper already attached; UpdateProjectWallpaper uploads one. */
   wallpaperMode?: string;
+  /** The project's color, used for it on calendars. An empty string clears
+it, and Basecamp derives one from the project's name again. A value
+outside the enum answers a server error, not a validation error. The
+`color` a project read returns is something else: the caller's own color
+for the project on their home screen, null unless they set one. */
+  color?: string;
+  /** What kind of project it is: `topic` (a regular project), `team`, or
+`company_hq` (the account's Company HQ). Changing a `topic` to anything
+else deletes the project's start and end dates. An account has at most
+one `company_hq`; asking for a second answers 422. BC3's enum also has
+`guide`, which marks a project as a sample nobody can edit afterwards,
+so it isn't offered. */
+  purpose?: string;
+  /** Turn the project's timesheet on or off. Basecamp ignores this when the
+caller can't use timesheets (the account lacks them, or the caller is a
+client). */
+  timesheetEnabled?: boolean;
 }
 
 /**
@@ -154,6 +188,11 @@ export class ProjectsService extends BaseService {
           body: {
             name: req.name,
             description: req.description,
+            color: req.color,
+            purpose: req.purpose,
+            admissions: req.admissions,
+            timesheet_enabled: req.timesheetEnabled,
+            wallpaper_mode: req.wallpaperMode,
           },
         })
     );
@@ -225,6 +264,9 @@ export class ProjectsService extends BaseService {
             admissions: req.admissions,
             schedule_attributes: req.scheduleAttributes,
             wallpaper_mode: req.wallpaperMode,
+            color: req.color,
+            purpose: req.purpose,
+            timesheet_enabled: req.timesheetEnabled,
           },
         })
     );

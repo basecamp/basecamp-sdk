@@ -590,3 +590,52 @@ func TestTemplate_TimestampParsing(t *testing.T) {
 		t.Errorf("expected day 28, got %d", template.CreatedAt.Day())
 	}
 }
+
+// TestTemplatesService_CreateProjectAdmissionsTimesheet verifies admissions and
+// timesheet_enabled ride under the "project" envelope beside start_date, as
+// bc3's ProjectOperations#project_from_template_params permits, and stay off
+// the wire when unset.
+func TestTemplatesService_CreateProjectAdmissionsTimesheet(t *testing.T) {
+	fixture := loadTemplatesFixture(t, "project_construction.json")
+
+	var receivedBody map[string]any
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(fixture)
+	})
+
+	on := true
+	_, err := svc.CreateProject(context.Background(), 2085958507, "Marketing Campaign", "",
+		&CreateProjectOptions{Admissions: "team", TimesheetEnabled: &on})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	project, ok := receivedBody["project"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected params nested under \"project\" envelope, got body: %v", receivedBody)
+	}
+	if project["admissions"] != "team" {
+		t.Errorf("project.admissions = %v, want team", project["admissions"])
+	}
+	if project["timesheet_enabled"] != true {
+		t.Errorf("project.timesheet_enabled = %v, want true", project["timesheet_enabled"])
+	}
+	for _, key := range []string{"admissions", "timesheet_enabled"} {
+		if _, flat := receivedBody[key]; flat {
+			t.Errorf("expected no top-level %q; params must be nested under \"project\"", key)
+		}
+	}
+
+	_, err = svc.CreateProject(context.Background(), 2085958507, "Marketing Campaign", "", &CreateProjectOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	project = receivedBody["project"].(map[string]any)
+	for _, key := range []string{"admissions", "timesheet_enabled"} {
+		if _, present := project[key]; present {
+			t.Errorf("expected %q omitted when unset, got %v", key, project[key])
+		}
+	}
+}

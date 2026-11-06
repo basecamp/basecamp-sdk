@@ -72,6 +72,11 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
             httpPost("/projects.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.color?.let { put("color", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.purpose?.let { put("purpose", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.admissions?.let { put("admissions", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.timesheetEnabled?.let { put("timesheet_enabled", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.wallpaperMode?.let { put("wallpaper_mode", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Project>(body)
@@ -119,6 +124,9 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
                 body.admissions?.let { put("admissions", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.scheduleAttributes?.let { put("schedule_attributes", it) }
                 body.wallpaperMode?.let { put("wallpaper_mode", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.color?.let { put("color", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.purpose?.let { put("purpose", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.timesheetEnabled?.let { put("timesheet_enabled", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Project>(body)
