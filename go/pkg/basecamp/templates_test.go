@@ -601,6 +601,7 @@ func TestTemplatesService_List_Status(t *testing.T) {
 		wantStatus string
 		wantPage   string
 	}{
+		"active":         {opts: &TemplateListOptions{Status: "active"}, wantStatus: "active"},
 		"archived":       {opts: &TemplateListOptions{Status: "archived"}, wantStatus: "archived"},
 		"trashed, paged": {opts: &TemplateListOptions{Status: "trashed", Page: 2}, wantStatus: "trashed", wantPage: "2"},
 		"unset":          {opts: &TemplateListOptions{}},
