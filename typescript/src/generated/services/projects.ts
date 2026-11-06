@@ -35,8 +35,9 @@ export interface CreateProjectRequest {
   name: string;
   /** Rich text description (HTML) */
   description?: string;
-  /** The project's color, used for it on calendars. Omitted, Basecamp derives
-one from the project's name. Basecamp answers a value outside the enum
+  /** The project's color, used for it on calendars: white, red, orange,
+yellow, green, blue, aqua, purple, gray, pink or brown. Omitted, Basecamp
+derives one from the project's name. Basecamp answers a value outside the enum
 with a server error, not a validation error. */
   color?: string;
   /** What kind of project it is: `topic` (a regular project, the default),
@@ -69,7 +70,8 @@ export interface UpdateProjectRequest {
   /** How the project's wallpaper is laid out. Changes only the layout of a
 wallpaper already attached; UpdateProjectWallpaper uploads one. */
   wallpaperMode?: string;
-  /** The project's color, used for it on calendars. An empty string clears
+  /** The project's color, used for it on calendars: white, red, orange,
+yellow, green, blue, aqua, purple, gray, pink or brown. An empty string clears
 it, and Basecamp derives one from the project's name again. A value
 outside the enum answers a server error, not a validation error. The
 `color` a project read returns is something else: the caller's own color

@@ -30,8 +30,9 @@ module Basecamp
       # Create a new project
       # @param name [String] name
       # @param description [String, nil] description
-      # @param color [String, nil] The project's color, used for it on calendars. Omitted, Basecamp derives
-      #   one from the project's name. Basecamp answers a value outside the enum
+      # @param color [String, nil] The project's color, used for it on calendars: white, red, orange,
+      #   yellow, green, blue, aqua, purple, gray, pink or brown. Omitted, Basecamp
+      #   derives one from the project's name. Basecamp answers a value outside the enum
       #   with a server error, not a validation error.
       # @param purpose [String, nil] What kind of project it is: `topic` (a regular project, the default),
       #   `team`, or `company_hq` (the account's Company HQ, at most one per
@@ -66,7 +67,8 @@ module Basecamp
       # @param schedule_attributes [Hash, nil] schedule attributes
       # @param wallpaper_mode [String, nil] How the project's wallpaper is laid out. Changes only the layout of a
       #   wallpaper already attached; UpdateProjectWallpaper uploads one.
-      # @param color [String, nil] The project's color, used for it on calendars. An empty string clears
+      # @param color [String, nil] The project's color, used for it on calendars: white, red, orange,
+      #   yellow, green, blue, aqua, purple, gray, pink or brown. An empty string clears
       #   it, and Basecamp derives one from the project's name again. A value
       #   outside the enum answers a server error, not a validation error. The
       #   `color` a project read returns is something else: the caller's own color

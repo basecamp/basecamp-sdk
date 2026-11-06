@@ -742,8 +742,9 @@ structure CreateProjectInput {
   @required
   name: ProjectName
   description: ProjectDescription
-  /// The project's color, used for it on calendars. Omitted, Basecamp derives
-  /// one from the project's name. Basecamp answers a value outside the enum
+  /// The project's color, used for it on calendars: white, red, orange,
+  /// yellow, green, blue, aqua, purple, gray, pink or brown. Omitted, Basecamp
+  /// derives one from the project's name. Basecamp answers a value outside the enum
   /// with a server error, not a validation error.
   color: ProjectColor
   /// What kind of project it is: `topic` (a regular project, the default),
@@ -793,7 +794,8 @@ structure UpdateProjectInput {
   /// How the project's wallpaper is laid out. Changes only the layout of a
   /// wallpaper already attached; UpdateProjectWallpaper uploads one.
   wallpaper_mode: WallpaperMode
-  /// The project's color, used for it on calendars. An empty string clears
+  /// The project's color, used for it on calendars: white, red, orange,
+  /// yellow, green, blue, aqua, purple, gray, pink or brown. An empty string clears
   /// it, and Basecamp derives one from the project's name again. A value
   /// outside the enum answers a server error, not a validation error. The
   /// `color` a project read returns is something else: the caller's own color
@@ -9979,7 +9981,7 @@ structure ProjectConstructionAttributes {
   /// processed.
   start_date: ISO8601Date
 
-  /// Who can join the new project. Basecamp stores this with the construction
+  /// Who can join the new project: invite, employee or team. Basecamp stores this with the construction
   /// and applies it when the project is built, so a value outside the enum
   /// isn't refused up front: the construction fails.
   admissions: AdmissionsPolicy

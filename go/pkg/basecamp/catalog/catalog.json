@@ -1712,7 +1712,7 @@
             "type": "string"
           },
           "color": {
-            "description": "The project's color, used for it on calendars. Omitted, Basecamp derives\none from the project's name. Basecamp answers a value outside the enum\nwith a server error, not a validation error.",
+            "description": "The project's color, used for it on calendars: white, red, orange,\nyellow, green, blue, aqua, purple, gray, pink or brown. Omitted, Basecamp\nderives one from the project's name. Basecamp answers a value outside the enum\nwith a server error, not a validation error.",
             "type": "string"
           },
           "description": {
@@ -1785,7 +1785,7 @@
           "project": {
             "properties": {
               "admissions": {
-                "description": "Who can join the new project. Basecamp stores this with the construction\nand applies it when the project is built, so a value outside the enum\nisn't refused up front: the construction fails.",
+                "description": "Who can join the new project: invite, employee or team. Basecamp stores this with the construction\nand applies it when the project is built, so a value outside the enum\nisn't refused up front: the construction fails.",
                 "type": "string"
               },
               "description": {
@@ -14623,7 +14623,7 @@
             "type": "string"
           },
           "color": {
-            "description": "The project's color, used for it on calendars. An empty string clears\nit, and Basecamp derives one from the project's name again. A value\noutside the enum answers a server error, not a validation error. The\n`color` a project read returns is something else: the caller's own color\nfor the project on their home screen, null unless they set one.",
+            "description": "The project's color, used for it on calendars: white, red, orange,\nyellow, green, blue, aqua, purple, gray, pink or brown. An empty string clears\nit, and Basecamp derives one from the project's name again. A value\noutside the enum answers a server error, not a validation error. The\n`color` a project read returns is something else: the caller's own color\nfor the project on their home screen, null unless they set one.",
             "type": "string"
           },
           "description": {

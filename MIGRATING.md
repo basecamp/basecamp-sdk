@@ -13,6 +13,27 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Project create, update and template construction take more fields
+
+`CreateProject` gained `color`, `purpose`, `admissions`, `timesheet_enabled`
+and `wallpaper_mode`; `UpdateProject` gained `color`, `purpose` and
+`timesheet_enabled`; a template's project construction gained `admissions` and
+`timesheet_enabled`. All are optional on the wire, and a call that leaves them
+out sends the same request as before. Only code that builds these structs
+without naming fields has to change:
+
+- **Go.** `CreateProjectRequest`, `UpdateProjectRequest` and
+  `CreateProjectOptions` have new fields, so an unkeyed literal of any of
+  them no longer compiles. Name the fields (`CreateProjectRequest{Name: "x"}`).
+- **Rust.** `CreateProjectRequestContent`, `UpdateProjectRequestContent` and
+  `ProjectConstructionAttributes` have new public fields, so a struct literal
+  that lists every field no longer compiles. Finish it with
+  `..Default::default()`.
+- **Kotlin.** `CreateProjectBody` and `UpdateProjectBody` gained trailing
+  parameters with defaults. Source that names or positions the existing ones
+  still compiles; code compiled against the old constructor or `copy` has to
+  be recompiled.
+
 ### Empty lists stay empty, and every result type marshals in snake_case
 
 A list the API sends as `[]` now reaches you as an empty list, not as nil,

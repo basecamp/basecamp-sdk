@@ -1491,8 +1491,9 @@ pub struct CreateProjectRequestContent {
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    /// The project's color, used for it on calendars. Omitted, Basecamp derives
-    /// one from the project's name. Basecamp answers a value outside the enum
+    /// The project's color, used for it on calendars: white, red, orange,
+    /// yellow, green, blue, aqua, purple, gray, pink or brown. Omitted, Basecamp
+    /// derives one from the project's name. Basecamp answers a value outside the enum
     /// with a server error, not a validation error.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
@@ -4638,7 +4639,7 @@ pub struct ProjectConstructionAttributes {
     /// processed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start_date: Option<String>,
-    /// Who can join the new project. Basecamp stores this with the construction
+    /// Who can join the new project: invite, employee or team. Basecamp stores this with the construction
     /// and applies it when the project is built, so a value outside the enum
     /// isn't refused up front: the construction fails.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7369,7 +7370,8 @@ pub struct UpdateProjectRequestContent {
     /// wallpaper already attached; UpdateProjectWallpaper uploads one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wallpaper_mode: Option<String>,
-    /// The project's color, used for it on calendars. An empty string clears
+    /// The project's color, used for it on calendars: white, red, orange,
+    /// yellow, green, blue, aqua, purple, gray, pink or brown. An empty string clears
     /// it, and Basecamp derives one from the project's name again. A value
     /// outside the enum answers a server error, not a validation error. The
     /// `color` a project read returns is something else: the caller's own color

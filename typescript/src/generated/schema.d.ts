@@ -5244,8 +5244,9 @@ export interface components {
             name: string;
             description?: string;
             /**
-             * @description The project's color, used for it on calendars. Omitted, Basecamp derives
-             *     one from the project's name. Basecamp answers a value outside the enum
+             * @description The project's color, used for it on calendars: white, red, orange,
+             *     yellow, green, blue, aqua, purple, gray, pink or brown. Omitted, Basecamp
+             *     derives one from the project's name. Basecamp answers a value outside the enum
              *     with a server error, not a validation error.
              */
             color?: string;
@@ -7123,7 +7124,7 @@ export interface components {
              */
             start_date?: string;
             /**
-             * @description Who can join the new project. Basecamp stores this with the construction
+             * @description Who can join the new project: invite, employee or team. Basecamp stores this with the construction
              *     and applies it when the project is built, so a value outside the enum
              *     isn't refused up front: the construction fails.
              */
@@ -8973,7 +8974,8 @@ export interface components {
              */
             wallpaper_mode?: string;
             /**
-             * @description The project's color, used for it on calendars. An empty string clears
+             * @description The project's color, used for it on calendars: white, red, orange,
+             *     yellow, green, blue, aqua, purple, gray, pink or brown. An empty string clears
              *     it, and Basecamp derives one from the project's name again. A value
              *     outside the enum answers a server error, not a validation error. The
              *     `color` a project read returns is something else: the caller's own color

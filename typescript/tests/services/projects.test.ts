@@ -228,6 +228,33 @@ describe("ProjectsService", () => {
       });
       expect(project.id).toBe(99);
     });
+
+    it("should send color, purpose, admissions, timesheet_enabled and wallpaper_mode on create", async () => {
+      let body: Record<string, unknown> | undefined;
+      server.use(
+        http.post(`${BASE_URL}/projects.json`, async ({ request }) => {
+          body = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(sampleProject(42), { status: 201 });
+        })
+      );
+
+      await client.projects.create({
+        name: "Launch",
+        color: "aqua",
+        purpose: "topic",
+        admissions: "employee",
+        timesheetEnabled: true,
+        wallpaperMode: "tile",
+      });
+      expect(body).toEqual({
+        name: "Launch",
+        color: "aqua",
+        purpose: "topic",
+        admissions: "employee",
+        timesheet_enabled: true,
+        wallpaper_mode: "tile",
+      });
+    });
   });
 
   describe("update", () => {
@@ -246,6 +273,19 @@ describe("ProjectsService", () => {
         name: "Updated Project",
       });
       expect(project.id).toBe(projectId);
+    });
+
+    it("should send color, purpose and timesheet_enabled on update, false and an empty color included", async () => {
+      let body: Record<string, unknown> | undefined;
+      server.use(
+        http.put(`${BASE_URL}/projects/42`, async ({ request }) => {
+          body = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(sampleProject(42));
+        })
+      );
+
+      await client.projects.update(42, { name: "My Project", color: "", purpose: "team", timesheetEnabled: false });
+      expect(body).toEqual({ name: "My Project", color: "", purpose: "team", timesheet_enabled: false });
     });
   });
 
@@ -405,46 +445,6 @@ describe("ProjectsService", () => {
 
       await client.projects.update(42, { name: "My Project", wallpaperMode: "fill" });
       expect(body?.wallpaper_mode).toBe("fill");
-    });
-
-    it("should send color, purpose and timesheet_enabled on update, false and an empty color included", async () => {
-      let body: Record<string, unknown> | undefined;
-      server.use(
-        http.put(`${BASE_URL}/projects/42`, async ({ request }) => {
-          body = (await request.json()) as Record<string, unknown>;
-          return HttpResponse.json(sampleProject(42));
-        })
-      );
-
-      await client.projects.update(42, { name: "My Project", color: "", purpose: "team", timesheetEnabled: false });
-      expect(body).toEqual({ name: "My Project", color: "", purpose: "team", timesheet_enabled: false });
-    });
-
-    it("should send color, purpose, admissions, timesheet_enabled and wallpaper_mode on create", async () => {
-      let body: Record<string, unknown> | undefined;
-      server.use(
-        http.post(`${BASE_URL}/projects.json`, async ({ request }) => {
-          body = (await request.json()) as Record<string, unknown>;
-          return HttpResponse.json(sampleProject(42), { status: 201 });
-        })
-      );
-
-      await client.projects.create({
-        name: "Launch",
-        color: "aqua",
-        purpose: "topic",
-        admissions: "employee",
-        timesheetEnabled: true,
-        wallpaperMode: "tile",
-      });
-      expect(body).toEqual({
-        name: "Launch",
-        color: "aqua",
-        purpose: "topic",
-        admissions: "employee",
-        timesheet_enabled: true,
-        wallpaper_mode: "tile",
-      });
     });
 
     it("should upload a wallpaper as multipart with the mode in the query", async () => {
