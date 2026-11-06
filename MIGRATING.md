@@ -47,6 +47,27 @@ Two Go-only breaks follow from the new fields:
   (`GaugeListOptions{10, 2}`) no longer compiles. Name the fields
   (`GaugeListOptions{Limit: 10, Page: 2}`).
 
+### Project create, update and template construction take more fields
+
+`CreateProject` gained `color`, `purpose`, `admissions`, `timesheet_enabled`
+and `wallpaper_mode`; `UpdateProject` gained `color`, `purpose` and
+`timesheet_enabled`; a template's project construction gained `admissions` and
+`timesheet_enabled`. All are optional on the wire, and a call that leaves them
+out sends the same request as before. Only code that builds these structs
+without naming fields has to change:
+
+- **Go.** `CreateProjectRequest`, `UpdateProjectRequest` and
+  `CreateProjectOptions` have new fields, so an unkeyed literal of any of
+  them no longer compiles. Name the fields (`CreateProjectRequest{Name: "x"}`).
+- **Rust.** `CreateProjectRequestContent`, `UpdateProjectRequestContent` and
+  `ProjectConstructionAttributes` have new public fields, so a struct literal
+  that lists every field no longer compiles. Finish it with
+  `..Default::default()`.
+- **Kotlin.** `CreateProjectBody` and `UpdateProjectBody` gained trailing
+  parameters with defaults. Source that names or positions the existing ones
+  still compiles; code compiled against the old constructor or `copy` has to
+  be recompiled.
+
 # v0.36.0
 
 ### Cards: notify assignees on update, and assign people on create
