@@ -43,6 +43,14 @@ null or a missing key. Absent and null lists are unchanged.
   "absent" from "empty", so it now writes `[]` rather than dropping a
   server-sent empty list.
 
+### Go: list gauges for chosen projects, and archived or trashed templates
+
+`GaugeListOptions.BucketIDs` and `TemplateListOptions.Status` are new. Both are
+optional, and a list call that leaves them unset sends what it sent before.
+`BucketIDs` is a slice, so `GaugeListOptions` is no longer comparable: code
+that compares two of them with `==`, or uses one as a map key, no longer
+compiles. Compare the fields you care about instead.
+
 # v0.35.0
 
 ### External links (doors): a service of their own
