@@ -47,9 +47,14 @@ null or a missing key. Absent and null lists are unchanged.
 
 `GaugeListOptions.BucketIDs` and `TemplateListOptions.Status` are new. Both are
 optional, and a list call that leaves them unset sends what it sent before.
-`BucketIDs` is a slice, so `GaugeListOptions` is no longer comparable: code
-that compares two of them with `==`, or uses one as a map key, no longer
-compiles. Compare the fields you care about instead.
+Two Go-only breaks follow from the new fields:
+
+- `BucketIDs` is a slice, so `GaugeListOptions` is no longer comparable. Code
+  that compares two of them with `==`, or uses one as a map key, no longer
+  compiles. Compare the fields you care about instead.
+- Each struct gains a field, so an unkeyed literal of either one
+  (`GaugeListOptions{10, 2}`) no longer compiles. Name the fields
+  (`GaugeListOptions{Limit: 10, Page: 2}`).
 
 # v0.35.0
 
