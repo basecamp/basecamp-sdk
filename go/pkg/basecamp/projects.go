@@ -151,8 +151,9 @@ type UpdateProjectRequest struct {
 	WallpaperMode string `json:"wallpaper_mode,omitempty"`
 	// Color sets the project's color on calendars (see CreateProjectRequest).
 	// nil leaves it unchanged; a pointer to "" clears it, and Basecamp
-	// derives one from the name again. Project.Color is something else: the
-	// caller's own color for the project on their home screen.
+	// derives one from the name again. The color key in a project read's JSON
+	// is something else, the caller's own color for the project on their
+	// home screen, and Project doesn't expose it.
 	Color *string `json:"color,omitempty"`
 	// Purpose changes what kind of project it is ("topic", "team" or
 	// "company_hq"). Changing a topic to anything else deletes the project's
