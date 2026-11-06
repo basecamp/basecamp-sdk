@@ -917,7 +917,12 @@ data class ListProjectsOptions(
 /** Request body for CreateProject. */
 data class CreateProjectBody(
     val name: String,
-    val description: String? = null
+    val description: String? = null,
+    val color: String? = null,
+    val purpose: String? = null,
+    val admissions: String? = null,
+    val timesheetEnabled: Boolean? = null,
+    val wallpaperMode: String? = null
 )
 
 /** Request body for UpdateProject. */
@@ -926,7 +931,10 @@ data class UpdateProjectBody(
     val description: String? = null,
     val admissions: String? = null,
     val scheduleAttributes: JsonObject? = null,
-    val wallpaperMode: String? = null
+    val wallpaperMode: String? = null,
+    val color: String? = null,
+    val purpose: String? = null,
+    val timesheetEnabled: Boolean? = null
 )
 
 /** Options for UpdateProjectWallpaper. */

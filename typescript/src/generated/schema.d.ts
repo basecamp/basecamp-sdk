@@ -5243,6 +5243,31 @@ export interface components {
         CreateProjectRequestContent: {
             name: string;
             description?: string;
+            /**
+             * @description The project's color, used for it on calendars. Omitted, Basecamp derives
+             *     one from the project's name. Basecamp answers a value outside the enum
+             *     with a server error, not a validation error.
+             */
+            color?: string;
+            /**
+             * @description What kind of project it is: `topic` (a regular project, the default),
+             *     `team`, or `company_hq` (the account's Company HQ, at most one per
+             *     account; a second answers 422). BC3's enum also has `guide`, which marks
+             *     a project as a sample nobody can edit afterwards, so it isn't offered.
+             */
+            purpose?: string;
+            /** @description invite|employee|team */
+            admissions?: string;
+            /**
+             * @description Turn on the project's timesheet. Basecamp ignores this when the caller
+             *     can't use timesheets (the account lacks them, or the caller is a client).
+             */
+            timesheet_enabled?: boolean;
+            /**
+             * @description How a wallpaper uploaded later is laid out. UpdateProjectWallpaper
+             *     uploads one.
+             */
+            wallpaper_mode?: string;
         };
         CreateProjectResponseContent: components["schemas"]["Project"];
         CreateQuestionRequestContent: {
@@ -7097,6 +7122,18 @@ export interface components {
              *     processed.
              */
             start_date?: string;
+            /**
+             * @description Who can join the new project. Basecamp stores this with the construction
+             *     and applies it when the project is built, so a value outside the enum
+             *     isn't refused up front: the construction fails.
+             */
+            admissions?: string;
+            /**
+             * @description Turn on the new project's timesheet. Basecamp ignores this when the
+             *     caller can't use timesheets (the account lacks them, or the caller is a
+             *     client).
+             */
+            timesheet_enabled?: boolean;
         };
         /**
          * @description The account has reached its project limit. Raised by CreateProject and by
@@ -8935,6 +8972,29 @@ export interface components {
              *     wallpaper already attached; UpdateProjectWallpaper uploads one.
              */
             wallpaper_mode?: string;
+            /**
+             * @description The project's color, used for it on calendars. An empty string clears
+             *     it, and Basecamp derives one from the project's name again. A value
+             *     outside the enum answers a server error, not a validation error. The
+             *     `color` a project read returns is something else: the caller's own color
+             *     for the project on their home screen, null unless they set one.
+             */
+            color?: string;
+            /**
+             * @description What kind of project it is: `topic` (a regular project), `team`, or
+             *     `company_hq` (the account's Company HQ). Changing a `topic` to anything
+             *     else deletes the project's start and end dates. An account has at most
+             *     one `company_hq`; asking for a second answers 422. BC3's enum also has
+             *     `guide`, which marks a project as a sample nobody can edit afterwards,
+             *     so it isn't offered.
+             */
+            purpose?: string;
+            /**
+             * @description Turn the project's timesheet on or off. Basecamp ignores this when the
+             *     caller can't use timesheets (the account lacks them, or the caller is a
+             *     client).
+             */
+            timesheet_enabled?: boolean;
         };
         UpdateProjectResponseContent: components["schemas"]["Project"];
         UpdateProjectWallpaperInputPayload: string;

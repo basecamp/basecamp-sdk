@@ -947,8 +947,29 @@ type CreateProjectFromTemplateResponseContent = ProjectConstruction
 
 // CreateProjectRequestContent defines model for CreateProjectRequestContent.
 type CreateProjectRequestContent struct {
+	// Admissions invite|employee|team
+	Admissions *string `json:"admissions,omitempty"`
+
+	// Color The project's color, used for it on calendars. Omitted, Basecamp derives
+	// one from the project's name. Basecamp answers a value outside the enum
+	// with a server error, not a validation error.
+	Color       *string `json:"color,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Name        string  `json:"name"`
+
+	// Purpose What kind of project it is: `topic` (a regular project, the default),
+	// `team`, or `company_hq` (the account's Company HQ, at most one per
+	// account; a second answers 422). BC3's enum also has `guide`, which marks
+	// a project as a sample nobody can edit afterwards, so it isn't offered.
+	Purpose *string `json:"purpose,omitempty"`
+
+	// TimesheetEnabled Turn on the project's timesheet. Basecamp ignores this when the caller
+	// can't use timesheets (the account lacks them, or the caller is a client).
+	TimesheetEnabled *bool `json:"timesheet_enabled,omitempty"`
+
+	// WallpaperMode How a wallpaper uploaded later is laid out. UpdateProjectWallpaper
+	// uploads one.
+	WallpaperMode *string `json:"wallpaper_mode,omitempty"`
 }
 
 // CreateProjectResponseContent defines model for CreateProjectResponseContent.
@@ -3183,6 +3204,10 @@ type ProjectConstruction struct {
 
 // ProjectConstructionAttributes defines model for ProjectConstructionAttributes.
 type ProjectConstructionAttributes struct {
+	// Admissions Who can join the new project. Basecamp stores this with the construction
+	// and applies it when the project is built, so a value outside the enum
+	// isn't refused up front: the construction fails.
+	Admissions  *string `json:"admissions,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Name        string  `json:"name"`
 
@@ -3192,6 +3217,11 @@ type ProjectConstructionAttributes struct {
 	// Omitted, they are anchored to the week in which the construction is
 	// processed.
 	StartDate *string `json:"start_date,omitempty"`
+
+	// TimesheetEnabled Turn on the new project's timesheet. Basecamp ignores this when the
+	// caller can't use timesheets (the account lacks them, or the caller is a
+	// client).
+	TimesheetEnabled *bool `json:"timesheet_enabled,omitempty"`
 }
 
 // ProjectLimitErrorResponseContent The account has reached its project limit. Raised by CreateProject and by
@@ -5162,10 +5192,30 @@ type UpdateProjectClientAccessResponseContent = ProjectAccessResult
 // UpdateProjectRequestContent defines model for UpdateProjectRequestContent.
 type UpdateProjectRequestContent struct {
 	// Admissions invite|employee|team
-	Admissions         *string             `json:"admissions,omitempty"`
-	Description        *string             `json:"description,omitempty"`
-	Name               string              `json:"name"`
+	Admissions *string `json:"admissions,omitempty"`
+
+	// Color The project's color, used for it on calendars. An empty string clears
+	// it, and Basecamp derives one from the project's name again. A value
+	// outside the enum answers a server error, not a validation error. The
+	// `color` a project read returns is something else: the caller's own color
+	// for the project on their home screen, null unless they set one.
+	Color       *string `json:"color,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Name        string  `json:"name"`
+
+	// Purpose What kind of project it is: `topic` (a regular project), `team`, or
+	// `company_hq` (the account's Company HQ). Changing a `topic` to anything
+	// else deletes the project's start and end dates. An account has at most
+	// one `company_hq`; asking for a second answers 422. BC3's enum also has
+	// `guide`, which marks a project as a sample nobody can edit afterwards,
+	// so it isn't offered.
+	Purpose            *string             `json:"purpose,omitempty"`
 	ScheduleAttributes *ScheduleAttributes `json:"schedule_attributes,omitempty"`
+
+	// TimesheetEnabled Turn the project's timesheet on or off. Basecamp ignores this when the
+	// caller can't use timesheets (the account lacks them, or the caller is a
+	// client).
+	TimesheetEnabled *bool `json:"timesheet_enabled,omitempty"`
 
 	// WallpaperMode How the project's wallpaper is laid out. Changes only the layout of a
 	// wallpaper already attached; UpdateProjectWallpaper uploads one.

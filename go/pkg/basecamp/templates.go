@@ -46,6 +46,14 @@ type CreateProjectOptions struct {
 	// Template dates are anchored to the Sunday on or before it. Empty anchors them
 	// to the week in which the asynchronous construction is processed.
 	StartDate string
+	// Admissions sets who can join the new project ("invite", "employee" or
+	// "team"). Empty keeps Basecamp's default. Basecamp applies it when it
+	// builds the project, so an unknown value fails the construction rather
+	// than the request.
+	Admissions string
+	// TimesheetEnabled turns on the new project's timesheet. nil or false
+	// leaves it off. Basecamp ignores it when the caller can't use timesheets.
+	TimesheetEnabled *bool
 }
 
 // TemplateLibraryTodolists contains the account's to-do list templates.
@@ -443,6 +451,8 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 	}
 	if len(opts) > 0 && opts[0] != nil {
 		body.Project.StartDate = omitzero(opts[0].StartDate)
+		body.Project.Admissions = omitzero(opts[0].Admissions)
+		body.Project.TimesheetEnabled = opts[0].TimesheetEnabled
 	}
 
 	resp, err := s.client.parent.gen.CreateProjectFromTemplateWithResponse(ctx, s.client.accountID, templateID, body)

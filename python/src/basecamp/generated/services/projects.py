@@ -45,18 +45,48 @@ class ProjectsService(BaseService):
             operation="ListProjects",
         )
 
-    def create(self, *, name: str, description: str | None = None) -> dict[str, Any]:
+    def create(
+        self,
+        *,
+        name: str,
+        description: str | None = None,
+        color: str | None = None,
+        purpose: str | None = None,
+        admissions: str | None = None,
+        timesheet_enabled: bool | None = None,
+        wallpaper_mode: str | None = None,
+    ) -> dict[str, Any]:
         """Create a new project.
 
         Args:
             name: The name.
             description: The description.
+            color: The project's color, used for it on calendars. Omitted, Basecamp derives one from
+                the project's name. Basecamp answers a value outside the enum with a server error,
+                not a validation error.
+            purpose: What kind of project it is: `topic` (a regular project, the default), `team`,
+                or `company_hq` (the account's Company HQ, at most one per account; a second answers
+                422). BC3's enum also has `guide`, which marks a project as a sample nobody can edit
+                afterwards, so it isn't offered.
+            admissions: invite|employee|team
+            timesheet_enabled: Turn on the project's timesheet. Basecamp ignores this when the
+                caller can't use timesheets (the account lacks them, or the caller is a client).
+            wallpaper_mode: How a wallpaper uploaded later is laid out. UpdateProjectWallpaper
+                uploads one.
         """
         return self._request(
             OperationInfo(service="projects", operation="create", is_mutation=True),
             "POST",
             "/projects.json",
-            json_body=self._compact(name=name, description=description),
+            json_body=self._compact(
+                name=name,
+                description=description,
+                color=color,
+                purpose=purpose,
+                admissions=admissions,
+                timesheet_enabled=timesheet_enabled,
+                wallpaper_mode=wallpaper_mode,
+            ),
             operation="CreateProject",
         )
 
@@ -82,6 +112,9 @@ class ProjectsService(BaseService):
         admissions: str | None = None,
         schedule_attributes: dict | None = None,
         wallpaper_mode: str | None = None,
+        color: str | None = None,
+        purpose: str | None = None,
+        timesheet_enabled: bool | None = None,
     ) -> dict[str, Any]:
         """Update an existing project.
 
@@ -93,6 +126,18 @@ class ProjectsService(BaseService):
             schedule_attributes: The schedule attributes.
             wallpaper_mode: How the project's wallpaper is laid out. Changes only the layout of a
                 wallpaper already attached; UpdateProjectWallpaper uploads one.
+            color: The project's color, used for it on calendars. An empty string clears it, and
+                Basecamp derives one from the project's name again. A value outside the enum answers
+                a server error, not a validation error. The `color` a project read returns is
+                something else: the caller's own color for the project on their home screen, null
+                unless they set one.
+            purpose: What kind of project it is: `topic` (a regular project), `team`, or
+                `company_hq` (the account's Company HQ). Changing a `topic` to anything else deletes
+                the project's start and end dates. An account has at most one `company_hq`; asking
+                for a second answers 422. BC3's enum also has `guide`, which marks a project as a
+                sample nobody can edit afterwards, so it isn't offered.
+            timesheet_enabled: Turn the project's timesheet on or off. Basecamp ignores this when
+                the caller can't use timesheets (the account lacks them, or the caller is a client).
         """
         return self._request(
             OperationInfo(service="projects", operation="update", is_mutation=True, project_id=project_id),
@@ -104,6 +149,9 @@ class ProjectsService(BaseService):
                 admissions=admissions,
                 schedule_attributes=schedule_attributes,
                 wallpaper_mode=wallpaper_mode,
+                color=color,
+                purpose=purpose,
+                timesheet_enabled=timesheet_enabled,
             ),
             operation="UpdateProject",
         )
@@ -287,18 +335,48 @@ class AsyncProjectsService(AsyncBaseService):
             operation="ListProjects",
         )
 
-    async def create(self, *, name: str, description: str | None = None) -> dict[str, Any]:
+    async def create(
+        self,
+        *,
+        name: str,
+        description: str | None = None,
+        color: str | None = None,
+        purpose: str | None = None,
+        admissions: str | None = None,
+        timesheet_enabled: bool | None = None,
+        wallpaper_mode: str | None = None,
+    ) -> dict[str, Any]:
         """Create a new project.
 
         Args:
             name: The name.
             description: The description.
+            color: The project's color, used for it on calendars. Omitted, Basecamp derives one from
+                the project's name. Basecamp answers a value outside the enum with a server error,
+                not a validation error.
+            purpose: What kind of project it is: `topic` (a regular project, the default), `team`,
+                or `company_hq` (the account's Company HQ, at most one per account; a second answers
+                422). BC3's enum also has `guide`, which marks a project as a sample nobody can edit
+                afterwards, so it isn't offered.
+            admissions: invite|employee|team
+            timesheet_enabled: Turn on the project's timesheet. Basecamp ignores this when the
+                caller can't use timesheets (the account lacks them, or the caller is a client).
+            wallpaper_mode: How a wallpaper uploaded later is laid out. UpdateProjectWallpaper
+                uploads one.
         """
         return await self._request(
             OperationInfo(service="projects", operation="create", is_mutation=True),
             "POST",
             "/projects.json",
-            json_body=self._compact(name=name, description=description),
+            json_body=self._compact(
+                name=name,
+                description=description,
+                color=color,
+                purpose=purpose,
+                admissions=admissions,
+                timesheet_enabled=timesheet_enabled,
+                wallpaper_mode=wallpaper_mode,
+            ),
             operation="CreateProject",
         )
 
@@ -324,6 +402,9 @@ class AsyncProjectsService(AsyncBaseService):
         admissions: str | None = None,
         schedule_attributes: dict | None = None,
         wallpaper_mode: str | None = None,
+        color: str | None = None,
+        purpose: str | None = None,
+        timesheet_enabled: bool | None = None,
     ) -> dict[str, Any]:
         """Update an existing project.
 
@@ -335,6 +416,18 @@ class AsyncProjectsService(AsyncBaseService):
             schedule_attributes: The schedule attributes.
             wallpaper_mode: How the project's wallpaper is laid out. Changes only the layout of a
                 wallpaper already attached; UpdateProjectWallpaper uploads one.
+            color: The project's color, used for it on calendars. An empty string clears it, and
+                Basecamp derives one from the project's name again. A value outside the enum answers
+                a server error, not a validation error. The `color` a project read returns is
+                something else: the caller's own color for the project on their home screen, null
+                unless they set one.
+            purpose: What kind of project it is: `topic` (a regular project), `team`, or
+                `company_hq` (the account's Company HQ). Changing a `topic` to anything else deletes
+                the project's start and end dates. An account has at most one `company_hq`; asking
+                for a second answers 422. BC3's enum also has `guide`, which marks a project as a
+                sample nobody can edit afterwards, so it isn't offered.
+            timesheet_enabled: Turn the project's timesheet on or off. Basecamp ignores this when
+                the caller can't use timesheets (the account lacks them, or the caller is a client).
         """
         return await self._request(
             OperationInfo(service="projects", operation="update", is_mutation=True, project_id=project_id),
@@ -346,6 +439,9 @@ class AsyncProjectsService(AsyncBaseService):
                 admissions=admissions,
                 schedule_attributes=schedule_attributes,
                 wallpaper_mode=wallpaper_mode,
+                color=color,
+                purpose=purpose,
+                timesheet_enabled=timesheet_enabled,
             ),
             operation="UpdateProject",
         )
