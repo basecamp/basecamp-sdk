@@ -708,7 +708,9 @@ type CreateClientRequest struct {
 type CreateCloudFileRequestContent struct {
 	Description *string `json:"description,omitempty"`
 
-	// Notify Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+	// Notify Who to notify: "default" (the project's subscribers, without clients),
+	// "everyone" (everyone on the project who can see it), or "custom" (the people
+	// in subscriptions). "default" and "everyone" leave out the caller.
 	//
 	// Omit both this and subscriptions to notify nobody. A subscriptions array sent
 	// without notify is read as "custom".
@@ -853,7 +855,9 @@ type CreateGoogleDocumentRequestContent struct {
 	// than reaching validation.
 	DocumentType string `json:"document_type"`
 
-	// Notify Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+	// Notify Who to notify: "default" (the project's subscribers, without clients),
+	// "everyone" (everyone on the project who can see it), or "custom" (the people
+	// in subscriptions). "default" and "everyone" leave out the caller.
 	//
 	// Omit both this and subscriptions to notify nobody. A subscriptions array sent
 	// without notify is read as "custom".
@@ -4984,7 +4988,9 @@ type UpdateChatbotResponseContent = Chatbot
 type UpdateCloudFileRequestContent struct {
 	Description *string `json:"description,omitempty"`
 
-	// Notify Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+	// Notify Who to notify: "default" (the project's subscribers, without clients),
+	// "everyone" (everyone on the project who can see it), or "custom" (the people
+	// in subscriptions). "default" and "everyone" leave out the caller.
 	//
 	// Applies only to a drafted cloud file, whose subscribers it recomputes; a
 	// published one ignores it. Omit both this and subscriptions to keep a draft's
@@ -5072,7 +5078,9 @@ type UpdateGoogleDocumentRequestContent struct {
 	// than reaching validation.
 	DocumentType string `json:"document_type"`
 
-	// Notify Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+	// Notify Who to notify: "default" (the project's subscribers, without clients),
+	// "everyone" (everyone on the project who can see it), or "custom" (the people
+	// in subscriptions). "default" and "everyone" leave out the caller.
 	//
 	// Applies only to a drafted Google document, whose subscribers it recomputes; a
 	// published one ignores it. Omit both this and subscriptions to keep a draft's

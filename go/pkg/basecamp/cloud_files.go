@@ -90,8 +90,10 @@ type CreateCloudFileRequest struct {
 	// the tool's vault — an item created inside a folder inherits the folder's
 	// visibility. A client caller always creates client-visible records.
 	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
-	// Notify selects who to notify: "default", "everyone", or "custom" (the
-	// people in Subscriptions). nil omits the field.
+	// Notify selects who to notify: "default" (the project's subscribers,
+	// without clients), "everyone" (everyone on the project who can see it), or
+	// "custom" (the people in Subscriptions). "default" and "everyone" leave out
+	// the caller. nil omits the field.
 	//
 	// Leave both this and Subscriptions nil to notify nobody. A Subscriptions
 	// list sent without Notify is read as "custom".
@@ -128,8 +130,10 @@ type UpdateCloudFileRequest struct {
 	// Subscriptions replaces the subscriber list when addressed; omit both this
 	// and notify to leave a draft's subscribers alone.
 	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
-	// Notify selects who to notify: "default", "everyone", or "custom" (the
-	// people in Subscriptions). nil omits the field.
+	// Notify selects who to notify: "default" (the project's subscribers,
+	// without clients), "everyone" (everyone on the project who can see it), or
+	// "custom" (the people in Subscriptions). "default" and "everyone" leave out
+	// the caller. nil omits the field.
 	//
 	// It applies only to a drafted cloud file, whose subscribers it recomputes;
 	// a published one ignores it. Leave both this and Subscriptions nil to keep

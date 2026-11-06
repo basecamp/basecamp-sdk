@@ -21,7 +21,9 @@ module Basecamp
       #   when creating directly in the tool's vault — an item created inside a
       #   folder inherits the folder's visibility and ignores this. A client caller
       #   always creates client-visible records regardless of what is sent.
-      # @param notify [String, nil] Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+      # @param notify [String, nil] Who to notify: "default" (the project's subscribers, without clients),
+      #   "everyone" (everyone on the project who can see it), or "custom" (the people
+      #   in subscriptions). "default" and "everyone" leave out the caller.
       #
       #   Omit both this and subscriptions to notify nobody. A subscriptions array sent
       #   without notify is read as "custom".
@@ -50,7 +52,9 @@ module Basecamp
       # @param title [String, nil] title
       # @param description [String, nil] description
       # @param subscriptions [Array, nil] subscriptions
-      # @param notify [String, nil] Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+      # @param notify [String, nil] Who to notify: "default" (the project's subscribers, without clients),
+      #   "everyone" (everyone on the project who can see it), or "custom" (the people
+      #   in subscriptions). "default" and "everyone" leave out the caller.
       #
       #   Applies only to a drafted cloud file, whose subscribers it recomputes; a
       #   published one ignores it. Omit both this and subscriptions to keep a draft's

@@ -1216,7 +1216,9 @@ pub struct CreateCloudFileRequestContent {
     /// always creates client-visible records regardless of what is sent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub visible_to_clients: Option<bool>,
-    /// Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+    /// Who to notify: "default" (the project's subscribers, without clients),
+    /// "everyone" (everyone on the project who can see it), or "custom" (the people
+    /// in subscriptions). "default" and "everyone" leave out the caller.
     ///
     /// Omit both this and subscriptions to notify nobody. A subscriptions array sent
     /// without notify is read as "custom".
@@ -1377,7 +1379,9 @@ pub struct CreateGoogleDocumentRequestContent {
     /// always creates client-visible records regardless of what is sent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub visible_to_clients: Option<bool>,
-    /// Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+    /// Who to notify: "default" (the project's subscribers, without clients),
+    /// "everyone" (everyone on the project who can see it), or "custom" (the people
+    /// in subscriptions). "default" and "everyone" leave out the caller.
     ///
     /// Omit both this and subscriptions to notify nobody. A subscriptions array sent
     /// without notify is read as "custom".
@@ -7088,7 +7092,9 @@ pub struct UpdateCloudFileRequestContent {
     /// `subscriptions`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscriptions: Option<Vec<i64>>,
-    /// Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+    /// Who to notify: "default" (the project's subscribers, without clients),
+    /// "everyone" (everyone on the project who can see it), or "custom" (the people
+    /// in subscriptions). "default" and "everyone" leave out the caller.
     ///
     /// Applies only to a drafted cloud file, whose subscribers it recomputes; a
     /// published one ignores it. Omit both this and subscriptions to keep a draft's
@@ -7186,7 +7192,9 @@ pub struct UpdateGoogleDocumentRequestContent {
     /// `subscriptions`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscriptions: Option<Vec<i64>>,
-    /// Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+    /// Who to notify: "default" (the project's subscribers, without clients),
+    /// "everyone" (everyone on the project who can see it), or "custom" (the people
+    /// in subscriptions). "default" and "everyone" leave out the caller.
     ///
     /// Applies only to a drafted Google document, whose subscribers it recomputes; a
     /// published one ignores it. Omit both this and subscriptions to keep a draft's

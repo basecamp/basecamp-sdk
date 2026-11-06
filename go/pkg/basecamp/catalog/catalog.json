@@ -816,7 +816,7 @@
             "type": "string"
           },
           "notify": {
-            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nOmit both this and subscriptions to notify nobody. A subscriptions array sent\nwithout notify is read as \"custom\".",
+            "description": "Who to notify: \"default\" (the project's subscribers, without clients),\n\"everyone\" (everyone on the project who can see it), or \"custom\" (the people\nin subscriptions). \"default\" and \"everyone\" leave out the caller.\n\nOmit both this and subscriptions to notify nobody. A subscriptions array sent\nwithout notify is read as \"custom\".",
             "type": "string"
           },
           "service": {
@@ -1341,7 +1341,7 @@
             "type": "string"
           },
           "notify": {
-            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nOmit both this and subscriptions to notify nobody. A subscriptions array sent\nwithout notify is read as \"custom\".",
+            "description": "Who to notify: \"default\" (the project's subscribers, without clients),\n\"everyone\" (everyone on the project who can see it), or \"custom\" (the people\nin subscriptions). \"default\" and \"everyone\" leave out the caller.\n\nOmit both this and subscriptions to notify nobody. A subscriptions array sent\nwithout notify is read as \"custom\".",
             "type": "string"
           },
           "status": {
@@ -13805,7 +13805,7 @@
             "type": "string"
           },
           "notify": {
-            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nApplies only to a drafted cloud file, whose subscribers it recomputes; a\npublished one ignores it. Omit both this and subscriptions to keep a draft's\ncurrent subscribers. A subscriptions array sent without notify is read as\n\"custom\".",
+            "description": "Who to notify: \"default\" (the project's subscribers, without clients),\n\"everyone\" (everyone on the project who can see it), or \"custom\" (the people\nin subscriptions). \"default\" and \"everyone\" leave out the caller.\n\nApplies only to a drafted cloud file, whose subscribers it recomputes; a\npublished one ignores it. Omit both this and subscriptions to keep a draft's\ncurrent subscribers. A subscriptions array sent without notify is read as\n\"custom\".",
             "type": "string"
           },
           "service": {
@@ -14123,7 +14123,7 @@
             "type": "string"
           },
           "notify": {
-            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nApplies only to a drafted Google document, whose subscribers it recomputes; a\npublished one ignores it. Omit both this and subscriptions to keep a draft's\ncurrent subscribers. A subscriptions array sent without notify is read as\n\"custom\".",
+            "description": "Who to notify: \"default\" (the project's subscribers, without clients),\n\"everyone\" (everyone on the project who can see it), or \"custom\" (the people\nin subscriptions). \"default\" and \"everyone\" leave out the caller.\n\nApplies only to a drafted Google document, whose subscribers it recomputes; a\npublished one ignores it. Omit both this and subscriptions to keep a draft's\ncurrent subscribers. A subscriptions array sent without notify is read as\n\"custom\".",
             "type": "string"
           },
           "status": {

@@ -202,6 +202,23 @@ describe("CloudFilesService", () => {
   });
 
   describe("updateCloudFile", () => {
+    it("sends notify only when given, since sending it recomputes a draft's subscribers", async () => {
+      const bodies: Record<string, unknown>[] = [];
+      server.use(
+        http.put(`${BASE_URL}/cloud_files/1001`, async ({ request }) => {
+          bodies.push((await request.json()) as Record<string, unknown>);
+          return HttpResponse.json(cloudFile);
+        }),
+      );
+
+      const link = { url: "https://www.dropbox.com/s/abcd1234/brand.zip", service: "dropbox" };
+      await service.updateCloudFile(1001, { ...link, notify: "default" });
+      await service.updateCloudFile(1001, link);
+
+      expect(bodies[0]?.notify).toBe("default");
+      expect(bodies[1]).not.toHaveProperty("notify");
+    });
+
     it("puts to the flat, unscoped path with the full representation", async () => {
       let received: Record<string, unknown> | undefined;
       server.use(

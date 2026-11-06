@@ -47,9 +47,11 @@ class GoogleDocumentsService(BaseService):
                 only when creating directly in the tool's vault — an item created inside a folder
                 inherits the folder's visibility and ignores this. A client caller always creates
                 client-visible records regardless of what is sent.
-            notify: Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
-                Omit both this and subscriptions to notify nobody. A subscriptions array sent
-                without notify is read as "custom".
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Omit both this and
+                subscriptions to notify nobody. A subscriptions array sent without notify is read as
+                "custom".
         """
         return self._request(
             OperationInfo(
@@ -129,10 +131,12 @@ class GoogleDocumentsService(BaseService):
             description: The description.
             status: active|drafted
             subscriptions: The subscriptions.
-            notify: Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
-                Applies only to a drafted Google document, whose subscribers it recomputes; a
-                published one ignores it. Omit both this and subscriptions to keep a draft's current
-                subscribers. A subscriptions array sent without notify is read as "custom".
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Applies only to a
+                drafted Google document, whose subscribers it recomputes; a published one ignores
+                it. Omit both this and subscriptions to keep a draft's current subscribers. A
+                subscriptions array sent without notify is read as "custom".
         """
         return self._request(
             OperationInfo(
@@ -193,9 +197,11 @@ class AsyncGoogleDocumentsService(AsyncBaseService):
                 only when creating directly in the tool's vault — an item created inside a folder
                 inherits the folder's visibility and ignores this. A client caller always creates
                 client-visible records regardless of what is sent.
-            notify: Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
-                Omit both this and subscriptions to notify nobody. A subscriptions array sent
-                without notify is read as "custom".
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Omit both this and
+                subscriptions to notify nobody. A subscriptions array sent without notify is read as
+                "custom".
         """
         return await self._request(
             OperationInfo(
@@ -275,10 +281,12 @@ class AsyncGoogleDocumentsService(AsyncBaseService):
             description: The description.
             status: active|drafted
             subscriptions: The subscriptions.
-            notify: Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
-                Applies only to a drafted Google document, whose subscribers it recomputes; a
-                published one ignores it. Omit both this and subscriptions to keep a draft's current
-                subscribers. A subscriptions array sent without notify is read as "custom".
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Applies only to a
+                drafted Google document, whose subscribers it recomputes; a published one ignores
+                it. Omit both this and subscriptions to keep a draft's current subscribers. A
+                subscriptions array sent without notify is read as "custom".
         """
         return await self._request(
             OperationInfo(

@@ -5081,7 +5081,9 @@ export interface components {
              */
             visible_to_clients?: boolean;
             /**
-             * @description Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+             * @description Who to notify: "default" (the project's subscribers, without clients),
+             *     "everyone" (everyone on the project who can see it), or "custom" (the people
+             *     in subscriptions). "default" and "everyone" leave out the caller.
              *
              *     Omit both this and subscriptions to notify nobody. A subscriptions array sent
              *     without notify is read as "custom".
@@ -5186,7 +5188,9 @@ export interface components {
              */
             visible_to_clients?: boolean;
             /**
-             * @description Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+             * @description Who to notify: "default" (the project's subscribers, without clients),
+             *     "everyone" (everyone on the project who can see it), or "custom" (the people
+             *     in subscriptions). "default" and "everyone" leave out the caller.
              *
              *     Omit both this and subscriptions to notify nobody. A subscriptions array sent
              *     without notify is read as "custom".
@@ -8823,7 +8827,9 @@ export interface components {
             description?: string;
             subscriptions?: number[];
             /**
-             * @description Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+             * @description Who to notify: "default" (the project's subscribers, without clients),
+             *     "everyone" (everyone on the project who can see it), or "custom" (the people
+             *     in subscriptions). "default" and "everyone" leave out the caller.
              *
              *     Applies only to a drafted cloud file, whose subscribers it recomputes; a
              *     published one ignores it. Omit both this and subscriptions to keep a draft's
@@ -8883,7 +8889,9 @@ export interface components {
             status?: string;
             subscriptions?: number[];
             /**
-             * @description Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+             * @description Who to notify: "default" (the project's subscribers, without clients),
+             *     "everyone" (everyone on the project who can see it), or "custom" (the people
+             *     in subscriptions). "default" and "everyone" leave out the caller.
              *
              *     Applies only to a drafted Google document, whose subscribers it recomputes; a
              *     published one ignores it. Omit both this and subscriptions to keep a draft's

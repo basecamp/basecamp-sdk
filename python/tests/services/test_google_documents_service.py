@@ -77,7 +77,10 @@ class TestGoogleDocuments:
 
     @respx.mock
     def test_create_sends_notify_only_when_given(self):
-        """bc3 defaults notify to "custom", so it is the only way to reach "default" or "everyone"."""
+        """Without notify, bc3 notifies only the people in subscriptions, or nobody.
+
+        notify is the only way to reach "default" or "everyone".
+        """
         route = respx.post(f"{BASE}/buckets/2085958500/vaults/3001/google_documents.json").mock(
             return_value=httpx.Response(201, json=_google_document())
         )
