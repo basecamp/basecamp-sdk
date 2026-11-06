@@ -136,7 +136,8 @@ type UpdateCloudFileRequest struct {
 	// the caller. nil omits the field.
 	//
 	// It applies only to a drafted cloud file, whose subscribers it recomputes;
-	// a published one ignores it. Leave both this and Subscriptions nil to keep
+	// a published one ignores it. Create always publishes, so through the API
+	// this has no effect today; it is here because BC3 reads it on update. Leave both this and Subscriptions nil to keep
 	// a draft's current subscribers. A Subscriptions list sent without Notify is
 	// read as "custom".
 	Notify *string `json:"notify,omitempty"`

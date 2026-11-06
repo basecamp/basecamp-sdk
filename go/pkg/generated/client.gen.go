@@ -4993,7 +4993,8 @@ type UpdateCloudFileRequestContent struct {
 	// in subscriptions). "default" and "everyone" leave out the caller.
 	//
 	// Applies only to a drafted cloud file, whose subscribers it recomputes; a
-	// published one ignores it. Omit both this and subscriptions to keep a draft's
+	// published one ignores it. CreateCloudFile always publishes, so through the
+	// API this has no effect today; it is modelled because BC3 reads it here. Omit both this and subscriptions to keep a draft's
 	// current subscribers. A subscriptions array sent without notify is read as
 	// "custom".
 	Notify *string `json:"notify,omitempty"`
