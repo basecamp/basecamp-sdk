@@ -217,6 +217,29 @@ class ProjectsServiceTest < Minitest::Test
     assert_requested stub
   end
 
+  def test_update_project_sends_color_purpose_and_timesheet_enabled
+    stub = stub_request(:put, "#{BASE_URL}/12345/projects/123")
+      .with(body: { "name" => "Test Project", "color" => "", "purpose" => "team", "timesheet_enabled" => false })
+      .to_return(status: 200, body: sample_project.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.projects.update(project_id: 123, name: "Test Project", color: "", purpose: "team", timesheet_enabled: false)
+
+    assert_requested stub
+  end
+
+  def test_create_project_sends_color_purpose_admissions_timesheet_and_wallpaper_mode
+    body = { "name" => "Launch", "color" => "aqua", "purpose" => "topic", "admissions" => "employee",
+      "timesheet_enabled" => true, "wallpaper_mode" => "tile" }
+    stub = stub_request(:post, "#{BASE_URL}/12345/projects.json")
+      .with(body: body)
+      .to_return(status: 201, body: sample_project.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.projects.create(name: "Launch", color: "aqua", purpose: "topic", admissions: "employee",
+      timesheet_enabled: true, wallpaper_mode: "tile")
+
+    assert_requested stub
+  end
+
   def test_update_project_wallpaper_sends_multipart_with_mode
     stub = stub_request(:put, "#{BASE_URL}/12345/projects/123/wallpaper.json")
       .with(query: { "mode" => "tile" }) do |request|
