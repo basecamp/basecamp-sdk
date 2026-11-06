@@ -11,6 +11,11 @@ import (
 
 // TemplateListOptions specifies options for listing templates.
 type TemplateListOptions struct {
+	// Status lists the templates in that state: "active", "archived" or
+	// "trashed". Empty lists active templates; Basecamp refuses any other
+	// value with a 400.
+	Status string
+
 	// Limit is the maximum number of templates to return.
 	// If 0, returns all. Use -1 for unlimited (same as 0).
 	Limit int
@@ -200,12 +205,18 @@ func (s *TemplatesService) List(ctx context.Context, opts *TemplateListOptions) 
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.ListTemplatesParams
+	if opts != nil && opts.Status != "" {
+		params = &generated.ListTemplatesParams{Status: ptr(opts.Status)}
+	}
 	if opts != nil && opts.Page > 0 {
 		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}
-		params = &generated.ListTemplatesParams{Page: page}
+		if params == nil {
+			params = &generated.ListTemplatesParams{}
+		}
+		params.Page = page
 	}
 
 	resp, err := s.client.parent.gen.ListTemplatesWithResponse(ctx, s.client.accountID, params)

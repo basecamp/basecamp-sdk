@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -111,6 +113,11 @@ type UpdateGaugeNeedleRequest struct {
 
 // GaugeListOptions specifies pagination for listing gauges.
 type GaugeListOptions struct {
+	// BucketIDs, when set, limits the list to these projects' gauges and
+	// returns them in this order instead of by risk. Basecamp ignores an ID
+	// whose gauge the caller can't see.
+	BucketIDs []int64
+
 	// Limit is the maximum number of gauges to return.
 	// If 0 (default), returns all gauges.
 	Limit int
@@ -192,8 +199,17 @@ func (s *GaugesService) List(ctx context.Context, opts *GaugeListOptions) (resul
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.ListGaugesParams
+	if opts != nil && len(opts.BucketIDs) > 0 {
+		ids := make([]string, len(opts.BucketIDs))
+		for i, id := range opts.BucketIDs {
+			ids[i] = strconv.FormatInt(id, 10)
+		}
+		params = &generated.ListGaugesParams{BucketIds: ptr(strings.Join(ids, ","))}
+	}
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListGaugesParams{}
+		if params == nil {
+			params = &generated.ListGaugesParams{}
+		}
 		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
