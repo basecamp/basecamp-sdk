@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.36.0
 
 ### Empty lists stay empty, and every result type marshals in snake_case
 
