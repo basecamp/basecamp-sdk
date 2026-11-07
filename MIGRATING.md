@@ -47,12 +47,10 @@ null or a missing key. Absent and null lists are unchanged.
 
 `CreateCloudFile`, `UpdateCloudFile`, `CreateGoogleDocument` and
 `UpdateGoogleDocument` take an optional `notify` (`"default"`, `"everyone"` or
-`"custom"`). `"default"` reaches the project's subscribers without clients,
-`"everyone"` everyone on the project who can see the item, and both leave out
-the caller; `"custom"` reaches the people in `subscriptions`. A caller that
-doesn't set `notify` sends the same request as before: on a create, no
-`subscriptions` either still notifies nobody, and `subscriptions` alone still
-reads as `"custom"`; on an update, a draft with neither keeps its subscribers.
+`"custom"`). A caller that doesn't set it sends the same request as before.
+What each mode reaches, and that an update applies it only to a draft, is in
+the field's own doc in every SDK; this entry covers only what the new member
+breaks.
 The new member is source-compatible for callers who name their fields, with
 three exceptions:
 
