@@ -22,6 +22,7 @@ class CloudFilesService(BaseService):
         description: str | None = None,
         subscriptions: list[int] | None = None,
         visible_to_clients: bool | None = None,
+        notify: str | None = None,
     ) -> dict[str, Any]:
         """Create a new cloud file in a vault.
         `url` is validated against the selected service's patterns, so it must be a
@@ -43,6 +44,11 @@ class CloudFilesService(BaseService):
                 only when creating directly in the tool's vault — an item created inside a folder
                 inherits the folder's visibility and ignores this. A client caller always creates
                 client-visible records regardless of what is sent.
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Omit both this and
+                subscriptions to notify nobody. A subscriptions array sent without notify is read as
+                "custom".
         """
         return self._request(
             OperationInfo(
@@ -61,6 +67,7 @@ class CloudFilesService(BaseService):
                 description=description,
                 subscriptions=subscriptions,
                 visible_to_clients=visible_to_clients,
+                notify=notify,
             ),
             operation="CreateCloudFile",
         )
@@ -89,6 +96,7 @@ class CloudFilesService(BaseService):
         title: str | None = None,
         description: str | None = None,
         subscriptions: list[int] | None = None,
+        notify: str | None = None,
     ) -> dict[str, Any]:
         """Replace a cloud file with a new complete representation.
         BC3 builds a brand-new CloudFile from the permitted params and swaps the
@@ -113,6 +121,14 @@ class CloudFilesService(BaseService):
             title: The title.
             description: The description.
             subscriptions: The subscriptions.
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Applies only to a
+                drafted cloud file, whose subscribers it recomputes; a published one ignores it.
+                CreateCloudFile always publishes, so through the API this has no effect today; it is
+                modelled because BC3 reads it here. Omit both this and subscriptions to keep a
+                draft's current subscribers. A subscriptions array sent without notify is read as
+                "custom".
         """
         return self._request(
             OperationInfo(
@@ -121,7 +137,12 @@ class CloudFilesService(BaseService):
             "PUT",
             f"/cloud_files/{cloud_file_id}",
             json_body=self._compact(
-                url=url, service=service, title=title, description=description, subscriptions=subscriptions
+                url=url,
+                service=service,
+                title=title,
+                description=description,
+                subscriptions=subscriptions,
+                notify=notify,
             ),
             operation="UpdateCloudFile",
         )
@@ -139,6 +160,7 @@ class AsyncCloudFilesService(AsyncBaseService):
         description: str | None = None,
         subscriptions: list[int] | None = None,
         visible_to_clients: bool | None = None,
+        notify: str | None = None,
     ) -> dict[str, Any]:
         """Create a new cloud file in a vault.
         `url` is validated against the selected service's patterns, so it must be a
@@ -160,6 +182,11 @@ class AsyncCloudFilesService(AsyncBaseService):
                 only when creating directly in the tool's vault — an item created inside a folder
                 inherits the folder's visibility and ignores this. A client caller always creates
                 client-visible records regardless of what is sent.
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Omit both this and
+                subscriptions to notify nobody. A subscriptions array sent without notify is read as
+                "custom".
         """
         return await self._request(
             OperationInfo(
@@ -178,6 +205,7 @@ class AsyncCloudFilesService(AsyncBaseService):
                 description=description,
                 subscriptions=subscriptions,
                 visible_to_clients=visible_to_clients,
+                notify=notify,
             ),
             operation="CreateCloudFile",
         )
@@ -206,6 +234,7 @@ class AsyncCloudFilesService(AsyncBaseService):
         title: str | None = None,
         description: str | None = None,
         subscriptions: list[int] | None = None,
+        notify: str | None = None,
     ) -> dict[str, Any]:
         """Replace a cloud file with a new complete representation.
         BC3 builds a brand-new CloudFile from the permitted params and swaps the
@@ -230,6 +259,14 @@ class AsyncCloudFilesService(AsyncBaseService):
             title: The title.
             description: The description.
             subscriptions: The subscriptions.
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Applies only to a
+                drafted cloud file, whose subscribers it recomputes; a published one ignores it.
+                CreateCloudFile always publishes, so through the API this has no effect today; it is
+                modelled because BC3 reads it here. Omit both this and subscriptions to keep a
+                draft's current subscribers. A subscriptions array sent without notify is read as
+                "custom".
         """
         return await self._request(
             OperationInfo(
@@ -238,7 +275,12 @@ class AsyncCloudFilesService(AsyncBaseService):
             "PUT",
             f"/cloud_files/{cloud_file_id}",
             json_body=self._compact(
-                url=url, service=service, title=title, description=description, subscriptions=subscriptions
+                url=url,
+                service=service,
+                title=title,
+                description=description,
+                subscriptions=subscriptions,
+                notify=notify,
             ),
             operation="UpdateCloudFile",
         )

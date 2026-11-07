@@ -4,6 +4,7 @@ import Foundation
 public struct UpdateGoogleDocumentRequest: Codable, Sendable {
     public var description: String?
     public let documentType: String
+    public var notify: String?
     public var status: String?
     public var subscriptions: [Int]?
     public var title: String?
@@ -12,6 +13,7 @@ public struct UpdateGoogleDocumentRequest: Codable, Sendable {
     public init(
         description: String? = nil,
         documentType: String,
+        notify: String? = nil,
         status: String? = nil,
         subscriptions: [Int]? = nil,
         title: String? = nil,
@@ -19,6 +21,7 @@ public struct UpdateGoogleDocumentRequest: Codable, Sendable {
     ) {
         self.description = description
         self.documentType = documentType
+        self.notify = notify
         self.status = status
         self.subscriptions = subscriptions
         self.title = title

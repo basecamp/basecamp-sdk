@@ -23,6 +23,7 @@ class GoogleDocumentsService(BaseService):
         status: str | None = None,
         subscriptions: list[int] | None = None,
         visible_to_clients: bool | None = None,
+        notify: str | None = None,
     ) -> dict[str, Any]:
         """Create a new Google document in a vault.
         An unrecognized `document_type` is rejected before validation with the
@@ -46,6 +47,11 @@ class GoogleDocumentsService(BaseService):
                 only when creating directly in the tool's vault — an item created inside a folder
                 inherits the folder's visibility and ignores this. A client caller always creates
                 client-visible records regardless of what is sent.
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Omit both this and
+                subscriptions to notify nobody. A subscriptions array sent without notify is read as
+                "custom".
         """
         return self._request(
             OperationInfo(
@@ -65,6 +71,7 @@ class GoogleDocumentsService(BaseService):
                 status=status,
                 subscriptions=subscriptions,
                 visible_to_clients=visible_to_clients,
+                notify=notify,
             ),
             operation="CreateGoogleDocument",
         )
@@ -97,6 +104,7 @@ class GoogleDocumentsService(BaseService):
         description: str | None = None,
         status: str | None = None,
         subscriptions: list[int] | None = None,
+        notify: str | None = None,
     ) -> dict[str, Any]:
         """Replace a Google document with a new complete representation.
         BC3 builds a brand-new GoogleDocument from the permitted params and swaps
@@ -123,6 +131,12 @@ class GoogleDocumentsService(BaseService):
             description: The description.
             status: active|drafted
             subscriptions: The subscriptions.
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Applies only to a
+                drafted Google document, whose subscribers it recomputes; a published one ignores
+                it. Omit both this and subscriptions to keep a draft's current subscribers. A
+                subscriptions array sent without notify is read as "custom".
         """
         return self._request(
             OperationInfo(
@@ -140,6 +154,7 @@ class GoogleDocumentsService(BaseService):
                 description=description,
                 status=status,
                 subscriptions=subscriptions,
+                notify=notify,
             ),
             operation="UpdateGoogleDocument",
         )
@@ -158,6 +173,7 @@ class AsyncGoogleDocumentsService(AsyncBaseService):
         status: str | None = None,
         subscriptions: list[int] | None = None,
         visible_to_clients: bool | None = None,
+        notify: str | None = None,
     ) -> dict[str, Any]:
         """Create a new Google document in a vault.
         An unrecognized `document_type` is rejected before validation with the
@@ -181,6 +197,11 @@ class AsyncGoogleDocumentsService(AsyncBaseService):
                 only when creating directly in the tool's vault — an item created inside a folder
                 inherits the folder's visibility and ignores this. A client caller always creates
                 client-visible records regardless of what is sent.
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Omit both this and
+                subscriptions to notify nobody. A subscriptions array sent without notify is read as
+                "custom".
         """
         return await self._request(
             OperationInfo(
@@ -200,6 +221,7 @@ class AsyncGoogleDocumentsService(AsyncBaseService):
                 status=status,
                 subscriptions=subscriptions,
                 visible_to_clients=visible_to_clients,
+                notify=notify,
             ),
             operation="CreateGoogleDocument",
         )
@@ -232,6 +254,7 @@ class AsyncGoogleDocumentsService(AsyncBaseService):
         description: str | None = None,
         status: str | None = None,
         subscriptions: list[int] | None = None,
+        notify: str | None = None,
     ) -> dict[str, Any]:
         """Replace a Google document with a new complete representation.
         BC3 builds a brand-new GoogleDocument from the permitted params and swaps
@@ -258,6 +281,12 @@ class AsyncGoogleDocumentsService(AsyncBaseService):
             description: The description.
             status: active|drafted
             subscriptions: The subscriptions.
+            notify: Who to notify: "default" (the project's subscribers, without clients),
+                "everyone" (everyone on the project who can see it), or "custom" (the people in
+                subscriptions). "default" and "everyone" leave out the caller. Applies only to a
+                drafted Google document, whose subscribers it recomputes; a published one ignores
+                it. Omit both this and subscriptions to keep a draft's current subscribers. A
+                subscriptions array sent without notify is read as "custom".
         """
         return await self._request(
             OperationInfo(
@@ -275,6 +304,7 @@ class AsyncGoogleDocumentsService(AsyncBaseService):
                 description=description,
                 status=status,
                 subscriptions=subscriptions,
+                notify=notify,
             ),
             operation="UpdateGoogleDocument",
         )

@@ -90,6 +90,14 @@ type CreateCloudFileRequest struct {
 	// the tool's vault — an item created inside a folder inherits the folder's
 	// visibility. A client caller always creates client-visible records.
 	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
+	// Notify selects who to notify: "default" (the project's subscribers,
+	// without clients), "everyone" (everyone on the project who can see it), or
+	// "custom" (the people in Subscriptions). "default" and "everyone" leave out
+	// the caller. nil omits the field.
+	//
+	// Leave both this and Subscriptions nil to notify nobody. A Subscriptions
+	// list sent without Notify is read as "custom".
+	Notify *string `json:"notify,omitempty"`
 }
 
 // UpdateCloudFileRequest is the body for replacing a cloud file.
@@ -122,6 +130,17 @@ type UpdateCloudFileRequest struct {
 	// Subscriptions replaces the subscriber list when addressed; omit both this
 	// and notify to leave a draft's subscribers alone.
 	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	// Notify selects who to notify: "default" (the project's subscribers,
+	// without clients), "everyone" (everyone on the project who can see it), or
+	// "custom" (the people in Subscriptions). "default" and "everyone" leave out
+	// the caller. nil omits the field.
+	//
+	// It applies only to a drafted cloud file, whose subscribers it recomputes;
+	// a published one ignores it. Create always publishes, so through the API
+	// this has no effect today; it is here because BC3 reads it on update. Leave both this and Subscriptions nil to keep
+	// a draft's current subscribers. A Subscriptions list sent without Notify is
+	// read as "custom".
+	Notify *string `json:"notify,omitempty"`
 }
 
 // CloudFilesService handles cloud file operations.
@@ -201,6 +220,7 @@ func (s *CloudFilesService) Create(ctx context.Context, bucketID, vaultID int64,
 		Description:      omitzero(req.Description),
 		Subscriptions:    req.Subscriptions,
 		VisibleToClients: req.VisibleToClients,
+		Notify:           req.Notify,
 	}
 
 	resp, err := s.client.parent.gen.CreateCloudFileWithResponse(ctx, s.client.accountID, bucketID, vaultID, body)
@@ -253,6 +273,7 @@ func (s *CloudFilesService) Update(ctx context.Context, cloudFileID int64, req *
 		Title:         omitzero(req.Title),
 		Description:   omitzero(req.Description),
 		Subscriptions: req.Subscriptions,
+		Notify:        req.Notify,
 	}
 
 	resp, err := s.client.parent.gen.UpdateCloudFileWithResponse(ctx, s.client.accountID, cloudFileID, body)

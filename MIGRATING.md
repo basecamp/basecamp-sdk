@@ -43,6 +43,29 @@ null or a missing key. Absent and null lists are unchanged.
   "absent" from "empty", so it now writes `[]` rather than dropping a
   server-sent empty list.
 
+### Cloud files and Google documents: `notify` on create and update
+
+`CreateCloudFile`, `UpdateCloudFile`, `CreateGoogleDocument` and
+`UpdateGoogleDocument` take an optional `notify` (`"default"`, `"everyone"` or
+`"custom"`). A caller that doesn't set it sends the same request as before.
+What each mode reaches, and that an update applies it only to a draft, is in
+the field's own doc in every SDK; this entry covers only what the new member
+breaks.
+The new member is source-compatible for callers who name their fields, with
+three exceptions:
+
+- **Rust.** The four generated `...RequestContent` structs gain
+  `notify: Option<String>`. An exhaustive struct literal no longer compiles:
+  add `notify: None`, or end it with `..Default::default()`.
+- **Go.** `basecamp.CreateCloudFileRequest`, `UpdateCloudFileRequest`,
+  `CreateGoogleDocumentRequest` and `UpdateGoogleDocumentRequest`, and the
+  generated `...RequestContent` structs, gain a `Notify *string` field. Only
+  unkeyed struct literals break; switch them to keyed literals.
+- **Kotlin.** The four generated `...Body` classes add `notify` as their last
+  constructor parameter, with a default. Source that names its arguments, or
+  passes all of the current ones positionally, still compiles, but the
+  constructor and `copy` signatures change at the binary level, so recompile.
+
 # v0.35.0
 
 ### External links (doors): a service of their own

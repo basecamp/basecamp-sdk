@@ -480,6 +480,7 @@ class CreateClientRequest(TypedDict):
 
 class CreateCloudFileRequestContent(TypedDict):
     description: NotRequired[str]
+    notify: NotRequired[str]
     service: str
     subscriptions: NotRequired[list[int]]
     title: NotRequired[str]
@@ -533,6 +534,7 @@ class CreateGaugeNeedleRequestContent(TypedDict):
 class CreateGoogleDocumentRequestContent(TypedDict):
     description: NotRequired[str]
     document_type: str
+    notify: NotRequired[str]
     status: NotRequired[str]
     subscriptions: NotRequired[list[int]]
     title: NotRequired[str]
@@ -2413,6 +2415,7 @@ class UpdateChatbotRequestContent(TypedDict):
 
 class UpdateCloudFileRequestContent(TypedDict):
     description: NotRequired[str]
+    notify: NotRequired[str]
     service: str
     subscriptions: NotRequired[list[int]]
     title: NotRequired[str]
@@ -2446,6 +2449,7 @@ class UpdateGaugeNeedleRequestContent(TypedDict):
 class UpdateGoogleDocumentRequestContent(TypedDict):
     description: NotRequired[str]
     document_type: str
+    notify: NotRequired[str]
     status: NotRequired[str]
     subscriptions: NotRequired[list[int]]
     title: NotRequired[str]

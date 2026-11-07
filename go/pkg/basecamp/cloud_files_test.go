@@ -304,3 +304,82 @@ func TestGoogleDocumentsService_RequiredFieldsAreRefusedLocally(t *testing.T) {
 		})
 	}
 }
+
+// TestCloudFileAndGoogleDocumentWrites_NotifyReachesTheWire pins notify on all
+// four writes. BC3's Subscribers#find_subscribers reads params[:notify] and
+// defaults it to "custom", so a caller who sends neither notify nor
+// subscriptions notifies nobody; notify is the only way to reach "default" or
+// "everyone". nil must omit the key — on an update, sending it at all
+// recomputes a draft's subscribers (Recording::DraftSubscribers checks
+// params.key?(:notify)) — and a value must arrive verbatim.
+func TestCloudFileAndGoogleDocumentWrites_NotifyReachesTheWire(t *testing.T) {
+	cloudFile := loadSharedFixture(t, "cloud_files")
+	googleDocument := loadSharedFixture(t, "google_documents")
+
+	writes := []struct {
+		name    string
+		fixture []byte
+		status  int
+		call    func(t *testing.T, h http.HandlerFunc, notify *string) error
+	}{
+		{"CloudFiles.Create", cloudFile, 201, func(t *testing.T, h http.HandlerFunc, notify *string) error {
+			_, err := testCloudFilesServer(t, h).Create(context.Background(), 1, 2, &CreateCloudFileRequest{
+				URL: "https://www.dropbox.com/s/abcd1234/brand.zip", Service: "dropbox", Notify: notify,
+			})
+			return err
+		}},
+		{"CloudFiles.Update", cloudFile, 200, func(t *testing.T, h http.HandlerFunc, notify *string) error {
+			_, err := testCloudFilesServer(t, h).Update(context.Background(), 3, &UpdateCloudFileRequest{
+				URL: "https://www.dropbox.com/s/abcd1234/brand.zip", Service: "dropbox", Notify: notify,
+			})
+			return err
+		}},
+		{"GoogleDocuments.Create", googleDocument, 201, func(t *testing.T, h http.HandlerFunc, notify *string) error {
+			_, err := testGoogleDocumentsServer(t, h).Create(context.Background(), 1, 2, &CreateGoogleDocumentRequest{
+				URL: "https://docs.google.com/document/d/abc/edit", DocumentType: "doc", Notify: notify,
+			})
+			return err
+		}},
+		{"GoogleDocuments.Update", googleDocument, 200, func(t *testing.T, h http.HandlerFunc, notify *string) error {
+			_, err := testGoogleDocumentsServer(t, h).Update(context.Background(), 3, &UpdateGoogleDocumentRequest{
+				URL: "https://docs.google.com/document/d/abc/edit", DocumentType: "doc", Notify: notify,
+			})
+			return err
+		}},
+	}
+
+	for _, write := range writes {
+		for _, tc := range []struct {
+			name   string
+			notify *string
+		}{
+			{"nil omits the field", nil},
+			{"default is sent", Ptr("default")},
+			{"everyone is sent", Ptr("everyone")},
+		} {
+			t.Run(write.name+"/"+tc.name, func(t *testing.T) {
+				var body map[string]any
+				handler := func(w http.ResponseWriter, r *http.Request) {
+					body = decodeRequestBody(t, r)
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(write.status)
+					_, _ = w.Write(write.fixture)
+				}
+				if err := write.call(t, handler, tc.notify); err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if body == nil {
+					t.Fatal("no request reached the server")
+				}
+				got, present := body["notify"]
+				if tc.notify == nil {
+					if present {
+						t.Errorf("notify sent as %v, want it omitted (body=%v)", got, body)
+					}
+				} else if got != *tc.notify {
+					t.Errorf("notify = %v, want %q (body=%v)", got, *tc.notify, body)
+				}
+			})
+		}
+	}
+}

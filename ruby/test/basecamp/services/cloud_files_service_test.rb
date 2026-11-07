@@ -75,6 +75,53 @@ class CloudFilesServiceTest < Minitest::Test
     assert_equal 1001, result["id"]
   end
 
+  # Without notify, bc3 notifies only the people in subscriptions, or nobody;
+  # notify is the only way to reach "default" or "everyone".
+  def test_create_cloud_file_sends_notify
+    stub_request(:post, "https://3.basecampapi.com/12345/buckets/2085958500/vaults/3001/cloud_files.json")
+      .with(body: hash_including("notify" => "everyone"))
+      .to_return(status: 201, body: cloud_file.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.cloud_files.create_cloud_file(
+      bucket_id: 2085958500, vault_id: 3001,
+      url: "https://www.dropbox.com/s/abcd1234/brand.zip", service: "dropbox", notify: "everyone"
+    )
+
+    assert_equal 1001, result["id"]
+  end
+
+  def test_create_cloud_file_omits_notify_when_unset
+    stub_request(:post, "https://3.basecampapi.com/12345/buckets/2085958500/vaults/3001/cloud_files.json")
+      .with { |request| !JSON.parse(request.body).key?("notify") }
+      .to_return(status: 201, body: cloud_file.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.cloud_files.create_cloud_file(
+      bucket_id: 2085958500, vault_id: 3001,
+      url: "https://www.dropbox.com/s/abcd1234/brand.zip", service: "dropbox"
+    )
+  end
+
+  # On an update, sending notify at all recomputes a draft's subscribers
+  # (Recording::DraftSubscribers), so it goes out only when the caller sets it.
+  def test_update_cloud_file_sends_notify_only_when_set
+    sent = stub_request(:put, "https://3.basecampapi.com/12345/cloud_files/1001")
+      .with(body: hash_including("notify" => "default"))
+      .to_return(status: 200, body: cloud_file.to_json, headers: { "Content-Type" => "application/json" })
+    @account.cloud_files.update_cloud_file(
+      cloud_file_id: 1001, url: "https://www.dropbox.com/s/abcd1234/brand.zip", service: "dropbox", notify: "default"
+    )
+    assert_requested sent
+
+    WebMock.reset!
+    omitted = stub_request(:put, "https://3.basecampapi.com/12345/cloud_files/1001")
+      .with { |request| !JSON.parse(request.body).key?("notify") }
+      .to_return(status: 200, body: cloud_file.to_json, headers: { "Content-Type" => "application/json" })
+    @account.cloud_files.update_cloud_file(
+      cloud_file_id: 1001, url: "https://www.dropbox.com/s/abcd1234/brand.zip", service: "dropbox"
+    )
+    assert_requested omitted
+  end
+
   def test_create_cloud_file_surfaces_the_field_keyed_422
     stub_request(:post, "https://3.basecampapi.com/12345/buckets/2085958500/vaults/3001/cloud_files.json")
       .to_return(status: 422, body: { "errors" => { "url" => [ "is not a valid Dropbox url" ] } }.to_json,

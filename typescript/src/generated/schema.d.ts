@@ -5080,6 +5080,15 @@ export interface components {
              *     always creates client-visible records regardless of what is sent.
              */
             visible_to_clients?: boolean;
+            /**
+             * @description Who to notify: "default" (the project's subscribers, without clients),
+             *     "everyone" (everyone on the project who can see it), or "custom" (the people
+             *     in subscriptions). "default" and "everyone" leave out the caller.
+             *
+             *     Omit both this and subscriptions to notify nobody. A subscriptions array sent
+             *     without notify is read as "custom".
+             */
+            notify?: string;
         };
         CreateCloudFileResponseContent: components["schemas"]["CloudFile"];
         CreateCommentRequestContent: {
@@ -5178,6 +5187,15 @@ export interface components {
              *     always creates client-visible records regardless of what is sent.
              */
             visible_to_clients?: boolean;
+            /**
+             * @description Who to notify: "default" (the project's subscribers, without clients),
+             *     "everyone" (everyone on the project who can see it), or "custom" (the people
+             *     in subscriptions). "default" and "everyone" leave out the caller.
+             *
+             *     Omit both this and subscriptions to notify nobody. A subscriptions array sent
+             *     without notify is read as "custom".
+             */
+            notify?: string;
         };
         CreateGoogleDocumentResponseContent: components["schemas"]["GoogleDocument"];
         CreateHillChartVersionRequestContent: {
@@ -8808,6 +8826,18 @@ export interface components {
             title?: string;
             description?: string;
             subscriptions?: number[];
+            /**
+             * @description Who to notify: "default" (the project's subscribers, without clients),
+             *     "everyone" (everyone on the project who can see it), or "custom" (the people
+             *     in subscriptions). "default" and "everyone" leave out the caller.
+             *
+             *     Applies only to a drafted cloud file, whose subscribers it recomputes; a
+             *     published one ignores it. CreateCloudFile always publishes, so through the
+             *     API this has no effect today; it is modelled because BC3 reads it here. Omit both this and subscriptions to keep a draft's
+             *     current subscribers. A subscriptions array sent without notify is read as
+             *     "custom".
+             */
+            notify?: string;
         };
         UpdateCloudFileResponseContent: components["schemas"]["CloudFile"];
         UpdateCommentRequestContent: {
@@ -8859,6 +8889,17 @@ export interface components {
             /** @description active|drafted */
             status?: string;
             subscriptions?: number[];
+            /**
+             * @description Who to notify: "default" (the project's subscribers, without clients),
+             *     "everyone" (everyone on the project who can see it), or "custom" (the people
+             *     in subscriptions). "default" and "everyone" leave out the caller.
+             *
+             *     Applies only to a drafted Google document, whose subscribers it recomputes; a
+             *     published one ignores it. Omit both this and subscriptions to keep a draft's
+             *     current subscribers. A subscriptions array sent without notify is read as
+             *     "custom".
+             */
+            notify?: string;
         };
         UpdateGoogleDocumentResponseContent: components["schemas"]["GoogleDocument"];
         UpdateHillChartSettingsRequestContent: {
