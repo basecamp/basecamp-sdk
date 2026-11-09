@@ -146,6 +146,36 @@ module Basecamp
       # collide with any string key the projection carries.
       BUCKET_ID_MEMO = :__validated_bucket_id
 
+      # Starts a move once, as +move+ does, and waits for Basecamp to finish it,
+      # polling +get_filing+ with backoff (SPEC.md Appendix F, Filing Waits).
+      #
+      # @param timeout [Numeric, nil] seconds to wait after the start; a minute
+      #   when nil
+      # @return [Hash] the completed filing; +destination_recording+ is the
+      #   moved recording
+      # @raise [Basecamp::FilingError] a subclass saying how far it got
+      def move_and_wait(recording_id:, filing_destination_id: nil, destination_project_id: nil, parent_id: nil, timeout: nil)
+        FilingWait.run(
+          start: -> { move(recording_id: recording_id, filing_destination_id: filing_destination_id, destination_project_id: destination_project_id, parent_id: parent_id) },
+          get_filing: ->(id) { get_filing(filing_id: id) },
+          timeout: timeout
+        )
+      end
+
+      # Starts a copy once, as +copy+ does, and waits for Basecamp to finish it.
+      # Only after a {Basecamp::FilingRefusedError} is copying again safe;
+      # anything else may already have made a copy.
+      #
+      # @return [Hash] the completed filing; +destination_recording+ is the copy
+      # @raise [Basecamp::FilingError] a subclass saying how far it got
+      def copy_and_wait(recording_id:, filing_destination_id: nil, destination_project_id: nil, parent_id: nil, include_comments: nil, timeout: nil)
+        FilingWait.run(
+          start: -> { copy(recording_id: recording_id, filing_destination_id: filing_destination_id, destination_project_id: destination_project_id, parent_id: parent_id, include_comments: include_comments) },
+          get_filing: ->(id) { get_filing(filing_id: id) },
+          timeout: timeout
+        )
+      end
+
       # Resolves a recording pointer into a compact projection through the typed
       # read its type names.
       #

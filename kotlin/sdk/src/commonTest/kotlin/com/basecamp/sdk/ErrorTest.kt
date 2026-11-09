@@ -286,6 +286,7 @@ class ErrorTest {
                 BasecampException.RECORDING_UNRESOLVED,
                 "chat line found under no visible campfire",
             ),
+            BasecampException.FilingFailure(BasecampException.FILING_UNSETTLED, "filing 4 is still processing"),
             BasecampException.DiscoverySelection("ambiguous_issuers", "ambiguous"),
             BasecampException.DeviceFlow(BasecampException.DEVICE_ACCESS_DENIED),
         )
@@ -304,6 +305,7 @@ class ErrorTest {
                 is BasecampException.LimitExceeded -> "limit_exceeded"
                 is BasecampException.Usage -> "usage"
                 is BasecampException.RecordingSummaryFailure -> "recording_summary"
+                is BasecampException.FilingFailure -> "filing"
                 is BasecampException.DiscoverySelection -> "discovery_selection"
                 is BasecampException.DeviceFlow -> "device_flow"
             }
