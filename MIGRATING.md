@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.36.0
 
 ### Cards: notify assignees on update, and assign people on create
 
