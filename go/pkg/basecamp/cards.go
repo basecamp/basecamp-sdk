@@ -195,10 +195,11 @@ type CreateCardRequest struct {
 
 // UpdateCardRequest specifies the parameters for updating a card.
 //
-// Every field is presence-bearing: a nil pointer means "leave this alone", so
-// Update can tell "the caller did not mention the due date" from "the caller
-// wants the due date cleared". That distinction is what makes Update
-// merge-safe — see its doc comment for why BC3 forces the issue.
+// Title, Content, DueOn and AssigneeIDs are presence-bearing: nil means "leave
+// this alone", so Update can tell "the caller did not mention the due date"
+// from "the caller wants the due date cleared". That distinction is what makes
+// Update merge-safe — see its doc comment for why BC3 forces the issue.
+// Notify is not card state but a send directive, sent only when true.
 type UpdateCardRequest struct {
 	// Title is the card title. Nil leaves it unchanged.
 	Title *string `json:"title,omitempty"`
