@@ -98,6 +98,29 @@ describe("CardsService", () => {
       });
       expect(card.id).toBe(99);
     });
+
+    it("sends assignee_ids and notify so the new card is assigned in one request", async () => {
+      const columnId = 200;
+      let captured: Record<string, unknown> = {};
+
+      server.use(
+        http.post(`${BASE_URL}/card_tables/lists/${columnId}/cards.json`, async ({ request }) => {
+          captured = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(sampleCard(99), { status: 201 });
+        })
+      );
+
+      await client.cards.create(columnId, {
+        title: "New card",
+        assigneeIds: [1049715913, 1049715914],
+        notify: true,
+      });
+      expect(captured).toEqual({
+        title: "New card",
+        assignee_ids: [1049715913, 1049715914],
+        notify: true,
+      });
+    });
   });
 
   describe("updateVerbatim", () => {
@@ -247,6 +270,23 @@ describe("CardsService", () => {
       // BC3 filters incoming ids through reachable_people, so echoing them
       // back could unassign someone who has since lost board access.
       expect(captured.body).not.toHaveProperty("assignee_ids");
+    });
+
+    it("sends notify: true beside the assignees it asks Basecamp to notify", async () => {
+      const captured = capture();
+
+      await client.cards.update(42, { assigneeIds: [1049715913], notify: true });
+
+      expect(captured.body).toEqual({ assignee_ids: [1049715913], notify: true });
+      expect(captured.methods).toEqual(["PUT"]);
+    });
+
+    it("keeps notify off the wire unless it is true", async () => {
+      const captured = capture();
+
+      await client.cards.update(42, { assigneeIds: [1049715913], notify: false });
+
+      expect(captured.body).toEqual({ assignee_ids: [1049715913] });
     });
 
     it("sends an explicitly empty content, which is a clear", async () => {

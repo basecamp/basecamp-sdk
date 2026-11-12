@@ -46,7 +46,7 @@ _SCHEDULE_ENTRY_WRITE_FIELDS = ("summary", "starts_at", "ends_at", "description"
 # Create takes `status` too — it is a Recording column, so BC3 reads it outside
 # the schedule_entry envelope and it is not a ReplaceScheduleEntry member.
 _SCHEDULE_ENTRY_CREATE_FIELDS = _SCHEDULE_ENTRY_WRITE_FIELDS + ("status",)
-_CARD_WRITE_FIELDS = ("title", "content", "due_on", "assignee_ids")
+_CARD_WRITE_FIELDS = ("title", "content", "due_on", "assignee_ids", "notify")
 
 # Sentinel distinguishing "key absent from the JSON body" from a present None.
 _MISSING = object()
@@ -1089,6 +1089,11 @@ class OperationMapper:
                         if key in body:
                             setattr(entry, key, body[key])
                 return entry.result
+            case "CreateCard":
+                return self._account.cards.create(
+                    column_id=path_params["columnId"],
+                    **{k: body[k] for k in _CARD_WRITE_FIELDS if k in body},
+                )
             case "UpdateCard":
                 # Merge-safe composite: GET then PUT, resending the fetched due_on.
                 return self._account.cards.update(

@@ -35,12 +35,18 @@ extension CardsService {
     /// Assignees are never resent on the caller's behalf: BC3 filters incoming
     /// IDs through `reachable_people`, so echoing back an id belonging to
     /// someone who has since lost board access would silently unassign them.
+    ///
+    /// `notify` asks BC3 to notify the people this request newly assigns
+    /// through `assigneeIds`. It is a send directive, not card state: sent only
+    /// when true (as on the todo writes), and without effect unless
+    /// `assigneeIds` is sent too.
     public func update(
         cardId: Int,
         title: String? = nil,
         content: String? = nil,
         dueOn: DueDate = .preserve,
-        assigneeIds: [Int]? = nil
+        assigneeIds: [Int]? = nil,
+        notify: Bool = false
     ) async throws -> Card {
         // The two cases that matter are distinguished by presence, not value.
         //
@@ -72,6 +78,7 @@ extension CardsService {
                 assigneeIds: assigneeIds,
                 content: content,
                 dueOn: resolvedDueOn,
+                notify: notify ? true : nil,
                 title: title
             )
         )

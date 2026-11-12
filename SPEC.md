@@ -335,6 +335,14 @@ The composite deliberately does **not** resend anything the caller did not set. 
 assignee IDs through `reachable_people`, so echoing assignees back would silently unassign anyone who
 has since lost board access.
 
+`notify` is a send directive, as on the todo writes: `update` puts `"notify": true` on the wire only
+when the caller asks, and never otherwise, so an assignment is silent by default. BC3 reads it as a
+boolean cast of the top-level param and notifies only the people this request's `assignee_ids` newly
+adds, so it does nothing on its own. `CreateCard` takes `assignee_ids` and `notify` too, so a card can
+be created assigned, with its assignees notified, in one request. Conformance: `update-notify`,
+`update-notify-false`, `update-verbatim-notify` and `create-assigns-and-notifies` in
+`conformance/tests/cards_write.json`.
+
 Presence detection is language-native: Go `*string` (nil omits, pointer-to-empty clears),
 TypeScript `dueOn?: string | null`, Ruby/Python `nil`/`None` kwarg defaults with `""` to clear,
 Kotlin nullable parameters with `""` to clear, Swift a `DueDate` enum (`.preserve`/`.clear`/`.on`)

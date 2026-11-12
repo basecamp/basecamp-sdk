@@ -454,6 +454,7 @@ class CreateCardColumnRequestContent(TypedDict):
 
 
 class CreateCardRequestContent(TypedDict):
+    assignee_ids: NotRequired[list[int]]
     content: NotRequired[str]
     due_on: NotRequired[str]
     notify: NotRequired[bool]
@@ -2397,6 +2398,7 @@ class UpdateCardRequestContent(TypedDict):
     assignee_ids: NotRequired[list[int]]
     content: NotRequired[str]
     due_on: NotRequired[str]
+    notify: NotRequired[bool]
     title: NotRequired[str]
 
 

@@ -179,7 +179,8 @@ data class UpdateCardBody(
     val title: String? = null,
     val content: String? = null,
     val dueOn: String? = null,
-    val assigneeIds: List<Long>? = null
+    val assigneeIds: List<Long>? = null,
+    val notify: Boolean? = null
 )
 
 /** Request body for MoveCard. */
@@ -202,6 +203,7 @@ data class CreateCardBody(
     val title: String,
     val content: String? = null,
     val dueOn: String? = null,
+    val assigneeIds: List<Long>? = null,
     val notify: Boolean? = null
 )
 

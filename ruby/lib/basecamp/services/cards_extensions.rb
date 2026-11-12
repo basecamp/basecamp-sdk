@@ -36,7 +36,9 @@ module Basecamp
       # * a date — the due date is set
       #
       # Every other argument is plain send-when-set: +nil+ leaves the field off
-      # the body, and BC3 leaves the stored value untouched.
+      # the body, and BC3 leaves the stored value untouched. The exception is
+      # +notify+, a send directive rather than card state, which goes on the
+      # wire only when true (as on the todo writes).
       #
       # This is the same single PUT as {#update_verbatim}, which stays as the
       # unnormalised path; +update+ differs only in mapping an empty +due_on+ to
@@ -47,8 +49,11 @@ module Basecamp
       # @param content [String, nil] new content (nil = keep current, "" clears)
       # @param due_on [String, nil] new due date (nil = keep current, "" clears)
       # @param assignee_ids [Array, nil] new assignees (nil = keep current, [] clears)
+      # @param notify [Boolean, nil] notify the people this request newly assigns
+      #   through +assignee_ids+; sent only when true, and without effect unless
+      #   +assignee_ids+ is sent too
       # @return [Hash] the updated card
-      def update(card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil)
+      def update(card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil, notify: nil)
         resolved_due_on =
           if due_on.nil?
             # Unaddressed. +compact_params+ drops the nil, so no key is sent and
@@ -67,7 +72,8 @@ module Basecamp
           title: title,
           content: content,
           due_on: resolved_due_on,
-          assignee_ids: assignee_ids
+          assignee_ids: assignee_ids,
+          notify: notify ? true : nil
         )
       end
     end

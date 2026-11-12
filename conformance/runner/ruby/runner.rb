@@ -739,6 +739,8 @@ class OperationMapper
       @account.schedules.edit_entry(entry_id: path_params["entryId"]) do |entry|
         (body || {}).each { |key, value| entry.public_send("#{key}=", value) }
       end
+    when "CreateCard"
+      @account.cards.create(column_id: path_params["columnId"], **card_write_kwargs(body))
     when "UpdateCard"
       # Merge-safe composite: GET then PUT, resending the fetched due_on.
       @account.cards.update(card_id: path_params["cardId"], **card_write_kwargs(body))
@@ -1290,7 +1292,7 @@ class OperationMapper
     summary
   end
 
-  CARD_WRITE_KEYS = %w[title content due_on assignee_ids].freeze
+  CARD_WRITE_KEYS = %w[title content due_on assignee_ids notify].freeze
 
   def card_write_kwargs(body)
     CARD_WRITE_KEYS.select { |key| (body || {}).key?(key) } \

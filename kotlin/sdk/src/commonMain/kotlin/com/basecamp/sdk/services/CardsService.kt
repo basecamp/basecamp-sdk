@@ -35,6 +35,11 @@ class CardsService(client: AccountClient) :
      * default: BC3 filters incoming ids through `reachable_people`, so sending
      * back a list read from the card would silently unassign anyone who has
      * since lost board access.
+     *
+     * [notify] asks BC3 to notify the people this request newly assigns through
+     * [assigneeIds]. It is a send directive, not card state: sent only when
+     * true (as on the todo writes), and without effect unless [assigneeIds] is
+     * sent too.
      */
     suspend fun update(
         cardId: Long,
@@ -42,6 +47,7 @@ class CardsService(client: AccountClient) :
         content: String? = null,
         dueOn: String? = null,
         assigneeIds: List<Long>? = null,
+        notify: Boolean = false,
     ): Card =
         // dueOn goes to the wire verbatim, `""` included: the generated body
         // builder drops only nulls (`?.let`), so the blank survives as
@@ -55,6 +61,7 @@ class CardsService(client: AccountClient) :
                 content = content,
                 dueOn = dueOn,
                 assigneeIds = assigneeIds,
+                notify = if (notify) true else null,
             ),
         )
 }

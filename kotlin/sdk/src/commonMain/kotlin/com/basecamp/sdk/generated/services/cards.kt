@@ -52,6 +52,7 @@ open class CardsService(client: AccountClient) : BaseService(client) {
                 body.content?.let { put("content", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.dueOn?.let { put("due_on", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.assigneeIds?.let { put("assignee_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+                body.notify?.let { put("notify", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Card>(body)
@@ -136,6 +137,7 @@ open class CardsService(client: AccountClient) : BaseService(client) {
                 put("title", kotlinx.serialization.json.JsonPrimitive(body.title))
                 body.content?.let { put("content", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.dueOn?.let { put("due_on", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.assigneeIds?.let { put("assignee_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
                 body.notify?.let { put("notify", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->

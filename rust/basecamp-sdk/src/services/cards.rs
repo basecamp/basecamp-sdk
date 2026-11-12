@@ -14,6 +14,10 @@
 //! nil; an explicit `null` is never sent (SPEC §18 body compaction). The generated
 //! request's `due_on` is a [`DateChange`] (the spec marks it `x-basecamp-clearable`), so
 //! it spells the clear itself.
+//!
+//! `notify` asks BC3 to notify the people the request newly assigns through
+//! `assignee_ids`. It is a send directive, not card state, so it goes on the wire only
+//! when true, as on the todo writes.
 
 pub use crate::generated::services::cards::{CardsService, ListCardsParams};
 
@@ -23,7 +27,7 @@ use crate::services::DateChange;
 
 /// The fields a merge-safe [`CardsService::update`] may set. A `None` member stays off
 /// the wire and the server leaves it unchanged; a `Some` member is sent as given, so
-/// `Some(String::new())` and `Some(vec![])` clear.
+/// `Some(String::new())` and `Some(vec![])` clear. `notify` is sent only when true.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct UpdateCardRequest {
     /// The title.
@@ -35,6 +39,10 @@ pub struct UpdateCardRequest {
     pub due_on: Option<DateChange>,
     /// The complete list of assigned person ids.
     pub assignee_ids: Option<Vec<i64>>,
+    /// Notify the people this request newly assigns through `assignee_ids`. A send
+    /// directive, not card state: sent only when true, and without effect unless
+    /// `assignee_ids` is sent too.
+    pub notify: bool,
 }
 
 impl UpdateCardRequest {
@@ -44,6 +52,7 @@ impl UpdateCardRequest {
             content: self.content.clone(),
             due_on: self.due_on,
             assignee_ids: self.assignee_ids.clone(),
+            notify: self.notify.then_some(true),
         }
     }
 }

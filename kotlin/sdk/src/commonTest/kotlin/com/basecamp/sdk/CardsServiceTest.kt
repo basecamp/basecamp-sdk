@@ -1,6 +1,7 @@
 package com.basecamp.sdk
 
 import com.basecamp.sdk.generated.cards
+import com.basecamp.sdk.generated.services.CreateCardBody
 import com.basecamp.sdk.generated.services.UpdateCardBody
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
@@ -188,6 +189,57 @@ class CardsServiceTest {
         assertContains(body, "\"content\":\"\"")
         assertContains(body, "\"assignee_ids\":[]")
         assertContains(body, "\"due_on\":\"\"")
+    }
+
+    @Test
+    fun updateSendsNotifyBesideTheAssignees() = runTest {
+        val exchange = Exchange()
+        clientFor(exchange).cards.update(42, assigneeIds = listOf(1049715913L), notify = true)
+
+        assertEquals(
+            json.parseToJsonElement("""{"assignee_ids":[1049715913],"notify":true}"""),
+            json.parseToJsonElement(exchange.lastPutBody!!),
+        )
+    }
+
+    @Test
+    fun updateKeepsNotifyOffTheWireUnlessTrue() = runTest {
+        val exchange = Exchange()
+        clientFor(exchange).cards.update(42, assigneeIds = listOf(1049715913L), notify = false)
+
+        assertEquals(
+            json.parseToJsonElement("""{"assignee_ids":[1049715913]}"""),
+            json.parseToJsonElement(exchange.lastPutBody!!),
+        )
+    }
+
+    @Test
+    fun createSendsAssigneesAndNotify() = runTest {
+        var sent: String? = null
+        val client = testBasecampClient {
+            accessToken("test-token")
+            engine = MockEngine { request ->
+                sent = (request.body as? io.ktor.http.content.TextContent)?.text
+                respond(
+                    content = cardJson(),
+                    status = HttpStatusCode.Created,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                )
+            }
+        }
+
+        client.forAccount("12345").cards.create(
+            200,
+            CreateCardBody(title = "New card", assigneeIds = listOf(1049715913L, 1049715914L), notify = true),
+        )
+
+        assertEquals(
+            json.parseToJsonElement(
+                """{"title":"New card","assignee_ids":[1049715913,1049715914],"notify":true}""",
+            ),
+            json.parseToJsonElement(sent!!),
+        )
+        client.close()
     }
 
     /**

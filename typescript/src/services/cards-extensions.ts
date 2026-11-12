@@ -32,6 +32,13 @@ export interface UpdateCardRequest {
    * has since lost board access would silently unassign them.
    */
   assigneeIds?: number[];
+  /**
+   * Ask Basecamp to notify the people this request newly assigns through
+   * `assigneeIds`. A send directive, not card state: sent only when `true`,
+   * and without effect unless `assigneeIds` is sent too. People already
+   * assigned are not notified again.
+   */
+  notify?: boolean;
 }
 
 /**
@@ -76,6 +83,9 @@ export class CardsService extends GeneratedCardsService {
    *
    * // Clear the due date.
    * await client.cards.update(123, { dueOn: null });
+   *
+   * // Assign someone and notify them.
+   * await client.cards.update(123, { assigneeIds: [456], notify: true });
    * ```
    */
   async update(cardId: number, req: UpdateCardRequest): Promise<Card> {
@@ -84,11 +94,14 @@ export class CardsService extends GeneratedCardsService {
       content?: string;
       dueOn?: string;
       assigneeIds?: number[];
+      notify?: boolean;
     } = {};
 
     if (req.title !== undefined) body.title = req.title;
     if (req.content !== undefined) body.content = req.content;
     if (req.assigneeIds !== undefined) body.assigneeIds = req.assigneeIds;
+    // As on the todo writes, notify goes on the wire only when true.
+    if (req.notify) body.notify = true;
 
     // `due_on` stays off the wire unless the caller addressed it, which the
     // server reads as "leave the due date alone". A date sets it; `null` asks

@@ -6,7 +6,7 @@
 mod composites_support;
 
 use basecamp_sdk::Date;
-use basecamp_sdk::models::UpdateCardRequestContent;
+use basecamp_sdk::models::{CreateCardRequestContent, UpdateCardRequestContent};
 use basecamp_sdk::services::DateChange;
 use basecamp_sdk::services::cards::UpdateCardRequest;
 use composites_support::run;
@@ -124,6 +124,99 @@ async fn update_explicit_empty_assignees_an_explicit_empty_assignee_list_is_sent
     )
     .await
     .expect("updated");
+}
+
+#[tokio::test]
+async fn update_notify_true_reaches_the_wire_beside_the_assignees() {
+    run(
+        FIXTURE,
+        "update-notify: notify true reaches the wire beside the assignees it asks BC3 to notify",
+        |account| async move {
+            account
+                .cards()
+                .update(
+                    CARD,
+                    &UpdateCardRequest {
+                        assignee_ids: Some(vec![1_049_715_913]),
+                        notify: true,
+                        ..Default::default()
+                    },
+                )
+                .await
+        },
+    )
+    .await
+    .expect("updated");
+}
+
+#[tokio::test]
+async fn update_notify_false_is_left_off_the_wire() {
+    run(
+        FIXTURE,
+        "update-notify-false: notify is a send directive, left off the wire unless true",
+        |account| async move {
+            account
+                .cards()
+                .update(
+                    CARD,
+                    &UpdateCardRequest {
+                        assignee_ids: Some(vec![1_049_715_913]),
+                        notify: false,
+                        ..Default::default()
+                    },
+                )
+                .await
+        },
+    )
+    .await
+    .expect("updated");
+}
+
+#[tokio::test]
+async fn update_verbatim_sends_notify_as_given() {
+    run(
+        FIXTURE,
+        "update-verbatim-notify: the raw update sends notify as given",
+        |account| async move {
+            account
+                .cards()
+                .update_verbatim(
+                    CARD,
+                    &UpdateCardRequestContent {
+                        assignee_ids: Some(vec![1_049_715_913]),
+                        notify: Some(true),
+                        ..Default::default()
+                    },
+                )
+                .await
+        },
+    )
+    .await
+    .expect("updated");
+}
+
+#[tokio::test]
+async fn create_sends_assignees_and_notify() {
+    run(
+        FIXTURE,
+        "create-assigns-and-notifies: assignee_ids and notify reach the create body",
+        |account| async move {
+            account
+                .cards()
+                .create(
+                    1_069_479_338,
+                    &CreateCardRequestContent {
+                        title: "New card".to_string(),
+                        assignee_ids: Some(vec![1_049_715_913, 1_049_715_914]),
+                        notify: Some(true),
+                        ..Default::default()
+                    },
+                )
+                .await
+        },
+    )
+    .await
+    .expect("created");
 }
 
 /// Not a fixture case: a set due date goes through the generated request type as the

@@ -891,7 +891,8 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
             title: rb.optString("title"),
             content: rb.optString("content"),
             dueOn: dueOn,
-            assigneeIds: rb.intArray("assignee_ids"))
+            assigneeIds: rb.intArray("assignee_ids"),
+            notify: rb.optBool("notify") ?? false)
         return DispatchResult()
 
     // Raw single PUT, no read-before-write.
@@ -902,7 +903,19 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
                 assigneeIds: rb.intArray("assignee_ids"),
                 content: rb.optString("content"),
                 dueOn: rb.optString("due_on"),
+                notify: rb.optBool("notify"),
                 title: rb.optString("title")))
+        return DispatchResult()
+
+    case "CreateCard":
+        _ = try await account.cards.create(
+            columnId: pathParams.longParam("columnId"),
+            req: CreateCardRequest(
+                assigneeIds: rb.intArray("assignee_ids"),
+                content: rb.optString("content"),
+                dueOn: rb.optString("due_on"),
+                notify: rb.optBool("notify"),
+                title: rb.stringParam("title")))
         return DispatchResult()
 
     // Synthetic scenario key (not a wire operation): exercises the

@@ -32,6 +32,7 @@ class CardsService(BaseService):
         content: str | None = None,
         due_on: str | None = None,
         assignee_ids: list[int] | None = None,
+        notify: bool | None = None,
     ) -> dict[str, Any]:
         """Update an existing card.
 
@@ -41,12 +42,17 @@ class CardsService(BaseService):
             content: The content.
             due_on: The due on.
             assignee_ids: The assignee ids.
+            notify: Notify people newly assigned through assignee_ids in this same request. Off
+                unless true, and has no effect without assignee_ids: people already assigned are not
+                notified again.
         """
         return self._request(
             OperationInfo(service="cards", operation="update_verbatim", is_mutation=True, resource_id=card_id),
             "PUT",
             f"/card_tables/cards/{card_id}",
-            json_body=self._compact(title=title, content=content, due_on=due_on, assignee_ids=assignee_ids),
+            json_body=self._compact(
+                title=title, content=content, due_on=due_on, assignee_ids=assignee_ids, notify=notify
+            ),
             operation="UpdateCard",
         )
 
@@ -107,6 +113,7 @@ class CardsService(BaseService):
         title: str,
         content: str | None = None,
         due_on: str | None = None,
+        assignee_ids: list[int] | None = None,
         notify: bool | None = None,
     ) -> dict[str, Any]:
         """Create a card in a column.
@@ -116,13 +123,17 @@ class CardsService(BaseService):
             title: The title.
             content: The content.
             due_on: The due on.
-            notify: The notify.
+            assignee_ids: People to assign to the new card. BC3 keeps only the ids it finds among
+                the card table's reachable people and silently drops the rest.
+            notify: Notify the people assigned through assignee_ids. Off unless true.
         """
         return self._request(
             OperationInfo(service="cards", operation="create", is_mutation=True, resource_id=column_id),
             "POST",
             f"/card_tables/lists/{column_id}/cards.json",
-            json_body=self._compact(title=title, content=content, due_on=due_on, notify=notify),
+            json_body=self._compact(
+                title=title, content=content, due_on=due_on, assignee_ids=assignee_ids, notify=notify
+            ),
             operation="CreateCard",
         )
 
@@ -149,6 +160,7 @@ class AsyncCardsService(AsyncBaseService):
         content: str | None = None,
         due_on: str | None = None,
         assignee_ids: list[int] | None = None,
+        notify: bool | None = None,
     ) -> dict[str, Any]:
         """Update an existing card.
 
@@ -158,12 +170,17 @@ class AsyncCardsService(AsyncBaseService):
             content: The content.
             due_on: The due on.
             assignee_ids: The assignee ids.
+            notify: Notify people newly assigned through assignee_ids in this same request. Off
+                unless true, and has no effect without assignee_ids: people already assigned are not
+                notified again.
         """
         return await self._request(
             OperationInfo(service="cards", operation="update_verbatim", is_mutation=True, resource_id=card_id),
             "PUT",
             f"/card_tables/cards/{card_id}",
-            json_body=self._compact(title=title, content=content, due_on=due_on, assignee_ids=assignee_ids),
+            json_body=self._compact(
+                title=title, content=content, due_on=due_on, assignee_ids=assignee_ids, notify=notify
+            ),
             operation="UpdateCard",
         )
 
@@ -224,6 +241,7 @@ class AsyncCardsService(AsyncBaseService):
         title: str,
         content: str | None = None,
         due_on: str | None = None,
+        assignee_ids: list[int] | None = None,
         notify: bool | None = None,
     ) -> dict[str, Any]:
         """Create a card in a column.
@@ -233,12 +251,16 @@ class AsyncCardsService(AsyncBaseService):
             title: The title.
             content: The content.
             due_on: The due on.
-            notify: The notify.
+            assignee_ids: People to assign to the new card. BC3 keeps only the ids it finds among
+                the card table's reachable people and silently drops the rest.
+            notify: Notify the people assigned through assignee_ids. Off unless true.
         """
         return await self._request(
             OperationInfo(service="cards", operation="create", is_mutation=True, resource_id=column_id),
             "POST",
             f"/card_tables/lists/{column_id}/cards.json",
-            json_body=self._compact(title=title, content=content, due_on=due_on, notify=notify),
+            json_body=self._compact(
+                title=title, content=content, due_on=due_on, assignee_ids=assignee_ids, notify=notify
+            ),
             operation="CreateCard",
         )
