@@ -29,6 +29,10 @@ export interface UpdateVerbatimCardRequest {
   dueOn?: string;
   /** Person IDs to assign to */
   assigneeIds?: number[];
+  /** Notify people newly assigned through assignee_ids in this same request.
+Off unless true, and has no effect without assignee_ids: people already
+assigned are not notified again. */
+  notify?: boolean;
 }
 
 /**
@@ -60,7 +64,10 @@ export interface CreateCardRequest {
   content?: string;
   /** Due date (YYYY-MM-DD) */
   dueOn?: string;
-  /** Whether to send notifications to relevant people */
+  /** People to assign to the new card. BC3 keeps only the ids it finds among
+the card table's reachable people and silently drops the rest. */
+  assigneeIds?: number[];
+  /** Notify the people assigned through assignee_ids. Off unless true. */
   notify?: boolean;
 }
 
@@ -138,6 +145,7 @@ export class CardsService extends BaseService {
             content: req.content,
             due_on: req.dueOn,
             assignee_ids: req.assigneeIds,
+            notify: req.notify,
           },
         })
     );
@@ -248,6 +256,7 @@ export class CardsService extends BaseService {
             title: req.title,
             content: req.content,
             due_on: req.dueOn,
+            assignee_ids: req.assigneeIds,
             notify: req.notify,
           },
         })

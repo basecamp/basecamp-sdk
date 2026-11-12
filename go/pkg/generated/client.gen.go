@@ -667,10 +667,15 @@ type CreateCardColumnResponseContent = CardColumn
 
 // CreateCardRequestContent defines model for CreateCardRequestContent.
 type CreateCardRequestContent struct {
-	Content *string     `json:"content,omitempty"`
-	DueOn   *types.Date `json:"due_on,omitempty"`
-	Notify  *bool       `json:"notify,omitempty"`
-	Title   string      `json:"title"`
+	// AssigneeIds People to assign to the new card. BC3 keeps only the ids it finds among
+	// the card table's reachable people and silently drops the rest.
+	AssigneeIds *[]int64    `json:"assignee_ids,omitempty"`
+	Content     *string     `json:"content,omitempty"`
+	DueOn       *types.Date `json:"due_on,omitempty"`
+
+	// Notify Notify the people assigned through assignee_ids. Off unless true.
+	Notify *bool  `json:"notify,omitempty"`
+	Title  string `json:"title"`
 }
 
 // CreateCardResponseContent defines model for CreateCardResponseContent.
@@ -4943,7 +4948,12 @@ type UpdateCardRequestContent struct {
 	AssigneeIds *[]int64    `json:"assignee_ids,omitempty"`
 	Content     *string     `json:"content,omitempty"`
 	DueOn       *types.Date `json:"due_on,omitempty"`
-	Title       *string     `json:"title,omitempty"`
+
+	// Notify Notify people newly assigned through assignee_ids in this same request.
+	// Off unless true, and has no effect without assignee_ids: people already
+	// assigned are not notified again.
+	Notify *bool   `json:"notify,omitempty"`
+	Title  *string `json:"title,omitempty"`
 }
 
 // UpdateCardResponseContent defines model for UpdateCardResponseContent.

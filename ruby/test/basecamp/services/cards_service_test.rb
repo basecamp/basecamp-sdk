@@ -55,6 +55,39 @@ class CardsServiceTest < Minitest::Test
     assert_equal "New Feature", card["title"]
   end
 
+  def test_create_card_assigns_and_notifies_in_one_request
+    stub_post("/12345/card_tables/lists/200/cards.json", response_body: sample_card(id: 999))
+
+    @account.cards.create(column_id: 200, title: "New Feature",
+                          assignee_ids: [ 1049715913, 1049715914 ], notify: true)
+
+    assert_requested(:post, "#{BASE_URL}/12345/card_tables/lists/200/cards.json", times: 1) do |req|
+      JSON.parse(req.body) == {
+        "title" => "New Feature", "assignee_ids" => [ 1049715913, 1049715914 ], "notify" => true
+      }
+    end
+  end
+
+  def test_update_card_sends_notify_beside_the_assignees
+    stub_put("/12345/card_tables/cards/200", response_body: sample_card(id: 200))
+
+    @account.cards.update(card_id: 200, assignee_ids: [ 1049715913 ], notify: true)
+
+    assert_requested(:put, "#{BASE_URL}/12345/card_tables/cards/200", times: 1) do |req|
+      JSON.parse(req.body) == { "assignee_ids" => [ 1049715913 ], "notify" => true }
+    end
+  end
+
+  def test_update_card_keeps_notify_off_the_wire_unless_true
+    stub_put("/12345/card_tables/cards/200", response_body: sample_card(id: 200))
+
+    @account.cards.update(card_id: 200, assignee_ids: [ 1049715913 ], notify: false)
+
+    assert_requested(:put, "#{BASE_URL}/12345/card_tables/cards/200", times: 1) do |req|
+      JSON.parse(req.body) == { "assignee_ids" => [ 1049715913 ] }
+    end
+  end
+
   def test_update_verbatim_card
     # Generated service: /card_tables/cards/{id} without .json. The raw path
     # sends exactly one PUT with no read-before-write.

@@ -5902,6 +5902,12 @@ structure CreateCardInput {
 
   content: String
   due_on: ISO8601Date
+
+  /// People to assign to the new card. BC3 keeps only the ids it finds among
+  /// the card table's reachable people and silently drops the rest.
+  assignee_ids: PersonIdList
+
+  /// Notify the people assigned through assignee_ids. Off unless true.
   notify: Boolean
 }
 
@@ -5935,6 +5941,11 @@ structure UpdateCardInput {
   @basecampClearable
   due_on: ISO8601Date
   assignee_ids: PersonIdList
+
+  /// Notify people newly assigned through assignee_ids in this same request.
+  /// Off unless true, and has no effect without assignee_ids: people already
+  /// assigned are not notified again.
+  notify: Boolean
 }
 
 structure UpdateCardOutput {

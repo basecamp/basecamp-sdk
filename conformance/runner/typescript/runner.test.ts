@@ -1226,6 +1226,7 @@ async function executeOperation(
           ...(body.assignee_ids !== undefined
             ? { assigneeIds: body.assignee_ids as number[] }
             : {}),
+          ...(body.notify !== undefined ? { notify: Boolean(body.notify) } : {}),
         });
         break;
 
@@ -1238,6 +1239,19 @@ async function executeOperation(
           ...(body.assignee_ids !== undefined
             ? { assigneeIds: body.assignee_ids as number[] }
             : {}),
+          ...(body.notify !== undefined ? { notify: Boolean(body.notify) } : {}),
+        });
+        break;
+
+      case "CreateCard":
+        await client.cards.create(Number(params.columnId), {
+          title: String(body.title),
+          ...(body.content !== undefined ? { content: String(body.content) } : {}),
+          ...(body.due_on !== undefined ? { dueOn: String(body.due_on) } : {}),
+          ...(body.assignee_ids !== undefined
+            ? { assigneeIds: body.assignee_ids as number[] }
+            : {}),
+          ...(body.notify !== undefined ? { notify: Boolean(body.notify) } : {}),
         });
         break;
 

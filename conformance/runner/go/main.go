@@ -1531,6 +1531,19 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		})
 		return operationResult{err: err}
 
+	case "CreateCard":
+		req := &basecamp.CreateCardRequest{
+			Title:   getStringParam(tc.RequestBody, "title"),
+			Content: getStringParam(tc.RequestBody, "content"),
+			DueOn:   getStringParam(tc.RequestBody, "due_on"),
+			Notify:  getBoolParam(tc.RequestBody, "notify"),
+		}
+		if ids, ok := getInt64SliceParam(tc.RequestBody, "assignee_ids"); ok {
+			req.AssigneeIDs = ids
+		}
+		_, err := account.Cards().Create(ctx, getInt64Param(tc.PathParams, "columnId"), req)
+		return operationResult{err: err}
+
 	case "UpdateCard":
 		// Merge-safe composite: GET then PUT, resending the fetched due_on.
 		_, err := account.Cards().Update(ctx, getInt64Param(tc.PathParams, "cardId"), cardUpdateRequest(tc.RequestBody))
@@ -2869,6 +2882,7 @@ func cardUpdateRequest(body map[string]interface{}) *basecamp.UpdateCardRequest 
 	if ids, ok := getInt64SliceParam(body, "assignee_ids"); ok {
 		req.AssigneeIDs = ids
 	}
+	req.Notify = getBoolParam(body, "notify")
 	return req
 }
 

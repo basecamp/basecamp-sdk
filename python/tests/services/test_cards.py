@@ -107,6 +107,38 @@ class TestSyncUpdate:
         assert body["assignee_ids"] == [], "an empty list unassigns everyone and must be sent"
         assert body["due_on"] == "", "an explicitly-empty due date clears it and must be sent"
 
+    @respx.mock
+    def test_notify_true_is_sent_beside_the_assignees(self):
+        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
+
+        _sync_cards().update(card_id=42, assignee_ids=[1049715913], notify=True)
+
+        assert _put_body(put_route) == {"assignee_ids": [1049715913], "notify": True}
+
+    @respx.mock
+    def test_notify_stays_off_the_wire_unless_true(self):
+        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
+
+        _sync_cards().update(card_id=42, assignee_ids=[1049715913], notify=False)
+
+        assert _put_body(put_route) == {"assignee_ids": [1049715913]}
+
+
+class TestSyncCreate:
+    @respx.mock
+    def test_assignees_and_notify_reach_the_create_body(self):
+        post_route = respx.post(f"{BASE}/card_tables/lists/200/cards.json").mock(
+            return_value=httpx.Response(201, json=_card())
+        )
+
+        _sync_cards().create(column_id=200, title="New card", assignee_ids=[1049715913, 1049715914], notify=True)
+
+        assert _put_body(post_route) == {
+            "title": "New card",
+            "assignee_ids": [1049715913, 1049715914],
+            "notify": True,
+        }
+
 
 class TestSyncUpdateVerbatim:
     @respx.mock
@@ -148,6 +180,15 @@ class TestAsyncUpdate:
         body = _put_body(put_route)
         assert "due_on" in body, "an omitted due_on no-ops against a presence-aware BC3"
         assert body["due_on"] == ""
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_notify_true_is_sent_beside_the_assignees(self):
+        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
+
+        await _async_cards().update(card_id=42, assignee_ids=[1049715913], notify=True)
+
+        assert _put_body(put_route) == {"assignee_ids": [1049715913], "notify": True}
 
     @pytest.mark.asyncio
     @respx.mock

@@ -39,6 +39,10 @@ Nothing is resent on your behalf: the request body carries only the arguments
 you passed. Echoing a field back would be actively wrong for assignees — BC3
 filters incoming IDs through ``reachable_people``, so replaying an id belonging
 to someone who has since lost board access would silently unassign them.
+
+``notify`` asks Basecamp to notify the people this request newly assigns through
+``assignee_ids``. It is a send directive, not card state: sent only when true
+(as on the todo writes), and without effect unless ``assignee_ids`` is sent too.
 """
 
 
@@ -53,6 +57,7 @@ class CardsService(_GeneratedCardsService):
         content: str | None = None,
         due_on: str | None = None,
         assignee_ids: list[int] | None = None,
+        notify: bool | None = None,
     ) -> dict[str, Any]:
         return self.update_verbatim(
             card_id=card_id,
@@ -60,6 +65,7 @@ class CardsService(_GeneratedCardsService):
             content=content,
             due_on=due_on,
             assignee_ids=assignee_ids,
+            notify=True if notify else None,
         )
 
     update.__doc__ = _UPDATE_DOC
@@ -76,6 +82,7 @@ class AsyncCardsService(_GeneratedAsyncCardsService):
         content: str | None = None,
         due_on: str | None = None,
         assignee_ids: list[int] | None = None,
+        notify: bool | None = None,
     ) -> dict[str, Any]:
         return await self.update_verbatim(
             card_id=card_id,
@@ -83,6 +90,7 @@ class AsyncCardsService(_GeneratedAsyncCardsService):
             content=content,
             due_on=due_on,
             assignee_ids=assignee_ids,
+            notify=True if notify else None,
         )
 
     update.__doc__ = _UPDATE_DOC

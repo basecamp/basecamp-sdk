@@ -184,7 +184,12 @@ type CreateCardRequest struct {
 	Content string `json:"content,omitempty"`
 	// DueOn is the due date in ISO 8601 format (optional).
 	DueOn string `json:"due_on,omitempty"`
-	// Notify when true, will notify assignees (optional).
+	// AssigneeIDs is a list of person IDs to assign the new card to
+	// (optional). BC3 keeps only the IDs it finds among the card table's
+	// reachable people and silently drops the rest.
+	AssigneeIDs []int64 `json:"assignee_ids,omitempty"`
+	// Notify when true, will notify the people assigned through AssigneeIDs
+	// (optional).
 	Notify bool `json:"notify,omitempty"`
 }
 
@@ -212,6 +217,11 @@ type UpdateCardRequest struct {
 	// silently unassigns them. Update therefore never resends assignees the
 	// caller did not ask for.
 	AssigneeIDs []int64 `json:"assignee_ids,omitempty"`
+	// Notify is a send directive, not card state: it is sent only when true,
+	// asking BC3 to notify the people this request newly assigns through
+	// AssigneeIDs. It has no effect without AssigneeIDs, and people already
+	// assigned are not notified again.
+	Notify bool `json:"notify,omitempty"`
 }
 
 // MoveCardRequest specifies the parameters for moving a card.
@@ -518,6 +528,11 @@ func (s *CardsService) Create(ctx context.Context, columnID int64, req *CreateCa
 		}
 		body.DueOn = &d
 	}
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty list and reaches the wire.
+	if req.AssigneeIDs != nil {
+		body.AssigneeIds = &req.AssigneeIDs
+	}
 	if req.Notify {
 		body.Notify = &req.Notify
 	}
@@ -622,6 +637,10 @@ func (s *CardsService) UpdateVerbatim(ctx context.Context, cardID int64, req *Up
 	}
 	if req.AssigneeIDs != nil {
 		body["assignee_ids"] = req.AssigneeIDs
+	}
+	// A send directive, sent only when true, as on the todo writes.
+	if req.Notify {
+		body["notify"] = true
 	}
 
 	bodyReader, err := marshalBody(body)

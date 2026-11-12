@@ -5034,6 +5034,12 @@ export interface components {
             title: string;
             content?: string;
             due_on?: string;
+            /**
+             * @description People to assign to the new card. BC3 keeps only the ids it finds among
+             *     the card table's reachable people and silently drops the rest.
+             */
+            assignee_ids?: number[];
+            /** @description Notify the people assigned through assignee_ids. Off unless true. */
             notify?: boolean;
         };
         CreateCardResponseContent: components["schemas"]["Card"];
@@ -8784,6 +8790,12 @@ export interface components {
             content?: string;
             due_on?: string;
             assignee_ids?: number[];
+            /**
+             * @description Notify people newly assigned through assignee_ids in this same request.
+             *     Off unless true, and has no effect without assignee_ids: people already
+             *     assigned are not notified again.
+             */
+            notify?: boolean;
         };
         UpdateCardResponseContent: components["schemas"]["Card"];
         UpdateCardStepRequestContent: {

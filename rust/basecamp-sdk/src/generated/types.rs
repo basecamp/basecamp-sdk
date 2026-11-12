@@ -1138,7 +1138,11 @@ pub struct CreateCardRequestContent {
     /// `due_on`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub due_on: Option<Date>,
-    /// `notify`.
+    /// People to assign to the new card. BC3 keeps only the ids it finds among
+    /// the card table's reachable people and silently drops the rest.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assignee_ids: Option<Vec<i64>>,
+    /// Notify the people assigned through assignee_ids. Off unless true.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notify: Option<bool>,
 }
@@ -7023,6 +7027,11 @@ pub struct UpdateCardRequestContent {
     /// `assignee_ids`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assignee_ids: Option<Vec<i64>>,
+    /// Notify people newly assigned through assignee_ids in this same request.
+    /// Off unless true, and has no effect without assignee_ids: people already
+    /// assigned are not notified again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notify: Option<bool>,
 }
 
 /// `UpdateCardResponseContent`.

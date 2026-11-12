@@ -14,15 +14,21 @@ private final class CardRequestLog: @unchecked Sendable {
     private let lock = NSLock()
     private var _methods: [String] = []
     private var _putBody: [String: Any]?
+    private var _postBody: [String: Any]?
 
     var methods: [String] { lock.withLock { _methods } }
     var putBody: [String: Any]? { lock.withLock { _putBody } }
+    var postBody: [String: Any]? { lock.withLock { _postBody } }
 
     func record(_ request: URLRequest) {
         lock.withLock {
             _methods.append(request.httpMethod ?? "?")
-            if request.httpMethod == "PUT", let data = request.httpBody ?? request.cardBodyStreamData() {
-                _putBody = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            guard let data = request.httpBody ?? request.cardBodyStreamData() else { return }
+            let parsed = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            switch request.httpMethod {
+            case "PUT": _putBody = parsed
+            case "POST": _postBody = parsed
+            default: break
             }
         }
     }
@@ -147,7 +153,7 @@ private final class PresenceAwareCardServer: @unchecked Sendable {
 }
 
 final class CardsServiceExtensionsTests: XCTestCase {
-    private func makeCardsClient(log: CardRequestLog) throws -> AccountClient {
+    private func makeCardsClient(log: CardRequestLog, statusCode: Int = 200) throws -> AccountClient {
         let data = try JSONSerialization.data(withJSONObject: cardJSON())
         let transport = MockTransport { request in
             log.record(request)
@@ -155,7 +161,7 @@ final class CardsServiceExtensionsTests: XCTestCase {
                 data,
                 makeHTTPResponse(
                     url: request.url!.absoluteString,
-                    statusCode: 200,
+                    statusCode: statusCode,
                     headers: ["Content-Type": "application/json"]
                 )
             )
@@ -182,6 +188,46 @@ final class CardsServiceExtensionsTests: XCTestCase {
         // Never echoed back: BC3 filters assignee ids through reachable_people.
         XCTAssertNil(body["assignee_ids"])
         XCTAssertNil(body["content"])
+    }
+
+    func testUpdateSendsNotifyBesideTheAssignees() async throws {
+        let log = CardRequestLog()
+        let account = try makeCardsClient(log: log)
+
+        _ = try await account.cards.update(cardId: 1069479350, assigneeIds: [1049715913], notify: true)
+
+        XCTAssertEqual(log.methods, ["PUT"])
+        let body = try XCTUnwrap(log.putBody)
+        XCTAssertEqual(Set(body.keys), ["assignee_ids", "notify"])
+        XCTAssertEqual(body["assignee_ids"] as? [Int], [1049715913])
+        XCTAssertEqual(body["notify"] as? Bool, true, "a dropped notify assigns silently")
+    }
+
+    func testUpdateKeepsNotifyOffTheWireUnlessTrue() async throws {
+        let log = CardRequestLog()
+        let account = try makeCardsClient(log: log)
+
+        _ = try await account.cards.update(cardId: 1069479350, assigneeIds: [1049715913], notify: false)
+
+        let body = try XCTUnwrap(log.putBody)
+        XCTAssertEqual(Set(body.keys), ["assignee_ids"], "notify is sent only when true")
+    }
+
+    func testCreateSendsAssigneesAndNotify() async throws {
+        let log = CardRequestLog()
+        let account = try makeCardsClient(log: log, statusCode: 201)
+
+        _ = try await account.cards.create(
+            columnId: 1069479338,
+            req: CreateCardRequest(assigneeIds: [1049715913, 1049715914], notify: true, title: "New card")
+        )
+
+        XCTAssertEqual(log.methods, ["POST"])
+        let body = try XCTUnwrap(log.postBody)
+        XCTAssertEqual(Set(body.keys), ["title", "assignee_ids", "notify"])
+        XCTAssertEqual(body["title"] as? String, "New card")
+        XCTAssertEqual(body["assignee_ids"] as? [Int], [1049715913, 1049715914])
+        XCTAssertEqual(body["notify"] as? Bool, true)
     }
 
     func testUpdateVerbatimSendsOnePutWithNoGet() async throws {

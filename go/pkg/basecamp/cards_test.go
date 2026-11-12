@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -858,6 +859,93 @@ func TestCardsService_UpdateVerbatimClearsAssignees(t *testing.T) {
 	}
 	if len(arr) != 0 {
 		t.Errorf("expected empty assignee_ids array, got %v", arr)
+	}
+}
+
+// Notify is a send directive: Update puts "notify": true on the wire beside
+// the assignees it asks BC3 to notify, and leaves the key off entirely when
+// the caller did not ask, so an assignment stays silent by default.
+func TestCardsService_UpdateSendsNotifyOnlyWhenTrue(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		notify bool
+	}{
+		{"notify true", true},
+		{"notify false", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := loadCardsFixture(t, "get.json")
+			var receivedBody map[string]any
+			svc := testCardsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				receivedBody = decodeRequestBody(t, r)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(200)
+				w.Write(fixture)
+			})
+
+			_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
+				AssigneeIDs: []int64{1049715913},
+				Notify:      tc.notify,
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			got, present := receivedBody["notify"]
+			if tc.notify {
+				if got != true {
+					t.Errorf("expected notify true on the wire, got %v (present=%v)", got, present)
+				}
+			} else if present {
+				t.Errorf("expected notify to be omitted, got %v", got)
+			}
+			if got := fmt.Sprint(receivedBody["assignee_ids"]); got != "[1049715913]" {
+				t.Errorf("expected assignee_ids [1049715913], got %v", receivedBody["assignee_ids"])
+			}
+			for _, field := range []string{"title", "content", "due_on"} {
+				if _, ok := receivedBody[field]; ok {
+					t.Errorf("expected %q to stay off the wire, got %v", field, receivedBody[field])
+				}
+			}
+		})
+	}
+}
+
+func TestCardsService_CreateSendsAssigneesAndNotify(t *testing.T) {
+	fixture := loadCardsFixture(t, "get.json")
+	var receivedBody map[string]any
+	svc := testCardsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	_, err := svc.Create(context.Background(), 1069479338, &CreateCardRequest{
+		Title:       "New card",
+		AssigneeIDs: []int64{1049715913, 1049715914},
+		Notify:      true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := fmt.Sprint(receivedBody["assignee_ids"]); got != "[1049715913 1049715914]" {
+		t.Errorf("expected assignee_ids [1049715913 1049715914], got %v", receivedBody["assignee_ids"])
+	}
+	if receivedBody["notify"] != true {
+		t.Errorf("expected notify true, got %v", receivedBody["notify"])
+	}
+
+	// Without assignees or notify, neither key reaches the wire.
+	_, err = svc.Create(context.Background(), 1069479338, &CreateCardRequest{Title: "New card"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, field := range []string{"assignee_ids", "notify"} {
+		if _, ok := receivedBody[field]; ok {
+			t.Errorf("expected %q to be omitted, got %v", field, receivedBody[field])
+		}
 	}
 }
 

@@ -561,6 +561,14 @@
       ],
       "body": {
         "properties": {
+          "assignee_ids": {
+            "description": "People to assign to the new card. BC3 keeps only the ids it finds among\nthe card table's reachable people and silently drops the rest.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
           "content": {
             "type": "string"
           },
@@ -568,6 +576,7 @@
             "type": "string"
           },
           "notify": {
+            "description": "Notify the people assigned through assignee_ids. Off unless true.",
             "type": "boolean"
           },
           "title": {
@@ -13557,6 +13566,10 @@
           "due_on": {
             "type": "string",
             "x-basecamp-clearable": {}
+          },
+          "notify": {
+            "description": "Notify people newly assigned through assignee_ids in this same request.\nOff unless true, and has no effect without assignee_ids: people already\nassigned are not notified again.",
+            "type": "boolean"
           },
           "title": {
             "type": "string"

@@ -1595,6 +1595,7 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
                 content = rb?.get("content")?.jsonPrimitive?.contentOrNull,
                 dueOn = rb?.get("due_on")?.jsonPrimitive?.contentOrNull,
                 assigneeIds = rb?.get("assignee_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+                notify = rb?.get("notify")?.jsonPrimitive?.booleanOrNull ?: false,
             )
             DispatchResult()
         }
@@ -1608,6 +1609,20 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
                 content = rb?.get("content")?.jsonPrimitive?.contentOrNull,
                 dueOn = rb?.get("due_on")?.jsonPrimitive?.contentOrNull,
                 assigneeIds = rb?.get("assignee_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+                notify = rb?.get("notify")?.jsonPrimitive?.booleanOrNull,
+            ))
+            DispatchResult()
+        }
+
+        "CreateCard" -> {
+            val columnId = tc.pathParams.longParam("columnId")
+            val rb = tc.requestBody
+            account.cards.create(columnId, CreateCardBody(
+                title = rb.stringParam("title"),
+                content = rb?.get("content")?.jsonPrimitive?.contentOrNull,
+                dueOn = rb?.get("due_on")?.jsonPrimitive?.contentOrNull,
+                assigneeIds = rb?.get("assignee_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+                notify = rb?.get("notify")?.jsonPrimitive?.booleanOrNull,
             ))
             DispatchResult()
         }

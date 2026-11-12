@@ -726,8 +726,19 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                 content: optional_string_param(body, "content"),
                 due_on: date_change_param(body, "due_on")?,
                 assignee_ids: optional_int64_list_param(body, "assignee_ids"),
+                notify: optional_bool_param(body, "notify").unwrap_or(false),
             };
             unit(account.cards().update(id("cardId"), &request).await)
+        }
+        "CreateCard" => {
+            let request = CreateCardRequestContent {
+                title: string_param(body, "title"),
+                content: optional_string_param(body, "content"),
+                assignee_ids: optional_int64_list_param(body, "assignee_ids"),
+                notify: optional_bool_param(body, "notify"),
+                ..Default::default()
+            };
+            unit(account.cards().create(id("columnId"), &request).await)
         }
         "UploadsDownload" => unit(account.uploads().download(id("uploadId")).await),
         "DownloadURL" => {
@@ -823,6 +834,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                 content: optional_string_param(body, "content"),
                 due_on: date_change_param(body, "due_on")?,
                 assignee_ids: optional_int64_list_param(body, "assignee_ids"),
+                notify: optional_bool_param(body, "notify"),
                 ..Default::default()
             };
             unit(

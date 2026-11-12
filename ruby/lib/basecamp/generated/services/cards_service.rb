@@ -22,10 +22,13 @@ module Basecamp
       # @param content [String, nil] content
       # @param due_on [String, nil] due on (YYYY-MM-DD)
       # @param assignee_ids [Array, nil] assignee ids
+      # @param notify [Boolean, nil] Notify people newly assigned through assignee_ids in this same request.
+      #   Off unless true, and has no effect without assignee_ids: people already
+      #   assigned are not notified again.
       # @return [Hash] response data
-      def update_verbatim(card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil)
+      def update_verbatim(card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil, notify: nil)
         with_operation(service: "cards", operation: "update_verbatim", is_mutation: true, resource_id: card_id) do
-          http_put("/card_tables/cards/#{card_id}", body: compact_params(title: title, content: content, due_on: due_on, assignee_ids: assignee_ids)).json(operation: "UpdateCard")
+          http_put("/card_tables/cards/#{card_id}", body: compact_params(title: title, content: content, due_on: due_on, assignee_ids: assignee_ids, notify: notify)).json(operation: "UpdateCard")
         end
       end
 
@@ -59,11 +62,13 @@ module Basecamp
       # @param title [String] title
       # @param content [String, nil] content
       # @param due_on [String, nil] due on (YYYY-MM-DD)
-      # @param notify [Boolean, nil] notify
+      # @param assignee_ids [Array, nil] People to assign to the new card. BC3 keeps only the ids it finds among
+      #   the card table's reachable people and silently drops the rest.
+      # @param notify [Boolean, nil] Notify the people assigned through assignee_ids. Off unless true.
       # @return [Hash] response data
-      def create(column_id:, title:, content: nil, due_on: nil, notify: nil)
+      def create(column_id:, title:, content: nil, due_on: nil, assignee_ids: nil, notify: nil)
         with_operation(service: "cards", operation: "create", is_mutation: true, resource_id: column_id) do
-          http_post("/card_tables/lists/#{column_id}/cards.json", body: compact_params(title: title, content: content, due_on: due_on, notify: notify)).json(operation: "CreateCard")
+          http_post("/card_tables/lists/#{column_id}/cards.json", body: compact_params(title: title, content: content, due_on: due_on, assignee_ids: assignee_ids, notify: notify)).json(operation: "CreateCard")
         end
       end
     end
