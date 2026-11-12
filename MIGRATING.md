@@ -15,21 +15,23 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ### Cards: notify assignees on update, and assign people on create
 
-`UpdateCard` gains `notify` and `CreateCard` gains `assignee_ids`. Every SDK's
-card `update` takes a `notify` argument and sends `"notify": true` only when it
-is true, so an assignment stays silent unless you ask, as before. Nothing
+`UpdateCard` gains `notify` and `CreateCard` gains `assignee_ids`, so a card
+can be created already assigned, and its existing `notify` now has someone to
+notify. Every SDK's card `update` takes a `notify` argument and sends
+`"notify": true` only when it is true, so an assignment stays silent unless you
+ask, as before. Nothing
 changes at runtime for code that doesn't use the new fields. The breaks are all
 at compile time, in the languages where adding a field to a request type is one:
 
 - **Go.** `basecamp.CreateCardRequest` gains `AssigneeIDs []int64`, so it is no
   longer comparable: `==` on two of them, or using one as a map key, stops
-  compiling. `basecamp.UpdateCardRequest` gains `Notify`, and
-  `generated.CreateCardRequestContent` and `generated.UpdateCardRequestContent`
-  gain `AssigneeIds` and `Notify`, which breaks unkeyed struct literals of
-  any of the four. Switch to keyed literals.
-- **Rust.** `services::cards::UpdateCardRequest` gains `notify: bool`, and the
-  generated `CreateCardRequestContent` and `UpdateCardRequestContent` gain
-  `assignee_ids` and `notify`. A struct literal that names every field without
+  compiling. `basecamp.UpdateCardRequest` gains `Notify`,
+  `generated.CreateCardRequestContent` gains `AssigneeIds`, and
+  `generated.UpdateCardRequestContent` gains `Notify`, which breaks unkeyed
+  struct literals of any of the four. Switch to keyed literals.
+- **Rust.** `services::cards::UpdateCardRequest` gains `notify: bool`, the
+  generated `CreateCardRequestContent` gains `assignee_ids`, and the generated
+  `UpdateCardRequestContent` gains `notify`. A struct literal that names every field without
   `..Default::default()` stops compiling; add the new field or end the literal
   with `..Default::default()`.
 - **Kotlin.** `CreateCardBody` adds `assigneeIds` before `notify`, so a
