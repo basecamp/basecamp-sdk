@@ -6081,6 +6081,14 @@ type GetAssignedTodosParams struct {
 	GroupBy *string `form:"group_by,omitempty" json:"group_by,omitempty"`
 }
 
+// GetOverdueTodosParams defines parameters for GetOverdueTodos.
+type GetOverdueTodosParams struct {
+	// Page Page number for paginating through results. Defaults to 1. This
+	// operation is not auto-paginated in any SDK, so a page is returned as
+	// asked for and later pages are not followed.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // GetPersonProgressParams defines parameters for GetPersonProgress.
 type GetPersonProgressParams struct {
 	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
@@ -7945,7 +7953,7 @@ type ClientInterface interface {
 	GetAssignedTodos(ctx context.Context, accountId string, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOverdueTodos request
-	GetOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetOverdueTodos(ctx context.Context, accountId string, params *GetOverdueTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPersonProgress request
 	GetPersonProgress(ctx context.Context, accountId string, personId int64, params *GetPersonProgressParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -11464,10 +11472,10 @@ func (c *Client) GetAssignedTodos(ctx context.Context, accountId string, personI
 
 // GetOverdueTodos is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetOverdueTodos(ctx context.Context, accountId string, params *GetOverdueTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetOverdueTodosRequest(c.Server, accountId)
+		return NewGetOverdueTodosRequest(c.Server, accountId, params)
 	}, true, "GetOverdueTodos", reqEditors...)
 
 }
@@ -24542,7 +24550,7 @@ func NewGetAssignedTodosRequest(server string, accountId string, personId int64,
 }
 
 // NewGetOverdueTodosRequest generates requests for GetOverdueTodos
-func NewGetOverdueTodosRequest(server string, accountId string) (*http.Request, error) {
+func NewGetOverdueTodosRequest(server string, accountId string, params *GetOverdueTodosParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -24565,6 +24573,28 @@ func NewGetOverdueTodosRequest(server string, accountId string) (*http.Request, 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -31729,7 +31759,7 @@ type ClientWithResponsesInterface interface {
 	GetAssignedTodosWithResponse(ctx context.Context, accountId string, personId int64, params *GetAssignedTodosParams, reqEditors ...RequestEditorFn) (*GetAssignedTodosResponse, error)
 
 	// GetOverdueTodosWithResponse request
-	GetOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error)
+	GetOverdueTodosWithResponse(ctx context.Context, accountId string, params *GetOverdueTodosParams, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error)
 
 	// GetPersonProgressWithResponse request
 	GetPersonProgressWithResponse(ctx context.Context, accountId string, personId int64, params *GetPersonProgressParams, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error)
@@ -44913,8 +44943,8 @@ func (c *ClientWithResponses) GetAssignedTodosWithResponse(ctx context.Context, 
 }
 
 // GetOverdueTodosWithResponse request returning *GetOverdueTodosResponse
-func (c *ClientWithResponses) GetOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error) {
-	rsp, err := c.GetOverdueTodos(ctx, accountId, reqEditors...)
+func (c *ClientWithResponses) GetOverdueTodosWithResponse(ctx context.Context, accountId string, params *GetOverdueTodosParams, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error) {
+	rsp, err := c.GetOverdueTodos(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

@@ -22,6 +22,15 @@ pub struct GetAssignedTodosParams {
     pub group_by: Option<String>,
 }
 
+/// Optional query parameters for `GetOverdueTodos`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct GetOverdueTodosParams {
+    /// Page number for paginating through results. Defaults to 1. This
+    /// operation is not auto-paginated in any SDK, so a page is returned as
+    /// asked for and later pages are not followed.
+    pub page: Option<i32>,
+}
+
 /// Optional query parameters for `GetPersonProgress`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct GetPersonProgressParams {
@@ -67,11 +76,21 @@ impl<'a> ReportsService<'a> {
         self.client.send(operation).await
     }
 
-    /// Get overdue todos grouped by lateness
+    /// Get one page of overdue todos grouped by lateness, latest first.
+    ///
+    /// Pages hold 15, 30, 50, then 100 to-dos, and each page fills the same four
+    /// groups with only its own to-dos, so a group can continue onto the next
+    /// page. A `Link: rel="next"` header names the next page and `X-Total-Count`
+    /// the total. This operation is not auto-paginated in any SDK: the response
+    /// is an object of four arrays, which no pagination key can name.
     ///
     /// `GET /reports/todos/overdue.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
-    pub async fn overdue(&self) -> Result<GetOverdueTodosResponseContent, Error> {
-        let operation = self.client.operation(&routes::GET_OVERDUE_TODOS, &[]);
+    pub async fn overdue(
+        &self,
+        params: &GetOverdueTodosParams,
+    ) -> Result<GetOverdueTodosResponseContent, Error> {
+        let mut operation = self.client.operation(&routes::GET_OVERDUE_TODOS, &[]);
+        operation.query_optional("page", params.page.as_ref());
         self.client.send(operation).await
     }
 

@@ -145,6 +145,21 @@ class ReportsServiceTest < Minitest::Test
     assert_kind_of Hash, result
   end
 
+  def test_overdue_page_selects_one_page_without_following_link
+    groups = { "under_a_week_late" => [ { "id" => 16 } ], "over_a_week_late" => [],
+               "over_a_month_late" => [], "over_three_months_late" => [] }
+    page2 = stub_request(:get, "https://3.basecampapi.com/12345/reports/todos/overdue.json?page=2")
+      .to_return(status: 200, body: groups.to_json, headers: {
+        "Content-Type" => "application/json",
+        "Link" => '<https://3.basecampapi.com/12345/reports/todos/overdue.json?page=3>; rel="next"'
+      })
+
+    result = @account.reports.overdue(page: 2)
+
+    assert_requested page2, times: 1
+    assert_equal 16, result["under_a_week_late"].first["id"]
+  end
+
   def test_person_progress
     response = {
       "person" => { "id" => 456, "name" => "Jane Doe" },

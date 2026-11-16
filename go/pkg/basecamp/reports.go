@@ -114,16 +114,20 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 	return result, nil
 }
 
-// OverdueTodosResponse contains overdue todos grouped by lateness.
+// OverdueTodosResponse contains one page of overdue todos grouped by lateness.
+// Meta.Truncated is true when a further page exists.
 type OverdueTodosResponse struct {
-	UnderAWeekLate      []Todo `json:"under_a_week_late"`
-	OverAWeekLate       []Todo `json:"over_a_week_late"`
-	OverAMonthLate      []Todo `json:"over_a_month_late"`
-	OverThreeMonthsLate []Todo `json:"over_three_months_late"`
+	UnderAWeekLate      []Todo   `json:"under_a_week_late"`
+	OverAWeekLate       []Todo   `json:"over_a_week_late"`
+	OverAMonthLate      []Todo   `json:"over_a_month_late"`
+	OverThreeMonthsLate []Todo   `json:"over_three_months_late"`
+	Meta                ListMeta `json:"meta"`
 }
 
-// OverdueTodos returns all overdue todos grouped by lateness.
-func (s *ReportsService) OverdueTodos(ctx context.Context) (result *OverdueTodosResponse, err error) {
+// OverdueTodos returns one page of overdue todos grouped by lateness, latest
+// first. Pass 0 for the first page. The report is an object of four lists, so
+// its pages are not followed; Meta says whether another exists.
+func (s *ReportsService) OverdueTodos(ctx context.Context, page int32) (result *OverdueTodosResponse, err error) {
 	op := OperationInfo{
 		Service: "Reports", Operation: "OverdueTodos",
 		ResourceType: "todo", IsMutation: false,
@@ -137,7 +141,12 @@ func (s *ReportsService) OverdueTodos(ctx context.Context) (result *OverdueTodos
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetOverdueTodosWithResponse(ctx, s.client.accountID)
+	var params *generated.GetOverdueTodosParams
+	if page > 0 {
+		params = &generated.GetOverdueTodosParams{Page: &page}
+	}
+
+	resp, err := s.client.parent.gen.GetOverdueTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +172,7 @@ func (s *ReportsService) OverdueTodos(ctx context.Context) (result *OverdueTodos
 		result.OverThreeMonthsLate = append(result.OverThreeMonthsLate, todoFromGenerated(gt))
 	}
 
+	result.Meta = ListMeta{TotalCount: parseTotalCount(resp.HTTPResponse), Truncated: hasNextPage(resp.HTTPResponse)}
 	return result, nil
 }
 
