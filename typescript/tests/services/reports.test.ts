@@ -256,3 +256,39 @@ describe("ReportsService.upcoming", () => {
     expect(result.assignables).toEqual([]);
   });
 });
+
+describe("ReportsService", () => {
+  let client: BasecampClient;
+
+  beforeEach(() => {
+    client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      enableRetry: false,
+    });
+  });
+
+  describe("overdue", () => {
+    it("should fetch only the page asked for, without following the next link", async () => {
+      const requests: string[] = [];
+      server.use(
+        http.get(`${BASE_URL}/reports/todos/overdue.json`, ({ request }) => {
+          requests.push(new URL(request.url).search);
+          return HttpResponse.json(
+            {
+              under_a_week_late: [{ id: 16 }],
+              over_a_week_late: [],
+              over_a_month_late: [],
+              over_three_months_late: [],
+            },
+            { headers: { Link: `<${BASE_URL}/reports/todos/overdue.json?page=3>; rel="next"` } }
+          );
+        })
+      );
+
+      const report = await client.reports.overdue({ page: 2 });
+      expect(requests).toEqual(["?page=2"]);
+      expect(report.under_a_week_late![0]!.id).toBe(16);
+    });
+  });
+});

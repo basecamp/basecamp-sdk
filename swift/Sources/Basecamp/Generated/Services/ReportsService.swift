@@ -10,6 +10,15 @@ public struct AssignedReportOptions: Sendable {
     }
 }
 
+public struct OverdueReportOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. This operation is not auto-paginated in any SDK, so a page is returned as asked for and later pages are not followed.
+    public var page: Int?
+
+    public init(page: Int? = nil) {
+        self.page = page
+    }
+}
+
 public struct PersonProgressReportOptions: Sendable {
     /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
@@ -53,11 +62,15 @@ public final class ReportsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func overdue() async throws -> GetOverdueTodosResponseContent {
+    public func overdue(options: OverdueReportOptions? = nil) async throws -> GetOverdueTodosResponseContent {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await request(
             OperationInfo(service: "Reports", operation: "GetOverdueTodos", resourceType: "overdue_todo", isMutation: false),
             method: "GET",
-            path: "/reports/todos/overdue.json",
+            path: "/reports/todos/overdue.json" + queryString(queryItems),
             retryConfig: Metadata.retryConfig(for: "GetOverdueTodos")
         )
     }

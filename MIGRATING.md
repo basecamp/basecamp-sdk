@@ -11,6 +11,29 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Reports: the overdue to-dos report comes in pages
+
+Basecamp now pages `GET /reports/todos/overdue.json` (bc3 #14519): 15, 30, 50,
+then 100 to-dos, latest first, each page holding the same four lateness groups
+with only its own to-dos. Every SDK's overdue report now takes an optional
+`page`. No SDK follows the pages for you, because the report is four lists, not
+one. Without `page` you get the first page, where you used to get every overdue
+to-do, so code that wants them all must ask for page 2, 3 and on until a page
+comes back with nothing in it, or, in Go, until `Meta.Truncated` is false.
+
+- **Go.** `ReportsService.OverdueTodos(ctx)` becomes
+  `OverdueTodos(ctx, page int32)`; pass 0 for the first page.
+  `OverdueTodosResponse` gains `Meta ListMeta`, whose `Truncated` is true while
+  a further page exists and whose `TotalCount` is the report's `X-Total-Count`.
+- **Rust.** `ReportsService::overdue()` now takes `&GetOverdueTodosParams`.
+  Ask for the first page with `overdue(&Default::default())`, and for another
+  with `overdue(&GetOverdueTodosParams { page: Some(2) })`.
+- **Kotlin.** `ReportsService.overdue` gains a trailing
+  `options: GetOverdueTodosOptions? = null`. Calls compile unchanged, but the
+  signature changes at the binary level, so recompile.
+
 # v0.36.0
 
 ### Cards: notify assignees on update, and assign people on create

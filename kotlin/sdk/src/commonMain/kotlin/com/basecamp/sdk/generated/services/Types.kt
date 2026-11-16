@@ -991,6 +991,13 @@ data class GetAssignedTodosOptions(
 ) {
 }
 
+/** Options for GetOverdueTodos. */
+data class GetOverdueTodosOptions(
+    /** Page number for paginating through results. Defaults to 1. This operation is not auto-paginated in any SDK, so a page is returned as asked for and later pages are not followed. */
+    val page: Long? = null
+) {
+}
+
 /** Options for GetPersonProgress. */
 data class GetPersonProgressOptions(
     /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */

@@ -71,12 +71,25 @@ class ReportsService(BaseService):
             operation="GetAssignedTodos",
         )
 
-    def overdue(self) -> dict[str, Any]:
-        """Get overdue todos grouped by lateness."""
+    def overdue(self, *, page: int | None = None) -> dict[str, Any]:
+        """Get one page of overdue todos grouped by lateness, latest first.
+
+        Pages hold 15, 30, 50, then 100 to-dos, and each page fills the same four
+        groups with only its own to-dos, so a group can continue onto the next
+        page. A `Link: rel="next"` header names the next page and `X-Total-Count`
+        the total. This operation is not auto-paginated in any SDK: the response
+        is an object of four arrays, which no pagination key can name.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. This operation is not
+                auto-paginated in any SDK, so a page is returned as asked for and later pages are
+                not followed.
+        """
         return self._request(
             OperationInfo(service="reports", operation="overdue", is_mutation=False),
             "GET",
             "/reports/todos/overdue.json",
+            params=self._compact(page=page),
             operation="GetOverdueTodos",
         )
 
@@ -164,12 +177,25 @@ class AsyncReportsService(AsyncBaseService):
             operation="GetAssignedTodos",
         )
 
-    async def overdue(self) -> dict[str, Any]:
-        """Get overdue todos grouped by lateness."""
+    async def overdue(self, *, page: int | None = None) -> dict[str, Any]:
+        """Get one page of overdue todos grouped by lateness, latest first.
+
+        Pages hold 15, 30, 50, then 100 to-dos, and each page fills the same four
+        groups with only its own to-dos, so a group can continue onto the next
+        page. A `Link: rel="next"` header names the next page and `X-Total-Count`
+        the total. This operation is not auto-paginated in any SDK: the response
+        is an object of four arrays, which no pagination key can name.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. This operation is not
+                auto-paginated in any SDK, so a page is returned as asked for and later pages are
+                not followed.
+        """
         return await self._request(
             OperationInfo(service="reports", operation="overdue", is_mutation=False),
             "GET",
             "/reports/todos/overdue.json",
+            params=self._compact(page=page),
             operation="GetOverdueTodos",
         )
 

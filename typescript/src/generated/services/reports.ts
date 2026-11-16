@@ -35,6 +35,16 @@ export interface AssignedReportOptions {
 }
 
 /**
+ * Options for overdue.
+ */
+export interface OverdueReportOptions {
+  /** Page number for paginating through results. Defaults to 1. This
+operation is not auto-paginated in any SDK, so a page is returned as
+asked for and later pages are not followed. */
+  page?: number;
+}
+
+/**
  * Options for personProgress.
  */
 export interface PersonProgressReportOptions extends PaginationOptions {
@@ -141,7 +151,8 @@ export class ReportsService extends BaseService {
   }
 
   /**
-   * Get overdue todos grouped by lateness
+   * Get one page of overdue todos grouped by lateness, latest first.
+   * @param options - Optional query parameters
    * @returns The overdue_todo
    *
    * @example
@@ -149,7 +160,7 @@ export class ReportsService extends BaseService {
    * const result = await client.reports.overdue();
    * ```
    */
-  async overdue(): Promise<components["schemas"]["GetOverdueTodosResponseContent"]> {
+  async overdue(options?: OverdueReportOptions): Promise<components["schemas"]["GetOverdueTodosResponseContent"]> {
     const response = await this.request(
       {
         service: "Reports",
@@ -159,6 +170,9 @@ export class ReportsService extends BaseService {
       },
       () =>
         this.client.GET("/reports/todos/overdue.json", {
+          params: {
+            query: { page: options?.page },
+          },
         })
     );
     return response;
