@@ -3400,7 +3400,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Get overdue todos grouped by lateness */
+        /**
+         * @description Get one page of overdue todos grouped by lateness, latest first.
+         *
+         *     Pages hold 15, 30, 50, then 100 to-dos, and each page fills the same four
+         *     groups with only its own to-dos, so a group can continue onto the next
+         *     page. A `Link: rel="next"` header names the next page and `X-Total-Count`
+         *     the total. This operation is not auto-paginated in any SDK: the response
+         *     is an object of four arrays, which no pagination key can name.
+         */
         get: operations["GetOverdueTodos"];
         put?: never;
         post?: never;
@@ -23832,7 +23840,14 @@ export interface operations {
     };
     GetOverdueTodos: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Page number for paginating through results. Defaults to 1. This
+                 *     operation is not auto-paginated in any SDK, so a page is returned as
+                 *     asked for and later pages are not followed.
+                 */
+                page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;

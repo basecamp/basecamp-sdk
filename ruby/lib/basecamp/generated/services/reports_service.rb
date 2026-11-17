@@ -38,11 +38,14 @@ module Basecamp
         end
       end
 
-      # Get overdue todos grouped by lateness
+      # Get one page of overdue todos grouped by lateness, latest first.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. This
+      #   operation is not auto-paginated in any SDK, so a page is returned as
+      #   asked for and later pages are not followed.
       # @return [Hash] response data
-      def overdue()
+      def overdue(page: nil)
         with_operation(service: "reports", operation: "overdue", is_mutation: false) do
-          http_get("/reports/todos/overdue.json", operation: "GetOverdueTodos").json(operation: "GetOverdueTodos")
+          http_get("/reports/todos/overdue.json", params: compact_query_params(page: page), operation: "GetOverdueTodos").json(operation: "GetOverdueTodos")
         end
       end
 

@@ -1398,7 +1398,7 @@ END
 Three carve-outs, so the rule is not read as universal:
 
 - `ListWebhooks`, `ListMessageTypes`, `ListChatbots`, `ListPingablePeople`, `ListQuestionAnswerers`, and `ListUploadVersions` carry the link-style pagination trait but declare **no** `page` parameter: their Basecamp index actions return the whole collection rather than paginating, so there is no page to select. Where an SDK's shared pagination options type still admits a `page` (TypeScript, Kotlin, Swift), passing one on those operations changes nothing — the responses carry no next link to suppress.
-- `GetMyNotifications` declares `page` but carries **no** pagination trait, so no SDK follows links for it and this section is inapplicable — it returns the page you asked for, in all seven.
+- `GetMyNotifications` and `GetOverdueTodos` declare `page` but carry **no** pagination trait, so no SDK follows links for them and this section is inapplicable — each returns the page you asked for, in all seven. Both answer with an object of several arrays, which no pagination `key` can name. Go's `OverdueTodos` reports the unfollowed next page in `Meta.Truncated`.
 - `PollEvents` and `PollInbox` carry the trait with `style: "cursor"` and declare no `page`, and this section is inapplicable to them from the other side: no walk is generated, so there is no page to pin within one. They page by the envelope's opaque `position`, never by number — §23 "Wire Operations".
 
 **How each SDK learns the pinned page.** The paginator reads it from whichever

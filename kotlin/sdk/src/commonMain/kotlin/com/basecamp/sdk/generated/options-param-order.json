@@ -20,6 +20,7 @@
   "GetEverythingUnassignedTodosOptions": ["assigneeIds", "due", "page", "maxItems"],
   "GetMyDueAssignmentsOptions": ["scope"],
   "GetMyNotificationsOptions": ["page", "limitBubbleUps"],
+  "GetOverdueTodosOptions": ["page"],
   "GetPersonProgressOptions": ["page", "maxItems"],
   "GetProgressReportOptions": ["page", "maxItems"],
   "GetProjectTimelineOptions": ["page", "maxItems"],

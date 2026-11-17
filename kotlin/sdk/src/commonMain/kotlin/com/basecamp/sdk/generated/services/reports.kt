@@ -115,9 +115,10 @@ class ReportsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get overdue todos grouped by lateness
+     * Get one page of overdue todos grouped by lateness, latest first.
+     * @param options Optional query parameters and pagination control
      */
-    suspend fun overdue(): JsonElement {
+    suspend fun overdue(options: GetOverdueTodosOptions? = null): JsonElement {
         val info = OperationInfo(
             service = "Reports",
             operation = "GetOverdueTodos",
@@ -126,8 +127,11 @@ class ReportsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = null,
         )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
         return request(info, {
-            httpGet("/reports/todos/overdue.json", operationName = info.operation)
+            httpGet("/reports/todos/overdue.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<JsonElement>(body)
         }
