@@ -75,6 +75,38 @@ describe("TimesheetsService", () => {
       expect(entries).toHaveLength(0);
     });
 
+    it("should follow the Link header across 50-per-page pages", async () => {
+      const requests: string[] = [];
+      server.use(
+        http.get(`${BASE_URL}/reports/timesheet.json`, ({ request }) => {
+          const page = new URL(request.url).searchParams.get("page");
+          requests.push(page ?? "1");
+          if (page === "2") {
+            return HttpResponse.json([{ id: 1, date: "2024-01-01", hours: "1.0" }], {
+              headers: { "X-Total-Count": "3" },
+            });
+          }
+          return HttpResponse.json(
+            [
+              { id: 3, date: "2024-01-03", hours: "3.0" },
+              { id: 2, date: "2024-01-02", hours: "2.0" },
+            ],
+            {
+              headers: {
+                "X-Total-Count": "3",
+                Link: `<${BASE_URL}/reports/timesheet.json?page=2>; rel="next"`,
+              },
+            }
+          );
+        })
+      );
+
+      const entries = await client.timesheets.report();
+      expect(requests).toEqual(["1", "2"]);
+      expect(entries.map((e) => e.id)).toEqual([3, 2, 1]);
+      expect(entries.meta).toEqual({ totalCount: 3, truncated: false });
+    });
+
     it("should support person filtering", async () => {
       server.use(
         http.get(`${BASE_URL}/reports/timesheet.json`, ({ request }) => {

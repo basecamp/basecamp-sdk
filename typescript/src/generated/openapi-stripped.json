@@ -21045,7 +21045,7 @@
     },
     "/reports/timesheet.json": {
       "get": {
-        "description": "Get account-wide timesheet report",
+        "description": "Get account-wide timesheet report, latest first, 50 per page",
         "operationId": "GetTimesheetReport",
         "parameters": [
           {
@@ -21068,6 +21068,16 @@
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+              "format": "int32"
             }
           }
         ],
@@ -21126,6 +21136,11 @@
         "tags": [
           "Schedule"
         ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,

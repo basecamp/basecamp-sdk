@@ -56,6 +56,7 @@ each used to answer with every record at once:
 - `GET /todos/overdue.json` (`GetEverythingOverdueTodos`)
 - `GET /cards/overdue.json` (`GetEverythingOverdueCards`)
 - `GET /my/assignments/completed.json` (`GetMyCompletedAssignments`)
+- `GET /reports/timesheet.json` (`GetTimesheetReport`)
 
 Each SDK now walks them like its other paged lists. Without `page` you still
 get every record, in one request per 50. A positive `page` returns that page
@@ -66,6 +67,9 @@ alone, with the next page left unfollowed.
   `OverdueCards` changes the same way and returns `*CardListResult`.
   `MyAssignmentsService.Completed(ctx)` becomes `Completed(ctx, page int32)`
   and returns `*MyAssignmentListResult`. Pass 0 for every page.
+  `TimesheetService.Report` returns `*TimesheetListResult` where it returned
+  `[]TimesheetEntry`, and honours the options' `Limit` and `Page` as
+  `ProjectReport` does.
 - **TypeScript, Python and Kotlin.** The methods return `ListResult`, still a
   list, and take `page` and `maxItems` (`max_items` in Python).
 - **Ruby.** The methods return a lazy `ListEnumerator` where they returned an

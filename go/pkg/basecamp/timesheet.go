@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -84,27 +85,37 @@ func NewTimesheetService(client *AccountClient) *TimesheetService {
 }
 
 // buildTimesheetParams builds query parameters for the generated client.
-// Returns nil if no filters are specified to avoid serializing zero values.
-func (s *TimesheetService) buildTimesheetParams(opts *TimesheetReportOptions) *generated.GetTimesheetReportParams {
-	if opts == nil {
-		return nil
+// Returns nil if no options are specified to avoid serializing zero values.
+func (s *TimesheetService) buildTimesheetParams(opts *TimesheetReportOptions) (*generated.GetTimesheetReportParams, error) {
+	if opts == nil || (opts.From == "" && opts.To == "" && opts.PersonID == 0 && opts.Page <= 0) {
+		return nil, nil
 	}
 
-	// Only create params if there are actual filter values
-	if opts.From == "" && opts.To == "" && opts.PersonID == 0 {
-		return nil
-	}
-
-	return &generated.GetTimesheetReportParams{
+	params := &generated.GetTimesheetReportParams{
 		From:     omitzero(opts.From),
 		To:       omitzero(opts.To),
 		PersonId: omitzero(opts.PersonID),
 	}
+	if opts.Page > 0 {
+		page, err := pageParam(opts.Page)
+		if err != nil {
+			return nil, err
+		}
+		params.Page = page
+	}
+	return params, nil
 }
 
-// Report returns the account-wide timesheet report.
+// Report returns the account-wide timesheet report, latest first.
 // This includes time entries across all projects in the account.
-func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOptions) (result []TimesheetEntry, err error) {
+//
+// Pagination options:
+//   - Limit: maximum number of entries to return (0 = all)
+//   - Page: if positive, fetches only that page and disables auto-pagination
+//
+// The returned TimesheetListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOptions) (result *TimesheetListResult, err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "Report",
 		ResourceType: "timesheet_entry", IsMutation: false,
@@ -118,7 +129,10 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	params := s.buildTimesheetParams(opts)
+	params, err := s.buildTimesheetParams(opts)
+	if err != nil {
+		return nil, err
+	}
 
 	resp, err := s.client.parent.gen.GetTimesheetReportWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -127,16 +141,7 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
-
-	entries := make([]TimesheetEntry, 0, len(*resp.JSON200))
-	for _, ge := range *resp.JSON200 {
-		entries = append(entries, timesheetEntryFromGenerated(ge))
-	}
-
-	return entries, nil
+	return s.finishReport(ctx, resp.HTTPResponse, resp.JSON200, opts)
 }
 
 // ProjectReport returns the timesheet report for a specific project.
@@ -186,51 +191,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
-
-	// Capture total count from X-Total-Count header (first page only)
-	totalCount := parseTotalCount(resp.HTTPResponse)
-
-	// Parse first page
-	entries := []TimesheetEntry{}
-	if resp.JSON200 != nil {
-		for _, ge := range *resp.JSON200 {
-			entries = append(entries, timesheetEntryFromGenerated(ge))
-		}
-	}
-
-	// Handle single page fetch (--page flag)
-	if opts != nil && opts.Page > 0 {
-		keep, truncated := pageCap(len(entries), opts.Limit, resp.HTTPResponse)
-		return &TimesheetListResult{Entries: entries[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
-	}
-
-	// Determine limit: 0 = all (default for timesheet entries)
-	limit := 0
-	if opts != nil {
-		limit = opts.Limit
-	}
-
-	// Check if we already have enough items
-	if limit > 0 && len(entries) >= limit {
-		return &TimesheetListResult{Entries: entries[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(entries), limit)}}, nil
-	}
-
-	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(entries), limit)
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse additional pages
-	for _, raw := range rawMore {
-		var ge generated.TimesheetEntry
-		if err := json.Unmarshal(raw, &ge); err != nil {
-			return nil, fmt.Errorf("failed to parse timesheet entry: %w", err)
-		}
-		entries = append(entries, timesheetEntryFromGenerated(ge))
-	}
-
-	return &TimesheetListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
+	return s.finishReport(ctx, resp.HTTPResponse, resp.JSON200, opts)
 }
 
 // RecordingReport returns the timesheet report for a specific recording.
@@ -280,42 +241,38 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, recordingID int6
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
+	return s.finishReport(ctx, resp.HTTPResponse, resp.JSON200, opts)
+}
 
-	// Capture total count from X-Total-Count header (first page only)
-	totalCount := parseTotalCount(resp.HTTPResponse)
+// finishReport decodes a timesheet report's first page and, unless opts pins a
+// page, follows the Link header until opts.Limit entries (0 = all).
+func (s *TimesheetService) finishReport(ctx context.Context, httpResp *http.Response, firstPage *[]generated.TimesheetEntry, opts *TimesheetReportOptions) (*TimesheetListResult, error) {
+	totalCount := parseTotalCount(httpResp)
 
-	// Parse first page
 	entries := []TimesheetEntry{}
-	if resp.JSON200 != nil {
-		for _, ge := range *resp.JSON200 {
+	if firstPage != nil {
+		for _, ge := range *firstPage {
 			entries = append(entries, timesheetEntryFromGenerated(ge))
 		}
 	}
 
-	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		keep, truncated := pageCap(len(entries), opts.Limit, resp.HTTPResponse)
+		keep, truncated := pageCap(len(entries), opts.Limit, httpResp)
 		return &TimesheetListResult{Entries: entries[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
-	// Determine limit: 0 = all (default for timesheet entries)
 	limit := 0
 	if opts != nil {
 		limit = opts.Limit
 	}
-
-	// Check if we already have enough items
 	if limit > 0 && len(entries) >= limit {
-		return &TimesheetListResult{Entries: entries[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(entries), limit)}}, nil
+		return &TimesheetListResult{Entries: entries[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(httpResp, len(entries), limit)}}, nil
 	}
 
-	// Follow pagination via Link headers (uses absolute URLs from API, no path construction)
-	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(entries), limit)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, httpResp, len(entries), limit)
 	if err != nil {
 		return nil, err
 	}
-
-	// Parse additional pages
 	for _, raw := range rawMore {
 		var ge generated.TimesheetEntry
 		if err := json.Unmarshal(raw, &ge); err != nil {

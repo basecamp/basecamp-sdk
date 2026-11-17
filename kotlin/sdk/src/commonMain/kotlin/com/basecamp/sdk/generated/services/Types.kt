@@ -1240,8 +1240,12 @@ data class CreateTimesheetEntryBody(
 data class GetTimesheetReportOptions(
     val from: String? = null,
     val to: String? = null,
-    val personId: Long? = null
+    val personId: Long? = null,
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
 ) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for UpdateTimesheetEntry. */

@@ -101,18 +101,36 @@ class TimesheetsService(BaseService):
             operation="CreateTimesheetEntry",
         )
 
-    def report(self, *, from_: str | None = None, to: str | None = None, person_id: int | None = None) -> ListResult:
-        """Get account-wide timesheet report.
+    def report(
+        self,
+        *,
+        from_: str | None = None,
+        to: str | None = None,
+        person_id: int | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
+    ) -> ListResult:
+        """Get account-wide timesheet report, latest first, 50 per page.
 
         Args:
             from_: The from.
             to: The to.
             person_id: The person id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
-        return self._request_list(
+        return self._request_paginated(
             OperationInfo(service="timesheets", operation="report", is_mutation=False),
             "/reports/timesheet.json",
-            params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            params={
+                k: v
+                for k, v in {"from": from_, "to": to, "person_id": person_id, "page": page}.items()
+                if v is not None
+            },
+            max_items=max_items,
             operation="GetTimesheetReport",
         )
 
@@ -261,19 +279,35 @@ class AsyncTimesheetsService(AsyncBaseService):
         )
 
     async def report(
-        self, *, from_: str | None = None, to: str | None = None, person_id: int | None = None
+        self,
+        *,
+        from_: str | None = None,
+        to: str | None = None,
+        person_id: int | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
-        """Get account-wide timesheet report.
+        """Get account-wide timesheet report, latest first, 50 per page.
 
         Args:
             from_: The from.
             to: The to.
             person_id: The person id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
-        return await self._request_list(
+        return await self._request_paginated(
             OperationInfo(service="timesheets", operation="report", is_mutation=False),
             "/reports/timesheet.json",
-            params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            params={
+                k: v
+                for k, v in {"from": from_, "to": to, "person_id": person_id, "page": page}.items()
+                if v is not None
+            },
+            max_items=max_items,
             operation="GetTimesheetReport",
         )
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -494,7 +495,10 @@ func TestTimesheetReportOptions_BuildTimesheetParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := service.buildTimesheetParams(tt.opts)
+			result, err := service.buildTimesheetParams(tt.opts)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if tt.expectNil {
 				if result != nil {
 					t.Errorf("expected nil, got %+v", result)
@@ -520,6 +524,70 @@ func TestTimesheetReportOptions_BuildTimesheetParams(t *testing.T) {
 				t.Errorf("expected PersonId %d, got %d", tt.expectedPID, *result.PersonId)
 			}
 		})
+	}
+}
+
+func TestTimesheetService_Report_FollowsPages(t *testing.T) {
+	var serverURL string
+	var requests []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "3")
+		if r.URL.Query().Get("page") == "2" {
+			w.Write([]byte(`[{"id":1,"date":"2024-01-01","hours":"1.0"}]`))
+			return
+		}
+		w.Header().Set("Link", fmt.Sprintf(`<%s/12345/reports/timesheet.json?person_id=7&page=2>; rel="next"`, serverURL))
+		w.Write([]byte(`[{"id":3,"date":"2024-01-03","hours":"3.0"},{"id":2,"date":"2024-01-02","hours":"2.0"}]`))
+	}))
+	t.Cleanup(server.Close)
+	serverURL = server.URL
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("12345").Timesheet()
+
+	result, err := svc.Report(context.Background(), &TimesheetReportOptions{PersonID: 7})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(requests) != 2 || requests[0] != "/12345/reports/timesheet.json?person_id=7" || requests[1] != "/12345/reports/timesheet.json?person_id=7&page=2" {
+		t.Fatalf("expected page 1 then page 2, got %v", requests)
+	}
+	ids := make([]int64, 0, len(result.Entries))
+	for _, entry := range result.Entries {
+		ids = append(ids, entry.ID)
+	}
+	if fmt.Sprint(ids) != "[3 2 1]" {
+		t.Errorf("expected [3 2 1] in order, got %v", ids)
+	}
+	if result.Meta != (ListMeta{TotalCount: 3, Truncated: false}) {
+		t.Errorf("expected Meta{3, false}, got %+v", result.Meta)
+	}
+}
+
+func TestTimesheetService_Report_ReturnsThePageAskedFor(t *testing.T) {
+	var requests []string
+	svc := testTimesheetServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "120")
+		w.Header().Set("Link", `</12345/reports/timesheet.json?page=3>; rel="next"`)
+		w.Write([]byte(`[{"id":51,"date":"2024-01-01","hours":"1.0"}]`))
+	})
+
+	result, err := svc.Report(context.Background(), &TimesheetReportOptions{Page: 2})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(requests) != 1 || requests[0] != "/12345/reports/timesheet.json?page=2" {
+		t.Fatalf("expected one request for page 2, got %v", requests)
+	}
+	if len(result.Entries) != 1 || result.Entries[0].ID != 51 {
+		t.Errorf("expected page 2's entry, got %+v", result.Entries)
+	}
+	if result.Meta != (ListMeta{TotalCount: 120, Truncated: true}) {
+		t.Errorf("expected Meta{120, true}, got %+v", result.Meta)
 	}
 }
 

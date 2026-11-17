@@ -8137,7 +8137,7 @@
       "tag": "Schedule",
       "method": "GET",
       "path": "/{accountId}/reports/timesheet.json",
-      "doc": "Get account-wide timesheet report",
+      "doc": "Get account-wide timesheet report, latest first, 50 per page",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -8148,6 +8148,10 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
       },
       "params": [
         {
@@ -8180,6 +8184,16 @@
           "in": "query",
           "schema": {
             "format": "int64",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
             "type": "integer"
           }
         }

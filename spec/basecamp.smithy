@@ -4102,9 +4102,10 @@ structure ReplaceScheduleEntryOutput {
 
 // ===== Timesheet Operations (Batch 3) =====
 
-/// Get account-wide timesheet report
+/// Get account-wide timesheet report, latest first, 50 per page
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/reports/timesheet.json")
 operation GetTimesheetReport {
   input: GetTimesheetReportInput
@@ -4125,6 +4126,10 @@ structure GetTimesheetReportInput {
 
   @httpQuery("person_id")
   person_id: PersonId
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetTimesheetReportOutput {

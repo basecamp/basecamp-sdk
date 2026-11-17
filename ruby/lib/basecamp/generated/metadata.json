@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-11-20T00:38:59Z",
+  "generated": "2026-11-20T00:39:27Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -2898,6 +2898,11 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "ListAssignablePeople": {

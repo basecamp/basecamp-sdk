@@ -3349,7 +3349,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Get account-wide timesheet report */
+        /** @description Get account-wide timesheet report, latest first, 50 per page */
         get: operations["GetTimesheetReport"];
         put?: never;
         post?: never;
@@ -23725,6 +23725,8 @@ export interface operations {
                 from?: string;
                 to?: string;
                 person_id?: number;
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;
