@@ -308,7 +308,7 @@ describe("ReportsService", () => {
           requests.push(new URL(request.url).search);
           return HttpResponse.json(
             {
-              under_a_week_late: [{ id: 16 }],
+              under_a_week_late: [{ id: 51 }],
               over_a_week_late: [],
               over_a_month_late: [],
               over_three_months_late: [],
@@ -320,7 +320,7 @@ describe("ReportsService", () => {
 
       const report = await client.reports.overdue({ page: 2 });
       expect(requests).toEqual(["?page=2"]);
-      expect(report.under_a_week_late![0]!.id).toBe(16);
+      expect(report.under_a_week_late![0]!.id).toBe(51);
     });
   });
 });

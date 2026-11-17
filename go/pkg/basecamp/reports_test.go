@@ -313,9 +313,9 @@ func TestReportsService_OverdueTodos_ReturnsThePageAskedForAndSaysMoreExist(t *t
 	svc := testReportsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r.URL.RequestURI())
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("X-Total-Count", "21")
+		w.Header().Set("X-Total-Count", "120")
 		w.Header().Set("Link", `</99999/reports/todos/overdue.json?page=3>; rel="next"`)
-		w.Write([]byte(`{"under_a_week_late":[{"id":16,"content":"Sixteenth"}],"over_a_week_late":[],"over_a_month_late":[],"over_three_months_late":[]}`))
+		w.Write([]byte(`{"under_a_week_late":[{"id":51,"content":"Fifty-first"}],"over_a_week_late":[],"over_a_month_late":[],"over_three_months_late":[]}`))
 	})
 
 	result, err := svc.OverdueTodos(context.Background(), 2)
@@ -325,11 +325,11 @@ func TestReportsService_OverdueTodos_ReturnsThePageAskedForAndSaysMoreExist(t *t
 	if len(requests) != 1 || requests[0] != "/99999/reports/todos/overdue.json?page=2" {
 		t.Fatalf("expected one request for page 2, got %v", requests)
 	}
-	if len(result.UnderAWeekLate) != 1 || result.UnderAWeekLate[0].ID != 16 {
+	if len(result.UnderAWeekLate) != 1 || result.UnderAWeekLate[0].ID != 51 {
 		t.Errorf("expected page 2's to-do, got %+v", result.UnderAWeekLate)
 	}
-	if result.Meta != (ListMeta{TotalCount: 21, Truncated: true}) {
-		t.Errorf("expected Meta{21, true}, got %+v", result.Meta)
+	if result.Meta != (ListMeta{TotalCount: 120, Truncated: true}) {
+		t.Errorf("expected Meta{120, true}, got %+v", result.Meta)
 	}
 }
 

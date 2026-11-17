@@ -88,6 +88,11 @@ TypeScript, Python, Ruby, Kotlin and Swift return `todos` as the list type
 above. Kotlin and Swift return a typed `AssignedTodosResult` where they
 returned JSON. Rust returns the first page, as for the lists.
 
+The overdue to-dos report (`GetOverdueTodos`) keeps the signature v0.37.0
+gave it, but its pages now hold 50 to-dos each, where v0.37.0 described 15,
+30, 50 and then 100. Code that works out offsets from the page number should
+use 50.
+
 # v0.37.0
 
 ### Reports: the overdue to-dos report comes in pages
