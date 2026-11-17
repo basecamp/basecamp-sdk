@@ -279,38 +279,36 @@ describe("EverythingService", () => {
   });
 
   describe("everythingOverdueCards", () => {
-    it("should decode the unpaginated /cards/overdue.json array, oldest-first", async () => {
-      const fixture = [
-        {
-          id: 7001,
-          type: "Kanban::Card",
-          title: "Draft proposal",
-          due_on: "2024-02-01",
-          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
-        },
-        {
-          id: 7002,
-          type: "Kanban::Card",
-          title: "Send invoice",
-          due_on: "2024-02-14",
-          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
-        },
-      ];
+    it("should follow the Link header across /cards/overdue.json pages, oldest-first", async () => {
+      const card = (id: number, due_on: string) => ({
+        id,
+        type: "Kanban::Card",
+        title: `Card ${id}`,
+        due_on,
+        bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+      });
+      const requests: string[] = [];
 
       server.use(
-        http.get(`${BASE_URL}/cards/overdue.json`, () => {
-          return HttpResponse.json(fixture);
+        http.get(`${BASE_URL}/cards/overdue.json`, ({ request }) => {
+          const page = new URL(request.url).searchParams.get("page");
+          requests.push(page ?? "1");
+          if (page === "2") {
+            return HttpResponse.json([card(7003, "2024-02-20")], { headers: { "X-Total-Count": "3" } });
+          }
+          return HttpResponse.json([card(7001, "2024-02-01"), card(7002, "2024-02-14")], {
+            headers: {
+              "X-Total-Count": "3",
+              Link: `<${BASE_URL}/cards/overdue.json?page=2>; rel="next"`,
+            },
+          });
         })
       );
 
-      const result = (await client.everything.everythingOverdueCards()) as any[];
-      expect(result).toHaveLength(2);
-      expect(result[0].id).toBe(7001);
-      expect(result[1].id).toBe(7002);
-      // oldest-first ordering by due_on
-      expect(result[0].due_on).toBe("2024-02-01");
-      expect(result[1].due_on).toBe("2024-02-14");
-      expect(result[0].due_on! < result[1].due_on!).toBe(true);
+      const result = await client.everything.everythingOverdueCards();
+      expect(requests).toEqual(["1", "2"]);
+      expect(result.map((c) => c.id)).toEqual([7001, 7002, 7003]);
+      expect(result.meta).toEqual({ totalCount: 3, truncated: false });
     });
   });
 

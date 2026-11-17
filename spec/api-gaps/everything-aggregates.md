@@ -137,6 +137,8 @@ operations:
   arrays (single-member output, no pagination → bare array via the
   `smithy-bare-arrays` transform), tested as complete oldest-first with **no**
   Link-following.
+  Both have since been Link-paginated at 50 per page, following
+  basecamp/bc3#14537.
 - `/files.json` is **heterogeneous** (Upload + Document + attachment-envelope);
   modeled as the optional-field superset `EverythingFile` (the cross-cutting
   untagged-polymorphism default), with the `kind` and repeatable `people_ids[]`

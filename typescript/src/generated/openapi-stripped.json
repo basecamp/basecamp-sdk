@@ -6031,7 +6031,7 @@
     },
     "/cards/overdue.json": {
       "get": {
-        "description": "Get every overdue card across all accessible projects, oldest-due-date-first.\nA complete, unpaginated array; each item embeds its `bucket`.",
+        "description": "Get every overdue card across all accessible projects, oldest-due-date-first,\n50 per page. Each item embeds its `bucket`.",
         "operationId": "GetEverythingOverdueCards",
         "parameters": [
           {
@@ -6056,6 +6056,16 @@
             "schema": {
               "type": "string",
               "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+              "format": "int32"
             }
           }
         ],
@@ -6114,6 +6124,11 @@
         "tags": [
           "Everything"
         ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,

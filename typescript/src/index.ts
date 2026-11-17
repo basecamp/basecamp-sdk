@@ -475,6 +475,7 @@ export {
   type EverythingUnassignedCardsEverythingOptions,
   type EverythingNoDueDateCardsEverythingOptions,
   type EverythingNotNowCardsEverythingOptions,
+  type EverythingOverdueCardsEverythingOptions,
 } from "./generated/services/everything.js";
 
 // Search & Reports services - generated

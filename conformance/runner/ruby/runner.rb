@@ -813,7 +813,7 @@ class OperationMapper
     when "GetEverythingOverdueTodos"
       @account.everything.get_everything_overdue_todos.to_a
     when "GetEverythingOverdueCards"
-      @account.everything.get_everything_overdue_cards
+      @account.everything.get_everything_overdue_cards.to_a
     when "GetEverythingOpenTodos"
       @account.everything.get_everything_open_todos.to_a
     when "GetEverythingCompletedTodos"

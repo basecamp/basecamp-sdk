@@ -63,14 +63,17 @@ module Basecamp
         end
       end
 
-      # Get every overdue card across all accessible projects, oldest-due-date-first.
+      # Get every overdue card across all accessible projects, oldest-due-date-first,
       # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
       #   Assignees on nested steps are not considered.
       # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-      # @return [Array<Hash>] response data
-      def get_everything_overdue_cards(assignee_ids: nil, due: nil)
-        with_operation(service: "everything", operation: "get_everything_overdue_cards", is_mutation: false) do
-          http_get("/cards/overdue.json", params: compact_query_params(assignee_ids: assignee_ids, due: due), operation: "GetEverythingOverdueCards").json(operation: "GetEverythingOverdueCards")
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def get_everything_overdue_cards(assignee_ids: nil, due: nil, page: nil, max_items: nil)
+        wrap_paginated(service: "everything", operation: "get_everything_overdue_cards", is_mutation: false) do
+          params = compact_query_params(assignee_ids: assignee_ids, due: due, page: page)
+          paginate("/cards/overdue.json", params: params, operation: "GetEverythingOverdueCards", max_items: max_items)
         end
       end
 

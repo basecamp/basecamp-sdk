@@ -146,6 +146,8 @@ pub struct GetEverythingOverdueCardsParams {
     pub assignee_ids: Option<Vec<i64>>,
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     pub due: Option<String>,
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+    pub page: Option<i32>,
 }
 
 /// Optional query parameters for `GetEverythingOverdueTodos`.
@@ -385,20 +387,21 @@ impl<'a> EverythingService<'a> {
         self.client.send_page(operation).await
     }
 
-    /// Get every overdue card across all accessible projects, oldest-due-date-first.
-    /// A complete, unpaginated array; each item embeds its `bucket`.
+    /// Get every overdue card across all accessible projects, oldest-due-date-first,
+    /// 50 per page. Each item embeds its `bucket`.
     ///
     /// `GET /cards/overdue.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn everything_overdue_cards(
         &self,
         params: &GetEverythingOverdueCardsParams,
-    ) -> Result<GetEverythingOverdueCardsResponseContent, Error> {
+    ) -> Result<Page<GetEverythingOverdueCardsResponseContent>, Error> {
         let mut operation = self
             .client
             .operation(&routes::GET_EVERYTHING_OVERDUE_CARDS, &[]);
         operation.query_list_optional("assignee_ids[]", params.assignee_ids.as_deref());
         operation.query_optional("due", params.due.as_ref());
-        self.client.send(operation).await
+        operation.query_optional("page", params.page.as_ref());
+        self.client.send_page(operation).await
     }
 
     /// Get every overdue to-do across all accessible projects, oldest-due-date-first,

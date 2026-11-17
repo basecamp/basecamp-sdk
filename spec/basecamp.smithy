@@ -13019,10 +13019,11 @@ structure GetEverythingOverdueTodosOutput {
   todos: TodoItems
 }
 
-/// Get every overdue card across all accessible projects, oldest-due-date-first.
-/// A complete, unpaginated array; each item embeds its `bucket`.
+/// Get every overdue card across all accessible projects, oldest-due-date-first,
+/// 50 per page. Each item embeds its `bucket`.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/cards/overdue.json")
 operation GetEverythingOverdueCards {
   input: GetEverythingOverdueCardsInput
@@ -13043,6 +13044,10 @@ structure GetEverythingOverdueCardsInput {
   /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
   @httpQuery("due")
   due: String
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetEverythingOverdueCardsOutput {

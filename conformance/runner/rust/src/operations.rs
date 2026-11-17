@@ -1209,12 +1209,17 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             )
             .await
         }
-        "GetEverythingOverdueCards" => unit(
-            account
-                .everything()
-                .everything_overdue_cards(&Default::default())
-                .await,
-        ),
+        "GetEverythingOverdueCards" => {
+            list(
+                account,
+                case,
+                account
+                    .everything()
+                    .everything_overdue_cards(&Default::default())
+                    .await,
+            )
+            .await
+        }
         "GetEverythingOpenTodos" => {
             list(
                 account,

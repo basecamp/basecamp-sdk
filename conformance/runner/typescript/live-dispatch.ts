@@ -128,7 +128,7 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
 
   // Everything aggregates — flat family (one canary per group). The paginated
   // feeds pass maxItems so live mode samples each account-wide feed instead of
-  // following every Link page; the overdue cards list is unpaginated (no options).
+  // following every Link page.
   GetEverythingMessages: {
     fixtures: [],
     call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingMessages({ maxItems: 5 }) }),
@@ -155,7 +155,7 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
   },
   GetEverythingOverdueCards: {
     fixtures: [],
-    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOverdueCards() }),
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOverdueCards({ maxItems: 5 }) }),
   },
 
   // Everything aggregates — bucket-grouped family (one canary per group). All

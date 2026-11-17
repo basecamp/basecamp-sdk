@@ -2341,7 +2341,10 @@ pub static GET_EVERYTHING_OVERDUE_CARDS: Route = Route {
     params: &[],
     body: BodyKind::None,
     response: Representation::Json,
-    pagination: Pagination::None,
+    pagination: Pagination::Link {
+        key: None,
+        total_count_header: Some("X-Total-Count"),
+    },
     write: None,
     deprecated: false,
     metadata: &metadata::GET_EVERYTHING_OVERDUE_CARDS,
