@@ -36,7 +36,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-11-20T00:38:29.892Z",
+  "generated": "2026-11-20T00:38:58.423Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -1626,6 +1626,11 @@ const metadata: MetadataOutput = {
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetMyDueAssignments": {

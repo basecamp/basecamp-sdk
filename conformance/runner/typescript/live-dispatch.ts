@@ -68,7 +68,7 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
   GetMyCompletedAssignments: {
     fixtures: [],
     call: async (ctx) => {
-      const result = await ctx.client.myAssignments.myCompletedAssignments();
+      const result = await ctx.client.myAssignments.myCompletedAssignments({ maxItems: 5 });
       return { resolvedIds: {}, result };
     },
   },

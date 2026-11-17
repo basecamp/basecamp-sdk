@@ -605,6 +605,7 @@ export {
 // My Assignments service - generated
 export {
   MyAssignmentsService,
+  type MyCompletedAssignmentsMyAssignmentOptions,
 } from "./generated/services/my-assignments.js";
 
 // My Notifications service - generated

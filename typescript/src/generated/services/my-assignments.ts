@@ -6,11 +6,21 @@
 
 import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
+import { ListResult } from "../../pagination.js";
+import type { PaginationOptions } from "../../pagination.js";
 
 // =============================================================================
 // Types
 // =============================================================================
 
+
+/**
+ * Options for myCompletedAssignments.
+ */
+export interface MyCompletedAssignmentsMyAssignmentOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+  page?: number;
+}
 
 /**
  * Options for myDueAssignments.
@@ -74,16 +84,17 @@ export class MyAssignmentsService extends BaseService {
   }
 
   /**
-   * Get the current user's completed assignments.
-   * @returns Array of results
+   * Get the current user's completed assignments, most recently completed first,
+   * @param options - Optional query parameters
+   * @returns All results across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.myAssignments.myCompletedAssignments();
    * ```
    */
-  async myCompletedAssignments(): Promise<components["schemas"]["GetMyCompletedAssignmentsResponseContent"]> {
-    const response = await this.request(
+  async myCompletedAssignments(options?: MyCompletedAssignmentsMyAssignmentOptions): Promise<ListResult<components["schemas"]["MyAssignment"]>> {
+    return this.requestPaginated(
       {
         service: "MyAssignments",
         operation: "GetMyCompletedAssignments",
@@ -92,9 +103,12 @@ export class MyAssignmentsService extends BaseService {
       },
       () =>
         this.client.GET("/my/assignments/completed.json", {
+          params: {
+            query: { page: options?.page },
+          },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

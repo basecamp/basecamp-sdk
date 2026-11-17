@@ -12780,10 +12780,11 @@ structure ReorderUpNextInput {
 
 structure ReorderUpNextOutput {}
 
-/// Get the current user's completed assignments.
-/// Archived and trashed recordings are excluded. This endpoint is not paginated.
+/// Get the current user's completed assignments, most recently completed first,
+/// 50 per page. Archived and trashed recordings are excluded.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/my/assignments/completed.json")
 operation GetMyCompletedAssignments {
   input: GetMyCompletedAssignmentsInput
@@ -12795,6 +12796,10 @@ structure GetMyCompletedAssignmentsInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetMyCompletedAssignmentsOutput {

@@ -18,6 +18,7 @@
   "GetEverythingOverdueTodosOptions": ["assigneeIds", "due", "page", "maxItems"],
   "GetEverythingUnassignedCardsOptions": ["assigneeIds", "due", "page", "maxItems"],
   "GetEverythingUnassignedTodosOptions": ["assigneeIds", "due", "page", "maxItems"],
+  "GetMyCompletedAssignmentsOptions": ["page", "maxItems"],
   "GetMyDueAssignmentsOptions": ["scope"],
   "GetMyNotificationsOptions": ["page", "limitBubbleUps"],
   "GetOverdueTodosOptions": ["page"],

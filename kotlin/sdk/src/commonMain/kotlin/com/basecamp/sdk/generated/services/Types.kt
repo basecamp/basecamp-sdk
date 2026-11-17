@@ -807,6 +807,15 @@ data class UpdateMessageBody(
     val categoryId: Long? = null
 )
 
+/** Options for GetMyCompletedAssignments. */
+data class GetMyCompletedAssignmentsOptions(
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
+}
+
 /** Options for GetMyDueAssignments. */
 data class GetMyDueAssignmentsOptions(
     /** Filter by due date range: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later */

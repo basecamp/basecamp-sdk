@@ -2696,7 +2696,10 @@ pub static GET_MY_COMPLETED_ASSIGNMENTS: Route = Route {
     params: &[],
     body: BodyKind::None,
     response: Representation::Json,
-    pagination: Pagination::None,
+    pagination: Pagination::Link {
+        key: None,
+        total_count_header: Some("X-Total-Count"),
+    },
     write: None,
     deprecated: false,
     metadata: &metadata::GET_MY_COMPLETED_ASSIGNMENTS,

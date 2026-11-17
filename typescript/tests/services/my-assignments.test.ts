@@ -157,3 +157,47 @@ describe("MyAssignmentsService — Up Next writes", () => {
     });
   });
 });
+
+describe("MyAssignmentsService.myCompletedAssignments", () => {
+  let client: BasecampClient;
+
+  beforeEach(() => {
+    client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      enableRetry: false,
+    });
+  });
+
+  it("follows the Link header across 50-per-page pages, latest completion first", async () => {
+    const requests: string[] = [];
+    server.use(
+      http.get(`${BASE_URL}/my/assignments/completed.json`, ({ request }) => {
+        const page = new URL(request.url).searchParams.get("page");
+        requests.push(page ?? "1");
+        if (page === "2") {
+          return HttpResponse.json([{ id: 1, content: "Earliest", completed: true }], {
+            headers: { "X-Total-Count": "3" },
+          });
+        }
+        return HttpResponse.json(
+          [
+            { id: 3, content: "Latest", completed: true },
+            { id: 2, content: "Middle", completed: true },
+          ],
+          {
+            headers: {
+              "X-Total-Count": "3",
+              Link: `<${BASE_URL}/my/assignments/completed.json?page=2>; rel="next"`,
+            },
+          }
+        );
+      })
+    );
+
+    const result = await client.myAssignments.myCompletedAssignments();
+    expect(requests).toEqual(["1", "2"]);
+    expect(result.map((a) => a.id)).toEqual([3, 2, 1]);
+    expect(result.meta).toEqual({ totalCount: 3, truncated: false });
+  });
+});

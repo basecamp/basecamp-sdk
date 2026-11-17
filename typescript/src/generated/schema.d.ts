@@ -1849,8 +1849,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Get the current user's completed assignments.
-         *     Archived and trashed recordings are excluded. This endpoint is not paginated.
+         * @description Get the current user's completed assignments, most recently completed first,
+         *     50 per page. Archived and trashed recordings are excluded.
          */
         get: operations["GetMyCompletedAssignments"];
         put?: never;
@@ -17336,7 +17336,10 @@ export interface operations {
     };
     GetMyCompletedAssignments: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;

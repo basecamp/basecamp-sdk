@@ -54,6 +54,14 @@ type MyAssignmentsResult struct {
 	NonPriorities []MyAssignment `json:"non_priorities,omitzero"`
 }
 
+// MyAssignmentListResult contains one or more pages of assignments.
+type MyAssignmentListResult struct {
+	// Assignments is the list of assignments returned.
+	Assignments []MyAssignment `json:"assignments"`
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta `json:"meta"`
+}
+
 // MyAssignmentsService handles assignment operations for the current user.
 type MyAssignmentsService struct {
 	client *AccountClient
@@ -95,8 +103,10 @@ func (s *MyAssignmentsService) Get(ctx context.Context) (result *MyAssignmentsRe
 	return &assignments, nil
 }
 
-// Completed returns completed assignments for the current user.
-func (s *MyAssignmentsService) Completed(ctx context.Context) (result []MyAssignment, err error) {
+// Completed returns the current user's completed assignments, most recently
+// completed first, 50 per page. Pass a positive page to return only that page;
+// page 0 follows the Link header across all pages.
+func (s *MyAssignmentsService) Completed(ctx context.Context, page int32) (result *MyAssignmentListResult, err error) {
 	op := OperationInfo{
 		Service: "MyAssignments", Operation: "Completed",
 		ResourceType: "my_assignment", IsMutation: false,
@@ -110,7 +120,11 @@ func (s *MyAssignmentsService) Completed(ctx context.Context) (result []MyAssign
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetMyCompletedAssignmentsWithResponse(ctx, s.client.accountID)
+	var params *generated.GetMyCompletedAssignmentsParams
+	if page > 0 {
+		params = &generated.GetMyCompletedAssignmentsParams{Page: &page}
+	}
+	resp, err := s.client.parent.gen.GetMyCompletedAssignmentsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -118,12 +132,26 @@ func (s *MyAssignmentsService) Completed(ctx context.Context) (result []MyAssign
 		return nil, err
 	}
 
-	var assignments []MyAssignment
+	assignments := []MyAssignment{}
 	if err = json.Unmarshal(resp.Body, &assignments); err != nil {
 		return nil, fmt.Errorf("failed to parse completed assignments: %w", err)
 	}
-
-	return assignments, nil
+	totalCount := parseTotalCount(resp.HTTPResponse)
+	if page > 0 {
+		return &MyAssignmentListResult{Assignments: assignments, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+	}
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(assignments), 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range rawMore {
+		var assignment MyAssignment
+		if err := json.Unmarshal(raw, &assignment); err != nil {
+			return nil, fmt.Errorf("failed to parse completed assignment: %w", err)
+		}
+		assignments = append(assignments, assignment)
+	}
+	return &MyAssignmentListResult{Assignments: assignments, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // Due returns due assignments for the current user, optionally filtered by scope.

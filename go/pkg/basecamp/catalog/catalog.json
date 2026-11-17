@@ -6748,7 +6748,7 @@
       "tag": "MyAssignments",
       "method": "GET",
       "path": "/{accountId}/my/assignments/completed.json",
-      "doc": "Get the current user's completed assignments.\nArchived and trashed recordings are excluded. This endpoint is not paginated.",
+      "doc": "Get the current user's completed assignments, most recently completed first,\n50 per page. Archived and trashed recordings are excluded.",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -6760,6 +6760,10 @@
           503
         ]
       },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "params": [
         {
           "name": "accountId",
@@ -6770,6 +6774,16 @@
             "description": "Basecamp account ID (numeric string)",
             "pattern": "^[0-9]+$",
             "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
+            "type": "integer"
           }
         }
       ]
