@@ -245,38 +245,36 @@ describe("EverythingService", () => {
   });
 
   describe("everythingOverdueTodos", () => {
-    it("should decode the unpaginated /todos/overdue.json array, oldest-first", async () => {
-      const fixture = [
-        {
-          id: 6001,
-          type: "Todo",
-          title: "Ship the thing",
-          due_on: "2024-01-10",
-          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
-        },
-        {
-          id: 6002,
-          type: "Todo",
-          title: "Review the docs",
-          due_on: "2024-01-20",
-          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
-        },
-      ];
+    it("should follow the Link header across /todos/overdue.json pages, oldest-first", async () => {
+      const todo = (id: number, due_on: string) => ({
+        id,
+        type: "Todo",
+        title: `To-do ${id}`,
+        due_on,
+        bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+      });
+      const requests: string[] = [];
 
       server.use(
-        http.get(`${BASE_URL}/todos/overdue.json`, () => {
-          return HttpResponse.json(fixture);
+        http.get(`${BASE_URL}/todos/overdue.json`, ({ request }) => {
+          const page = new URL(request.url).searchParams.get("page");
+          requests.push(page ?? "1");
+          if (page === "2") {
+            return HttpResponse.json([todo(6003, "2024-01-30")], { headers: { "X-Total-Count": "3" } });
+          }
+          return HttpResponse.json([todo(6001, "2024-01-10"), todo(6002, "2024-01-20")], {
+            headers: {
+              "X-Total-Count": "3",
+              Link: `<${BASE_URL}/todos/overdue.json?page=2>; rel="next"`,
+            },
+          });
         })
       );
 
-      const result = (await client.everything.everythingOverdueTodos()) as any[];
-      expect(result).toHaveLength(2);
-      expect(result[0].id).toBe(6001);
-      expect(result[1].id).toBe(6002);
-      // oldest-first ordering by due_on
-      expect(result[0].due_on).toBe("2024-01-10");
-      expect(result[1].due_on).toBe("2024-01-20");
-      expect(result[0].due_on! < result[1].due_on!).toBe(true);
+      const result = await client.everything.everythingOverdueTodos();
+      expect(requests).toEqual(["1", "2"]);
+      expect(result.map((t) => t.id)).toEqual([6001, 6002, 6003]);
+      expect(result.meta).toEqual({ totalCount: 3, truncated: false });
     });
   });
 
@@ -364,7 +362,7 @@ describe("EverythingService", () => {
       expect(params.getAll("assignee_ids[]")).toEqual(["11", "22"]);
     });
 
-    it("encodes the filters on the unpaginated overdue feed too", async () => {
+    it("encodes the filters on the overdue feed too", async () => {
       let captured = "";
       server.use(
         http.get(`${BASE_URL}/todos/overdue.json`, ({ request }) => {

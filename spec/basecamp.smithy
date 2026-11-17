@@ -12837,7 +12837,7 @@ structure GetMyDueAssignmentsOutput {
 // namespace under flat top-level paths (the /everything/... segment is the
 // Rails controller namespace, not part of the URL). Documented by BC3 #11627 in
 // doc/api/sections/everything.md. This is the flat family: six recency-ordered,
-// Link-paginated roots plus two unpaginated oldest-first overdue lists. The
+// Link-paginated roots plus two oldest-first overdue lists. The
 // bucket-grouped todo/card filter sub-routes are a separate family. Never model
 // the bare /todos.json or /cards.json roots (HTML shells) or the internal
 // /<resource>/recent.json feeds.
@@ -12984,10 +12984,11 @@ structure GetEverythingFilesOutput {
   files: EverythingFileList
 }
 
-/// Get every overdue to-do across all accessible projects, oldest-due-date-first.
-/// A complete, unpaginated array; each item embeds its `bucket`.
+/// Get every overdue to-do across all accessible projects, oldest-due-date-first,
+/// 50 per page. Each item embeds its `bucket`.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/todos/overdue.json")
 operation GetEverythingOverdueTodos {
   input: GetEverythingOverdueTodosInput
@@ -13008,6 +13009,10 @@ structure GetEverythingOverdueTodosInput {
   /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
   @httpQuery("due")
   due: String
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetEverythingOverdueTodosOutput {

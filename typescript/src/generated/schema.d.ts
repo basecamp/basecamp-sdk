@@ -4039,8 +4039,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Get every overdue to-do across all accessible projects, oldest-due-date-first.
-         *     A complete, unpaginated array; each item embeds its `bucket`.
+         * @description Get every overdue to-do across all accessible projects, oldest-due-date-first,
+         *     50 per page. Each item embeds its `bucket`.
          */
         get: operations["GetEverythingOverdueTodos"];
         put?: never;
@@ -27045,6 +27045,8 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;

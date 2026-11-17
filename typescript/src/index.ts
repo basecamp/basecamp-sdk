@@ -469,6 +469,7 @@ export {
   type EverythingCompletedTodosEverythingOptions,
   type EverythingUnassignedTodosEverythingOptions,
   type EverythingNoDueDateTodosEverythingOptions,
+  type EverythingOverdueTodosEverythingOptions,
   type EverythingOpenCardsEverythingOptions,
   type EverythingCompletedCardsEverythingOptions,
   type EverythingUnassignedCardsEverythingOptions,

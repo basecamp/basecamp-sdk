@@ -614,8 +614,12 @@ data class GetEverythingOverdueTodosOptions(
     /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
-    val due: String? = null
+    val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
 ) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingUnassignedTodos. */

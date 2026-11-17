@@ -1198,12 +1198,17 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             )
             .await
         }
-        "GetEverythingOverdueTodos" => unit(
-            account
-                .everything()
-                .everything_overdue_todos(&Default::default())
-                .await,
-        ),
+        "GetEverythingOverdueTodos" => {
+            list(
+                account,
+                case,
+                account
+                    .everything()
+                    .everything_overdue_todos(&Default::default())
+                    .await,
+            )
+            .await
+        }
         "GetEverythingOverdueCards" => unit(
             account
                 .everything()

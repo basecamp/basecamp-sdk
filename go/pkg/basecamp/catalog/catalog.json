@@ -5995,7 +5995,7 @@
       "tag": "Everything",
       "method": "GET",
       "path": "/{accountId}/todos/overdue.json",
-      "doc": "Get every overdue to-do across all accessible projects, oldest-due-date-first.\nA complete, unpaginated array; each item embeds its `bucket`.",
+      "doc": "Get every overdue to-do across all accessible projects, oldest-due-date-first,\n50 per page. Each item embeds its `bucket`.",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -6006,6 +6006,10 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
       },
       "params": [
         {
@@ -6039,6 +6043,16 @@
           "schema": {
             "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
             "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
+            "type": "integer"
           }
         }
       ]

@@ -15,7 +15,7 @@
   "GetEverythingOpenCardsOptions": ["assigneeIds", "due", "page", "maxItems"],
   "GetEverythingOpenTodosOptions": ["assigneeIds", "due", "page", "maxItems"],
   "GetEverythingOverdueCardsOptions": ["assigneeIds", "due"],
-  "GetEverythingOverdueTodosOptions": ["assigneeIds", "due"],
+  "GetEverythingOverdueTodosOptions": ["assigneeIds", "due", "page", "maxItems"],
   "GetEverythingUnassignedCardsOptions": ["assigneeIds", "due", "page", "maxItems"],
   "GetEverythingUnassignedTodosOptions": ["assigneeIds", "due", "page", "maxItems"],
   "GetMyDueAssignmentsOptions": ["scope"],

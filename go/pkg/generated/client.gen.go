@@ -6284,6 +6284,9 @@ type GetEverythingOverdueTodosParams struct {
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingUnassignedTodosParams defines parameters for GetEverythingUnassignedTodos.
@@ -27322,6 +27325,22 @@ func NewGetEverythingOverdueTodosRequest(server string, accountId string, params
 		if params.Due != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err

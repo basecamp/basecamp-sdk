@@ -380,20 +380,33 @@ class EverythingService(BaseService):
         )
 
     def get_everything_overdue_todos(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
-        """Get every overdue to-do across all accessible projects, oldest-due-date-first.
-        A complete, unpaginated array; each item embeds its `bucket`.
+        """Get every overdue to-do across all accessible projects, oldest-due-date-first,
+        50 per page. Each item embeds its `bucket`.
 
         Args:
             assignee_ids: Restrict to tasks assigned to at least one of the given people
                 (repeatable). Assignees on nested steps are not considered.
             due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
-        return self._request_list(
+        return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_overdue_todos", is_mutation=False),
             "/todos/overdue.json",
-            params={k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due}.items() if v is not None},
+            params={
+                k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
+            },
+            max_items=max_items,
             operation="GetEverythingOverdueTodos",
         )
 
@@ -798,20 +811,33 @@ class AsyncEverythingService(AsyncBaseService):
         )
 
     async def get_everything_overdue_todos(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
-        """Get every overdue to-do across all accessible projects, oldest-due-date-first.
-        A complete, unpaginated array; each item embeds its `bucket`.
+        """Get every overdue to-do across all accessible projects, oldest-due-date-first,
+        50 per page. Each item embeds its `bucket`.
 
         Args:
             assignee_ids: Restrict to tasks assigned to at least one of the given people
                 (repeatable). Assignees on nested steps are not considered.
             due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
-        return await self._request_list(
+        return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_overdue_todos", is_mutation=False),
             "/todos/overdue.json",
-            params={k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due}.items() if v is not None},
+            params={
+                k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
+            },
+            max_items=max_items,
             operation="GetEverythingOverdueTodos",
         )
 

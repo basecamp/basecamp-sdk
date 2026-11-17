@@ -48,6 +48,30 @@ write it in UTC with `Z`, and dates are still `YYYY-MM-DD`.
   for an instant, `Date::new(d.year(), d.month(), d.day())` for a date, or the
   `jiff-chrono-conversions` crate for both directions.
 
+### Account-wide lists come 50 per page
+
+Basecamp pages these routes at 50 records on every page (bc3 #14537), where
+each used to answer with every record at once:
+
+- `GET /todos/overdue.json` (`GetEverythingOverdueTodos`)
+
+Each SDK now walks them like its other paged lists. Without `page` you still
+get every record, in one request per 50. A positive `page` returns that page
+alone, with the next page left unfollowed.
+
+- **Go.** `EverythingService.OverdueTodos(ctx, filters)` becomes
+  `OverdueTodos(ctx, page int32, filters)` and returns `*TodoListResult`;
+  pass 0 for every page.
+- **TypeScript, Python and Kotlin.** The methods return `ListResult`, still a
+  list, and take `page` and `maxItems` (`max_items` in Python).
+- **Ruby.** The methods return a lazy `ListEnumerator` where they returned an
+  `Array`, and take `page:` and `max_items:`. Call `to_a` for an array.
+- **Swift.** The methods return `ListResult` where they returned an array;
+  read its `items`. Their options take `page` and `maxItems`.
+- **Rust.** The methods return the first `Page` where they returned the whole
+  list, and their params take `page`. Collect the rest with
+  `client.collect_all(page, None).await`.
+
 # v0.37.0
 
 ### Reports: the overdue to-dos report comes in pages
