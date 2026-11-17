@@ -1,6 +1,6 @@
 {
   "GetAnswersByPersonOptions": ["page", "maxItems"],
-  "GetAssignedTodosOptions": ["groupBy"],
+  "GetAssignedTodosOptions": ["groupBy", "page", "maxItems"],
   "GetBubbleUpsOptions": ["page", "maxItems"],
   "GetEverythingCheckinsOptions": ["page", "maxItems"],
   "GetEverythingCommentsOptions": ["page", "maxItems"],

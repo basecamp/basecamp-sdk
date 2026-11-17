@@ -111,8 +111,9 @@ class ReportsServiceTest < Minitest::Test
     assert_kind_of Hash, result
     assert_equal "Jane Doe", result["person"]["name"]
     assert_equal "project", result["grouped_by"]
-    assert_equal 1, result["todos"].length
-    assert_equal "Task for Jane", result["todos"][0]["content"]
+    todos = result["todos"].to_a
+    assert_equal 1, todos.length
+    assert_equal "Task for Jane", todos[0]["content"]
   end
 
   def test_assigned_with_group_by

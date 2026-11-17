@@ -23734,7 +23734,7 @@
     },
     "/{accountId}/reports/todos/assigned/{personId}": {
       "get": {
-        "description": "Get todos assigned to a specific person",
+        "description": "Get todos assigned to a specific person, 50 per page. Every page repeats\n`person` and `grouped_by`; `todos` holds that page's to-dos.",
         "operationId": "GetAssignedTodos",
         "parameters": [
           {
@@ -23764,6 +23764,16 @@
             "schema": {
               "type": "string",
               "description": "Group by \"bucket\" or \"date\""
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+              "format": "int32"
             }
           }
         ],
@@ -23832,6 +23842,12 @@
         "tags": [
           "Reports"
         ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50,
+          "key": "todos"
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -36697,10 +36713,14 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Todo"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           }
-        }
+        },
+        "required": [
+          "grouped_by",
+          "person",
+          "todos"
+        ]
       },
       "GetBookmarkResponseContent": {
         "$ref": "#/components/schemas/BookmarkStatus"

@@ -3383,7 +3383,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Get todos assigned to a specific person */
+        /**
+         * @description Get todos assigned to a specific person, 50 per page. Every page repeats
+         *     `person` and `grouped_by`; `todos` holds that page's to-dos.
+         */
         get: operations["GetAssignedTodos"];
         put?: never;
         post?: never;
@@ -6193,9 +6196,9 @@ export interface components {
         GetAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         GetAnswersByPersonResponseContent: components["schemas"]["QuestionAnswer"][];
         GetAssignedTodosResponseContent: {
-            person?: components["schemas"]["Person"];
-            grouped_by?: string;
-            todos?: components["schemas"]["Todo"][];
+            person: components["schemas"]["Person"];
+            grouped_by: string;
+            todos: components["schemas"]["Todo"][];
         };
         GetBookmarkResponseContent: components["schemas"]["BookmarkStatus"];
         GetBoostResponseContent: components["schemas"]["Boost"];
@@ -23842,6 +23845,8 @@ export interface operations {
             query?: {
                 /** @description Group by "bucket" or "date" */
                 group_by?: string;
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {

@@ -169,7 +169,7 @@ fn the_route_table_is_complete_and_consistent() {
             )
         })
         .count();
-    assert_eq!(paginated, 67);
+    assert_eq!(paginated, 68);
     // The cursor style is the event feed's two poll lanes and nothing else: the
     // route table must say they page (SPEC §8, §23) while keeping them out of
     // the Link walk counted above, and must say CreateStreamTicket does not page

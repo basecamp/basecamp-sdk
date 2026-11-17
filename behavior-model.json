@@ -922,6 +922,10 @@
     },
     "GetAssignedTodos": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,

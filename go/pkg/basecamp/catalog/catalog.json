@@ -4366,7 +4366,7 @@
       "tag": "Reports",
       "method": "GET",
       "path": "/{accountId}/reports/todos/assigned/{personId}",
-      "doc": "Get todos assigned to a specific person",
+      "doc": "Get todos assigned to a specific person, 50 per page. Every page repeats\n`person` and `grouped_by`; `todos` holds that page's to-dos.",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -4377,6 +4377,10 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
       },
       "params": [
         {
@@ -4406,6 +4410,16 @@
           "schema": {
             "description": "Group by \"bucket\" or \"date\"",
             "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
+            "type": "integer"
           }
         }
       ]

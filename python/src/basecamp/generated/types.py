@@ -1084,9 +1084,9 @@ class GaugeTogglePayload(TypedDict):
 
 
 class GetAssignedTodosResponseContent(TypedDict):
-    grouped_by: NotRequired[str]
-    person: NotRequired[Person]
-    todos: NotRequired[list[Todo]]
+    grouped_by: str
+    person: Person
+    todos: list[Todo]
 
 
 class GetMyAssignmentsResponseContent(TypedDict):

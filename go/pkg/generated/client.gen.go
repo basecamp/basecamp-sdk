@@ -1999,9 +1999,9 @@ type GetAnswersByPersonResponseContent = []QuestionAnswer
 
 // GetAssignedTodosResponseContent defines model for GetAssignedTodosResponseContent.
 type GetAssignedTodosResponseContent struct {
-	GroupedBy *string `json:"grouped_by,omitempty"`
-	Person    *Person `json:"person,omitempty"`
-	Todos     []Todo  `json:"todos,omitempty"`
+	GroupedBy string `json:"grouped_by"`
+	Person    Person `json:"person"`
+	Todos     []Todo `json:"todos"`
 }
 
 // GetBookmarkResponseContent The current user's bookmark state for one recording.
@@ -6153,6 +6153,9 @@ type GetTimesheetReportParams struct {
 type GetAssignedTodosParams struct {
 	// GroupBy Group by "bucket" or "date"
 	GroupBy *string `form:"group_by,omitempty" json:"group_by,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetOverdueTodosParams defines parameters for GetOverdueTodos.
@@ -24656,6 +24659,22 @@ func NewGetAssignedTodosRequest(server string, accountId string, personId int64,
 		if params.GroupBy != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "group_by", runtime.ParamLocationQuery, *params.GroupBy); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err

@@ -10890,9 +10890,11 @@ structure ListAssignablePeopleOutput {
   people: PersonList
 }
 
-/// Get todos assigned to a specific person
+/// Get todos assigned to a specific person, 50 per page. Every page repeats
+/// `person` and `grouped_by`; `todos` holds that page's to-dos.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50, key: "todos")
 @http(method: "GET", uri: "/{accountId}/reports/todos/assigned/{personId}")
 operation GetAssignedTodos {
   input: GetAssignedTodosInput
@@ -10912,11 +10914,23 @@ structure GetAssignedTodosInput {
   /// Group by "bucket" or "date"
   @httpQuery("group_by")
   group_by: String
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
+// All three members are unconditional in BC3's projection
+// (app/views/api/reports/todos/assigned/show.json.jbuilder), and every page
+// repeats `person` and `grouped_by`, so the paged `todos` key is never absent.
 structure GetAssignedTodosOutput {
+  @required
   person: Person
+
+  @required
   grouped_by: String
+
+  @required
   todos: TodoItems
 }
 

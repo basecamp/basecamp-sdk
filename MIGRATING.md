@@ -57,6 +57,8 @@ each used to answer with every record at once:
 - `GET /cards/overdue.json` (`GetEverythingOverdueCards`)
 - `GET /my/assignments/completed.json` (`GetMyCompletedAssignments`)
 - `GET /reports/timesheet.json` (`GetTimesheetReport`)
+- `GET /reports/todos/assigned/:id.json` (`GetAssignedTodos`), an object
+  whose `todos` are paged. Every page repeats its `person` and `grouped_by`.
 
 Each SDK now walks them like its other paged lists. Without `page` you still
 get every record, in one request per 50. A positive `page` returns that page
@@ -69,7 +71,8 @@ alone, with the next page left unfollowed.
   and returns `*MyAssignmentListResult`. Pass 0 for every page.
   `TimesheetService.Report` returns `*TimesheetListResult` where it returned
   `[]TimesheetEntry`, and honours the options' `Limit` and `Page` as
-  `ProjectReport` does.
+  `ProjectReport` does. `ReportsService.AssignedTodos` follows the pages
+  unless `AssignedTodosOptions.Page` is set, and its response gains `Meta`.
 - **TypeScript, Python and Kotlin.** The methods return `ListResult`, still a
   list, and take `page` and `maxItems` (`max_items` in Python).
 - **Ruby.** The methods return a lazy `ListEnumerator` where they returned an
@@ -79,6 +82,11 @@ alone, with the next page left unfollowed.
 - **Rust.** The methods return the first `Page` where they returned the whole
   list, and their params take `page`. Collect the rest with
   `client.collect_all(page, None).await`.
+
+The assigned to-dos report stays an object, and only its `todos` change.
+TypeScript, Python, Ruby, Kotlin and Swift return `todos` as the list type
+above. Kotlin and Swift return a typed `AssignedTodosResult` where they
+returned JSON. Rust returns the first page, as for the lists.
 
 # v0.37.0
 

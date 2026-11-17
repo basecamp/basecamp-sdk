@@ -1678,7 +1678,10 @@ pub static GET_ASSIGNED_TODOS: Route = Route {
     }],
     body: BodyKind::None,
     response: Representation::Json,
-    pagination: Pagination::None,
+    pagination: Pagination::Link {
+        key: Some("todos"),
+        total_count_header: Some("X-Total-Count"),
+    },
     write: None,
     deprecated: false,
     metadata: &metadata::GET_ASSIGNED_TODOS,

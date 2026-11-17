@@ -324,3 +324,45 @@ describe("ReportsService", () => {
     });
   });
 });
+
+describe("ReportsService.assigned", () => {
+  let client: BasecampClient;
+
+  beforeEach(() => {
+    client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      enableRetry: false,
+    });
+  });
+
+  it("follows the Link header across 50-per-page pages, keeping the person and grouping", async () => {
+    const requests: string[] = [];
+    server.use(
+      http.get(`${BASE_URL}/reports/todos/assigned/7`, ({ request }) => {
+        const page = new URL(request.url).searchParams.get("page");
+        requests.push(page ?? "1");
+        const wrapper = { person: { id: 7, name: "Jane" }, grouped_by: "bucket" };
+        if (page === "2") {
+          return HttpResponse.json({ ...wrapper, todos: [{ id: 3 }] }, { headers: { "X-Total-Count": "3" } });
+        }
+        return HttpResponse.json(
+          { ...wrapper, todos: [{ id: 1 }, { id: 2 }] },
+          {
+            headers: {
+              "X-Total-Count": "3",
+              Link: `<${BASE_URL}/reports/todos/assigned/7?page=2>; rel="next"`,
+            },
+          }
+        );
+      })
+    );
+
+    const report = await client.reports.assigned(7);
+    expect(requests).toEqual(["1", "2"]);
+    expect(report.person!.name).toBe("Jane");
+    expect(report.grouped_by).toBe("bucket");
+    expect(report.todos.map((t) => t.id)).toEqual([1, 2, 3]);
+    expect(report.todos.meta).toEqual({ totalCount: 3, truncated: false });
+  });
+});

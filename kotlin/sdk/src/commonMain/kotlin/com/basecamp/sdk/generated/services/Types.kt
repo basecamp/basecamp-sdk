@@ -1012,8 +1012,12 @@ data class GetProgressReportOptions(
 /** Options for GetAssignedTodos. */
 data class GetAssignedTodosOptions(
     /** Group by "bucket" or "date" */
-    val groupBy: String? = null
+    val groupBy: String? = null,
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
 ) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetOverdueTodos. */

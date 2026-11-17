@@ -486,6 +486,7 @@ export {
 
 export {
   ReportsService,
+  type AssignedReportOptions,
   type OverdueReportOptions,
   type PersonProgressReportOptions,
 } from "./generated/services/reports.js";

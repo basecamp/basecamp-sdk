@@ -2,11 +2,11 @@
 import Foundation
 
 public struct GetAssignedTodosResponseContent: Codable, Sendable {
-    public var groupedBy: String?
-    public var person: Person?
-    public var todos: [Todo]?
+    public let groupedBy: String
+    public let person: Person
+    public let todos: [Todo]
 
-    public init(groupedBy: String? = nil, person: Person? = nil, todos: [Todo]? = nil) {
+    public init(groupedBy: String, person: Person, todos: [Todo]) {
         self.groupedBy = groupedBy
         self.person = person
         self.todos = todos

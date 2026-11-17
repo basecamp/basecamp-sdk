@@ -56,18 +56,27 @@ class ReportsService(BaseService):
             operation="GetUpcomingSchedule",
         )
 
-    def assigned(self, *, person_id: int, group_by: str | None = None) -> dict[str, Any]:
-        """Get todos assigned to a specific person.
+    def assigned(
+        self, *, person_id: int, group_by: str | None = None, page: int | None = None, max_items: int | None = None
+    ) -> dict[str, Any]:
+        """Get todos assigned to a specific person, 50 per page. Every page repeats
+        `person` and `grouped_by`; `todos` holds that page's to-dos.
 
         Args:
             person_id: The person id.
             group_by: Group by "bucket" or "date"
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
-        return self._request(
+        return self._request_paginated_wrapped(
             OperationInfo(service="reports", operation="assigned", is_mutation=False, resource_id=person_id),
-            "GET",
             f"/reports/todos/assigned/{person_id}",
-            params=self._compact(group_by=group_by),
+            "todos",
+            params=self._compact(group_by=group_by, page=page),
+            max_items=max_items,
             operation="GetAssignedTodos",
         )
 
@@ -162,18 +171,27 @@ class AsyncReportsService(AsyncBaseService):
             operation="GetUpcomingSchedule",
         )
 
-    async def assigned(self, *, person_id: int, group_by: str | None = None) -> dict[str, Any]:
-        """Get todos assigned to a specific person.
+    async def assigned(
+        self, *, person_id: int, group_by: str | None = None, page: int | None = None, max_items: int | None = None
+    ) -> dict[str, Any]:
+        """Get todos assigned to a specific person, 50 per page. Every page repeats
+        `person` and `grouped_by`; `todos` holds that page's to-dos.
 
         Args:
             person_id: The person id.
             group_by: Group by "bucket" or "date"
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
-        return await self._request(
+        return await self._request_paginated_wrapped(
             OperationInfo(service="reports", operation="assigned", is_mutation=False, resource_id=person_id),
-            "GET",
             f"/reports/todos/assigned/{person_id}",
-            params=self._compact(group_by=group_by),
+            "todos",
+            params=self._compact(group_by=group_by, page=page),
+            max_items=max_items,
             operation="GetAssignedTodos",
         )
 

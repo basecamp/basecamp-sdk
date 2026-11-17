@@ -28,13 +28,16 @@ module Basecamp
         end
       end
 
-      # Get todos assigned to a specific person
+      # Get todos assigned to a specific person, 50 per page. Every page repeats
       # @param person_id [Integer] person id ID
       # @param group_by [String, nil] Group by "bucket" or "date"
-      # @return [Hash] response data
-      def assigned(person_id:, group_by: nil)
-        with_operation(service: "reports", operation: "assigned", is_mutation: false, resource_id: person_id) do
-          http_get("/reports/todos/assigned/#{person_id}", params: compact_query_params(group_by: group_by), operation: "GetAssignedTodos").json(operation: "GetAssignedTodos")
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [Hash] wrapper fields merged with a ListEnumerator of the paginated items
+      def assigned(person_id:, group_by: nil, page: nil, max_items: nil)
+        wrap_paginated_wrapped(key: "todos", service: "reports", operation: "assigned", is_mutation: false, resource_id: person_id) do
+          params = compact_query_params(group_by: group_by, page: page)
+          paginate_wrapped("/reports/todos/assigned/#{person_id}", key: "todos", params: params, operation: "GetAssignedTodos", max_items: max_items)
         end
       end
 

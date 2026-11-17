@@ -15,6 +15,8 @@ import type { PaginationOptions } from "../../pagination.js";
 
 /** TimelineEvent entity from the Basecamp API. */
 export type TimelineEvent = components["schemas"]["TimelineEvent"];
+/** Todo entity from the Basecamp API. */
+export type Todo = components["schemas"]["Todo"];
 /** Person entity from the Basecamp API. */
 export type Person = components["schemas"]["Person"];
 
@@ -29,9 +31,11 @@ export interface ProgressReportOptions extends PaginationOptions {
 /**
  * Options for assigned.
  */
-export interface AssignedReportOptions {
+export interface AssignedReportOptions extends PaginationOptions {
   /** Group by "bucket" or "date" */
   groupBy?: string;
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -120,18 +124,18 @@ export class ReportsService extends BaseService {
   }
 
   /**
-   * Get todos assigned to a specific person
+   * Get todos assigned to a specific person, 50 per page. Every page repeats
    * @param personId - The person ID
    * @param options - Optional query parameters
-   * @returns The assigned_todo
+   * @returns Wrapper with todos as ListResult<Todo> across all pages
    *
    * @example
    * ```ts
    * const result = await client.reports.assigned(123);
    * ```
    */
-  async assigned(personId: number, options?: AssignedReportOptions): Promise<components["schemas"]["GetAssignedTodosResponseContent"]> {
-    const response = await this.request(
+  async assigned(personId: number, options?: AssignedReportOptions): Promise<{ person: Person; grouped_by: string; todos: ListResult<Todo> }> {
+    return this.requestPaginatedWrapped<"todos", Todo>(
       {
         service: "Reports",
         operation: "GetAssignedTodos",
@@ -143,11 +147,11 @@ export class ReportsService extends BaseService {
         this.client.GET("/reports/todos/assigned/{personId}", {
           params: {
             path: { personId },
-            query: { "group_by": options?.groupBy },
+            query: { "group_by": options?.groupBy, page: options?.page },
           },
         })
-    );
-    return response;
+      , "todos", options
+    ) as unknown as { person: Person; grouped_by: string; todos: ListResult<Todo> };
   }
 
   /**
