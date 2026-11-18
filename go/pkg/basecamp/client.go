@@ -30,15 +30,16 @@ const DefaultUserAgent = "basecamp-sdk-go/" + Version + " (api:" + APIVersion + 
 // Client is safe for concurrent use after construction. Do not modify
 // the Config after the client is in use by multiple goroutines.
 type Client struct {
-	httpClient    *http.Client
-	tokenProvider TokenProvider
-	authStrategy  AuthStrategy
-	cfg           *Config
-	cache         *Cache
-	userAgent     string
-	logger        *slog.Logger
-	httpOpts      HTTPOptions
-	hooks         Hooks
+	httpClient           *http.Client
+	passedWithHTTPClient bool // WithHTTPClient was passed; NewClient panics and does not install it
+	tokenProvider        TokenProvider
+	authStrategy         AuthStrategy
+	cfg                  *Config
+	cache                *Cache
+	userAgent            string
+	logger               *slog.Logger
+	httpOpts             HTTPOptions
+	hooks                Hooks
 	// transportWrapper, when set, wraps the resolved transport before the
 	// logging layer (WithTransportWrapper). An interface, not a func: Client
 	// stays comparable.
@@ -156,10 +157,26 @@ func (r *Response) UnmarshalData(v any) error {
 // ClientOption configures a Client.
 type ClientOption func(*Client)
 
-// WithHTTPClient sets a custom HTTP client.
+// WithHTTPClient is the deprecated option that accepted a caller's *http.Client.
+// NewClient never installed that client: it built its own and discarded this
+// one, so the caller's transport, timeout, jar, and CheckRedirect were silently
+// ignored.
+//
+// Deprecated: NewClient panics if this option is passed. Use WithTransport for
+// a custom http.RoundTripper and WithTimeout for a deadline. The function
+// remains so existing callers still compile; deleting the symbol is a later
+// breaking change. generated.WithHTTPClient is a different function and is
+// unaffected.
 func WithHTTPClient(c *http.Client) ClientOption {
 	return func(client *Client) {
-		client.httpClient = c
+		// Do not install c. Nil and non-nil are the same refusal: NewClient
+		// panics rather than copying CheckRedirect, Jar, or Transport.
+		// Keeping the caller's CheckRedirect can drop the cross-origin
+		// Authorization strip.
+		client.passedWithHTTPClient = true
+		if c == nil {
+			return
+		}
 	}
 }
 
@@ -234,6 +251,9 @@ func WithAuthStrategy(strategy AuthStrategy) ClientOption {
 //   - WithCache(c)        - Enable ETag-based caching
 //   - WithTransport(t)    - Custom http.RoundTripper
 //   - WithLogger(l)       - slog.Logger for debug output
+//
+// WithHTTPClient is deprecated. NewClient panics if it is passed; the caller's
+// *http.Client is not installed. Use WithTransport and WithTimeout.
 func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *Client {
 	// Deep-copy the config to prevent post-construction mutation.
 	// The client captures configuration at construction time.
@@ -250,6 +270,13 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	// Apply options (may modify httpOpts)
 	for _, opt := range opts {
 		opt(c)
+	}
+
+	// Refuse before building the client, so a caller's CheckRedirect, Jar,
+	// and Transport cannot replace the logging transport or the cross-origin
+	// Authorization strip below.
+	if c.passedWithHTTPClient {
+		panic("basecamp: WithHTTPClient is no longer accepted; use WithTransport and WithTimeout")
 	}
 
 	// Default to BearerAuth if no custom auth strategy was provided

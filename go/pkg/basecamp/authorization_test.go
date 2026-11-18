@@ -90,7 +90,7 @@ func TestAuthorizationService_GetInfo(t *testing.T) {
 			cfg := DefaultConfig()
 			cfg.BaseURL = server.URL
 			token := &StaticTokenProvider{Token: "test-token"}
-			client := NewClient(cfg, token, WithHTTPClient(server.Client()))
+			client := NewClient(cfg, token)
 
 			opts := tt.opts
 			if opts == nil {
@@ -163,7 +163,7 @@ func newBC5AuthorizationClient(t *testing.T, server *httptest.Server) *Client {
 	t.Helper()
 	cfg := DefaultConfig()
 	cfg.BaseURL = server.URL
-	return NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithHTTPClient(server.Client()))
+	return NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
 }
 
 // A BC5 document carries no product on any account. Filtering it by product
@@ -334,7 +334,7 @@ func TestAuthorizationService_GetInfo_AllowsLocalhostHTTP(t *testing.T) {
 
 	cfg := DefaultConfig()
 	cfg.BaseURL = server.URL
-	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithHTTPClient(server.Client()))
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
 
 	// HTTP localhost endpoint should be allowed
 	_, err := client.Authorization().GetInfo(t.Context(), &GetInfoOptions{

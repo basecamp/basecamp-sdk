@@ -1133,17 +1133,25 @@ projects, _ := account.Projects().List(ctx, nil)
 projects, _ = account.Projects().List(ctx, nil)
 ```
 
-## Custom HTTP Client
+## Custom HTTP transport and timeout
+
+`WithHTTPClient` is deprecated. `NewClient` panics if you pass it, with
+`basecamp: WithHTTPClient is no longer accepted; use WithTransport and WithTimeout`.
+
+The option never took effect: `NewClient` built its own client and discarded
+the one you passed. It still does not install that client. Composing it would
+have to decide what happens to your `CheckRedirect`, and keeping that field
+can drop the cross-origin `Authorization` strip. Programs that still pass
+`WithHTTPClient` compile, and panic at `NewClient` until they switch.
+`generated.WithHTTPClient` is a different function.
 
 ```go
-httpClient := &http.Client{
-    Timeout: 60 * time.Second,
-    Transport: &http.Transport{
+client := basecamp.NewClient(cfg, token,
+    basecamp.WithTimeout(60*time.Second),
+    basecamp.WithTransport(&http.Transport{
         MaxIdleConns: 50,
-    },
-}
-
-client := basecamp.NewClient(cfg, token, basecamp.WithHTTPClient(httpClient))
+    }),
+)
 ```
 
 ## Observability
