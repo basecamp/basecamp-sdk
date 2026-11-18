@@ -178,12 +178,18 @@
 //
 // Customize the client with options:
 //
+//	transport := http.DefaultTransport.(*http.Transport).Clone()
+//	transport.MaxIdleConns = 50
 //	client := basecamp.NewClient(cfg, token,
-//	    basecamp.WithHTTPClient(customHTTPClient),
+//	    basecamp.WithTransport(transport),
+//	    basecamp.WithTimeout(60*time.Second),
 //	    basecamp.WithUserAgent("my-app/1.0"),
 //	    basecamp.WithLogger(slog.Default()),
 //	    basecamp.WithCache(customCache),
 //	)
+//
+// WithHTTPClient is deprecated. NewClient panics if it is passed; use
+// WithTransport and WithTimeout. The caller's *http.Client is not installed.
 //
 // # Thread Safety
 //
