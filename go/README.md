@@ -1146,11 +1146,11 @@ can drop the cross-origin `Authorization` strip. Programs that still pass
 `generated.WithHTTPClient` is a different function.
 
 ```go
+transport := http.DefaultTransport.(*http.Transport).Clone()
+transport.MaxIdleConns = 50
 client := basecamp.NewClient(cfg, token,
     basecamp.WithTimeout(60*time.Second),
-    basecamp.WithTransport(&http.Transport{
-        MaxIdleConns: 50,
-    }),
+    basecamp.WithTransport(transport),
 )
 ```
 

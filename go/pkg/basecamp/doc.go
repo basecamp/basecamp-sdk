@@ -178,8 +178,10 @@
 //
 // Customize the client with options:
 //
+//	transport := http.DefaultTransport.(*http.Transport).Clone()
+//	transport.MaxIdleConns = 50
 //	client := basecamp.NewClient(cfg, token,
-//	    basecamp.WithTransport(&http.Transport{MaxIdleConns: 50}),
+//	    basecamp.WithTransport(transport),
 //	    basecamp.WithTimeout(60*time.Second),
 //	    basecamp.WithUserAgent("my-app/1.0"),
 //	    basecamp.WithLogger(slog.Default()),
