@@ -70,10 +70,10 @@
 #                   branch, which no name-keyed entry can express. That
 #                   distinction is load-bearing documentation: a reader who
 #                   greps `KOTLIN_SKIPS` for that case finds nothing and must
-#                   not conclude the roster is stale. (The constants hold the
-#                   Go-first filing waits' cases — every case in
-#                   `conformance/tests/recordings_filing_wait.json`; a port
-#                   deletes its own.)
+#                   not conclude the roster is stale. (The constants themselves
+#                   hold the Go-first composite's cases — every case in
+#                   `conformance/tests/recording_summary.json`; a port empties
+#                   them again.)
 #
 #   classification  Optional. One word for why the skips exist at all
 #                   (`architectural`); omitted where the reasons carry it. A
@@ -124,22 +124,14 @@ runners:
       - case: "Bracketed IPv6 loopback origin stays on the mocked origin"
         reason: "same as above."
 
-  # Python's `SKIPS` holds only the Go-first filing waits: the recording
-  # summary composite is ported here, so its cases run. The `link-header` fixture RUNS too — only its `requestCount`
+  # Python's `SKIPS` is empty: the Go-first composite is ported here, so its
+  # cases run. The `link-header` fixture RUNS too — only its `requestCount`
   # assertion is suppressed — so it is not a skip and must not be rostered as
   # one.
   python:
     source: "`conformance/runner/python/runner.py` `SKIPS`"
     note: "the `link-header` fixture above runs; only its `requestCount` assertion is suppressed"
-    skips:
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
+    skips: []
 
   ruby:
     source: "`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`"
@@ -182,28 +174,12 @@ runners:
         reason: "GET-only retry (waiver 2B.3)."
       - case: "Network error on an idempotent POST is retried then succeeds"
         reason: "GET-only network retry (waiver 2B.3)."
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
 
   typescript:
     source: "`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`"
     skips:
       - case: "Large integer IDs preserved without precision loss"
         reason: "`Number` is 53-bit (waiver 1B.6)."
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
 
   # No section-level classification: the kinds of entry below differ in status
   # and must not share a label. The `link-header` case is architectural and says
@@ -223,30 +199,14 @@ runners:
         reason: "accepting-direction: `kotlinx.serialization` reads a quoted number into any numeric primitive regardless of `isLenient`, so a plain int64 is not strict here until the generator emits a serializer that makes it so (card 43)."
       - case: "RecordingsSummarize refuses a wrong-typed id on a parent's bucket"
         reason: "accepting-direction: the same quoted-number read, one member further in."
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
 
   swift:
-    source: "`conformance/runner/swift/.../Runner.swift` — `temporarySkips` holds the Go-first filing waits; the `link-header` entry comes from the tag branch"
+    source: "`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is empty since the Go-first composite was ported; the one entry below comes from the `link-header` tag branch"
     skips:
       - case: "List operation returns first page with Link header"
         reason: "architectural, same as Kotlin: auto-pagination plus a last-consumed-response status model."
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
 
-  # Rust's `RUST_SKIPS` holds only the Go-first filing waits. Its runner drives the SDK through a scripted
+  # Rust's `RUST_SKIPS` is empty. Its runner drives the SDK through a scripted
   # `HttpClient` rather than a socket, so the two origin-normalization cases Go
   # cannot dial run here; the `link-header` fixture RUNS with only its
   # `requestCount` assertion suppressed; and the Go-first composite is ported,
@@ -254,12 +214,4 @@ runners:
   rust:
     source: "`conformance/runner/rust/src/main.rs` `RUST_SKIPS`"
     note: "the `link-header` fixture above runs; only its `requestCount` assertion is suppressed"
-    skips:
-      - case: "RecordingsCopyAndWait starts the copy once and polls GetFiling until it completes"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait reports a filing Basecamp failed"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsMoveAndWait polls nothing when Basecamp refuses the move"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
-      - case: "RecordingsCopyAndWait never resends a copy whose start answered 503"
-        reason: "Go-first composite (SPEC Appendix F, Filing Waits); not ported to this SDK yet."
+    skips: []

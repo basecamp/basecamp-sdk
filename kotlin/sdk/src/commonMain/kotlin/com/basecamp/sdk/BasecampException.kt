@@ -430,6 +430,33 @@ sealed class BasecampException(
     ) : BasecampException(message, recordingSummaryCode(reason), hint)
 
     /**
+     * A move or copy that [com.basecamp.sdk.services.RecordingsService.moveAndWait]
+     * or `copyAndWait` could not complete (SPEC.md Appendix F, Filing Waits).
+     * [reason] says how far it got and is the thing to branch on:
+     * [FILING_REFUSED] (nothing was filed; safe to try again),
+     * [FILING_MAY_HAVE_STARTED] (a 5xx or dropped connection on the start; look
+     * before trying again), [FILING_FAILED] or [FILING_UNSETTLED] (still running
+     * when the wait ended; poll [filing]'s id).
+     *
+     * Only a refusal takes its cause's [code] and [retryable]. The others report
+     * `api_error`, not retryable, so a 404 from a poll or a 503 on a start that
+     * may have filed cannot read as a refusal to try again.
+     */
+    class FilingFailure internal constructor(
+        val reason: String,
+        message: String,
+        /** The filing's last known state; null when the start never answered with one. */
+        val filing: com.basecamp.sdk.generated.models.Filing? = null,
+        cause: Throwable? = null,
+    ) : BasecampException(
+        message,
+        code = (cause as? BasecampException)?.takeIf { reason == FILING_REFUSED }?.code ?: CODE_API,
+        httpStatus = (cause as? BasecampException)?.takeIf { reason == FILING_REFUSED }?.httpStatus,
+        retryable = (cause as? BasecampException)?.takeIf { reason == FILING_REFUSED }?.retryable ?: false,
+        cause = cause,
+    )
+
+    /**
      * Hard resource-first OAuth discovery selection/validation failure
      * (SPEC.md §16). THROWN, never returned as a Launchpad fallback, so no
      * consumer can convert it into a Launchpad request. [reason] carries the
@@ -518,6 +545,12 @@ sealed class BasecampException(
         const val RECORDING_UNRESOLVED = "recording_unresolved"
         const val CAMPFIRE_DISCOVERY_INCOMPLETE = "campfire_discovery_incomplete"
         const val RECORDING_BUCKET_MISMATCH = "bucket_mismatch"
+
+        // Filing outcomes (see [FilingFailure]), in the fixture's vocabulary.
+        const val FILING_REFUSED = "filing_refused"
+        const val FILING_MAY_HAVE_STARTED = "filing_may_have_started"
+        const val FILING_FAILED = "filing_failed"
+        const val FILING_UNSETTLED = "filing_unsettled"
 
         // RFC 8628 device-flow reasons (see [DeviceFlow]).
         const val DEVICE_ACCESS_DENIED = "access_denied"

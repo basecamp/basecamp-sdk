@@ -32,6 +32,12 @@ import type { Person } from "../generated/services/people.js";
 import type { CampfireLine } from "../generated/services/campfires.js";
 import type { BasecampClient } from "../client.js";
 import { readMentions } from "./mentions.js";
+import { fileAndWait } from "./filing-wait.js";
+import type { Filing, FilingWaitOptions } from "./filing-wait.js";
+import type {
+  CopyRecordingRequest,
+  MoveRecordingRequest,
+} from "../generated/services/recordings.js";
 
 /**
  * The two mention fields of a summary, from one walk of the rich text.
@@ -1325,6 +1331,35 @@ export class RecordingsService extends GeneratedRecordingsService {
     // listing snapshots are shared by every summarize() through one client and
     // by nothing across two, which is the scope Go gives them on its Client.
     this.#campfires = new CampfireIndex(now);
+  }
+
+  /**
+   * Starts a move once, as `move` does, and waits for Basecamp to finish it,
+   * polling `getFiling` with backoff. Resolves to the completed filing, whose
+   * `destination_recording` is the moved recording; otherwise rejects with a
+   * `FilingError` whose `kind` says how far it got (SPEC Appendix F, Filing
+   * Waits).
+   */
+  async moveAndWait(
+    recordingId: number,
+    req: MoveRecordingRequest,
+    opts?: FilingWaitOptions,
+  ): Promise<Filing> {
+    return fileAndWait(() => this.move(recordingId, req), (id) => this.getFiling(id), opts);
+  }
+
+  /**
+   * Starts a copy once, as `copy` does, and waits for Basecamp to finish it.
+   * Resolves to the completed filing, whose `destination_recording` is the
+   * copy. Only a `FilingRefusedError` is safe to copy again after: anything
+   * else may already have made a copy.
+   */
+  async copyAndWait(
+    recordingId: number,
+    req: CopyRecordingRequest,
+    opts?: FilingWaitOptions,
+  ): Promise<Filing> {
+    return fileAndWait(() => this.copy(recordingId, req), (id) => this.getFiling(id), opts);
   }
 
   /**
