@@ -51,9 +51,12 @@ impl From<Date> for jiff::civil::Date {
     }
 }
 
+/// `YYYY-MM-DD`, through the same `%Y-%m-%d` that [`FromStr`] reads, so every date prints as
+/// something it reads back. jiff's own `Display` writes a year before 0 with six digits
+/// (`-000001`), which `%Y` does not read.
 impl fmt::Display for Date {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
+        fmt::Display::fmt(&self.0.strftime("%Y-%m-%d"), f)
     }
 }
 
@@ -475,6 +478,25 @@ mod tests {
         assert_eq!(None, Date::new(2026, 2, 30));
         assert_eq!(None, Date::new(2026, 3, 300));
         assert_eq!("1970-01-01", Date::default().to_string());
+    }
+
+    /// Every date prints as something `Date::parse` and serde read back, the calendar's ends
+    /// and the years before 0 included.
+    #[test]
+    fn every_date_reads_back_what_it_prints() {
+        for (year, month, day) in [
+            (-9999, 1, 1),
+            (-1, 1, 1),
+            (0, 1, 1),
+            (99, 12, 31),
+            (2026, 3, 4),
+            (9999, 12, 31),
+        ] {
+            let date = Date::new(year, month, day).unwrap();
+            assert_eq!(date, Date::parse(&date.to_string()).unwrap(), "{date}");
+            let json = serde_json::to_string(&date).unwrap();
+            assert_eq!(date, serde_json::from_str::<Date>(&json).unwrap(), "{json}");
+        }
     }
 
     /// Instants read with any offset and write back in UTC, with the fraction only when
