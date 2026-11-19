@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.38.0
 
 ### Rust: dates and times are jiff's, not chrono's
 
