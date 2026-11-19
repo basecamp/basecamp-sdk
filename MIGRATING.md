@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.37.0
 
 ### Reports: the overdue to-dos report comes in pages
 
