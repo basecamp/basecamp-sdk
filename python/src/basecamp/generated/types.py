@@ -583,8 +583,13 @@ class CreateProjectFromTemplateRequestContent(TypedDict):
 
 
 class CreateProjectRequestContent(TypedDict):
+    admissions: NotRequired[str]
+    color: NotRequired[str]
     description: NotRequired[str]
     name: str
+    purpose: NotRequired[str]
+    timesheet_enabled: NotRequired[bool]
+    wallpaper_mode: NotRequired[str]
 
 
 class CreateQuestionRequestContent(TypedDict):
@@ -1576,9 +1581,11 @@ class ProjectConstruction(TypedDict):
 
 
 class ProjectConstructionAttributes(TypedDict):
+    admissions: NotRequired[str]
     description: NotRequired[str]
     name: str
     start_date: NotRequired[str]
+    timesheet_enabled: NotRequired[bool]
 
 
 class ProjectLimitErrorResponseContent(TypedDict):
@@ -2509,9 +2516,12 @@ class UpdateProjectClientAccessRequestContent(TypedDict):
 
 class UpdateProjectRequestContent(TypedDict):
     admissions: NotRequired[str]
+    color: NotRequired[str]
     description: NotRequired[str]
     name: str
+    purpose: NotRequired[str]
     schedule_attributes: NotRequired[ScheduleAttributes]
+    timesheet_enabled: NotRequired[bool]
     wallpaper_mode: NotRequired[str]
 
 
