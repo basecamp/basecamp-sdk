@@ -1,7 +1,7 @@
 //! SPEC §16 "Authorization Code Exchange", the refresh grant, and the token response —
 //! including its RFC 8707 `resource` indicator.
 
-use chrono::{DateTime, TimeDelta, Utc};
+use jiff::{SignedDuration, Timestamp};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::time::Instant;
@@ -57,7 +57,7 @@ pub struct Token {
     pub resource: Option<String>,
     /// When the token expires, worked out from `expires_in` on arrival.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub expires_at: Option<DateTime<Utc>>,
+    pub expires_at: Option<Timestamp>,
 }
 
 fn bearer() -> String {
@@ -66,7 +66,7 @@ fn bearer() -> String {
 
 impl Token {
     /// Whether the token has expired as of `now`. A token with no expiry never has.
-    pub fn is_expired_at(&self, now: DateTime<Utc>) -> bool {
+    pub fn is_expired_at(&self, now: Timestamp) -> bool {
         self.expires_at.is_some_and(|expires_at| expires_at <= now)
     }
 }
@@ -220,7 +220,7 @@ impl OAuthClient {
             .map_err(|failure| network_failure(&url, &failure))?;
         // The token's lifetime runs from when the server answered, not from when its body
         // finished arriving.
-        let received = Utc::now();
+        let received = Timestamp::now();
         let status = response.status();
         let headers = response.headers().clone();
         if status.is_redirection() {
@@ -315,7 +315,7 @@ pub(super) fn token_endpoint_error(status: StatusCode, headers: &HeaderMap, body
     if let Some(retry_after) = headers
         .get(RETRY_AFTER)
         .and_then(|value| value.to_str().ok())
-        .and_then(|value| parse_retry_after(value, Utc::now()))
+        .and_then(|value| parse_retry_after(value, Timestamp::now()))
     {
         error = error.with_retry_after(retry_after);
         if error.hint().is_none() {
@@ -335,7 +335,7 @@ pub(super) fn token_endpoint_error(status: StatusCode, headers: &HeaderMap, body
 pub(super) fn parse_token_response(
     body: &[u8],
     status: StatusCode,
-    now: DateTime<Utc>,
+    now: Timestamp,
 ) -> Result<Token, Error> {
     let malformed = |detail: &str| Error::malformed_response(detail).with_status(status.as_u16());
     let document = match serde_json::from_slice::<Value>(body) {
@@ -374,8 +374,8 @@ pub(super) fn parse_token_response(
         Some(_) => return Err(malformed("token response expires_in must be a number")),
     };
     let expires_at = expires_in.and_then(|seconds| {
-        TimeDelta::try_seconds(i64::try_from(seconds).ok()?)
-            .and_then(|lifetime| now.checked_add_signed(lifetime))
+        let lifetime = SignedDuration::from_secs(i64::try_from(seconds).ok()?);
+        now.checked_add(lifetime).ok()
     });
     Ok(Token {
         access_token,
@@ -574,7 +574,7 @@ mod tests {
         assert_eq!(token.refresh_token.as_ref().unwrap().expose(), "refresh-1");
         assert_eq!(token.expires_in, Some(3600));
         assert_eq!(token.resource.as_deref(), Some("urn:bc:account:42"));
-        assert!(token.expires_at.unwrap() > Utc::now());
+        assert!(token.expires_at.unwrap() > Timestamp::now());
         let body = server.received_requests().await.unwrap().remove(0).body;
         let pairs = form_pairs(&body);
         assert!(!pairs.iter().any(|(name, _)| name == "client_secret"));
@@ -838,7 +838,7 @@ mod tests {
 
     #[test]
     fn a_token_response_is_validated_field_by_field() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let parse = |body: &str| parse_token_response(body.as_bytes(), StatusCode::OK, now);
 
         let token = parse(r#"{"access_token":"a","expires_in":3600.0,"refresh_token":null,"scope":null,"resource":null}"#).unwrap();
@@ -846,7 +846,7 @@ mod tests {
         assert_eq!(token.expires_in, Some(3600));
         assert_eq!(
             token.expires_at,
-            now.checked_add_signed(TimeDelta::seconds(3600))
+            now.checked_add(SignedDuration::from_secs(3600)).ok()
         );
         assert_eq!(token.refresh_token, None);
         assert_eq!(token.resource, None);
@@ -891,7 +891,7 @@ mod tests {
             expires_in: Some(60),
             scope: None,
             resource: Some("urn:bc:account:1".to_string()),
-            expires_at: Some(Utc::now()),
+            expires_at: Some(Timestamp::now()),
         };
         let stored = serde_json::to_string(&token).unwrap();
         assert!(!stored.contains("scope"));

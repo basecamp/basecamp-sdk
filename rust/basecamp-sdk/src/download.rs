@@ -177,7 +177,7 @@ impl AccountClient {
                         response.headers(),
                         &[],
                     )),
-                    parse_retry_after_header(response.headers(), chrono::Utc::now()),
+                    parse_retry_after_header(response.headers(), jiff::Timestamp::now()),
                 ),
             };
             let ended = |error: Option<&Error>| {

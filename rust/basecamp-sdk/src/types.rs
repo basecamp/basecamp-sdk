@@ -3,22 +3,25 @@
 use std::fmt;
 use std::str::FromStr;
 
-use chrono::{NaiveDate, Utc};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::Error;
 
-/// An instant Basecamp reports, ISO 8601 with its offset, held in UTC.
-pub type DateTime = chrono::DateTime<Utc>;
+/// An instant Basecamp reports, ISO 8601 with its offset, held in UTC: a [`jiff::Timestamp`],
+/// which reads RFC 3339 with any offset and writes it with `Z`.
+pub type DateTime = jiff::Timestamp;
 
 /// A calendar date without a time zone, as Basecamp writes `due_on` and `starts_on`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct Date(pub NaiveDate);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Date(pub jiff::civil::Date);
 
 impl Date {
     /// A date from its parts, or `None` when they do not make one.
     pub fn new(year: i32, month: u32, day: u32) -> Option<Date> {
-        NaiveDate::from_ymd_opt(year, month, day).map(Date)
+        let year = i16::try_from(year).ok()?;
+        let month = i8::try_from(month).ok()?;
+        let day = i8::try_from(day).ok()?;
+        jiff::civil::Date::new(year, month, day).ok().map(Date)
     }
 
     /// Reads `YYYY-MM-DD`.
@@ -29,29 +32,38 @@ impl Date {
     }
 }
 
-impl From<NaiveDate> for Date {
-    fn from(date: NaiveDate) -> Date {
+/// 1970-01-01, as it was when the date was chrono's: jiff's own default is year zero.
+impl Default for Date {
+    fn default() -> Date {
+        Date(jiff::civil::date(1970, 1, 1))
+    }
+}
+
+impl From<jiff::civil::Date> for Date {
+    fn from(date: jiff::civil::Date) -> Date {
         Date(date)
     }
 }
 
-impl From<Date> for NaiveDate {
-    fn from(date: Date) -> NaiveDate {
+impl From<Date> for jiff::civil::Date {
+    fn from(date: Date) -> jiff::civil::Date {
         date.0
     }
 }
 
 impl fmt::Display for Date {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.format("%Y-%m-%d"))
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
+/// `YYYY-MM-DD` and nothing else. jiff's own `civil::Date` parser is wider — it takes
+/// `20240115`, and a full datetime whose time it drops — so a date is read with `strptime`.
 impl FromStr for Date {
-    type Err = chrono::ParseError;
+    type Err = jiff::Error;
 
-    fn from_str(source: &str) -> Result<Date, chrono::ParseError> {
-        NaiveDate::parse_from_str(source, "%Y-%m-%d").map(Date)
+    fn from_str(source: &str) -> Result<Date, jiff::Error> {
+        jiff::civil::Date::strptime("%Y-%m-%d", source).map(Date)
     }
 }
 
@@ -128,9 +140,7 @@ impl FlexibleTime {
 
     /// The value read as an instant, when it is one.
     pub fn datetime(&self) -> Option<DateTime> {
-        chrono::DateTime::parse_from_rfc3339(&self.0)
-            .ok()
-            .map(|moment| moment.with_timezone(&Utc))
+        self.0.parse().ok()
     }
 }
 
@@ -441,6 +451,58 @@ impl From<&str> for AuthRoutableUrl {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A date is `YYYY-MM-DD`, read as chrono read it: jiff's wider `civil::Date` parser
+    /// would take the compact form, and a datetime whose time it then drops.
+    #[test]
+    fn a_date_is_year_month_day_and_nothing_wider() {
+        assert_eq!(Date::new(2026, 3, 4), Date::parse("2026-03-04").ok());
+        assert_eq!("2026-03-04", Date::parse("2026-3-4").unwrap().to_string());
+        for source in [
+            "",
+            "20260304",
+            "2026-03-04T00:00:00",
+            "2026-03-04T00:00:00Z",
+            "2026-02-30",
+            "2026-03-04 ",
+        ] {
+            assert!(Date::parse(source).is_err(), "{source:?}");
+            assert!(
+                serde_json::from_value::<Date>(serde_json::json!(source)).is_err(),
+                "{source:?}"
+            );
+        }
+        assert_eq!(None, Date::new(2026, 2, 30));
+        assert_eq!(None, Date::new(2026, 3, 300));
+        assert_eq!("1970-01-01", Date::default().to_string());
+    }
+
+    /// Instants read with any offset and write back in UTC, with the fraction only when
+    /// there is one, as they did when the type was chrono's.
+    #[test]
+    fn an_instant_reads_any_offset_and_writes_utc() {
+        let read = |source: &str| serde_json::from_value::<DateTime>(serde_json::json!(source));
+        let moment = read("2024-01-15T10:30:00.123-06:00").unwrap();
+        assert_eq!(
+            "\"2024-01-15T16:30:00.123Z\"",
+            serde_json::to_string(&moment).unwrap()
+        );
+        assert_eq!(
+            "\"2024-01-15T10:30:00Z\"",
+            serde_json::to_string(&read("2024-01-15T10:30:00.000Z").unwrap()).unwrap()
+        );
+        assert!(read("2024-01-15T10:30:00").is_err(), "no offset");
+        assert!(read("2024-01-15").is_err(), "a date is not an instant");
+        assert_eq!(
+            FlexibleTime::from("2024-01-15T10:30:00.123-06:00").datetime(),
+            Some(moment)
+        );
+        assert_eq!(FlexibleTime::from("2016-06-01").datetime(), None);
+        assert_eq!(
+            FlexibleTime::from("2016-06-01").date(),
+            Date::new(2016, 6, 1)
+        );
+    }
 
     #[derive(Deserialize)]
     struct Dimensions {
