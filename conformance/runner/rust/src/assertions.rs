@@ -6,8 +6,8 @@
 use std::time::Duration;
 
 use basecamp_sdk::Error;
-use basecamp_sdk::chrono::DateTime;
 use basecamp_sdk::http::HeaderMap;
+use basecamp_sdk::jiff::Timestamp;
 use basecamp_sdk::services::recordings::RecordingSummaryError;
 use serde_json::Value;
 
@@ -566,10 +566,8 @@ pub fn json_equal(expected: &Value, actual: &Value) -> bool {
     // making any one language's rendering the contract: "2024-01-20T15:30:00.000-06:00" and
     // "2024-01-20T21:30:00Z" agree.
     if let (Value::String(expected), Value::String(actual)) = (expected, actual)
-        && let (Ok(expected), Ok(actual)) = (
-            DateTime::parse_from_rfc3339(expected),
-            DateTime::parse_from_rfc3339(actual),
-        )
+        && let (Ok(expected), Ok(actual)) =
+            (expected.parse::<Timestamp>(), actual.parse::<Timestamp>())
     {
         return expected == actual;
     }

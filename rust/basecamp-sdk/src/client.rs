@@ -512,7 +512,7 @@ impl AccountClient {
                 Ok(response) => {
                     let status = response.status();
                     let retry_after =
-                        parse_retry_after_header(response.headers(), chrono::Utc::now());
+                        parse_retry_after_header(response.headers(), jiff::Timestamp::now());
                     #[cfg(feature = "tracing")]
                     {
                         let span = tracing::Span::current();

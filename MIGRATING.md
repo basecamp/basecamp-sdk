@@ -11,6 +11,43 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Rust: dates and times are jiff's, not chrono's
+
+chrono's maintainer has wound it down, and RustSec now lists it as unmaintained
+(RUSTSEC-2026-0543, recommending jiff or time). The crate moves to
+[jiff](https://docs.rs/jiff/1) 1.x, whose 1.0 commits to a stable public API. The
+wire format does not change: instants still read RFC 3339 with any offset and
+write it in UTC with `Z`, and dates are still `YYYY-MM-DD`.
+
+| Was | Now |
+|---|---|
+| `basecamp_sdk::chrono` | `basecamp_sdk::jiff` |
+| `DateTime` = `chrono::DateTime<Utc>` | `DateTime` = `jiff::Timestamp` |
+| `Date(pub chrono::NaiveDate)`, `From<NaiveDate>` | `Date(pub jiff::civil::Date)`, `From<jiff::civil::Date>` |
+| `<Date as FromStr>::Err` = `chrono::ParseError` | `jiff::Error` |
+| `Token::expires_at: Option<DateTime<Utc>>` | `Option<jiff::Timestamp>` |
+| `Token::is_expired_at(now: DateTime<Utc>)`, `parse_retry_after(value, now: DateTime<Utc>)` | `now: jiff::Timestamp` |
+
+- `Utc::now()` is `jiff::Timestamp::now()`. `moment.timestamp()` is
+  `moment.as_second()`; `moment + TimeDelta::seconds(n)` is
+  `moment.checked_add(jiff::SignedDuration::from_secs(n))`; `later - earlier`
+  is a `jiff::SignedDuration`. To see an instant in a zone,
+  `moment.to_zoned_datetime(tz)`.
+- `Date::new`, `Date::parse` and `Date`'s `Display` keep their signatures and
+  output, and `Date::default()` is still 1970-01-01.
+- A token stored as JSON by an earlier release reads back unchanged: both
+  crates write `expires_at` as RFC 3339 in UTC.
+- Instants differ from chrono's only at the edges: a leap second (`23:59:60`)
+  reads as `23:59:59`, and more than nine fractional digits is refused rather
+  than truncated. jiff also reads a few forms chrono refused, such as a time
+  without seconds and an RFC 9557 zone suffix (`[America/Chicago]`).
+- Code that keeps chrono at its own boundary converts there:
+  `jiff::Timestamp::new(dt.timestamp(), dt.timestamp_subsec_nanos() as i32)?`
+  for an instant, `Date::new(d.year(), d.month(), d.day())` for a date, or the
+  `jiff-chrono-conversions` crate for both directions.
+
 # v0.37.0
 
 ### Reports: the overdue to-dos report comes in pages

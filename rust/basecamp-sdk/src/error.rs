@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use chrono::{DateTime, Utc};
+use jiff::{SignedDuration, Timestamp};
 use serde_json::Value;
 
 use crate::generated::types::TemplateLibraryConfirmationPerson;
@@ -251,7 +251,7 @@ impl Error {
             .retryable(retryable)
             .with_status(status_code);
         error.inner.hint = hint;
-        error.inner.retry_after = parse_retry_after_header(headers, Utc::now());
+        error.inner.retry_after = parse_retry_after_header(headers, Timestamp::now());
         error.inner.request_id = headers
             .get("x-request-id")
             .and_then(|value| value.to_str().ok())
@@ -585,7 +585,7 @@ fn confirmation_people_of(body: &Value) -> Option<Vec<TemplateLibraryConfirmatio
 /// [`MAX_RETRY_AFTER_SECONDS`], with `0` falling through; or an HTTP-date, rounded up to
 /// whole seconds from `now` and saturating at the same ceiling, with a past date falling
 /// through. Anything else is no value.
-pub fn parse_retry_after(value: &str, now: DateTime<Utc>) -> Option<u32> {
+pub fn parse_retry_after(value: &str, now: Timestamp) -> Option<u32> {
     let value = value.trim_matches([' ', '\t']);
     if value.is_empty() {
         return None;
@@ -598,9 +598,9 @@ pub fn parse_retry_after(value: &str, now: DateTime<Utc>) -> Option<u32> {
         return (seconds > 0).then(|| u32::try_from(seconds).unwrap_or(MAX_RETRY_AFTER_SECONDS));
     }
     let until = parse_http_date(value)?;
-    let left = until.signed_duration_since(now);
-    let whole = left.num_seconds();
-    let started = left > chrono::TimeDelta::seconds(whole);
+    let left = until.duration_since(now);
+    let whole = left.as_secs();
+    let started = left > SignedDuration::from_secs(whole);
     if whole < 0 || (whole == 0 && !started) {
         return None;
     }
@@ -615,22 +615,22 @@ pub fn parse_retry_after(value: &str, now: DateTime<Utc>) -> Option<u32> {
 /// An HTTP-date and nothing else: IMF-fixdate, then the obsolete RFC 850 and asctime forms
 /// (RFC 9110 §5.6.7). RFC 2822's wider grammar — numeric offsets, zone names, `Z`, a
 /// missing weekday — is not an HTTP-date and falls through.
-fn parse_http_date(value: &str) -> Option<DateTime<Utc>> {
+fn parse_http_date(value: &str) -> Option<Timestamp> {
     let collapsed: String = value.split_whitespace().collect::<Vec<_>>().join(" ");
     for format in [
         "%a, %d %b %Y %H:%M:%S GMT",
         "%A, %d-%b-%y %H:%M:%S GMT",
         "%a %b %d %H:%M:%S %Y",
     ] {
-        if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(&collapsed, format) {
-            return Some(naive.and_utc());
+        if let Ok(civil) = jiff::civil::DateTime::strptime(format, &collapsed) {
+            return jiff::tz::Offset::UTC.to_timestamp(civil).ok();
         }
     }
     None
 }
 
 /// The `Retry-After` header, parsed.
-pub(crate) fn parse_retry_after_header(headers: &HeaderMap, now: DateTime<Utc>) -> Option<u32> {
+pub(crate) fn parse_retry_after_header(headers: &HeaderMap, now: Timestamp) -> Option<u32> {
     headers
         .get("retry-after")
         .and_then(|value| value.to_str().ok())
@@ -642,8 +642,8 @@ mod tests {
     use super::*;
     use crate::http::HeaderValue;
 
-    fn at(seconds: i64) -> DateTime<Utc> {
-        DateTime::from_timestamp(1_700_000_000 + seconds, 0).unwrap()
+    fn at(seconds: i64) -> Timestamp {
+        Timestamp::from_second(1_700_000_000 + seconds).unwrap()
     }
 
     fn headers(pairs: &[(&str, &str)]) -> HeaderMap {
@@ -677,9 +677,7 @@ mod tests {
 
     #[test]
     fn retry_after_dates_round_up_and_past_dates_fall_through() {
-        let now = DateTime::parse_from_rfc3339("2021-06-09T10:18:14.250Z")
-            .unwrap()
-            .with_timezone(&Utc);
+        let now = "2021-06-09T10:18:14.250Z".parse::<Timestamp>().unwrap();
         assert_eq!(
             parse_retry_after("Wed, 09 Jun 2021 10:18:16 GMT", now),
             Some(2)
@@ -692,16 +690,16 @@ mod tests {
             parse_retry_after("Wed, 09 Jun 2021 10:18:14 GMT", now),
             None
         );
-        let just_before = DateTime::parse_from_rfc3339("2021-06-09T10:18:14.999999999Z")
-            .unwrap()
-            .with_timezone(&Utc);
+        let just_before = "2021-06-09T10:18:14.999999999Z"
+            .parse::<Timestamp>()
+            .unwrap();
         assert_eq!(
             parse_retry_after("Wed, 09 Jun 2021 10:18:15 GMT", just_before),
             Some(1)
         );
-        let just_after = DateTime::parse_from_rfc3339("2021-06-09T10:18:13.999999999Z")
-            .unwrap()
-            .with_timezone(&Utc);
+        let just_after = "2021-06-09T10:18:13.999999999Z"
+            .parse::<Timestamp>()
+            .unwrap();
         assert_eq!(
             parse_retry_after("Wed, 09 Jun 2021 10:18:15 GMT", just_after),
             Some(2)
