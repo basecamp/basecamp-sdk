@@ -34,6 +34,19 @@ comes back with nothing in it, or, in Go, until `Meta.Truncated` is false.
   `options: GetOverdueTodosOptions? = null`. Calls compile unchanged, but the
   signature changes at the binary level, so recompile.
 
+### Go: list gauges for chosen projects, and archived or trashed templates
+
+`GaugeListOptions.BucketIDs` and `TemplateListOptions.Status` are new. Both are
+optional, and a list call that leaves them unset sends what it sent before.
+Two Go-only breaks follow from the new fields:
+
+- `BucketIDs` is a slice, so `GaugeListOptions` is no longer comparable. Code
+  that compares two of them with `==`, or uses one as a map key, no longer
+  compiles. Compare the fields you care about instead.
+- Each struct gains a field, so an unkeyed literal of either one
+  (`GaugeListOptions{10, 2}`) no longer compiles. Name the fields
+  (`GaugeListOptions{Limit: 10, Page: 2}`).
+
 # v0.36.0
 
 ### Cards: notify assignees on update, and assign people on create
