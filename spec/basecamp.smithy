@@ -4102,9 +4102,10 @@ structure ReplaceScheduleEntryOutput {
 
 // ===== Timesheet Operations (Batch 3) =====
 
-/// Get account-wide timesheet report
+/// Get account-wide timesheet report, latest first, 50 per page
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/reports/timesheet.json")
 operation GetTimesheetReport {
   input: GetTimesheetReportInput
@@ -4125,6 +4126,10 @@ structure GetTimesheetReportInput {
 
   @httpQuery("person_id")
   person_id: PersonId
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetTimesheetReportOutput {
@@ -10885,9 +10890,11 @@ structure ListAssignablePeopleOutput {
   people: PersonList
 }
 
-/// Get todos assigned to a specific person
+/// Get todos assigned to a specific person, 50 per page. Every page repeats
+/// `person` and `grouped_by`; `todos` holds that page's to-dos.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50, key: "todos")
 @http(method: "GET", uri: "/{accountId}/reports/todos/assigned/{personId}")
 operation GetAssignedTodos {
   input: GetAssignedTodosInput
@@ -10907,20 +10914,32 @@ structure GetAssignedTodosInput {
   /// Group by "bucket" or "date"
   @httpQuery("group_by")
   group_by: String
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
+// All three members are unconditional in BC3's projection
+// (app/views/api/reports/todos/assigned/show.json.jbuilder), and every page
+// repeats `person` and `grouped_by`, so the paged `todos` key is never absent.
 structure GetAssignedTodosOutput {
+  @required
   person: Person
+
+  @required
   grouped_by: String
+
+  @required
   todos: TodoItems
 }
 
 /// Get one page of overdue todos grouped by lateness, latest first.
 ///
-/// Pages hold 15, 30, 50, then 100 to-dos, and each page fills the same four
-/// groups with only its own to-dos, so a group can continue onto the next
-/// page. A `Link: rel="next"` header names the next page and `X-Total-Count`
-/// the total. This operation is not auto-paginated in any SDK: the response
+/// Every page holds 50 to-dos, and each page fills the same four groups with
+/// only its own to-dos, so a group can continue onto the next page. A
+/// `Link: rel="next"` header names the next page and `X-Total-Count` the
+/// total. This operation is not auto-paginated in any SDK: the response
 /// is an object of four arrays, which no pagination key can name.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
@@ -12780,10 +12799,11 @@ structure ReorderUpNextInput {
 
 structure ReorderUpNextOutput {}
 
-/// Get the current user's completed assignments.
-/// Archived and trashed recordings are excluded. This endpoint is not paginated.
+/// Get the current user's completed assignments, most recently completed first,
+/// 50 per page. Archived and trashed recordings are excluded.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/my/assignments/completed.json")
 operation GetMyCompletedAssignments {
   input: GetMyCompletedAssignmentsInput
@@ -12795,6 +12815,10 @@ structure GetMyCompletedAssignmentsInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetMyCompletedAssignmentsOutput {
@@ -12837,7 +12861,7 @@ structure GetMyDueAssignmentsOutput {
 // namespace under flat top-level paths (the /everything/... segment is the
 // Rails controller namespace, not part of the URL). Documented by BC3 #11627 in
 // doc/api/sections/everything.md. This is the flat family: six recency-ordered,
-// Link-paginated roots plus two unpaginated oldest-first overdue lists. The
+// Link-paginated roots plus two oldest-first overdue lists. The
 // bucket-grouped todo/card filter sub-routes are a separate family. Never model
 // the bare /todos.json or /cards.json roots (HTML shells) or the internal
 // /<resource>/recent.json feeds.
@@ -12984,10 +13008,11 @@ structure GetEverythingFilesOutput {
   files: EverythingFileList
 }
 
-/// Get every overdue to-do across all accessible projects, oldest-due-date-first.
-/// A complete, unpaginated array; each item embeds its `bucket`.
+/// Get every overdue to-do across all accessible projects, oldest-due-date-first,
+/// 50 per page. Each item embeds its `bucket`.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/todos/overdue.json")
 operation GetEverythingOverdueTodos {
   input: GetEverythingOverdueTodosInput
@@ -13008,16 +13033,21 @@ structure GetEverythingOverdueTodosInput {
   /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
   @httpQuery("due")
   due: String
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetEverythingOverdueTodosOutput {
   todos: TodoItems
 }
 
-/// Get every overdue card across all accessible projects, oldest-due-date-first.
-/// A complete, unpaginated array; each item embeds its `bucket`.
+/// Get every overdue card across all accessible projects, oldest-due-date-first,
+/// 50 per page. Each item embeds its `bucket`.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
 @http(method: "GET", uri: "/{accountId}/cards/overdue.json")
 operation GetEverythingOverdueCards {
   input: GetEverythingOverdueCardsInput
@@ -13038,6 +13068,10 @@ structure GetEverythingOverdueCardsInput {
   /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
   @httpQuery("due")
   due: String
+
+  /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetEverythingOverdueCardsOutput {

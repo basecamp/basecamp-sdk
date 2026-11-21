@@ -20,6 +20,8 @@ use crate::pagination::Page;
 pub struct GetAssignedTodosParams {
     /// Group by "bucket" or "date"
     pub group_by: Option<String>,
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+    pub page: Option<i32>,
 }
 
 /// Optional query parameters for `GetOverdueTodos`.
@@ -61,27 +63,31 @@ impl<'a> ReportsService<'a> {
         self.client
     }
 
-    /// Get todos assigned to a specific person
+    /// Get todos assigned to a specific person, 50 per page. Every page repeats
+    /// `person` and `grouped_by`; `todos` holds that page's to-dos.
+    ///
+    /// Each page is the envelope; its `todos` member is the collection, which [`AccountClient::collect_all`] and [`AccountClient::items`] gather across pages. The other members are on every page: read them off the first.
     ///
     /// `GET /reports/todos/assigned/{personId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn assigned(
         &self,
         person_id: i64,
         params: &GetAssignedTodosParams,
-    ) -> Result<GetAssignedTodosResponseContent, Error> {
+    ) -> Result<Page<GetAssignedTodosResponseContent>, Error> {
         let mut operation = self
             .client
             .operation(&routes::GET_ASSIGNED_TODOS, &[&person_id]);
         operation.query_optional("group_by", params.group_by.as_ref());
-        self.client.send(operation).await
+        operation.query_optional("page", params.page.as_ref());
+        self.client.send_page(operation).await
     }
 
     /// Get one page of overdue todos grouped by lateness, latest first.
     ///
-    /// Pages hold 15, 30, 50, then 100 to-dos, and each page fills the same four
-    /// groups with only its own to-dos, so a group can continue onto the next
-    /// page. A `Link: rel="next"` header names the next page and `X-Total-Count`
-    /// the total. This operation is not auto-paginated in any SDK: the response
+    /// Every page holds 50 to-dos, and each page fills the same four groups with
+    /// only its own to-dos, so a group can continue onto the next page. A
+    /// `Link: rel="next"` header names the next page and `X-Total-Count` the
+    /// total. This operation is not auto-paginated in any SDK: the response
     /// is an object of four arrays, which no pagination key can name.
     ///
     /// `GET /reports/todos/overdue.json` — idempotent; retries up to 3 attempt(s) on 429, 503.

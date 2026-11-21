@@ -75,6 +75,38 @@ describe("TimesheetsService", () => {
       expect(entries).toHaveLength(0);
     });
 
+    it("should follow the Link header across 50-per-page pages", async () => {
+      const requests: string[] = [];
+      server.use(
+        http.get(`${BASE_URL}/reports/timesheet.json`, ({ request }) => {
+          const page = new URL(request.url).searchParams.get("page");
+          requests.push(page ?? "1");
+          if (page === "2") {
+            return HttpResponse.json([{ id: 1, date: "2024-01-01", hours: "1.0" }], {
+              headers: { "X-Total-Count": "3" },
+            });
+          }
+          return HttpResponse.json(
+            [
+              { id: 3, date: "2024-01-03", hours: "3.0" },
+              { id: 2, date: "2024-01-02", hours: "2.0" },
+            ],
+            {
+              headers: {
+                "X-Total-Count": "3",
+                Link: `<${BASE_URL}/reports/timesheet.json?page=2>; rel="next"`,
+              },
+            }
+          );
+        })
+      );
+
+      const entries = await client.timesheets.report();
+      expect(requests).toEqual(["1", "2"]);
+      expect(entries.map((e) => e.id)).toEqual([3, 2, 1]);
+      expect(entries.meta).toEqual({ totalCount: 3, truncated: false });
+    });
+
     it("should support person filtering", async () => {
       server.use(
         http.get(`${BASE_URL}/reports/timesheet.json`, ({ request }) => {
@@ -276,7 +308,7 @@ describe("ReportsService", () => {
           requests.push(new URL(request.url).search);
           return HttpResponse.json(
             {
-              under_a_week_late: [{ id: 16 }],
+              under_a_week_late: [{ id: 51 }],
               over_a_week_late: [],
               over_a_month_late: [],
               over_three_months_late: [],
@@ -288,7 +320,49 @@ describe("ReportsService", () => {
 
       const report = await client.reports.overdue({ page: 2 });
       expect(requests).toEqual(["?page=2"]);
-      expect(report.under_a_week_late![0]!.id).toBe(16);
+      expect(report.under_a_week_late![0]!.id).toBe(51);
     });
+  });
+});
+
+describe("ReportsService.assigned", () => {
+  let client: BasecampClient;
+
+  beforeEach(() => {
+    client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      enableRetry: false,
+    });
+  });
+
+  it("follows the Link header across 50-per-page pages, keeping the person and grouping", async () => {
+    const requests: string[] = [];
+    server.use(
+      http.get(`${BASE_URL}/reports/todos/assigned/7`, ({ request }) => {
+        const page = new URL(request.url).searchParams.get("page");
+        requests.push(page ?? "1");
+        const wrapper = { person: { id: 7, name: "Jane" }, grouped_by: "bucket" };
+        if (page === "2") {
+          return HttpResponse.json({ ...wrapper, todos: [{ id: 3 }] }, { headers: { "X-Total-Count": "3" } });
+        }
+        return HttpResponse.json(
+          { ...wrapper, todos: [{ id: 1 }, { id: 2 }] },
+          {
+            headers: {
+              "X-Total-Count": "3",
+              Link: `<${BASE_URL}/reports/todos/assigned/7?page=2>; rel="next"`,
+            },
+          }
+        );
+      })
+    );
+
+    const report = await client.reports.assigned(7);
+    expect(requests).toEqual(["1", "2"]);
+    expect(report.person!.name).toBe("Jane");
+    expect(report.grouped_by).toBe("bucket");
+    expect(report.todos.map((t) => t.id)).toEqual([1, 2, 3]);
+    expect(report.todos.meta).toEqual({ totalCount: 3, truncated: false });
   });
 });

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"slices"
 	"time"
 
@@ -332,9 +331,8 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 
 // PersonProgress returns the activity timeline for a specific person.
 //
-// Each page of this endpoint returns a wrapped response with {person, events}.
-// Pagination is handled with a custom loop since followPagination expects bare
-// arrays.
+// Each page of this endpoint returns a wrapped response with {person, events};
+// the events of later pages are appended under the first page's person.
 //
 // Pagination options:
 //   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
@@ -414,73 +412,16 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 		}, nil
 	}
 
-	// Custom wrapped pagination for PersonProgress.
-	// Each page returns {person, events} — we can't use followPagination which
-	// expects bare arrays. Instead, follow the same approach: parse Link headers,
-	// validate same-origin, fetch with doRequestURL.
-	truncated := false
-	if resp.HTTPResponse.Request != nil && resp.HTTPResponse.Request.URL != nil {
-		nextLink := parseNextLink(resp.HTTPResponse.Header.Get("Link"))
-		baseURL := resp.HTTPResponse.Request.URL.String()
-		currentPageURL := baseURL
-
-		for page := 2; nextLink != "" && page <= s.client.parent.httpOpts.MaxPages; page++ {
-			// Resolve and validate URL
-			nextURL := resolveURL(currentPageURL, nextLink)
-
-			parsedURL, parseErr := url.Parse(nextURL)
-			if parseErr != nil || !parsedURL.IsAbs() {
-				return nil, fmt.Errorf("failed to resolve Link header URL %q against %q", nextLink, currentPageURL)
-			}
-
-			if !isSameOrigin(baseURL, nextURL) {
-				return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
-			}
-
-			pageResp, fetchErr := s.client.parent.doRequestURL(ctx, "GET", nextURL, nil)
-			if fetchErr != nil {
-				return nil, fetchErr
-			}
-
-			// Parse wrapped response — we only need events
-			var wrapper struct {
-				Events []json.RawMessage `json:"events"`
-			}
-			if unmarshalErr := json.Unmarshal(pageResp.Data, &wrapper); unmarshalErr != nil {
-				return nil, fmt.Errorf("failed to parse person progress page %d: %w", page, unmarshalErr)
-			}
-
-			for _, raw := range wrapper.Events {
-				var ge generated.TimelineEvent
-				if unmarshalErr := json.Unmarshal(raw, &ge); unmarshalErr != nil {
-					return nil, fmt.Errorf("failed to parse timeline event: %w", unmarshalErr)
-				}
-				events = append(events, timelineEventFromGenerated(ge))
-			}
-
-			// Check limit after adding items from this page
-			if limit > 0 && len(events) >= limit {
-				excess := len(events) - limit
-				if excess > 0 {
-					events = events[:limit]
-				}
-				// Truncated if we dropped items OR more pages exist
-				nextLink = parseNextLink(pageResp.Headers.Get("Link"))
-				if excess > 0 || nextLink != "" {
-					truncated = true
-				}
-				break
-			}
-
-			nextLink = parseNextLink(pageResp.Headers.Get("Link"))
-			currentPageURL = nextURL
+	rawMore, truncated, err := s.client.parent.followWrappedPagination(ctx, resp.HTTPResponse, "events", len(events), limit)
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range rawMore {
+		var ge generated.TimelineEvent
+		if err := json.Unmarshal(raw, &ge); err != nil {
+			return nil, fmt.Errorf("failed to parse timeline event: %w", err)
 		}
-
-		// If we exited the loop because of MaxPages (page > MaxPages with nextLink still set)
-		if nextLink != "" && !truncated {
-			truncated = true
-			s.client.parent.logger.Warn("pagination capped", "maxPages", s.client.parent.httpOpts.MaxPages)
-		}
+		events = append(events, timelineEventFromGenerated(ge))
 	}
 
 	return &PersonProgressResult{Person: person, Events: events, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil

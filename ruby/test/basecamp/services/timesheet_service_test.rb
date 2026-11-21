@@ -16,29 +16,24 @@ class TimesheetServiceTest < Minitest::Test
   end
 
   def test_report
-    response = {
-      "entries" => [
-        { "id" => 1, "hours" => 8.0, "description" => "Development work" }
-      ]
-    }
+    response = [ { "id" => 1, "hours" => 8.0, "description" => "Development work" } ]
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/reports/timesheet\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
     result = @account.timesheets.report
-    assert_kind_of Hash, result
-    assert_kind_of Array, result["entries"]
-    assert_equal 8.0, result["entries"].first["hours"]
+    assert_kind_of Enumerator, result
+    assert_equal 8.0, result.first["hours"]
   end
 
   def test_report_with_date_range
-    response = { "entries" => [ { "id" => 1, "hours" => 4.0 } ] }
+    response = [ { "id" => 1, "hours" => 4.0 } ]
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/reports/timesheet\.json\?from=2024-01-01&to=2024-01-31})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
     result = @account.timesheets.report(from: "2024-01-01", to: "2024-01-31")
-    assert_equal 4.0, result["entries"].first["hours"]
+    assert_equal 4.0, result.first["hours"]
   end
 
   def test_for_project

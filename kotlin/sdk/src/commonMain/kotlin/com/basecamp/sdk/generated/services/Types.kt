@@ -504,8 +504,12 @@ data class GetEverythingOverdueCardsOptions(
     /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
-    val due: String? = null
+    val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
 ) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingUnassignedCards. */
@@ -614,8 +618,12 @@ data class GetEverythingOverdueTodosOptions(
     /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
-    val due: String? = null
+    val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
 ) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingUnassignedTodos. */
@@ -798,6 +806,15 @@ data class UpdateMessageBody(
     val status: String? = null,
     val categoryId: Long? = null
 )
+
+/** Options for GetMyCompletedAssignments. */
+data class GetMyCompletedAssignmentsOptions(
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
+}
 
 /** Options for GetMyDueAssignments. */
 data class GetMyDueAssignmentsOptions(
@@ -995,8 +1012,12 @@ data class GetProgressReportOptions(
 /** Options for GetAssignedTodos. */
 data class GetAssignedTodosOptions(
     /** Group by "bucket" or "date" */
-    val groupBy: String? = null
+    val groupBy: String? = null,
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
 ) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetOverdueTodos. */
@@ -1223,8 +1244,12 @@ data class CreateTimesheetEntryBody(
 data class GetTimesheetReportOptions(
     val from: String? = null,
     val to: String? = null,
-    val personId: Long? = null
+    val personId: Long? = null,
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
 ) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for UpdateTimesheetEntry. */

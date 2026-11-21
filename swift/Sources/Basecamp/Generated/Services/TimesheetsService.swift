@@ -51,11 +51,22 @@ public struct ReportTimesheetOptions: Sendable {
     public var from: String?
     public var to: String?
     public var personId: Int?
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+    public var page: Int?
+    public var maxItems: Int?
 
-    public init(from: String? = nil, to: String? = nil, personId: Int? = nil) {
+    public init(
+        from: String? = nil,
+        to: String? = nil,
+        personId: Int? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
         self.from = from
         self.to = to
         self.personId = personId
+        self.page = page
+        self.maxItems = maxItems
     }
 }
 
@@ -135,7 +146,7 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func report(options: ReportTimesheetOptions? = nil) async throws -> [TimesheetEntry] {
+    public func report(options: ReportTimesheetOptions? = nil) async throws -> ListResult<TimesheetEntry> {
         var queryItems: [URLQueryItem] = []
         if let from = options?.from {
             queryItems.append(URLQueryItem(name: "from", value: from))
@@ -146,10 +157,14 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         if let personId = options?.personId {
             queryItems.append(URLQueryItem(name: "person_id", value: String(personId)))
         }
-        return try await request(
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
             OperationInfo(service: "Timesheets", operation: "GetTimesheetReport", resourceType: "timesheet_report", isMutation: false),
-            method: "GET",
-            path: "/reports/timesheet.json" + queryString(queryItems),
+            path: "/reports/timesheet.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetTimesheetReport")
         )
     }

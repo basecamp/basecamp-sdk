@@ -93,10 +93,10 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get account-wide timesheet report
+     * Get account-wide timesheet report, latest first, 50 per page
      * @param options Optional query parameters and pagination control
      */
-    suspend fun report(options: GetTimesheetReportOptions? = null): List<TimesheetEntry> {
+    suspend fun report(options: GetTimesheetReportOptions? = null): ListResult<TimesheetEntry> {
         val info = OperationInfo(
             service = "Timesheets",
             operation = "GetTimesheetReport",
@@ -109,8 +109,9 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
             "from" to options?.from,
             "to" to options?.to,
             "person_id" to options?.personId,
+            "page" to options?.page,
         )
-        return request(info, {
+        return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/reports/timesheet.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<TimesheetEntry>>(body)

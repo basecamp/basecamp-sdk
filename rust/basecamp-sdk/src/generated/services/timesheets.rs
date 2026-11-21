@@ -50,6 +50,8 @@ pub struct GetTimesheetReportParams {
     pub to: Option<String>,
     /// `person_id`.
     pub person_id: Option<i64>,
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+    pub page: Option<i32>,
 }
 
 /// `Timesheets` operations, sent through one [`AccountClient`].
@@ -139,18 +141,19 @@ impl<'a> TimesheetsService<'a> {
         self.client.send(operation).await
     }
 
-    /// Get account-wide timesheet report
+    /// Get account-wide timesheet report, latest first, 50 per page
     ///
     /// `GET /reports/timesheet.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn report(
         &self,
         params: &GetTimesheetReportParams,
-    ) -> Result<GetTimesheetReportResponseContent, Error> {
+    ) -> Result<Page<GetTimesheetReportResponseContent>, Error> {
         let mut operation = self.client.operation(&routes::GET_TIMESHEET_REPORT, &[]);
         operation.query_optional("from", params.from.as_ref());
         operation.query_optional("to", params.to.as_ref());
         operation.query_optional("person_id", params.person_id.as_ref());
-        self.client.send(operation).await
+        operation.query_optional("page", params.page.as_ref());
+        self.client.send_page(operation).await
     }
 
     /// Update a timesheet entry

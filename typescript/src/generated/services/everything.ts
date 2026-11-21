@@ -81,12 +81,14 @@ Assignees on nested steps are not considered. */
 /**
  * Options for everythingOverdueCards.
  */
-export interface EverythingOverdueCardsEverythingOptions {
+export interface EverythingOverdueCardsEverythingOptions extends PaginationOptions {
   /** Restrict to tasks assigned to at least one of the given people (repeatable).
 Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -188,12 +190,14 @@ Assignees on nested steps are not considered. */
 /**
  * Options for everythingOverdueTodos.
  */
-export interface EverythingOverdueTodosEverythingOptions {
+export interface EverythingOverdueTodosEverythingOptions extends PaginationOptions {
   /** Restrict to tasks assigned to at least one of the given people (repeatable).
 Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -332,17 +336,17 @@ export class EverythingService extends BaseService {
   }
 
   /**
-   * Get every overdue card across all accessible projects, oldest-due-date-first.
+   * Get every overdue card across all accessible projects, oldest-due-date-first,
    * @param options - Optional query parameters
-   * @returns Array of Card
+   * @returns Every Card across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.everything.everythingOverdueCards();
    * ```
    */
-  async everythingOverdueCards(options?: EverythingOverdueCardsEverythingOptions): Promise<Card[]> {
-    const response = await this.request(
+  async everythingOverdueCards(options?: EverythingOverdueCardsEverythingOptions): Promise<ListResult<Card>> {
+    return this.requestPaginated(
       {
         service: "Everything",
         operation: "GetEverythingOverdueCards",
@@ -352,11 +356,11 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/cards/overdue.json", {
           params: {
-            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**
@@ -612,17 +616,17 @@ export class EverythingService extends BaseService {
   }
 
   /**
-   * Get every overdue to-do across all accessible projects, oldest-due-date-first.
+   * Get every overdue to-do across all accessible projects, oldest-due-date-first,
    * @param options - Optional query parameters
-   * @returns Array of Todo
+   * @returns Every Todo across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.everything.everythingOverdueTodos();
    * ```
    */
-  async everythingOverdueTodos(options?: EverythingOverdueTodosEverythingOptions): Promise<Todo[]> {
-    const response = await this.request(
+  async everythingOverdueTodos(options?: EverythingOverdueTodosEverythingOptions): Promise<ListResult<Todo>> {
+    return this.requestPaginated(
       {
         service: "Everything",
         operation: "GetEverythingOverdueTodos",
@@ -632,11 +636,11 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/todos/overdue.json", {
           params: {
-            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

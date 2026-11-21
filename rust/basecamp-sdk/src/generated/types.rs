@@ -2977,14 +2977,19 @@ pub type GetAnswersByPersonResponseContent = Vec<QuestionAnswer>;
 #[non_exhaustive]
 pub struct GetAssignedTodosResponseContent {
     /// `person`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub person: Option<Person>,
+    pub person: Person,
     /// `grouped_by`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub grouped_by: Option<String>,
+    pub grouped_by: String,
     /// `todos`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub todos: Option<Vec<Todo>>,
+    pub todos: Vec<Todo>,
+}
+
+impl crate::pagination::PageItems for GetAssignedTodosResponseContent {
+    type Item = Todo;
+
+    fn into_items(self) -> Vec<Todo> {
+        self.todos
+    }
 }
 
 /// `GetBookmarkResponseContent`.

@@ -811,9 +811,9 @@ class OperationMapper
     when "GetEverythingFiles"
       @account.everything.get_everything_files.to_a
     when "GetEverythingOverdueTodos"
-      @account.everything.get_everything_overdue_todos
+      @account.everything.get_everything_overdue_todos.to_a
     when "GetEverythingOverdueCards"
-      @account.everything.get_everything_overdue_cards
+      @account.everything.get_everything_overdue_cards.to_a
     when "GetEverythingOpenTodos"
       @account.everything.get_everything_open_todos.to_a
     when "GetEverythingCompletedTodos"

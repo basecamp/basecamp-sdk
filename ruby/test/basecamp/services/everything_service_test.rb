@@ -106,7 +106,7 @@ class EverythingServiceTest < Minitest::Test
       .with(query: { "assignee_ids" => %w[7], "due" => "with" })
       .to_return(status: 200, body: [].to_json)
 
-    result = @account.everything.get_everything_overdue_cards(assignee_ids: [ 7 ], due: "with")
+    result = @account.everything.get_everything_overdue_cards(assignee_ids: [ 7 ], due: "with").to_a
 
     assert_equal 0, result.length
   end

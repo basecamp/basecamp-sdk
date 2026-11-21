@@ -2,6 +2,7 @@ package basecamp
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -98,5 +99,69 @@ func TestMyAssignmentsService_Due_NoScope(t *testing.T) {
 	}
 	if len(result) != 0 {
 		t.Errorf("expected 0 assignments, got %d", len(result))
+	}
+}
+
+func TestMyAssignmentsService_Completed_FollowsPages(t *testing.T) {
+	var serverURL string
+	var requests []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "3")
+		if r.URL.Query().Get("page") == "2" {
+			w.Write([]byte(`[{"id":1,"content":"Earliest","completed":true}]`))
+			return
+		}
+		w.Header().Set("Link", fmt.Sprintf(`<%s/99999/my/assignments/completed.json?page=2>; rel="next"`, serverURL))
+		w.Write([]byte(`[{"id":3,"content":"Latest","completed":true},{"id":2,"content":"Middle","completed":true}]`))
+	}))
+	t.Cleanup(server.Close)
+	serverURL = server.URL
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").MyAssignments()
+
+	result, err := svc.Completed(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(requests) != 2 || requests[0] != "/99999/my/assignments/completed.json" || requests[1] != "/99999/my/assignments/completed.json?page=2" {
+		t.Fatalf("expected page 1 then page 2, got %v", requests)
+	}
+	ids := make([]int64, 0, len(result.Assignments))
+	for _, assignment := range result.Assignments {
+		ids = append(ids, assignment.ID)
+	}
+	if fmt.Sprint(ids) != "[3 2 1]" {
+		t.Errorf("expected [3 2 1] in order, got %v", ids)
+	}
+	if result.Meta != (ListMeta{TotalCount: 3, Truncated: false}) {
+		t.Errorf("expected Meta{3, false}, got %+v", result.Meta)
+	}
+}
+
+func TestMyAssignmentsService_Completed_ReturnsThePageAskedFor(t *testing.T) {
+	var requests []string
+	svc := testMyAssignmentsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "120")
+		w.Header().Set("Link", `</99999/my/assignments/completed.json?page=3>; rel="next"`)
+		w.Write([]byte(`[{"id":51,"content":"Fifty-first","completed":true}]`))
+	})
+
+	result, err := svc.Completed(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(requests) != 1 || requests[0] != "/99999/my/assignments/completed.json?page=2" {
+		t.Fatalf("expected one request for page 2, got %v", requests)
+	}
+	if len(result.Assignments) != 1 || result.Assignments[0].ID != 51 {
+		t.Errorf("expected page 2's assignment, got %+v", result.Assignments)
+	}
+	if result.Meta != (ListMeta{TotalCount: 120, Truncated: true}) {
+		t.Errorf("expected Meta{120, true}, got %+v", result.Meta)
 	}
 }

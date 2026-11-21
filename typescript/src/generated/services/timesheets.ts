@@ -62,13 +62,15 @@ export interface CreateTimesheetRequest {
 /**
  * Options for report.
  */
-export interface ReportTimesheetOptions {
+export interface ReportTimesheetOptions extends PaginationOptions {
   /** From */
   from?: string;
   /** To */
   to?: string;
   /** Person id */
   personId?: number;
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -201,17 +203,17 @@ export class TimesheetsService extends BaseService {
   }
 
   /**
-   * Get account-wide timesheet report
+   * Get account-wide timesheet report, latest first, 50 per page
    * @param options - Optional query parameters
-   * @returns Array of TimesheetEntry
+   * @returns Every TimesheetEntry across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.timesheets.report();
    * ```
    */
-  async report(options?: ReportTimesheetOptions): Promise<TimesheetEntry[]> {
-    const response = await this.request(
+  async report(options?: ReportTimesheetOptions): Promise<ListResult<TimesheetEntry>> {
+    return this.requestPaginated(
       {
         service: "Timesheets",
         operation: "GetTimesheetReport",
@@ -221,11 +223,11 @@ export class TimesheetsService extends BaseService {
       () =>
         this.client.GET("/reports/timesheet.json", {
           params: {
-            query: { from: options?.from, to: options?.to, "person_id": options?.personId },
+            query: { from: options?.from, to: options?.to, "person_id": options?.personId, page: options?.page },
           },
         })
+      , options
     );
-    return response ?? [];
   }
 
   /**

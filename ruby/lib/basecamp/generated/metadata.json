@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-11-19T01:00:51Z",
+  "generated": "2026-11-20T00:40:49Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -801,6 +801,11 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetEverythingUnassignedCards": {
@@ -1584,6 +1589,11 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetMyDueAssignments": {
@@ -2888,6 +2898,11 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "ListAssignablePeople": {
@@ -2910,6 +2925,11 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetOverdueTodos": {
@@ -3539,6 +3559,11 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetEverythingUnassignedTodos": {

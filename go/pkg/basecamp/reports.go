@@ -2,6 +2,8 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -56,16 +58,22 @@ func (s *ReportsService) AssignablePeople(ctx context.Context) (result []Person,
 type AssignedTodosOptions struct {
 	// GroupBy groups results by "bucket" or "date".
 	GroupBy string
+
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	Page int
 }
 
 // AssignedTodosResponse contains the assigned todos for a person.
 type AssignedTodosResponse struct {
-	Person    *Person `json:"person"`
-	GroupedBy string  `json:"grouped_by"`
-	Todos     []Todo  `json:"todos"`
+	Person    *Person  `json:"person"`
+	GroupedBy string   `json:"grouped_by"`
+	Todos     []Todo   `json:"todos"`
+	Meta      ListMeta `json:"meta"`
 }
 
-// AssignedTodos returns todos assigned to a specific person.
+// AssignedTodos returns todos assigned to a specific person, 50 per page.
+// Without a Page it follows the Link header across all pages, keeping the
+// first page's Person and GroupedBy, which every page repeats.
 func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts *AssignedTodosOptions) (result *AssignedTodosResponse, err error) {
 	op := OperationInfo{
 		Service: "Reports", Operation: "AssignedTodos",
@@ -82,8 +90,13 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.GetAssignedTodosParams
-	if opts != nil && opts.GroupBy != "" {
-		params = &generated.GetAssignedTodosParams{GroupBy: &opts.GroupBy}
+	if opts != nil && (opts.GroupBy != "" || opts.Page > 0) {
+		params = &generated.GetAssignedTodosParams{GroupBy: omitzero(opts.GroupBy)}
+		if opts.Page > 0 {
+			if params.Page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	resp, err := s.client.parent.gen.GetAssignedTodosWithResponse(ctx, s.client.accountID, personID, params)
@@ -97,20 +110,31 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 		return nil, nil
 	}
 
-	result = &AssignedTodosResponse{
-		GroupedBy: deref(resp.JSON200.GroupedBy),
-	}
-
-	if resp.JSON200.Person != nil {
-		p := personFromGenerated(*resp.JSON200.Person)
-		result.Person = &p
-	}
+	person := personFromGenerated(resp.JSON200.Person)
+	result = &AssignedTodosResponse{Person: &person, GroupedBy: resp.JSON200.GroupedBy}
 
 	result.Todos = make([]Todo, 0, len(resp.JSON200.Todos))
 	for _, gt := range resp.JSON200.Todos {
 		result.Todos = append(result.Todos, todoFromGenerated(gt))
 	}
 
+	totalCount := parseTotalCount(resp.HTTPResponse)
+	if opts != nil && opts.Page > 0 {
+		result.Meta = ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}
+		return result, nil
+	}
+	rawMore, truncated, err := s.client.parent.followWrappedPagination(ctx, resp.HTTPResponse, "todos", len(result.Todos), 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range rawMore {
+		var gt generated.Todo
+		if err := json.Unmarshal(raw, &gt); err != nil {
+			return nil, fmt.Errorf("failed to parse todo: %w", err)
+		}
+		result.Todos = append(result.Todos, todoFromGenerated(gt))
+	}
+	result.Meta = ListMeta{TotalCount: totalCount, Truncated: truncated}
 	return result, nil
 }
 
