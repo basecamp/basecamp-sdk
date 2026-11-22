@@ -1017,7 +1017,9 @@ func completionFromGenerated(gc *generated.RecordingCompletion, legacyAt *time.T
 	}
 	creator := personFromGenerated(gc.Creator)
 	completion = &RecordingCompletion{CreatedAt: gc.CreatedAt, Creator: &creator}
-	at, by := gc.CreatedAt, creator
+	// Converted again rather than copied: a Person holds pointers (Client,
+	// Company), and a copy would share them with the creator.
+	at, by := gc.CreatedAt, personFromGenerated(gc.Creator)
 	return completion, &at, &by
 }
 

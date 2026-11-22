@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 func peopleFixturesDir() string {
@@ -730,5 +732,32 @@ func TestPeopleService_GetKeepsTheClientFlag(t *testing.T) {
 				t.Errorf("marshaled client = %q (present %v), want %s", got, present, tc.wantKey)
 			}
 		})
+	}
+}
+
+// The deprecated Completer is a copy of the completion's creator, and changing
+// one must not change the other. A Person holds pointers (Client, Company), so
+// a plain struct copy would share them.
+func TestCompletionCreatorAndCompleterShareNothing(t *testing.T) {
+	var gc generated.RecordingCompletion
+	if err := json.Unmarshal([]byte(`{"created_at":"2026-11-22T10:00:00Z","creator":{"id":7,"name":"Annie","client":false,"company":{"id":1,"name":"37signals"}}}`), &gc); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	completion, _, completer := completionFromGenerated(&gc, nil, nil)
+	creator := completion.Creator
+	if creator.Client == nil || *creator.Client || completer.Client == nil || *completer.Client {
+		t.Fatalf("both should say not a client: creator %v, completer %v", creator.Client, completer.Client)
+	}
+	if creator.Company == nil || completer.Company == nil {
+		t.Fatalf("both should carry the company: creator %v, completer %v", creator.Company, completer.Company)
+	}
+
+	*completer.Client = true
+	completer.Company.Name = "changed"
+	if *creator.Client {
+		t.Error("setting the completer's client flag changed the creator's")
+	}
+	if creator.Company.Name != "37signals" {
+		t.Errorf("renaming the completer's company renamed the creator's to %q", creator.Company.Name)
 	}
 }
