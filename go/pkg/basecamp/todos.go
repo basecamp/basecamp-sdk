@@ -101,13 +101,16 @@ type Person struct {
 	// Tagline is the BC5-added alias of Bio. BC3 emits both keys with identical
 	// content; older BC4 responses may omit `tagline`. Prefer `Bio` for
 	// cross-version reads. Surfaced as a separate wrapper field per spec note.
-	Tagline             string         `json:"tagline,omitempty"`
-	Location            string         `json:"location,omitempty"`
-	CreatedAt           string         `json:"created_at,omitempty"`
-	UpdatedAt           string         `json:"updated_at,omitempty"`
-	Admin               bool           `json:"admin,omitempty"`
-	Owner               bool           `json:"owner,omitempty"`
-	Client              bool           `json:"client,omitempty"`
+	Tagline   string `json:"tagline,omitempty"`
+	Location  string `json:"location,omitempty"`
+	CreatedAt string `json:"created_at,omitempty"`
+	UpdatedAt string `json:"updated_at,omitempty"`
+	Admin     bool   `json:"admin,omitempty"`
+	Owner     bool   `json:"owner,omitempty"`
+	// Client is a pointer so a person known not to be a client keeps
+	// "client": false when marshaled, and a response that left the field out
+	// stays unknown (nil) rather than reading as false.
+	Client              *bool          `json:"client,omitempty"`
 	Employee            bool           `json:"employee,omitempty"`
 	TimeZone            string         `json:"time_zone,omitempty"`
 	AvatarURL           string         `json:"avatar_url,omitempty"`

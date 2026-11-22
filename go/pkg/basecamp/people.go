@@ -929,7 +929,6 @@ func personFromGenerated(gp generated.Person) Person {
 		Location:            deref(gp.Location),
 		Admin:               deref(gp.Admin),
 		Owner:               deref(gp.Owner),
-		Client:              deref(gp.Client),
 		Employee:            deref(gp.Employee),
 		TimeZone:            deref(gp.TimeZone),
 		AvatarURL:           deref(gp.AvatarUrl),
@@ -942,6 +941,11 @@ func personFromGenerated(gp generated.Person) Person {
 
 	if gp.Id != 0 {
 		p.ID = int64(gp.Id)
+	}
+	// Absent stays nil: only a response that said so makes a person a client
+	// or not one.
+	if gp.Client != nil {
+		p.Client = ptr(*gp.Client)
 	}
 
 	// Convert timestamps to strings (the SDK Person type uses strings for these)

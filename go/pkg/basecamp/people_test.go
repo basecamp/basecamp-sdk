@@ -60,8 +60,8 @@ func TestPerson_UnmarshalList(t *testing.T) {
 	if !p1.Owner {
 		t.Error("expected owner to be true")
 	}
-	if p1.Client {
-		t.Error("expected client to be false")
+	if p1.Client == nil || *p1.Client {
+		t.Errorf("expected client to be false, got %v", p1.Client)
 	}
 	if !p1.Employee {
 		t.Error("expected employee to be true")
@@ -536,7 +536,7 @@ func TestPeopleService_UpdateProjectClientAccess(t *testing.T) {
 	if _, present := row["name"]; present {
 		t.Errorf("expected name omitted when blank so bc3 defaults it, got %v", row["name"])
 	}
-	if len(result.Granted) != 1 || result.Granted[0].ID != 444 || !result.Granted[0].Client {
+	if len(result.Granted) != 1 || result.Granted[0].ID != 444 || result.Granted[0].Client == nil || !*result.Granted[0].Client {
 		t.Errorf("unexpected granted %+v", result.Granted)
 	}
 	if len(result.Revoked) != 1 || result.Revoked[0].ID != 333 {
@@ -676,5 +676,59 @@ func TestPeopleService_DisableProjectClientsForbiddenWithClients(t *testing.T) {
 	var bcErr *Error
 	if !errors.As(err, &bcErr) || bcErr.Code != CodeForbidden {
 		t.Fatalf("expected forbidden error, got %v", err)
+	}
+}
+
+// A person's client flag says one of three things — a client, not a client, or
+// nothing — and a read through the SDK keeps which. Before Client was a
+// pointer, "client": false came back as false and then vanished from the
+// marshaled Person, so a consumer re-serializing it (the basecamp CLI's JSON
+// output) could not tell a non-client from a response that never said.
+func TestPeopleService_GetKeepsTheClientFlag(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		body    string
+		want    *bool
+		wantKey string // the client key in the marshaled Person; "" for none
+	}{
+		{"not a client", `{"id":7,"name":"Annie","client":false}`, ptr(false), "false"},
+		{"a client", `{"id":7,"name":"Annie","client":true}`, ptr(true), "true"},
+		{"not said", `{"id":7,"name":"Annie"}`, nil, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := testPeopleServer(t, func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tc.body))
+			})
+			p, err := svc.Get(context.Background(), 7)
+			if err != nil {
+				t.Fatalf("Get: %v", err)
+			}
+			if p.ID != 7 {
+				t.Fatalf("read the wrong person: %+v", p)
+			}
+			switch {
+			case tc.want == nil && p.Client != nil:
+				t.Errorf("Client: got %v, want nil", *p.Client)
+			case tc.want != nil && (p.Client == nil || *p.Client != *tc.want):
+				t.Errorf("Client: got %v, want %v", p.Client, *tc.want)
+			}
+
+			out, err := json.Marshal(p)
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			var fields map[string]json.RawMessage
+			if err := json.Unmarshal(out, &fields); err != nil {
+				t.Fatalf("Unmarshal: %v", err)
+			}
+			got, present := fields["client"]
+			switch {
+			case tc.wantKey == "" && present:
+				t.Errorf("marshaled client = %s, want the key left out", got)
+			case tc.wantKey != "" && string(got) != tc.wantKey:
+				t.Errorf("marshaled client = %q (present %v), want %s", got, present, tc.wantKey)
+			}
+		})
 	}
 }
