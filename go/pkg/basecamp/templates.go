@@ -11,6 +11,11 @@ import (
 
 // TemplateListOptions specifies options for listing templates.
 type TemplateListOptions struct {
+	// Status lists the templates in that state: "active", "archived" or
+	// "trashed". Empty lists active templates; Basecamp refuses any other
+	// value with a 400.
+	Status string
+
 	// Limit is the maximum number of templates to return.
 	// If 0, returns all. Use -1 for unlimited (same as 0).
 	Limit int
@@ -46,6 +51,14 @@ type CreateProjectOptions struct {
 	// Template dates are anchored to the Sunday on or before it. Empty anchors them
 	// to the week in which the asynchronous construction is processed.
 	StartDate string
+	// Admissions sets who can join the new project ("invite", "employee" or
+	// "team"). Empty keeps Basecamp's default. Basecamp applies it when it
+	// builds the project, so an unknown value fails the construction rather
+	// than the request.
+	Admissions string
+	// TimesheetEnabled turns on the new project's timesheet. nil or false
+	// leaves it off. Basecamp ignores it when the caller can't use timesheets.
+	TimesheetEnabled *bool
 }
 
 // TemplateLibraryTodolists contains the account's to-do list templates.
@@ -200,12 +213,18 @@ func (s *TemplatesService) List(ctx context.Context, opts *TemplateListOptions) 
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.ListTemplatesParams
+	if opts != nil && opts.Status != "" {
+		params = &generated.ListTemplatesParams{Status: ptr(opts.Status)}
+	}
 	if opts != nil && opts.Page > 0 {
 		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}
-		params = &generated.ListTemplatesParams{Page: page}
+		if params == nil {
+			params = &generated.ListTemplatesParams{}
+		}
+		params.Page = page
 	}
 
 	resp, err := s.client.parent.gen.ListTemplatesWithResponse(ctx, s.client.accountID, params)
@@ -443,6 +462,8 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 	}
 	if len(opts) > 0 && opts[0] != nil {
 		body.Project.StartDate = omitzero(opts[0].StartDate)
+		body.Project.Admissions = omitzero(opts[0].Admissions)
+		body.Project.TimesheetEnabled = opts[0].TimesheetEnabled
 	}
 
 	resp, err := s.client.parent.gen.CreateProjectFromTemplateWithResponse(ctx, s.client.accountID, templateID, body)

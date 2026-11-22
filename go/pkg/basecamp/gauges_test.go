@@ -398,3 +398,42 @@ func TestTodosService_List_PageIgnoresDefaultLimit(t *testing.T) {
 		t.Error("expected Truncated=false: nothing was dropped and the page carried no next link")
 	}
 }
+
+// GaugesController#bucket_ids reads bucket_ids as one comma-separated
+// string. Given IDs reach the wire in the caller's order, beside page.
+func TestGaugesService_List_BucketIDs(t *testing.T) {
+	cases := map[string]struct {
+		opts     *GaugeListOptions
+		wantIDs  string
+		wantPage string
+	}{
+		"ids":          {opts: &GaugeListOptions{BucketIDs: []int64{30, 10, 20}}, wantIDs: "30,10,20"},
+		"ids and page": {opts: &GaugeListOptions{BucketIDs: []int64{7}, Page: 2}, wantIDs: "7", wantPage: "2"},
+		"none":         {opts: &GaugeListOptions{}, wantIDs: ""},
+		"empty slice":  {opts: &GaugeListOptions{BucketIDs: []int64{}}, wantIDs: ""},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			var query map[string][]string
+			svc := testGaugesServer(t, func(w http.ResponseWriter, r *http.Request) {
+				query = r.URL.Query()
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(200)
+				w.Write([]byte(`[{"id": 1, "title": "One"}]`))
+			})
+			if _, err := svc.List(context.Background(), tc.opts); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			_, sent := query["bucket_ids"]
+			if tc.wantIDs == "" && sent {
+				t.Errorf("expected no bucket_ids param, got %q", query["bucket_ids"])
+			}
+			if tc.wantIDs != "" && strings.Join(query["bucket_ids"], "|") != tc.wantIDs {
+				t.Errorf("expected bucket_ids=%q, got %q", tc.wantIDs, query["bucket_ids"])
+			}
+			if got := strings.Join(query["page"], "|"); got != tc.wantPage {
+				t.Errorf("expected page=%q, got %q", tc.wantPage, got)
+			}
+		})
+	}
+}

@@ -1,6 +1,6 @@
 [package]
 name = "basecamp-sdk"
-version = "0.36.0"
+version = "0.38.0"
 description = "Official client for Basecamp - https://basecamp.com"
 readme = "README.md"
 homepage = "https://github.com/basecamp/basecamp-sdk"
@@ -40,10 +40,10 @@ event-feed = []
 async-trait = "0.1"
 base64 = { version = "0.23", optional = true }
 bytes = "1"
-chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 hmac = "0.13"
 http = "1"
+jiff = { version = "1.0.1", default-features = false, features = ["serde", "std"] }
 percent-encoding = "2"
 rand = "0.10"
 reqwest = { version = "0.13", default-features = false, features = ["http2"], optional = true }

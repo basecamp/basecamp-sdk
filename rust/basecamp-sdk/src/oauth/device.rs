@@ -5,7 +5,7 @@ use std::fmt;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use chrono::Utc;
+use jiff::Timestamp;
 use serde_json::Value;
 use tokio::time::Instant;
 use url::{Url, form_urlencoded};
@@ -490,7 +490,7 @@ impl OAuthClient {
             Err(TransportFailure::TimedOut) => return Poll::TimedOut,
             Err(failure @ TransportFailure::Failed(_)) => return transport(&failure),
         };
-        let received = Utc::now();
+        let received = Timestamp::now();
         let status = response.status();
         if status.is_redirection() {
             return Poll::Failed(

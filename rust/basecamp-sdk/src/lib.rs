@@ -16,11 +16,12 @@
 //!
 //! # Re-exported dependencies
 //!
-//! [`chrono`] types are the model's date and time representation and [`reqwest`]'s
-//! builder is the shipped transport's seam, so both crates are re-exported here at the
-//! version this crate was built against: use `basecamp_sdk::chrono` and
-//! `basecamp_sdk::reqwest` rather than guessing the matching minor. A minor bump of either
-//! is a `0.MINOR` release of this crate.
+//! [`jiff`] types are the model's date and time representation ([`DateTime`] is a
+//! [`jiff::Timestamp`], [`Date`] wraps a [`jiff::civil::Date`]) and [`reqwest`]'s builder is
+//! the shipped transport's seam, so both crates are re-exported here at the version this
+//! crate was built against: use `basecamp_sdk::jiff` and `basecamp_sdk::reqwest` rather than
+//! guessing the matching version. A minor bump of `reqwest`, or a major one of `jiff`, is a
+//! `0.MINOR` release of this crate.
 //!
 //! # Public traits
 //!
@@ -75,7 +76,7 @@ pub use pagination::{ListMeta, ListResult, Page, PageItems};
 pub use types::{AuthRoutableUrl, Date, DateChange, DateTime, FlexibleTime, SensitiveString};
 pub use version::{API_VERSION, VERSION};
 
-pub use chrono;
+pub use jiff;
 #[cfg(feature = "reqwest")]
 #[cfg_attr(docsrs, doc(cfg(feature = "reqwest")))]
 pub use reqwest;

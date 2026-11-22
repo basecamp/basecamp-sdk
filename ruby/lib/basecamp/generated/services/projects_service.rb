@@ -30,10 +30,23 @@ module Basecamp
       # Create a new project
       # @param name [String] name
       # @param description [String, nil] description
+      # @param color [String, nil] The project's color, used for it on calendars: white, red, orange,
+      #   yellow, green, blue, aqua, purple, gray, pink or brown. Omitted, Basecamp
+      #   derives one from the project's name. Basecamp answers a value outside the enum
+      #   with a server error, not a validation error.
+      # @param purpose [String, nil] What kind of project it is: `topic` (a regular project, the default),
+      #   `team`, or `company_hq` (the account's Company HQ, at most one per
+      #   account; a second answers 422). BC3's enum also has `guide`, which marks
+      #   a project as a sample nobody can edit afterwards, so it isn't offered.
+      # @param admissions [String, nil] invite|employee|team
+      # @param timesheet_enabled [Boolean, nil] Turn on the project's timesheet. Basecamp ignores this when the caller
+      #   can't use timesheets (the account lacks them, or the caller is a client).
+      # @param wallpaper_mode [String, nil] How a wallpaper uploaded later is laid out. UpdateProjectWallpaper
+      #   uploads one.
       # @return [Hash] response data
-      def create(name:, description: nil)
+      def create(name:, description: nil, color: nil, purpose: nil, admissions: nil, timesheet_enabled: nil, wallpaper_mode: nil)
         with_operation(service: "projects", operation: "create", is_mutation: true) do
-          http_post("/projects.json", body: compact_params(name: name, description: description)).json(operation: "CreateProject")
+          http_post("/projects.json", body: compact_params(name: name, description: description, color: color, purpose: purpose, admissions: admissions, timesheet_enabled: timesheet_enabled, wallpaper_mode: wallpaper_mode)).json(operation: "CreateProject")
         end
       end
 
@@ -54,10 +67,25 @@ module Basecamp
       # @param schedule_attributes [Hash, nil] schedule attributes
       # @param wallpaper_mode [String, nil] How the project's wallpaper is laid out. Changes only the layout of a
       #   wallpaper already attached; UpdateProjectWallpaper uploads one.
+      # @param color [String, nil] The project's color, used for it on calendars: white, red, orange,
+      #   yellow, green, blue, aqua, purple, gray, pink or brown. An empty string clears
+      #   it, and Basecamp derives one from the project's name again. A value
+      #   outside the enum answers a server error, not a validation error. The
+      #   `color` a project read returns is something else: the caller's own color
+      #   for the project on their home screen, null unless they set one.
+      # @param purpose [String, nil] What kind of project it is: `topic` (a regular project), `team`, or
+      #   `company_hq` (the account's Company HQ). Changing a `topic` to anything
+      #   else deletes the project's start and end dates. An account has at most
+      #   one `company_hq`; asking for a second answers 422. BC3's enum also has
+      #   `guide`, which marks a project as a sample nobody can edit afterwards,
+      #   so it isn't offered.
+      # @param timesheet_enabled [Boolean, nil] Turn the project's timesheet on or off. Basecamp ignores this when the
+      #   caller can't use timesheets (the account lacks them, or the caller is a
+      #   client).
       # @return [Hash] response data
-      def update(project_id:, name:, description: nil, admissions: nil, schedule_attributes: nil, wallpaper_mode: nil)
+      def update(project_id:, name:, description: nil, admissions: nil, schedule_attributes: nil, wallpaper_mode: nil, color: nil, purpose: nil, timesheet_enabled: nil)
         with_operation(service: "projects", operation: "update", is_mutation: true, project_id: project_id) do
-          http_put("/projects/#{project_id}", body: compact_params(name: name, description: description, admissions: admissions, schedule_attributes: schedule_attributes, wallpaper_mode: wallpaper_mode)).json(operation: "UpdateProject")
+          http_put("/projects/#{project_id}", body: compact_params(name: name, description: description, admissions: admissions, schedule_attributes: schedule_attributes, wallpaper_mode: wallpaper_mode, color: color, purpose: purpose, timesheet_enabled: timesheet_enabled)).json(operation: "UpdateProject")
         end
       end
 

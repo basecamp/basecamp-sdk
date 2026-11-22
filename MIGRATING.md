@@ -13,27 +13,6 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
-### Reports: the overdue to-dos report comes in pages
-
-Basecamp now pages `GET /reports/todos/overdue.json` (bc3 #14519): 15, 30, 50,
-then 100 to-dos, latest first, each page holding the same four lateness groups
-with only its own to-dos. Every SDK's overdue report now takes an optional
-`page`. No SDK follows the pages for you, because the report is four lists, not
-one. Without `page` you get the first page, where you used to get every overdue
-to-do, so code that wants them all must ask for page 2, 3 and on until a page
-comes back with nothing in it, or, in Go, until `Meta.Truncated` is false.
-
-- **Go.** `ReportsService.OverdueTodos(ctx)` becomes
-  `OverdueTodos(ctx, page int32)`; pass 0 for the first page.
-  `OverdueTodosResponse` gains `Meta ListMeta`, whose `Truncated` is true while
-  a further page exists and whose `TotalCount` is the report's `X-Total-Count`.
-- **Rust.** `ReportsService::overdue()` now takes `&GetOverdueTodosParams`.
-  Ask for the first page with `overdue(&Default::default())`, and for another
-  with `overdue(&GetOverdueTodosParams { page: Some(2) })`.
-- **Kotlin.** `ReportsService.overdue` gains a trailing
-  `options: GetOverdueTodosOptions? = null`. Calls compile unchanged, but the
-  signature changes at the binary level, so recompile.
-
 ### Go: `WithHTTPClient` panics at `NewClient` (#903)
 
 `basecamp.WithHTTPClient` is still declared, so a program that passes it still
@@ -57,6 +36,100 @@ time it is constructed with `WithHTTPClient`. Switch to `WithTransport` and
 `WithTimeout`. Deleting the symbol is a later breaking change; this is not
 that change, and `generated.WithHTTPClient` is a different function and is
 unchanged.
+
+# v0.38.0
+
+### Rust: dates and times are jiff's, not chrono's
+
+chrono's maintainer has wound it down, and RustSec now lists it as unmaintained
+(RUSTSEC-2026-0543, recommending jiff or time). The crate moves to
+[jiff](https://docs.rs/jiff/1) 1.x, whose 1.0 commits to a stable public API. The
+wire format does not change: instants still read RFC 3339 with any offset and
+write it in UTC with `Z`, and dates are still `YYYY-MM-DD`.
+
+| Was | Now |
+|---|---|
+| `basecamp_sdk::chrono` | `basecamp_sdk::jiff` |
+| `DateTime` = `chrono::DateTime<Utc>` | `DateTime` = `jiff::Timestamp` |
+| `Date(pub chrono::NaiveDate)`, `From<NaiveDate>` | `Date(pub jiff::civil::Date)`, `From<jiff::civil::Date>` |
+| `<Date as FromStr>::Err` = `chrono::ParseError` | `jiff::Error` |
+| `Token::expires_at: Option<DateTime<Utc>>` | `Option<jiff::Timestamp>` |
+| `Token::is_expired_at(now: DateTime<Utc>)`, `parse_retry_after(value, now: DateTime<Utc>)` | `now: jiff::Timestamp` |
+
+- `Utc::now()` is `jiff::Timestamp::now()`. `moment.timestamp()` is
+  `moment.as_second()`; `moment + TimeDelta::seconds(n)` is
+  `moment.checked_add(jiff::SignedDuration::from_secs(n))`; `later - earlier`
+  is a `jiff::SignedDuration`. To see an instant in a zone,
+  `moment.to_zoned_datetime(tz)`.
+- `Date::new`, `Date::parse` and `Date`'s `Display` keep their signatures and
+  output, and `Date::default()` is still 1970-01-01.
+- A token stored as JSON by an earlier release reads back unchanged: both
+  crates write `expires_at` as RFC 3339 in UTC.
+- Instants differ from chrono's only at the edges: a leap second (`23:59:60`)
+  reads as `23:59:59`, and more than nine fractional digits is refused rather
+  than truncated. jiff also reads a few forms chrono refused, such as a time
+  without seconds and an RFC 9557 zone suffix (`[America/Chicago]`).
+- Code that keeps chrono at its own boundary converts there:
+  `jiff::Timestamp::new(dt.timestamp(), dt.timestamp_subsec_nanos() as i32)?`
+  for an instant, `Date::new(d.year(), d.month(), d.day())` for a date, or the
+  `jiff-chrono-conversions` crate for both directions.
+
+# v0.37.0
+
+### Reports: the overdue to-dos report comes in pages
+
+Basecamp now pages `GET /reports/todos/overdue.json` (bc3 #14519): 15, 30, 50,
+then 100 to-dos, latest first, each page holding the same four lateness groups
+with only its own to-dos. Every SDK's overdue report now takes an optional
+`page`. No SDK follows the pages for you, because the report is four lists, not
+one. Without `page` you get the first page, where you used to get every overdue
+to-do, so code that wants them all must ask for page 2, 3 and on until a page
+comes back with nothing in it, or, in Go, until `Meta.Truncated` is false.
+
+- **Go.** `ReportsService.OverdueTodos(ctx)` becomes
+  `OverdueTodos(ctx, page int32)`; pass 0 for the first page.
+  `OverdueTodosResponse` gains `Meta ListMeta`, whose `Truncated` is true while
+  a further page exists and whose `TotalCount` is the report's `X-Total-Count`.
+- **Rust.** `ReportsService::overdue()` now takes `&GetOverdueTodosParams`.
+  Ask for the first page with `overdue(&Default::default())`, and for another
+  with `overdue(&GetOverdueTodosParams { page: Some(2) })`.
+- **Kotlin.** `ReportsService.overdue` gains a trailing
+  `options: GetOverdueTodosOptions? = null`. Calls compile unchanged, but the
+  signature changes at the binary level, so recompile.
+
+### Go: list gauges for chosen projects, and archived or trashed templates
+
+`GaugeListOptions.BucketIDs` and `TemplateListOptions.Status` are new. Both are
+optional, and a list call that leaves them unset sends what it sent before.
+Two Go-only breaks follow from the new fields:
+
+- `BucketIDs` is a slice, so `GaugeListOptions` is no longer comparable. Code
+  that compares two of them with `==`, or uses one as a map key, no longer
+  compiles. Compare the fields you care about instead.
+- Each struct gains a field, so an unkeyed literal of either one
+  (`GaugeListOptions{10, 2}`) no longer compiles. Name the fields
+  (`GaugeListOptions{Limit: 10, Page: 2}`).
+
+### Project create, update and template construction take more fields
+
+`CreateProject` gained `color`, `purpose`, `admissions`, `timesheet_enabled`
+and `wallpaper_mode`; `UpdateProject` gained `color`, `purpose` and
+`timesheet_enabled`; a template's project construction gained `admissions` and
+`timesheet_enabled`. All are optional on the wire, and a call that leaves them
+out sends the same request as before. Only code that builds these structs
+without naming fields has to change:
+
+- **Go.** `CreateProjectRequest`, `UpdateProjectRequest` and
+  `CreateProjectOptions` have new fields, so an unkeyed literal of any of
+  them no longer compiles. Name the fields (`CreateProjectRequest{Name: "x"}`).
+- **Rust.** `CreateProjectRequestContent`, `UpdateProjectRequestContent` and
+  `ProjectConstructionAttributes` have new public fields, so a struct literal
+  that lists every field no longer compiles. Finish it with
+  `..Default::default()`.
+- **Kotlin.** `CreateProjectBody` and `UpdateProjectBody` gained trailing
+  parameters with defaults. Source that names or positions the existing ones
+  still compiles; code compiled against the old constructor or `copy` has to
+  be recompiled.
 
 # v0.36.0
 

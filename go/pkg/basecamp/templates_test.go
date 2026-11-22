@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -588,5 +589,95 @@ func TestTemplate_TimestampParsing(t *testing.T) {
 	}
 	if template.CreatedAt.Day() != 28 {
 		t.Errorf("expected day 28, got %d", template.CreatedAt.Day())
+	}
+}
+
+// TemplatesController#status_for_index reads status as active, archived or
+// trashed, and active when it is absent. It reaches the wire only when set,
+// beside page.
+func TestTemplatesService_List_Status(t *testing.T) {
+	cases := map[string]struct {
+		opts       *TemplateListOptions
+		wantStatus string
+		wantPage   string
+	}{
+		"active":         {opts: &TemplateListOptions{Status: "active"}, wantStatus: "active"},
+		"archived":       {opts: &TemplateListOptions{Status: "archived"}, wantStatus: "archived"},
+		"trashed, paged": {opts: &TemplateListOptions{Status: "trashed", Page: 2}, wantStatus: "trashed", wantPage: "2"},
+		"unset":          {opts: &TemplateListOptions{}},
+		"nil options":    {opts: nil},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			var query map[string][]string
+			svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+				query = r.URL.Query()
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`[]`))
+			})
+			if _, err := svc.List(context.Background(), tc.opts); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			_, sent := query["status"]
+			if tc.wantStatus == "" && sent {
+				t.Errorf("expected no status param, got %q", query["status"])
+			}
+			if tc.wantStatus != "" && strings.Join(query["status"], "|") != tc.wantStatus {
+				t.Errorf("expected status=%q, got %q", tc.wantStatus, query["status"])
+			}
+			if got := strings.Join(query["page"], "|"); got != tc.wantPage {
+				t.Errorf("expected page=%q, got %q", tc.wantPage, got)
+			}
+		})
+	}
+}
+
+// TestTemplatesService_CreateProjectAdmissionsTimesheet verifies admissions and
+// timesheet_enabled ride under the "project" envelope beside start_date, as
+// bc3's ProjectOperations#project_from_template_params permits, and stay off
+// the wire when unset.
+func TestTemplatesService_CreateProjectAdmissionsTimesheet(t *testing.T) {
+	fixture := loadTemplatesFixture(t, "project_construction.json")
+
+	var receivedBody map[string]any
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(fixture)
+	})
+
+	on := true
+	_, err := svc.CreateProject(context.Background(), 2085958507, "Marketing Campaign", "",
+		&CreateProjectOptions{Admissions: "team", TimesheetEnabled: &on})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	project, ok := receivedBody["project"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected params nested under \"project\" envelope, got body: %v", receivedBody)
+	}
+	if project["admissions"] != "team" {
+		t.Errorf("project.admissions = %v, want team", project["admissions"])
+	}
+	if project["timesheet_enabled"] != true {
+		t.Errorf("project.timesheet_enabled = %v, want true", project["timesheet_enabled"])
+	}
+	for _, key := range []string{"admissions", "timesheet_enabled"} {
+		if _, flat := receivedBody[key]; flat {
+			t.Errorf("expected no top-level %q; params must be nested under \"project\"", key)
+		}
+	}
+
+	_, err = svc.CreateProject(context.Background(), 2085958507, "Marketing Campaign", "", &CreateProjectOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	project = receivedBody["project"].(map[string]any)
+	for _, key := range []string{"admissions", "timesheet_enabled"} {
+		if _, present := project[key]; present {
+			t.Errorf("expected %q omitted when unset, got %v", key, project[key])
+		}
 	}
 }
