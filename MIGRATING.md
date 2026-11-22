@@ -11,6 +11,29 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Go: `Person.Client` is a `*bool`
+
+A person's `client` flag reached you as a plain `bool` tagged `omitempty`, so
+`"client": false` came back as `false` and then vanished when the `Person` was
+marshaled again. A consumer re-serializing people (the basecamp CLI's JSON
+output, for one) could not tell a person known not to be a client from a
+response that never said. `Person.Client` is now `*bool`: `false` stays
+`false` and is written back as `"client": false`, `true` stays `true`, and a
+response that left the field out leaves it `nil`.
+
+| Was | Now |
+|---|---|
+| `if p.Client {` | `if p.Client != nil && *p.Client {` |
+| `if !p.Client {` (not a client) | `if p.Client != nil && !*p.Client {` |
+| `Person{Client: true}` | `Person{Client: basecamp.Ptr(true)}` |
+
+Decide what `nil` means where you read it. Code that treated a missing flag as
+"not a client" was failing open; a check that grants something only to
+non-clients should require `p.Client != nil && !*p.Client`.
+`WebhookEventPerson.Client` is unchanged.
+
 # v0.38.0
 
 ### Rust: dates and times are jiff's, not chrono's

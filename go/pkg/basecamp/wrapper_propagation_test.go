@@ -180,7 +180,7 @@ func assertCreatorFullyPropagated(t *testing.T, p *Person, gp generated.Person) 
 	if p.Location != deref(gp.Location) {
 		t.Errorf("Location: got %q, want %q", p.Location, deref(gp.Location))
 	}
-	if p.Client != deref(gp.Client) {
+	if p.Client == nil || *p.Client != deref(gp.Client) {
 		t.Errorf("Client: got %v, want %v", p.Client, deref(gp.Client))
 	}
 	if p.Employee != deref(gp.Employee) {
