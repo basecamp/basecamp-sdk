@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.basecamp"
-version = "0.38.0"
+version = "0.39.0"
 
 kotlin {
     jvm {
