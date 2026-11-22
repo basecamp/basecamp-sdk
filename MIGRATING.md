@@ -11,6 +11,32 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Go: `WithHTTPClient` panics at `NewClient` (#903)
+
+`basecamp.WithHTTPClient` is still declared, so a program that passes it still
+compiles. `NewClient` now panics when the option is present:
+
+`basecamp: WithHTTPClient is no longer accepted; use WithTransport and WithTimeout`
+
+The option never took effect. `NewClient` built its own `http.Client` and
+assigned it over the value `WithHTTPClient` stored, so a caller's transport,
+timeout, cookie jar, and `CheckRedirect` were discarded while tests that passed
+the option still passed. A deprecation comment alone would have left that bug
+in place.
+
+The caller's `*http.Client` is not honoured. Composing it would have to decide
+what happens to the caller's `CheckRedirect`, and keeping that field can drop
+the cross-origin `Authorization` strip. Pass `WithTransport` for a custom
+`http.RoundTripper` and `WithTimeout` for a deadline.
+
+**Wrong behaviour you get if you ignore it:** `NewClient` panics the first
+time it is constructed with `WithHTTPClient`. Switch to `WithTransport` and
+`WithTimeout`. Deleting the symbol is a later breaking change; this is not
+that change, and `generated.WithHTTPClient` is a different function and is
+unchanged.
+
 # v0.38.0
 
 ### Rust: dates and times are jiff's, not chrono's
