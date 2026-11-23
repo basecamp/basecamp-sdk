@@ -203,12 +203,14 @@ jobs:
       #
       # This waits on what `gem install` and Bundler fetch, all from the
       # public index:
-      #   - /info/basecamp-sdk has the version's line;
+      #   - /info/basecamp-sdk has the version's line, and the sha256 that line
+      #     names is the .gem's (Bundler refuses a download that differs);
       #   - /versions' last line for basecamp-sdk carries that file's MD5,
       #     which is how Bundler knows its cached copy is stale (read from
       #     the file's tail, where new lines are appended, and in full only
       #     when the tail has none);
-      #   - the quick gemspec that RubyGems before 4.1 reads to install;
+      #   - the quick gemspec that RubyGems before 4.1 reads to install,
+      #     as a file that inflates, not merely a 200;
       #   - the .gem itself, whose sha256 must match the v2 API's.
       # When this job did the push, that sha256 must also be the gem it
       # pushed. A run that found the version already published may have
@@ -242,13 +244,20 @@ jobs:
           index_line() { { tail -n +2 "$1" | grep '^basecamp-sdk ' || true; } | tail -n 1 | awk '{print $NF}'; }
           scratch=$(mktemp -d)
           deadline=$((SECONDS + AWAIT_SECONDS))
-          info=no listed=no spec=no api="" file=""
+          info=no listed=no spec=no api="" file="" indexed=""
           while :; do
-            if [ "$listed" = no ]; then
-              info=no
-              if fetch "https://index.rubygems.org/info/basecamp-sdk" "$scratch/info" \
-                  && grep -q "^${VERSION//./\\.} " "$scratch/info"; then
+            # Read again while the index names another sha256 than the API's:
+            # metadata that disagrees is not yet the release. What the last read
+            # found stands until a newer read replaces it.
+            if [ "$listed" = no ] || { [ -n "$api" ] && [ "$indexed" != "$api" ]; }; then
+              line=""
+              if fetch "https://index.rubygems.org/info/basecamp-sdk" "$scratch/info"; then
+                info=no listed=no indexed=""
+                line=$({ grep "^${VERSION//./\\.} " "$scratch/info" || true; } | tail -n 1)
+              fi
+              if [ -n "$line" ]; then
                 info=yes
+                indexed=$(sed -nE 's/.*[|,]checksum:([0-9a-f]{64})(,.*)?$/\1/p' <<<"$line")
                 md5=$(md5sum "$scratch/info" | cut -d' ' -f1)
                 last=""
                 if fetch "https://index.rubygems.org/versions" "$scratch/versions" -r -2000000; then
@@ -260,7 +269,8 @@ jobs:
                 [ "$last" = "$md5" ] && listed=yes
               fi
             fi
-            if [ "$spec" = no ] && fetch "https://rubygems.org/quick/Marshal.4.8/basecamp-sdk-${VERSION}.gemspec.rz" "$scratch/spec"; then
+            if [ "$spec" = no ] && fetch "https://rubygems.org/quick/Marshal.4.8/basecamp-sdk-${VERSION}.gemspec.rz" "$scratch/spec" \
+                && ruby -rzlib -e 'exit(!Zlib::Inflate.inflate(File.binread(ARGV[0])).empty?)' "$scratch/spec" 2>/dev/null; then
               spec=yes
             fi
             if [ -z "$api" ] && fetch "https://rubygems.org/api/v2/rubygems/basecamp-sdk/versions/${VERSION}.json" "$scratch/api.json"; then
@@ -274,8 +284,8 @@ jobs:
             if [ -n "$api" ] && [ "$file" != "$api" ] && fetch "https://rubygems.org/gems/basecamp-sdk-${VERSION}.gem" "$scratch/gem"; then
               file=$(sha256sum "$scratch/gem" | cut -d' ' -f1)
             fi
-            state="info: ${info}, versions: ${listed}, gemspec: ${spec}, API sha256: ${api:-none}, downloaded sha256: ${file:-none}"
-            if [ "$info" = yes ] && [ "$listed" = yes ] && [ "$spec" = yes ] && [ -n "$api" ] && [ "$file" = "$api" ]; then
+            state="info: ${info}, versions: ${listed}, gemspec: ${spec}, API sha256: ${api:-none}, index sha256: ${indexed:-none}, downloaded sha256: ${file:-none}"
+            if [ "$info" = yes ] && [ "$listed" = yes ] && [ "$spec" = yes ] && [ -n "$api" ] && [ "$indexed" = "$api" ] && [ "$file" = "$api" ]; then
               echo "basecamp-sdk ${VERSION} is installable (${state})."
               exit 0
             fi
