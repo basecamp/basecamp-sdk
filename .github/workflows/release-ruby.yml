@@ -176,6 +176,7 @@ jobs:
         uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
 
       - name: Publish to RubyGems
+        id: publish
         shell: bash
         env:
           VERSION: ${{ needs.build.outputs.version }}
@@ -187,9 +188,101 @@ jobs:
           echo "$output"
           if [ "$status" -eq 0 ]; then
             echo "Publish succeeded."
-          elif echo "$output" | grep -qi "repushing of gem versions is not allowed\|already been pushed"; then
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          elif grep -qi "repushing of gem versions is not allowed\|already been pushed" <<<"$output"; then
             echo "Version already published — treating as success for idempotency."
           else
             exit "$status"
           fi
-          gem exec rubygems-await "basecamp-sdk-${VERSION}.gem"
+
+      # rubygems-await used to run here. It reads the compact index through
+      # Bundler's CompactIndexClient; Bundler 4.1.0, which `gem exec` installs
+      # beside it, removed that class, and the fallback then asks RubyGems'
+      # cache for a method it does not have. It crashed on every poll and
+      # timed out after pushes that had worked (v0.38.0, v0.39.0).
+      #
+      # This waits on what `gem install` and Bundler fetch, all from the
+      # public index:
+      #   - /info/basecamp-sdk has the version's line;
+      #   - /versions' last line for basecamp-sdk carries that file's MD5,
+      #     which is how Bundler knows its cached copy is stale (read from
+      #     the file's tail, where new lines are appended, and in full only
+      #     when the tail has none);
+      #   - the quick gemspec that RubyGems before 4.1 reads to install;
+      #   - the .gem itself, whose sha256 must match the v2 API's.
+      # When this job did the push, that sha256 must also be the gem it
+      # pushed. A run that found the version already published may have
+      # rebuilt the gem (a full re-run does, and `gem build` stamps it with
+      # the time), so its local file is not compared. A check that has passed
+      # is not repeated, so a re-run long after a release stops reading the
+      # full /versions once it has matched. Each request gives up after a
+      # minute (the full /versions after three) or at the ten-minute deadline,
+      # whichever is sooner, so the step reports what was missing well inside
+      # its fifteen-minute limit.
+      - name: Wait until the gem is installable
+        shell: bash
+        timeout-minutes: 15
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          PUSHED: ${{ steps.publish.outputs.pushed }}
+          AWAIT_SECONDS: 600
+        run: |
+          want=""
+          if [ "$PUSHED" = true ]; then
+            want=$(sha256sum "basecamp-sdk-${VERSION}.gem" | cut -d' ' -f1)
+          fi
+          # No request starts after the deadline, and none runs more than a
+          # second past it (SECONDS counts whole seconds).
+          fetch() {
+            local left=$((deadline - SECONDS)) max=${limit:-60}
+            [ "$left" -gt 0 ] || return 1
+            [ "$left" -lt "$max" ] && max=$left
+            curl -fsS --connect-timeout 10 --max-time "$max" -o "$2" "${@:3}" "$1" 2>/dev/null
+          }
+          index_line() { { tail -n +2 "$1" | grep '^basecamp-sdk ' || true; } | tail -n 1 | awk '{print $NF}'; }
+          scratch=$(mktemp -d)
+          deadline=$((SECONDS + AWAIT_SECONDS))
+          info=no listed=no spec=no api="" file=""
+          while :; do
+            if [ "$listed" = no ]; then
+              info=no
+              if fetch "https://index.rubygems.org/info/basecamp-sdk" "$scratch/info" \
+                  && grep -q "^${VERSION//./\\.} " "$scratch/info"; then
+                info=yes
+                md5=$(md5sum "$scratch/info" | cut -d' ' -f1)
+                last=""
+                if fetch "https://index.rubygems.org/versions" "$scratch/versions" -r -2000000; then
+                  last=$(index_line "$scratch/versions")
+                fi
+                if [ -z "$last" ] && limit=180 fetch "https://index.rubygems.org/versions" "$scratch/versions"; then
+                  last=$(index_line "$scratch/versions")
+                fi
+                [ "$last" = "$md5" ] && listed=yes
+              fi
+            fi
+            if [ "$spec" = no ] && fetch "https://rubygems.org/quick/Marshal.4.8/basecamp-sdk-${VERSION}.gemspec.rz" "$scratch/spec"; then
+              spec=yes
+            fi
+            if [ -z "$api" ] && fetch "https://rubygems.org/api/v2/rubygems/basecamp-sdk/versions/${VERSION}.json" "$scratch/api.json"; then
+              api=$(jq -r '.sha // empty' "$scratch/api.json" 2>/dev/null || true)
+              [[ "$api" =~ ^[0-9a-f]{64}$ ]] || api=""
+            fi
+            if [ -n "$want" ] && [ -n "$api" ] && [ "$api" != "$want" ]; then
+              echo "::error::RubyGems reports basecamp-sdk ${VERSION} with sha256 ${api}, not the ${want} this job pushed."
+              exit 1
+            fi
+            if [ -n "$api" ] && [ "$file" != "$api" ] && fetch "https://rubygems.org/gems/basecamp-sdk-${VERSION}.gem" "$scratch/gem"; then
+              file=$(sha256sum "$scratch/gem" | cut -d' ' -f1)
+            fi
+            state="info: ${info}, versions: ${listed}, gemspec: ${spec}, API sha256: ${api:-none}, downloaded sha256: ${file:-none}"
+            if [ "$info" = yes ] && [ "$listed" = yes ] && [ "$spec" = yes ] && [ -n "$api" ] && [ "$file" = "$api" ]; then
+              echo "basecamp-sdk ${VERSION} is installable (${state})."
+              exit 0
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::basecamp-sdk ${VERSION} was not installable after ${AWAIT_SECONDS}s of polling (${state})."
+              exit 1
+            fi
+            echo "Waiting for basecamp-sdk ${VERSION} (${state})..."
+            sleep 15
+          done
