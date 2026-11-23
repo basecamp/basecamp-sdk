@@ -922,6 +922,10 @@
     },
     "GetAssignedTodos": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -1358,6 +1362,10 @@
     },
     "GetEverythingOverdueCards": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -1370,6 +1378,10 @@
     },
     "GetEverythingOverdueTodos": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -1570,6 +1582,10 @@
     },
     "GetMyCompletedAssignments": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -1978,6 +1994,10 @@
     },
     "GetTimesheetReport": {
       "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,

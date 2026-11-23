@@ -71,6 +71,51 @@ write it in UTC with `Z`, and dates are still `YYYY-MM-DD`.
   for an instant, `Date::new(d.year(), d.month(), d.day())` for a date, or the
   `jiff-chrono-conversions` crate for both directions.
 
+### Account-wide lists come 50 per page
+
+Basecamp pages these routes at 50 records on every page (bc3 #14537), where
+each used to answer with every record at once:
+
+- `GET /todos/overdue.json` (`GetEverythingOverdueTodos`)
+- `GET /cards/overdue.json` (`GetEverythingOverdueCards`)
+- `GET /my/assignments/completed.json` (`GetMyCompletedAssignments`)
+- `GET /reports/timesheet.json` (`GetTimesheetReport`)
+- `GET /reports/todos/assigned/:id.json` (`GetAssignedTodos`), an object
+  whose `todos` are paged. Every page repeats its `person` and `grouped_by`.
+
+Each SDK now walks them like its other paged lists. Without `page` you still
+get every record, in one request per 50. A positive `page` returns that page
+alone, with the next page left unfollowed.
+
+- **Go.** `EverythingService.OverdueTodos(ctx, filters)` becomes
+  `OverdueTodos(ctx, page int32, filters)` and returns `*TodoListResult`;
+  `OverdueCards` changes the same way and returns `*CardListResult`.
+  `MyAssignmentsService.Completed(ctx)` becomes `Completed(ctx, page int32)`
+  and returns `*MyAssignmentListResult`. Pass 0 for every page.
+  `TimesheetService.Report` returns `*TimesheetListResult` where it returned
+  `[]TimesheetEntry`, and honours the options' `Limit` and `Page` as
+  `ProjectReport` does. `ReportsService.AssignedTodos` follows the pages
+  unless `AssignedTodosOptions.Page` is set, and its response gains `Meta`.
+- **TypeScript, Python and Kotlin.** The methods return `ListResult`, still a
+  list, and take `page` and `maxItems` (`max_items` in Python).
+- **Ruby.** The methods return a lazy `ListEnumerator` where they returned an
+  `Array`, and take `page:` and `max_items:`. Call `to_a` for an array.
+- **Swift.** The methods return `ListResult` where they returned an array;
+  read its `items`. Their options take `page` and `maxItems`.
+- **Rust.** The methods return the first `Page` where they returned the whole
+  list, and their params take `page`. Collect the rest with
+  `client.collect_all(page, None).await`.
+
+The assigned to-dos report stays an object, and only its `todos` change.
+TypeScript, Python, Ruby, Kotlin and Swift return `todos` as the list type
+above. Kotlin and Swift return a typed `AssignedTodosResult` where they
+returned JSON. Rust returns the first page, as for the lists.
+
+The overdue to-dos report (`GetOverdueTodos`) keeps the signature v0.37.0
+gave it, but its pages now hold 50 to-dos each, where v0.37.0 described 15,
+30, 50 and then 100. Code that works out offsets from the page number should
+use 50.
+
 # v0.37.0
 
 ### Reports: the overdue to-dos report comes in pages

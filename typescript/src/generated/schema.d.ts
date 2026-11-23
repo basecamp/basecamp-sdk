@@ -863,8 +863,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Get every overdue card across all accessible projects, oldest-due-date-first.
-         *     A complete, unpaginated array; each item embeds its `bucket`.
+         * @description Get every overdue card across all accessible projects, oldest-due-date-first,
+         *     50 per page. Each item embeds its `bucket`.
          */
         get: operations["GetEverythingOverdueCards"];
         put?: never;
@@ -1849,8 +1849,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Get the current user's completed assignments.
-         *     Archived and trashed recordings are excluded. This endpoint is not paginated.
+         * @description Get the current user's completed assignments, most recently completed first,
+         *     50 per page. Archived and trashed recordings are excluded.
          */
         get: operations["GetMyCompletedAssignments"];
         put?: never;
@@ -3349,7 +3349,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Get account-wide timesheet report */
+        /** @description Get account-wide timesheet report, latest first, 50 per page */
         get: operations["GetTimesheetReport"];
         put?: never;
         post?: never;
@@ -3383,7 +3383,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Get todos assigned to a specific person */
+        /**
+         * @description Get todos assigned to a specific person, 50 per page. Every page repeats
+         *     `person` and `grouped_by`; `todos` holds that page's to-dos.
+         */
         get: operations["GetAssignedTodos"];
         put?: never;
         post?: never;
@@ -3403,10 +3406,10 @@ export interface paths {
         /**
          * @description Get one page of overdue todos grouped by lateness, latest first.
          *
-         *     Pages hold 15, 30, 50, then 100 to-dos, and each page fills the same four
-         *     groups with only its own to-dos, so a group can continue onto the next
-         *     page. A `Link: rel="next"` header names the next page and `X-Total-Count`
-         *     the total. This operation is not auto-paginated in any SDK: the response
+         *     Every page holds 50 to-dos, and each page fills the same four groups with
+         *     only its own to-dos, so a group can continue onto the next page. A
+         *     `Link: rel="next"` header names the next page and `X-Total-Count` the
+         *     total. This operation is not auto-paginated in any SDK: the response
          *     is an object of four arrays, which no pagination key can name.
          */
         get: operations["GetOverdueTodos"];
@@ -4039,8 +4042,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Get every overdue to-do across all accessible projects, oldest-due-date-first.
-         *     A complete, unpaginated array; each item embeds its `bucket`.
+         * @description Get every overdue to-do across all accessible projects, oldest-due-date-first,
+         *     50 per page. Each item embeds its `bucket`.
          */
         get: operations["GetEverythingOverdueTodos"];
         put?: never;
@@ -6193,9 +6196,9 @@ export interface components {
         GetAnswerResponseContent: components["schemas"]["QuestionAnswer"];
         GetAnswersByPersonResponseContent: components["schemas"]["QuestionAnswer"][];
         GetAssignedTodosResponseContent: {
-            person?: components["schemas"]["Person"];
-            grouped_by?: string;
-            todos?: components["schemas"]["Todo"][];
+            person: components["schemas"]["Person"];
+            grouped_by: string;
+            todos: components["schemas"]["Todo"][];
         };
         GetBookmarkResponseContent: components["schemas"]["BookmarkStatus"];
         GetBoostResponseContent: components["schemas"]["Boost"];
@@ -13435,6 +13438,8 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -17334,7 +17339,10 @@ export interface operations {
     };
     GetMyCompletedAssignments: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -23720,6 +23728,8 @@ export interface operations {
                 from?: string;
                 to?: string;
                 person_id?: number;
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -23835,6 +23845,8 @@ export interface operations {
             query?: {
                 /** @description Group by "bucket" or "date" */
                 group_by?: string;
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {
@@ -27045,6 +27057,8 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;

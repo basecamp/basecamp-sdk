@@ -593,6 +593,34 @@ func (c *Client) FollowPagination(ctx context.Context, httpResp *http.Response, 
 
 // followPagination is the internal implementation that also reports truncation.
 func (c *Client) followPagination(ctx context.Context, httpResp *http.Response, firstPageCount, limit int) (items []json.RawMessage, truncated bool, err error) {
+	return c.followPages(ctx, httpResp, firstPageCount, limit, func(body []byte) (pageItems []json.RawMessage, err error) {
+		err = json.Unmarshal(body, &pageItems)
+		return pageItems, err
+	})
+}
+
+// followWrappedPagination follows the pages of an object response whose items
+// sit under key, as in {"person": ..., "todos": [...]}. Only the items of the
+// later pages are returned; the caller keeps the wrapper from the first.
+func (c *Client) followWrappedPagination(ctx context.Context, httpResp *http.Response, key string, firstPageCount, limit int) (items []json.RawMessage, truncated bool, err error) {
+	return c.followPages(ctx, httpResp, firstPageCount, limit, func(body []byte) ([]json.RawMessage, error) {
+		var wrapper map[string]json.RawMessage
+		if err := json.Unmarshal(body, &wrapper); err != nil {
+			return nil, err
+		}
+		var pageItems []json.RawMessage
+		if raw, ok := wrapper[key]; ok {
+			if err := json.Unmarshal(raw, &pageItems); err != nil {
+				return nil, err
+			}
+		}
+		return pageItems, nil
+	})
+}
+
+// followPages walks the Link header from httpResp, reading each later page's
+// items with pageItems.
+func (c *Client) followPages(ctx context.Context, httpResp *http.Response, firstPageCount, limit int, pageItems func(body []byte) ([]json.RawMessage, error)) (items []json.RawMessage, truncated bool, err error) {
 	if httpResp == nil {
 		return nil, false, nil
 	}
@@ -645,13 +673,12 @@ func (c *Client) followPagination(ctx context.Context, httpResp *http.Response, 
 			return nil, false, err
 		}
 
-		// Parse response as array
-		var pageItems []json.RawMessage
-		if err := json.Unmarshal(resp.Data, &pageItems); err != nil {
+		read, err := pageItems(resp.Data)
+		if err != nil {
 			return nil, false, fmt.Errorf("failed to parse response: %w", err)
 		}
-		allResults = append(allResults, pageItems...)
-		currentCount += len(pageItems)
+		allResults = append(allResults, read...)
+		currentCount += len(read)
 
 		// Check if we've reached the limit
 		if limit > 0 && currentCount >= limit {

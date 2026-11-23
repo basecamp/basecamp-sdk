@@ -15,11 +15,14 @@ module Basecamp
         end
       end
 
-      # Get the current user's completed assignments.
-      # @return [Array<Hash>] response data
-      def get_my_completed_assignments()
-        with_operation(service: "myassignments", operation: "get_my_completed_assignments", is_mutation: false) do
-          http_get("/my/assignments/completed.json", operation: "GetMyCompletedAssignments").json(operation: "GetMyCompletedAssignments")
+      # Get the current user's completed assignments, most recently completed first,
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def get_my_completed_assignments(page: nil, max_items: nil)
+        wrap_paginated(service: "myassignments", operation: "get_my_completed_assignments", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/my/assignments/completed.json", params: params, operation: "GetMyCompletedAssignments", max_items: max_items)
         end
       end
 

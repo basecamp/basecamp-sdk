@@ -4366,7 +4366,7 @@
       "tag": "Reports",
       "method": "GET",
       "path": "/{accountId}/reports/todos/assigned/{personId}",
-      "doc": "Get todos assigned to a specific person",
+      "doc": "Get todos assigned to a specific person, 50 per page. Every page repeats\n`person` and `grouped_by`; `todos` holds that page's to-dos.",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -4377,6 +4377,10 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
       },
       "params": [
         {
@@ -4406,6 +4410,16 @@
           "schema": {
             "description": "Group by \"bucket\" or \"date\"",
             "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
+            "type": "integer"
           }
         }
       ]
@@ -5942,7 +5956,7 @@
       "tag": "Everything",
       "method": "GET",
       "path": "/{accountId}/cards/overdue.json",
-      "doc": "Get every overdue card across all accessible projects, oldest-due-date-first.\nA complete, unpaginated array; each item embeds its `bucket`.",
+      "doc": "Get every overdue card across all accessible projects, oldest-due-date-first,\n50 per page. Each item embeds its `bucket`.",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -5953,6 +5967,10 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
       },
       "params": [
         {
@@ -5986,6 +6004,16 @@
           "schema": {
             "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
             "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
+            "type": "integer"
           }
         }
       ]
@@ -5995,7 +6023,7 @@
       "tag": "Everything",
       "method": "GET",
       "path": "/{accountId}/todos/overdue.json",
-      "doc": "Get every overdue to-do across all accessible projects, oldest-due-date-first.\nA complete, unpaginated array; each item embeds its `bucket`.",
+      "doc": "Get every overdue to-do across all accessible projects, oldest-due-date-first,\n50 per page. Each item embeds its `bucket`.",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -6006,6 +6034,10 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
       },
       "params": [
         {
@@ -6039,6 +6071,16 @@
           "schema": {
             "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
             "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
+            "type": "integer"
           }
         }
       ]
@@ -6720,7 +6762,7 @@
       "tag": "MyAssignments",
       "method": "GET",
       "path": "/{accountId}/my/assignments/completed.json",
-      "doc": "Get the current user's completed assignments.\nArchived and trashed recordings are excluded. This endpoint is not paginated.",
+      "doc": "Get the current user's completed assignments, most recently completed first,\n50 per page. Archived and trashed recordings are excluded.",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -6732,6 +6774,10 @@
           503
         ]
       },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
       "params": [
         {
           "name": "accountId",
@@ -6742,6 +6788,16 @@
             "description": "Basecamp account ID (numeric string)",
             "pattern": "^[0-9]+$",
             "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
+            "type": "integer"
           }
         }
       ]
@@ -6974,7 +7030,7 @@
       "tag": "Reports",
       "method": "GET",
       "path": "/{accountId}/reports/todos/overdue.json",
-      "doc": "Get one page of overdue todos grouped by lateness, latest first.\n\nPages hold 15, 30, 50, then 100 to-dos, and each page fills the same four\ngroups with only its own to-dos, so a group can continue onto the next\npage. A `Link: rel=\"next\"` header names the next page and `X-Total-Count`\nthe total. This operation is not auto-paginated in any SDK: the response\nis an object of four arrays, which no pagination key can name.",
+      "doc": "Get one page of overdue todos grouped by lateness, latest first.\n\nEvery page holds 50 to-dos, and each page fills the same four groups with\nonly its own to-dos, so a group can continue onto the next page. A\n`Link: rel=\"next\"` header names the next page and `X-Total-Count` the\ntotal. This operation is not auto-paginated in any SDK: the response\nis an object of four arrays, which no pagination key can name.",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -8095,7 +8151,7 @@
       "tag": "Schedule",
       "method": "GET",
       "path": "/{accountId}/reports/timesheet.json",
-      "doc": "Get account-wide timesheet report",
+      "doc": "Get account-wide timesheet report, latest first, 50 per page",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -8106,6 +8162,10 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
       },
       "params": [
         {
@@ -8138,6 +8198,16 @@
           "in": "query",
           "schema": {
             "format": "int64",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+          "schema": {
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "format": "int32",
             "type": "integer"
           }
         }

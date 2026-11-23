@@ -32,9 +32,10 @@ class MyAssignmentsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get the current user's completed assignments.
+     * Get the current user's completed assignments, most recently completed first,
+     * @param options Optional query parameters and pagination control
      */
-    suspend fun myCompletedAssignments(): JsonElement {
+    suspend fun myCompletedAssignments(options: GetMyCompletedAssignmentsOptions? = null): ListResult<JsonElement> {
         val info = OperationInfo(
             service = "MyAssignments",
             operation = "GetMyCompletedAssignments",
@@ -43,10 +44,13 @@ class MyAssignmentsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = null,
         )
-        return request(info, {
-            httpGet("/my/assignments/completed.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/my/assignments/completed.json" + qs, operationName = info.operation)
         }) { body ->
-            json.decodeFromString<JsonElement>(body)
+            json.decodeFromString<List<JsonElement>>(body)
         }
     }
 

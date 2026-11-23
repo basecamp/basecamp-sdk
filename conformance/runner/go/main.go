@@ -2056,11 +2056,11 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		return operationResult{err: err}
 
 	case "GetEverythingOverdueTodos":
-		_, err := account.Everything().OverdueTodos(ctx, nil)
+		_, err := account.Everything().OverdueTodos(ctx, 0, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingOverdueCards":
-		_, err := account.Everything().OverdueCards(ctx, nil)
+		_, err := account.Everything().OverdueCards(ctx, 0, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingOpenTodos":

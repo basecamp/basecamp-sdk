@@ -10,6 +10,12 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
+data class AssignedTodosResult(
+    val groupedBy: String,
+    val person: Person,
+    val todos: ListResult<Todo>
+)
+
 data class PersonProgressResult(
     val events: ListResult<TimelineEvent>,
     val person: Person
@@ -91,11 +97,11 @@ class ReportsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get todos assigned to a specific person
+     * Get todos assigned to a specific person, 50 per page. Every page repeats
      * @param personId The person ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun assigned(personId: Long, options: GetAssignedTodosOptions? = null): JsonElement {
+    suspend fun assigned(personId: Long, options: GetAssignedTodosOptions? = null): AssignedTodosResult {
         val info = OperationInfo(
             service = "Reports",
             operation = "GetAssignedTodos",
@@ -106,11 +112,21 @@ class ReportsService(client: AccountClient) : BaseService(client) {
         )
         val qs = buildQueryString(
             "group_by" to options?.groupBy,
+            "page" to options?.page,
         )
-        return request(info, {
+        return requestPaginatedWrapped<Todo, AssignedTodosResult>(info, options?.toPaginationOptions(), {
             httpGet("/reports/todos/assigned/${personId}" + qs, operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<JsonElement>(body)
+        }, { body ->
+            json.decodeFromJsonElement<List<Todo>>(
+                json.decodeFromString<JsonObject>(body).requiredMember("todos")
+            )
+        }) { firstPageBody, items ->
+            val wrapper = json.decodeFromString<JsonObject>(firstPageBody)
+            AssignedTodosResult(
+                groupedBy = json.decodeFromJsonElement<String>(wrapper.requiredMember("grouped_by")),
+                person = json.decodeFromJsonElement<Person>(wrapper.requiredMember("person")),
+                todos = items
+            )
         }
     }
 

@@ -68,7 +68,7 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
   GetMyCompletedAssignments: {
     fixtures: [],
     call: async (ctx) => {
-      const result = await ctx.client.myAssignments.myCompletedAssignments();
+      const result = await ctx.client.myAssignments.myCompletedAssignments({ maxItems: 5 });
       return { resolvedIds: {}, result };
     },
   },
@@ -127,8 +127,8 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
   },
 
   // Everything aggregates — flat family (one canary per group). The paginated
-  // roots pass maxItems so live mode samples each account-wide feed instead of
-  // following every Link page; the overdue lists are unpaginated (no options).
+  // feeds pass maxItems so live mode samples each account-wide feed instead of
+  // following every Link page.
   GetEverythingMessages: {
     fixtures: [],
     call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingMessages({ maxItems: 5 }) }),
@@ -151,11 +151,11 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
   },
   GetEverythingOverdueTodos: {
     fixtures: [],
-    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOverdueTodos() }),
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOverdueTodos({ maxItems: 5 }) }),
   },
   GetEverythingOverdueCards: {
     fixtures: [],
-    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOverdueCards() }),
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOverdueCards({ maxItems: 5 }) }),
   },
 
   // Everything aggregates — bucket-grouped family (one canary per group). All

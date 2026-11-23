@@ -50,14 +50,17 @@ module Basecamp
         end
       end
 
-      # Get account-wide timesheet report
+      # Get account-wide timesheet report, latest first, 50 per page
       # @param from [String, nil] from
       # @param to [String, nil] to
       # @param person_id [Integer, nil] person id
-      # @return [Array<Hash>] response data
-      def report(from: nil, to: nil, person_id: nil)
-        with_operation(service: "timesheets", operation: "report", is_mutation: false) do
-          http_get("/reports/timesheet.json", params: compact_query_params(from: from, to: to, person_id: person_id), operation: "GetTimesheetReport").json(operation: "GetTimesheetReport")
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def report(from: nil, to: nil, person_id: nil, page: nil, max_items: nil)
+        wrap_paginated(service: "timesheets", operation: "report", is_mutation: false) do
+          params = compact_query_params(from: from, to: to, person_id: person_id, page: page)
+          paginate("/reports/timesheet.json", params: params, operation: "GetTimesheetReport", max_items: max_items)
         end
       end
 

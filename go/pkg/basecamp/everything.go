@@ -12,7 +12,7 @@ import (
 
 // EverythingService exposes the account-wide "everything" aggregate listings:
 // recency-ordered, paginated roots (messages, comments, checkins, forwards,
-// files) and the unpaginated oldest-first overdue todo/card lists. Each item
+// files) and the oldest-first overdue todo/card lists. Each item
 // embeds its bucket for project context. See
 // spec/api-gaps/everything-aggregates.md.
 type EverythingService struct {
@@ -347,9 +347,10 @@ func decodeEverythingFiles(body []byte) ([]EverythingFile, error) {
 	return files, nil
 }
 
-// OverdueTodos returns every overdue to-do across all accessible projects — a
-// complete, oldest-due-date-first array (unpaginated, no Link-following).
-func (s *EverythingService) OverdueTodos(ctx context.Context, filters *EverythingTaskFilters) (result []Todo, err error) {
+// OverdueTodos returns every overdue to-do across all accessible projects,
+// oldest due date first, 50 per page. Pass a positive page to return only that
+// page; page 0 follows the Link header across all pages.
+func (s *EverythingService) OverdueTodos(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *TodoListResult, err error) {
 	op := OperationInfo{Service: "Everything", Operation: "OverdueTodos", ResourceType: "todo", IsMutation: false}
 	ctx, done, err := s.begin(ctx, op)
 	if err != nil {
@@ -357,9 +358,9 @@ func (s *EverythingService) OverdueTodos(ctx context.Context, filters *Everythin
 	}
 	defer done(&err)
 
-	params := (*generated.GetEverythingOverdueTodosParams)(nil)
-	if !filters.empty() {
-		params = &generated.GetEverythingOverdueTodosParams{Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
+	var params *generated.GetEverythingOverdueTodosParams
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingOverdueTodosParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	resp, err := s.client.parent.gen.GetEverythingOverdueTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -374,12 +375,28 @@ func (s *EverythingService) OverdueTodos(ctx context.Context, filters *Everythin
 			todos = append(todos, todoFromGenerated(gt))
 		}
 	}
-	return todos, nil
+	totalCount := parseTotalCount(resp.HTTPResponse)
+	if page > 0 {
+		return &TodoListResult{Todos: todos, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+	}
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(todos), 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range rawMore {
+		var gt generated.Todo
+		if err := json.Unmarshal(raw, &gt); err != nil {
+			return nil, fmt.Errorf("failed to parse todo: %w", err)
+		}
+		todos = append(todos, todoFromGenerated(gt))
+	}
+	return &TodoListResult{Todos: todos, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
-// OverdueCards returns every overdue card across all accessible projects — a
-// complete, oldest-due-date-first array (unpaginated, no Link-following).
-func (s *EverythingService) OverdueCards(ctx context.Context, filters *EverythingTaskFilters) (result []Card, err error) {
+// OverdueCards returns every overdue card across all accessible projects,
+// oldest due date first, 50 per page. Pass a positive page to return only that
+// page; page 0 follows the Link header across all pages.
+func (s *EverythingService) OverdueCards(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *CardListResult, err error) {
 	op := OperationInfo{Service: "Everything", Operation: "OverdueCards", ResourceType: "card", IsMutation: false}
 	ctx, done, err := s.begin(ctx, op)
 	if err != nil {
@@ -387,9 +404,9 @@ func (s *EverythingService) OverdueCards(ctx context.Context, filters *Everythin
 	}
 	defer done(&err)
 
-	params := (*generated.GetEverythingOverdueCardsParams)(nil)
-	if !filters.empty() {
-		params = &generated.GetEverythingOverdueCardsParams{Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
+	var params *generated.GetEverythingOverdueCardsParams
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingOverdueCardsParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	resp, err := s.client.parent.gen.GetEverythingOverdueCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -404,7 +421,22 @@ func (s *EverythingService) OverdueCards(ctx context.Context, filters *Everythin
 			cards = append(cards, cardFromGenerated(gc))
 		}
 	}
-	return cards, nil
+	totalCount := parseTotalCount(resp.HTTPResponse)
+	if page > 0 {
+		return &CardListResult{Cards: cards, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+	}
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(cards), 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range rawMore {
+		var gc generated.Card
+		if err := json.Unmarshal(raw, &gc); err != nil {
+			return nil, fmt.Errorf("failed to parse card: %w", err)
+		}
+		cards = append(cards, cardFromGenerated(gc))
+	}
+	return &CardListResult{Cards: cards, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // EverythingTaskFilters narrows the everything to-do/card listings (BC3 #12442).

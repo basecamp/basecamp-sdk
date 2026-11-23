@@ -111,8 +111,9 @@ class ReportsServiceTest < Minitest::Test
     assert_kind_of Hash, result
     assert_equal "Jane Doe", result["person"]["name"]
     assert_equal "project", result["grouped_by"]
-    assert_equal 1, result["todos"].length
-    assert_equal "Task for Jane", result["todos"][0]["content"]
+    todos = result["todos"].to_a
+    assert_equal 1, todos.length
+    assert_equal "Task for Jane", todos[0]["content"]
   end
 
   def test_assigned_with_group_by
@@ -146,7 +147,7 @@ class ReportsServiceTest < Minitest::Test
   end
 
   def test_overdue_page_selects_one_page_without_following_link
-    groups = { "under_a_week_late" => [ { "id" => 16 } ], "over_a_week_late" => [],
+    groups = { "under_a_week_late" => [ { "id" => 51 } ], "over_a_week_late" => [],
                "over_a_month_late" => [], "over_three_months_late" => [] }
     page2 = stub_request(:get, "https://3.basecampapi.com/12345/reports/todos/overdue.json?page=2")
       .to_return(status: 200, body: groups.to_json, headers: {
@@ -157,7 +158,7 @@ class ReportsServiceTest < Minitest::Test
     result = @account.reports.overdue(page: 2)
 
     assert_requested page2, times: 1
-    assert_equal 16, result["under_a_week_late"].first["id"]
+    assert_equal 51, result["under_a_week_late"].first["id"]
   end
 
   def test_person_progress

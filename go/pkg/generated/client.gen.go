@@ -1999,9 +1999,9 @@ type GetAnswersByPersonResponseContent = []QuestionAnswer
 
 // GetAssignedTodosResponseContent defines model for GetAssignedTodosResponseContent.
 type GetAssignedTodosResponseContent struct {
-	GroupedBy *string `json:"grouped_by,omitempty"`
-	Person    *Person `json:"person,omitempty"`
-	Todos     []Todo  `json:"todos,omitempty"`
+	GroupedBy string `json:"grouped_by"`
+	Person    Person `json:"person"`
+	Todos     []Todo `json:"todos"`
 }
 
 // GetBookmarkResponseContent The current user's bookmark state for one recording.
@@ -5752,6 +5752,9 @@ type GetEverythingOverdueCardsParams struct {
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingUnassignedCardsParams defines parameters for GetEverythingUnassignedCards.
@@ -5920,6 +5923,12 @@ type ListMessagesParams struct {
 
 // GetEverythingMessagesParams defines parameters for GetEverythingMessages.
 type GetEverythingMessagesParams struct {
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetMyCompletedAssignmentsParams defines parameters for GetMyCompletedAssignments.
+type GetMyCompletedAssignmentsParams struct {
 	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
@@ -6135,12 +6144,18 @@ type GetTimesheetReportParams struct {
 	From     *string `form:"from,omitempty" json:"from,omitempty"`
 	To       *string `form:"to,omitempty" json:"to,omitempty"`
 	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetAssignedTodosParams defines parameters for GetAssignedTodos.
 type GetAssignedTodosParams struct {
 	// GroupBy Group by "bucket" or "date"
 	GroupBy *string `form:"group_by,omitempty" json:"group_by,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetOverdueTodosParams defines parameters for GetOverdueTodos.
@@ -6284,6 +6299,9 @@ type GetEverythingOverdueTodosParams struct {
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingUnassignedTodosParams defines parameters for GetEverythingUnassignedTodos.
@@ -7655,7 +7673,7 @@ type ClientInterface interface {
 	GetMyAssignments(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMyCompletedAssignments request
-	GetMyCompletedAssignments(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetMyCompletedAssignments(ctx context.Context, accountId string, params *GetMyCompletedAssignmentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMyDueAssignments request
 	GetMyDueAssignments(ctx context.Context, accountId string, params *GetMyDueAssignmentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -10114,10 +10132,10 @@ func (c *Client) GetMyAssignments(ctx context.Context, accountId string, reqEdit
 
 // GetMyCompletedAssignments is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetMyCompletedAssignments(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetMyCompletedAssignments(ctx context.Context, accountId string, params *GetMyCompletedAssignmentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetMyCompletedAssignmentsRequest(c.Server, accountId)
+		return NewGetMyCompletedAssignmentsRequest(c.Server, accountId, params)
 	}, true, "GetMyCompletedAssignments", reqEditors...)
 
 }
@@ -16172,6 +16190,22 @@ func NewGetEverythingOverdueCardsRequest(server string, accountId string, params
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -19403,7 +19437,7 @@ func NewGetMyAssignmentsRequest(server string, accountId string) (*http.Request,
 }
 
 // NewGetMyCompletedAssignmentsRequest generates requests for GetMyCompletedAssignments
-func NewGetMyCompletedAssignmentsRequest(server string, accountId string) (*http.Request, error) {
+func NewGetMyCompletedAssignmentsRequest(server string, accountId string, params *GetMyCompletedAssignmentsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -19426,6 +19460,28 @@ func NewGetMyCompletedAssignmentsRequest(server string, accountId string) (*http
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -24503,6 +24559,22 @@ func NewGetTimesheetReportRequest(server string, accountId string, params *GetTi
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -24587,6 +24659,22 @@ func NewGetAssignedTodosRequest(server string, accountId string, personId int64,
 		if params.GroupBy != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "group_by", runtime.ParamLocationQuery, *params.GroupBy); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -27322,6 +27410,22 @@ func NewGetEverythingOverdueTodosRequest(server string, accountId string, params
 		if params.Due != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -31461,7 +31565,7 @@ type ClientWithResponsesInterface interface {
 	GetMyAssignmentsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyAssignmentsResponse, error)
 
 	// GetMyCompletedAssignmentsWithResponse request
-	GetMyCompletedAssignmentsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyCompletedAssignmentsResponse, error)
+	GetMyCompletedAssignmentsWithResponse(ctx context.Context, accountId string, params *GetMyCompletedAssignmentsParams, reqEditors ...RequestEditorFn) (*GetMyCompletedAssignmentsResponse, error)
 
 	// GetMyDueAssignmentsWithResponse request
 	GetMyDueAssignmentsWithResponse(ctx context.Context, accountId string, params *GetMyDueAssignmentsParams, reqEditors ...RequestEditorFn) (*GetMyDueAssignmentsResponse, error)
@@ -43865,8 +43969,8 @@ func (c *ClientWithResponses) GetMyAssignmentsWithResponse(ctx context.Context, 
 }
 
 // GetMyCompletedAssignmentsWithResponse request returning *GetMyCompletedAssignmentsResponse
-func (c *ClientWithResponses) GetMyCompletedAssignmentsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyCompletedAssignmentsResponse, error) {
-	rsp, err := c.GetMyCompletedAssignments(ctx, accountId, reqEditors...)
+func (c *ClientWithResponses) GetMyCompletedAssignmentsWithResponse(ctx context.Context, accountId string, params *GetMyCompletedAssignmentsParams, reqEditors ...RequestEditorFn) (*GetMyCompletedAssignmentsResponse, error) {
+	rsp, err := c.GetMyCompletedAssignments(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

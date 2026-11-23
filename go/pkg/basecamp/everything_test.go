@@ -77,38 +77,134 @@ func TestEverythingService_Messages_MultiPage(t *testing.T) {
 	}
 }
 
-// TestEverythingService_OverdueTodos_Unpaginated verifies the overdue list is a
-// complete oldest-first array with NO Link-following, even if a Link header is
-// present.
-func TestEverythingService_OverdueTodos_Unpaginated(t *testing.T) {
-	var hits int
-	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		hits++
-		if r.URL.Path != "/99999/todos/overdue.json" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
+// TestEverythingService_OverdueTodos_FollowsPages verifies the overdue list
+// follows the Link header across its 50-per-page pages, oldest due date first.
+func TestEverythingService_OverdueTodos_FollowsPages(t *testing.T) {
+	var serverURL string
+	var requests []string
+	svc, url := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
 		w.Header().Set("Content-Type", "application/json")
-		// A Link header is present but must NOT be followed for the overdue list.
-		w.Header().Set("Link", `</99999/todos/overdue.json?page=2>; rel="next"`)
-		w.WriteHeader(200)
+		w.Header().Set("X-Total-Count", "3")
+		if r.URL.Query().Get("page") == "2" {
+			_, _ = w.Write([]byte(`[{"id":12,"content":"Newest","due_on":"2025-09-01","completed":false}]`))
+			return
+		}
+		w.Header().Set("Link", fmt.Sprintf(`<%s/99999/todos/overdue.json?page=2>; rel="next"`, serverURL))
 		_, _ = w.Write([]byte(`[
 			{"id":10,"content":"Oldest","due_on":"2025-01-01","completed":false},
 			{"id":11,"content":"Newer","due_on":"2025-06-01","completed":false}
 		]`))
 	})
+	serverURL = url
 
-	todos, err := svc.OverdueTodos(context.Background(), nil)
+	result, err := svc.OverdueTodos(context.Background(), 0, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if hits != 1 {
-		t.Errorf("expected exactly 1 request (no Link-following), got %d", hits)
+	if len(requests) != 2 || requests[0] != "/99999/todos/overdue.json" || requests[1] != "/99999/todos/overdue.json?page=2" {
+		t.Fatalf("expected page 1 then page 2, got %v", requests)
 	}
-	if len(todos) != 2 {
-		t.Fatalf("expected 2 overdue todos, got %d", len(todos))
+	ids := make([]int64, 0, len(result.Todos))
+	for _, todo := range result.Todos {
+		ids = append(ids, todo.ID)
 	}
-	if todos[0].ID != 10 || todos[1].ID != 11 {
-		t.Errorf("expected oldest-first ordering preserved, got %d, %d", todos[0].ID, todos[1].ID)
+	if fmt.Sprint(ids) != "[10 11 12]" {
+		t.Errorf("expected [10 11 12] in order, got %v", ids)
+	}
+	if result.Meta != (ListMeta{TotalCount: 3, Truncated: false}) {
+		t.Errorf("expected Meta{3, false}, got %+v", result.Meta)
+	}
+}
+
+// TestEverythingService_OverdueTodos_ReturnsThePageAskedFor verifies a positive
+// page is one request for that page, with the unfollowed next page in Meta.
+func TestEverythingService_OverdueTodos_ReturnsThePageAskedFor(t *testing.T) {
+	var requests []string
+	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "120")
+		w.Header().Set("Link", `</99999/todos/overdue.json?page=3>; rel="next"`)
+		_, _ = w.Write([]byte(`[{"id":51,"content":"Fifty-first","due_on":"2025-01-01","completed":false}]`))
+	})
+
+	result, err := svc.OverdueTodos(context.Background(), 2, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(requests) != 1 || requests[0] != "/99999/todos/overdue.json?page=2" {
+		t.Fatalf("expected one request for page 2, got %v", requests)
+	}
+	if len(result.Todos) != 1 || result.Todos[0].ID != 51 {
+		t.Errorf("expected page 2's to-do, got %+v", result.Todos)
+	}
+	if result.Meta != (ListMeta{TotalCount: 120, Truncated: true}) {
+		t.Errorf("expected Meta{120, true}, got %+v", result.Meta)
+	}
+}
+
+// TestEverythingService_OverdueCards_FollowsPages verifies the overdue cards
+// follow the Link header across their 50-per-page pages, oldest due date first.
+func TestEverythingService_OverdueCards_FollowsPages(t *testing.T) {
+	var serverURL string
+	var requests []string
+	svc, url := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "3")
+		if r.URL.Query().Get("page") == "2" {
+			_, _ = w.Write([]byte(`[{"id":22,"title":"Newest","due_on":"2025-09-01"}]`))
+			return
+		}
+		w.Header().Set("Link", fmt.Sprintf(`<%s/99999/cards/overdue.json?page=2>; rel="next"`, serverURL))
+		_, _ = w.Write([]byte(`[{"id":20,"title":"Oldest","due_on":"2025-01-01"},{"id":21,"title":"Newer","due_on":"2025-06-01"}]`))
+	})
+	serverURL = url
+
+	result, err := svc.OverdueCards(context.Background(), 0, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(requests) != 2 || requests[0] != "/99999/cards/overdue.json" || requests[1] != "/99999/cards/overdue.json?page=2" {
+		t.Fatalf("expected page 1 then page 2, got %v", requests)
+	}
+	ids := make([]int64, 0, len(result.Cards))
+	for _, card := range result.Cards {
+		ids = append(ids, card.ID)
+	}
+	if fmt.Sprint(ids) != "[20 21 22]" {
+		t.Errorf("expected [20 21 22] in order, got %v", ids)
+	}
+	if result.Meta != (ListMeta{TotalCount: 3, Truncated: false}) {
+		t.Errorf("expected Meta{3, false}, got %+v", result.Meta)
+	}
+}
+
+// TestEverythingService_OverdueCards_ReturnsThePageAskedFor verifies a positive
+// page is one request for that page, with the unfollowed next page in Meta.
+func TestEverythingService_OverdueCards_ReturnsThePageAskedFor(t *testing.T) {
+	var requests []string
+	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "120")
+		w.Header().Set("Link", `</99999/cards/overdue.json?page=3>; rel="next"`)
+		_, _ = w.Write([]byte(`[{"id":51,"title":"Fifty-first","due_on":"2025-01-01"}]`))
+	})
+
+	result, err := svc.OverdueCards(context.Background(), 2, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(requests) != 1 || requests[0] != "/99999/cards/overdue.json?page=2" {
+		t.Fatalf("expected one request for page 2, got %v", requests)
+	}
+	if len(result.Cards) != 1 || result.Cards[0].ID != 51 {
+		t.Errorf("expected page 2's card, got %+v", result.Cards)
+	}
+	if result.Meta != (ListMeta{TotalCount: 120, Truncated: true}) {
+		t.Errorf("expected Meta{120, true}, got %+v", result.Meta)
 	}
 }
 
@@ -231,7 +327,7 @@ func TestEverythingService_TaskFilters(t *testing.T) {
 }
 
 // TestEverythingService_TaskFilters_Overdue verifies the filters also reach the
-// wire on the unpaginated overdue family, and that nil filters add no query.
+// wire on the overdue family, and that nil filters add no query.
 func TestEverythingService_TaskFilters_Overdue(t *testing.T) {
 	var captured string
 	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -241,7 +337,7 @@ func TestEverythingService_TaskFilters_Overdue(t *testing.T) {
 		_, _ = w.Write([]byte(`[]`))
 	})
 
-	if _, err := svc.OverdueCards(context.Background(), &EverythingTaskFilters{AssigneeIDs: []int64{7}}); err != nil {
+	if _, err := svc.OverdueCards(context.Background(), 0, &EverythingTaskFilters{AssigneeIDs: []int64{7}}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	q, _ := url.ParseQuery(captured)
@@ -252,7 +348,7 @@ func TestEverythingService_TaskFilters_Overdue(t *testing.T) {
 		t.Errorf("expected no due param when unset, got query %q", captured)
 	}
 
-	if _, err := svc.OverdueTodos(context.Background(), nil); err != nil {
+	if _, err := svc.OverdueTodos(context.Background(), 0, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if captured != "" {

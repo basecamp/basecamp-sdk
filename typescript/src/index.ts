@@ -469,11 +469,13 @@ export {
   type EverythingCompletedTodosEverythingOptions,
   type EverythingUnassignedTodosEverythingOptions,
   type EverythingNoDueDateTodosEverythingOptions,
+  type EverythingOverdueTodosEverythingOptions,
   type EverythingOpenCardsEverythingOptions,
   type EverythingCompletedCardsEverythingOptions,
   type EverythingUnassignedCardsEverythingOptions,
   type EverythingNoDueDateCardsEverythingOptions,
   type EverythingNotNowCardsEverythingOptions,
+  type EverythingOverdueCardsEverythingOptions,
 } from "./generated/services/everything.js";
 
 // Search & Reports services - generated
@@ -484,6 +486,7 @@ export {
 
 export {
   ReportsService,
+  type AssignedReportOptions,
   type OverdueReportOptions,
   type PersonProgressReportOptions,
 } from "./generated/services/reports.js";
@@ -603,6 +606,7 @@ export {
 // My Assignments service - generated
 export {
   MyAssignmentsService,
+  type MyCompletedAssignmentsMyAssignmentOptions,
 } from "./generated/services/my-assignments.js";
 
 // My Notifications service - generated

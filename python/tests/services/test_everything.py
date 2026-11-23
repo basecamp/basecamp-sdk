@@ -177,7 +177,7 @@ _FORWARDS_FEED = [
     },
 ]
 
-# Overdue feeds are unpaginated bare arrays sorted oldest-first by due_on.
+# Overdue feeds are bare arrays sorted oldest-first by due_on.
 _OVERDUE_TODOS_FEED = [
     {
         "id": 1500,
@@ -340,9 +340,6 @@ class TestEverythingOverdueFeeds:
         assert result[0]["type"] == "Todo"
         assert result[0]["due_on"] == "2024-01-01"
         assert result[0]["due_on"] < result[1]["due_on"]
-        # No X-Total-Count header on this unpaginated feed: total_count must fall
-        # back to the array length (not the parser's 0 sentinel).
-        assert result.meta.total_count == 2
 
     @respx.mock
     def test_overdue_cards_returns_oldest_first_bare_array(self):
@@ -361,24 +358,28 @@ class TestEverythingOverdueFeeds:
         assert result[0]["due_on"] < result[1]["due_on"]
 
     @respx.mock
-    def test_overdue_todos_does_not_follow_link_header(self):
-        # The overdue feeds are complete, unpaginated arrays. Even if the server
-        # advertises a next page via a Link header, the SDK must issue exactly one
-        # request and return only that response — matching the other SDKs' plain
-        # full-array decode (no Link-following).
-        route = respx.get("https://3.basecampapi.com/12345/todos/overdue.json").mock(
-            return_value=httpx.Response(
-                200,
-                json=_OVERDUE_TODOS_FEED,
-                headers={"Link": '<https://3.basecampapi.com/12345/todos/overdue.json?page=2>; rel="next"'},
-            )
+    def test_overdue_todos_follows_link_header(self):
+        # The overdue to-dos feed comes 50 per page. Following the Link header
+        # collects every page, oldest-first, into one list.
+        url = "https://3.basecampapi.com/12345/todos/overdue.json"
+        route = respx.get(url).mock(
+            side_effect=[
+                httpx.Response(
+                    200,
+                    json=_OVERDUE_TODOS_FEED[:1],
+                    headers={"Link": f'<{url}?page=2>; rel="next"', "X-Total-Count": "2"},
+                ),
+                httpx.Response(200, json=_OVERDUE_TODOS_FEED[1:], headers={"X-Total-Count": "2"}),
+            ]
         )
 
         account = Client(access_token="test-token").for_account("12345")
         result = account.everything.get_everything_overdue_todos()
 
-        assert route.call_count == 1
-        assert len(result) == 2
+        assert route.call_count == 2
+        assert route.calls[1].request.url.params["page"] == "2"
+        assert [todo["id"] for todo in result] == [1500, 1501]
+        assert result.meta.total_count == 2
 
 
 # Every everything operation must surface a canonical 4xx as a typed error.

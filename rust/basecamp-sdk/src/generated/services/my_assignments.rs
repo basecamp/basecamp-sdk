@@ -13,6 +13,14 @@ use crate::error::Error;
 use crate::generated::routes;
 #[allow(unused_imports)]
 use crate::generated::types::*;
+use crate::pagination::Page;
+
+/// Optional query parameters for `GetMyCompletedAssignments`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct GetMyCompletedAssignmentsParams {
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+    pub page: Option<i32>,
+}
 
 /// Optional query parameters for `GetMyDueAssignments`.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -62,17 +70,19 @@ impl<'a> MyAssignmentsService<'a> {
         self.client.send(operation).await
     }
 
-    /// Get the current user's completed assignments.
-    /// Archived and trashed recordings are excluded. This endpoint is not paginated.
+    /// Get the current user's completed assignments, most recently completed first,
+    /// 50 per page. Archived and trashed recordings are excluded.
     ///
     /// `GET /my/assignments/completed.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn my_completed_assignments(
         &self,
-    ) -> Result<GetMyCompletedAssignmentsResponseContent, Error> {
-        let operation = self
+        params: &GetMyCompletedAssignmentsParams,
+    ) -> Result<Page<GetMyCompletedAssignmentsResponseContent>, Error> {
+        let mut operation = self
             .client
             .operation(&routes::GET_MY_COMPLETED_ASSIGNMENTS, &[]);
-        self.client.send(operation).await
+        operation.query_optional("page", params.page.as_ref());
+        self.client.send_page(operation).await
     }
 
     /// Get the current user's assignments filtered by due date scope.

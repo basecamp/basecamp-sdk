@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -312,9 +313,9 @@ func TestReportsService_OverdueTodos_ReturnsThePageAskedForAndSaysMoreExist(t *t
 	svc := testReportsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r.URL.RequestURI())
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("X-Total-Count", "21")
+		w.Header().Set("X-Total-Count", "120")
 		w.Header().Set("Link", `</99999/reports/todos/overdue.json?page=3>; rel="next"`)
-		w.Write([]byte(`{"under_a_week_late":[{"id":16,"content":"Sixteenth"}],"over_a_week_late":[],"over_a_month_late":[],"over_three_months_late":[]}`))
+		w.Write([]byte(`{"under_a_week_late":[{"id":51,"content":"Fifty-first"}],"over_a_week_late":[],"over_a_month_late":[],"over_three_months_late":[]}`))
 	})
 
 	result, err := svc.OverdueTodos(context.Background(), 2)
@@ -324,11 +325,11 @@ func TestReportsService_OverdueTodos_ReturnsThePageAskedForAndSaysMoreExist(t *t
 	if len(requests) != 1 || requests[0] != "/99999/reports/todos/overdue.json?page=2" {
 		t.Fatalf("expected one request for page 2, got %v", requests)
 	}
-	if len(result.UnderAWeekLate) != 1 || result.UnderAWeekLate[0].ID != 16 {
+	if len(result.UnderAWeekLate) != 1 || result.UnderAWeekLate[0].ID != 51 {
 		t.Errorf("expected page 2's to-do, got %+v", result.UnderAWeekLate)
 	}
-	if result.Meta != (ListMeta{TotalCount: 21, Truncated: true}) {
-		t.Errorf("expected Meta{21, true}, got %+v", result.Meta)
+	if result.Meta != (ListMeta{TotalCount: 120, Truncated: true}) {
+		t.Errorf("expected Meta{120, true}, got %+v", result.Meta)
 	}
 }
 
@@ -350,5 +351,72 @@ func TestReportsService_OverdueTodos_LastPageIsNotTruncated(t *testing.T) {
 	}
 	if result.Meta != (ListMeta{TotalCount: 1, Truncated: false}) {
 		t.Errorf("expected Meta{1, false}, got %+v", result.Meta)
+	}
+}
+
+func TestReportsService_AssignedTodos_FollowsPagesKeepingThePerson(t *testing.T) {
+	var serverURL string
+	var requests []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "3")
+		if r.URL.Query().Get("page") == "2" {
+			w.Write([]byte(`{"person":{"id":7,"name":"Jane"},"grouped_by":"date","todos":[{"id":3,"content":"Third"}]}`))
+			return
+		}
+		w.Header().Set("Link", fmt.Sprintf(`<%s/99999/reports/todos/assigned/7?group_by=date&page=2>; rel="next"`, serverURL))
+		w.Write([]byte(`{"person":{"id":7,"name":"Jane"},"grouped_by":"date","todos":[{"id":1,"content":"First"},{"id":2,"content":"Second"}]}`))
+	}))
+	t.Cleanup(server.Close)
+	serverURL = server.URL
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").Reports()
+
+	result, err := svc.AssignedTodos(context.Background(), 7, &AssignedTodosOptions{GroupBy: "date"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(requests) != 2 || requests[0] != "/99999/reports/todos/assigned/7?group_by=date" || requests[1] != "/99999/reports/todos/assigned/7?group_by=date&page=2" {
+		t.Fatalf("expected page 1 then page 2, got %v", requests)
+	}
+	ids := make([]int64, 0, len(result.Todos))
+	for _, todo := range result.Todos {
+		ids = append(ids, todo.ID)
+	}
+	if fmt.Sprint(ids) != "[1 2 3]" {
+		t.Errorf("expected [1 2 3] in order, got %v", ids)
+	}
+	if result.Person == nil || result.Person.Name != "Jane" || result.GroupedBy != "date" {
+		t.Errorf("expected the first page's person and grouping, got %+v %q", result.Person, result.GroupedBy)
+	}
+	if result.Meta != (ListMeta{TotalCount: 3, Truncated: false}) {
+		t.Errorf("expected Meta{3, false}, got %+v", result.Meta)
+	}
+}
+
+func TestReportsService_AssignedTodos_ReturnsThePageAskedFor(t *testing.T) {
+	var requests []string
+	svc := testReportsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "120")
+		w.Header().Set("Link", `</99999/reports/todos/assigned/7?page=3>; rel="next"`)
+		w.Write([]byte(`{"person":{"id":7,"name":"Jane"},"grouped_by":"bucket","todos":[{"id":51,"content":"Fifty-first"}]}`))
+	})
+
+	result, err := svc.AssignedTodos(context.Background(), 7, &AssignedTodosOptions{Page: 2})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(requests) != 1 || requests[0] != "/99999/reports/todos/assigned/7?page=2" {
+		t.Fatalf("expected one request for page 2, got %v", requests)
+	}
+	if len(result.Todos) != 1 || result.Todos[0].ID != 51 {
+		t.Errorf("expected page 2's to-do, got %+v", result.Todos)
+	}
+	if result.Meta != (ListMeta{TotalCount: 120, Truncated: true}) {
+		t.Errorf("expected Meta{120, true}, got %+v", result.Meta)
 	}
 }

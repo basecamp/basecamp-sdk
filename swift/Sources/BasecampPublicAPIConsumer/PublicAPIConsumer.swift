@@ -130,13 +130,14 @@ public enum PublicAPIConsumer {
     ///
     /// Listing all of them rather than a sample is deliberate: each line is an
     /// independent compile-time assertion, so reverting the generator fix
-    /// produces 34 errors here instead of one that could be argued away. A
+    /// produces 32 errors here instead of one that could be argued away. A
     /// model that disappears or is renamed also breaks this list, which is the
     /// intended signal — the roster is meant to be re-read, not auto-followed.
     /// It was 35 until `GetPersonProgressResponseContent`'s two members were
     /// modeled `@required` (#728), which moved it to the required-member
-    /// function below — a model leaving this roster because it gained a
-    /// required member is the roster working, not shrinking.
+    /// function below, and `GetAssignedTodosResponseContent` followed when its
+    /// three members were (#1102). A model leaving this roster because it
+    /// gained a required member is the roster working, not shrinking.
     ///
     /// The complementary guarantee lives in `PublicInitCoverageTests`, which scans
     /// *every* generated model for a `public init` and so covers models added
@@ -153,7 +154,6 @@ public enum PublicAPIConsumer {
         _ = DoorService()
         _ = EventDetails()
         _ = EverythingFile()
-        _ = GetAssignedTodosResponseContent()
         _ = GetMyAssignmentsResponseContent()
         _ = GetOverdueTodosResponseContent()
         _ = OutOfOffice()
@@ -194,5 +194,9 @@ public enum PublicAPIConsumer {
         // the package that has crossed the line.
         _ = GetPersonProgressResponseContent(
             events: [], person: Person(id: 1, name: "Victor Cooper"))
+        // Followed it here when its three members were modeled @required
+        // (#1102), for the same reason.
+        _ = GetAssignedTodosResponseContent(
+            groupedBy: "", person: Person(id: 1, name: "Victor Cooper"), todos: [])
     }
 }

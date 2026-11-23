@@ -226,10 +226,20 @@ public struct EverythingOverdueCardsEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+    public var page: Int?
+    public var maxItems: Int?
 
-    public init(assigneeIds: [Int]? = nil, due: String? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
         self.assigneeIds = assigneeIds
         self.due = due
+        self.page = page
+        self.maxItems = maxItems
     }
 }
 
@@ -238,10 +248,20 @@ public struct EverythingOverdueTodosEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+    public var page: Int?
+    public var maxItems: Int?
 
-    public init(assigneeIds: [Int]? = nil, due: String? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
         self.assigneeIds = assigneeIds
         self.due = due
+        self.page = page
+        self.maxItems = maxItems
     }
 }
 
@@ -523,7 +543,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func everythingOverdueCards(options: EverythingOverdueCardsEverythingOptions? = nil) async throws -> [Card] {
+    public func everythingOverdueCards(options: EverythingOverdueCardsEverythingOptions? = nil) async throws -> ListResult<Card> {
         var queryItems: [URLQueryItem] = []
         if let assigneeIds = options?.assigneeIds {
             for item in assigneeIds {
@@ -533,15 +553,19 @@ public final class EverythingService: BaseService, @unchecked Sendable {
         if let due = options?.due {
             queryItems.append(URLQueryItem(name: "due", value: due))
         }
-        return try await request(
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
             OperationInfo(service: "Everything", operation: "GetEverythingOverdueCards", resourceType: "everything_overdue_card", isMutation: false),
-            method: "GET",
-            path: "/cards/overdue.json" + queryString(queryItems),
+            path: "/cards/overdue.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingOverdueCards")
         )
     }
 
-    public func everythingOverdueTodos(options: EverythingOverdueTodosEverythingOptions? = nil) async throws -> [Todo] {
+    public func everythingOverdueTodos(options: EverythingOverdueTodosEverythingOptions? = nil) async throws -> ListResult<Todo> {
         var queryItems: [URLQueryItem] = []
         if let assigneeIds = options?.assigneeIds {
             for item in assigneeIds {
@@ -551,10 +575,14 @@ public final class EverythingService: BaseService, @unchecked Sendable {
         if let due = options?.due {
             queryItems.append(URLQueryItem(name: "due", value: due))
         }
-        return try await request(
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
             OperationInfo(service: "Everything", operation: "GetEverythingOverdueTodos", resourceType: "everything_overdue_todo", isMutation: false),
-            method: "GET",
-            path: "/todos/overdue.json" + queryString(queryItems),
+            path: "/todos/overdue.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingOverdueTodos")
         )
     }
