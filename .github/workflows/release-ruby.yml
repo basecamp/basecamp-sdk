@@ -216,8 +216,8 @@ jobs:
       # pushed. A run that found the version already published may have
       # rebuilt the gem (a full re-run does, and `gem build` stamps it with
       # the time), so its local file is not compared. A check that has passed
-      # is not repeated, so a re-run long after a release stops reading the
-      # full /versions once it has matched. Each request gives up after a
+      # is not repeated while what it read stays the same, so a re-run long
+      # after a release stops reading the full /versions once it has matched. Each request gives up after a
       # minute (the full /versions after three) or at the ten-minute deadline,
       # whichever is sooner, so the step reports what was missing well inside
       # its fifteen-minute limit.
@@ -248,8 +248,8 @@ jobs:
           while :; do
             # Read again while the index names another sha256 than the API's:
             # metadata that disagrees is not yet the release. What the last read
-            # found stands until a newer read replaces it, and an /info body
-            # /versions has already vouched for is not checked against it again.
+            # found stands until a newer read replaces it, and the /info body
+            # /versions last vouched for is not checked against it again.
             if [ "$listed" = no ] || { [ -n "$api" ] && [ "$indexed" != "$api" ]; }; then
               line=""
               if fetch "https://index.rubygems.org/info/basecamp-sdk" "$scratch/info"; then
