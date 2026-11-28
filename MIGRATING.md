@@ -11,6 +11,17 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Go: generated client interfaces gain my-avatar methods
+
+`generated.ClientInterface` now requires `UpdateMyAvatarWithBody` and
+`DeleteMyAvatar`. `generated.ClientWithResponsesInterface` gains
+`UpdateMyAvatarWithBodyWithResponse` and `DeleteMyAvatarWithResponse`.
+Custom implementations and test doubles of either interface must implement
+those methods or regenerate their mocks. Calls through the concrete generated
+clients and `basecamp.PeopleService` remain source-compatible.
+
 # v0.39.0
 
 ### Go: `Person.Client` is a `*bool`
