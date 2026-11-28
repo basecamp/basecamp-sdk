@@ -33,6 +33,43 @@ class PeopleService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Upload or replace the current user's avatar.
+     * @param data Raw bytes of the file to upload
+     * @param filename Display name for the uploaded file
+     * @param contentType MIME type of the file (e.g., "image/png")
+     */
+    suspend fun updateMyAvatar(data: ByteArray, filename: String, contentType: String): Unit {
+        val info = OperationInfo(
+            service = "People",
+            operation = "UpdateMyAvatar",
+            resourceType = "my_avatar",
+            isMutation = true,
+            projectId = null,
+            resourceId = null,
+        )
+        request(info, {
+            httpPutMultipart("/my/avatar.json", "avatar", data, filename, contentType, operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Remove the current user's avatar, leaving their initials.
+     */
+    suspend fun deleteMyAvatar(): Unit {
+        val info = OperationInfo(
+            service = "People",
+            operation = "DeleteMyAvatar",
+            resourceType = "my_avatar",
+            isMutation = true,
+            projectId = null,
+            resourceId = null,
+        )
+        request(info, {
+            httpDelete("/my/avatar.json", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
      * Get the current user's preferences
      */
     suspend fun myPreferences(): JsonElement {

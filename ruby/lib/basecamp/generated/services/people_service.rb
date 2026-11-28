@@ -16,6 +16,27 @@ module Basecamp
         end
       end
 
+      # Upload or replace the current user's avatar (returns 204 No Content).
+      # @param io [IO, String] File data to upload (IO object or string)
+      # @param filename [String] Display name for the uploaded file
+      # @param content_type [String] MIME type of the file (e.g., "image/png")
+      # @return [void]
+      def update_my_avatar(io:, filename:, content_type:)
+        with_operation(service: "people", operation: "update_my_avatar", is_mutation: true) do
+          http_put_multipart("/my/avatar.json", io: io, filename: filename, content_type: content_type, field: "avatar")
+          nil
+        end
+      end
+
+      # Remove the current user's avatar, leaving their initials (returns 204 No Content).
+      # @return [void]
+      def delete_my_avatar()
+        with_operation(service: "people", operation: "delete_my_avatar", is_mutation: true) do
+          http_delete("/my/avatar.json")
+          nil
+        end
+      end
+
       # Get the current user's preferences
       # @return [Hash] response data
       def get_my_preferences()

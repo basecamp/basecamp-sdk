@@ -1459,6 +1459,20 @@
       }
     },
     {
+      "pattern": "/{accountId}/my/avatar",
+      "resource": "People",
+      "operations": {
+        "DELETE": "DeleteMyAvatar",
+        "PUT": "UpdateMyAvatar"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/my/bookmarks",
       "resource": "Bookmarks",
       "operations": {

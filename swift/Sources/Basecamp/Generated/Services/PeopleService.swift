@@ -33,6 +33,15 @@ public struct ListForProjectPeopleOptions: Sendable {
 
 
 public final class PeopleService: BaseService, @unchecked Sendable {
+    public func deleteMyAvatar() async throws {
+        try await requestVoid(
+            OperationInfo(service: "People", operation: "DeleteMyAvatar", resourceType: "my_avatar", isMutation: true),
+            method: "DELETE",
+            path: "/my/avatar.json",
+            retryConfig: Metadata.retryConfig(for: "DeleteMyAvatar")
+        )
+    }
+
     public func disableOutOfOffice(personId: Int) async throws {
         try await requestVoid(
             OperationInfo(service: "People", operation: "DisableOutOfOffice", resourceType: "out_of_office", isMutation: true, resourceId: personId),
@@ -149,6 +158,29 @@ public final class PeopleService: BaseService, @unchecked Sendable {
             queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListProjectPeople")
+        )
+    }
+
+    public func updateMyAvatar(data: Data, filename: String, contentType: String) async throws {
+        let boundary = UUID().uuidString
+        let multipartContentType = "multipart/form-data; boundary=\(boundary)"
+        // Sanitize user-provided values to prevent CRLF injection / quote breakout
+        let safeFilename = filename.replacingOccurrences(of: "\r", with: "").replacingOccurrences(of: "\n", with: "").replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        let safeContentType = contentType.replacingOccurrences(of: "\r", with: "").replacingOccurrences(of: "\n", with: "")
+        var body = Data()
+        body.append(contentsOf: "--\(boundary)\r\n".utf8)
+        body.append(contentsOf: "Content-Disposition: form-data; name=\"avatar\"; filename=\"\(safeFilename)\"\r\n".utf8)
+        body.append(contentsOf: "Content-Type: \(safeContentType)\r\n\r\n".utf8)
+        body.append(data)
+        body.append(contentsOf: "\r\n--\(boundary)--\r\n".utf8)
+        let multipartBody = body
+        try await requestVoid(
+            OperationInfo(service: "People", operation: "UpdateMyAvatar", resourceType: "my_avatar", isMutation: true),
+            method: "PUT",
+            path: "/my/avatar.json",
+            body: multipartBody,
+            contentType: multipartContentType,
+            retryConfig: Metadata.retryConfig(for: "UpdateMyAvatar")
         )
     }
 

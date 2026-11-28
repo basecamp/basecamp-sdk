@@ -5931,6 +5931,11 @@ type GetMyDueAssignmentsParams struct {
 	Scope *string `form:"scope,omitempty" json:"scope,omitempty"`
 }
 
+// UpdateMyAvatarMultipartBody defines parameters for UpdateMyAvatar.
+type UpdateMyAvatarMultipartBody struct {
+	Avatar openapi_types.File `json:"avatar"`
+}
+
 // ListMyBookmarksParams defines parameters for ListMyBookmarks.
 type ListMyBookmarksParams struct {
 	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
@@ -6460,6 +6465,9 @@ type CreateMessageJSONRequestBody = CreateMessageRequestContent
 
 // UpdateMessageJSONRequestBody defines body for UpdateMessage for application/json ContentType.
 type UpdateMessageJSONRequestBody = UpdateMessageRequestContent
+
+// UpdateMyAvatarMultipartRequestBody defines body for UpdateMyAvatar for multipart/form-data ContentType.
+type UpdateMyAvatarMultipartRequestBody UpdateMyAvatarMultipartBody
 
 // UpdateMyNoteJSONRequestBody defines body for UpdateMyNote for application/json ContentType.
 type UpdateMyNoteJSONRequestBody = UpdateMyNoteRequestContent
@@ -7659,6 +7667,12 @@ type ClientInterface interface {
 
 	// GetMyDueAssignments request
 	GetMyDueAssignments(ctx context.Context, accountId string, params *GetMyDueAssignmentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteMyAvatar request
+	DeleteMyAvatar(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateMyAvatarWithBody request with any body
+	UpdateMyAvatarWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListMyBookmarks request
 	ListMyBookmarks(ctx context.Context, accountId string, params *ListMyBookmarksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -10129,6 +10143,26 @@ func (c *Client) GetMyDueAssignments(ctx context.Context, accountId string, para
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetMyDueAssignmentsRequest(c.Server, accountId, params)
 	}, true, "GetMyDueAssignments", reqEditors...)
+
+}
+
+// DeleteMyAvatar is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteMyAvatar(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteMyAvatarRequest(c.Server, accountId)
+	}, true, "DeleteMyAvatar", reqEditors...)
+
+}
+
+// UpdateMyAvatarWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateMyAvatarWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMyAvatarRequestWithBody(c.Server, accountId, contentType, body)
+	}, true, "UpdateMyAvatar", reqEditors...)
 
 }
 
@@ -19488,6 +19522,76 @@ func NewGetMyDueAssignmentsRequest(server string, accountId string, params *GetM
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewDeleteMyAvatarRequest generates requests for DeleteMyAvatar
+func NewDeleteMyAvatarRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/avatar.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateMyAvatarRequestWithBody generates requests for UpdateMyAvatar with any type of body
+func NewUpdateMyAvatarRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/avatar.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -29074,6 +29178,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetMyAssignments":                   {Idempotent: true, HasSensitiveParams: false},
 	"GetMyCompletedAssignments":          {Idempotent: true, HasSensitiveParams: false},
 	"GetMyDueAssignments":                {Idempotent: true, HasSensitiveParams: false},
+	"DeleteMyAvatar":                     {Idempotent: true, HasSensitiveParams: false},
+	"UpdateMyAvatar":                     {Idempotent: true, HasSensitiveParams: false},
 	"ListMyBookmarks":                    {Idempotent: true, HasSensitiveParams: false},
 	"ListMyDrafts":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetMyNote":                          {Idempotent: true, HasSensitiveParams: false},
@@ -29383,6 +29489,8 @@ var operationRetryMax = map[string]int{
 	"GetMyAssignments":                   3,
 	"GetMyCompletedAssignments":          3,
 	"GetMyDueAssignments":                3,
+	"DeleteMyAvatar":                     2,
+	"UpdateMyAvatar":                     2,
 	"ListMyBookmarks":                    3,
 	"ListMyDrafts":                       3,
 	"GetMyNote":                          3,
@@ -29690,6 +29798,8 @@ var operationRetryOn = map[string][]int{
 	"GetMyAssignments":                   {429, 503},
 	"GetMyCompletedAssignments":          {429, 503},
 	"GetMyDueAssignments":                {429, 503},
+	"DeleteMyAvatar":                     {429, 503},
+	"UpdateMyAvatar":                     {429, 503},
 	"ListMyBookmarks":                    {429, 503},
 	"ListMyDrafts":                       {429, 503},
 	"GetMyNote":                          {429, 503},
@@ -31465,6 +31575,12 @@ type ClientWithResponsesInterface interface {
 
 	// GetMyDueAssignmentsWithResponse request
 	GetMyDueAssignmentsWithResponse(ctx context.Context, accountId string, params *GetMyDueAssignmentsParams, reqEditors ...RequestEditorFn) (*GetMyDueAssignmentsResponse, error)
+
+	// DeleteMyAvatarWithResponse request
+	DeleteMyAvatarWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*DeleteMyAvatarResponse, error)
+
+	// UpdateMyAvatarWithBodyWithResponse request with any body
+	UpdateMyAvatarWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMyAvatarResponse, error)
 
 	// ListMyBookmarksWithResponse request
 	ListMyBookmarksWithResponse(ctx context.Context, accountId string, params *ListMyBookmarksParams, reqEditors ...RequestEditorFn) (*ListMyBookmarksResponse, error)
@@ -36347,6 +36463,73 @@ func (r GetMyDueAssignmentsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetMyDueAssignmentsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteMyAvatarResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteMyAvatarResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteMyAvatarResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteMyAvatarResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateMyAvatarResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateMyAvatarResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateMyAvatarResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateMyAvatarResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -43880,6 +44063,24 @@ func (c *ClientWithResponses) GetMyDueAssignmentsWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseGetMyDueAssignmentsResponse(rsp)
+}
+
+// DeleteMyAvatarWithResponse request returning *DeleteMyAvatarResponse
+func (c *ClientWithResponses) DeleteMyAvatarWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*DeleteMyAvatarResponse, error) {
+	rsp, err := c.DeleteMyAvatar(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteMyAvatarResponse(rsp)
+}
+
+// UpdateMyAvatarWithBodyWithResponse request with arbitrary body returning *UpdateMyAvatarResponse
+func (c *ClientWithResponses) UpdateMyAvatarWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMyAvatarResponse, error) {
+	rsp, err := c.UpdateMyAvatarWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMyAvatarResponse(rsp)
 }
 
 // ListMyBookmarksWithResponse request returning *ListMyBookmarksResponse
@@ -52449,6 +52650,104 @@ func ParseGetMyDueAssignmentsResponse(rsp *http.Response) (*GetMyDueAssignmentsR
 		var dest ForbiddenErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteMyAvatarResponse parses an HTTP response from a DeleteMyAvatarWithResponse call
+func ParseDeleteMyAvatarResponse(rsp *http.Response) (*DeleteMyAvatarResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteMyAvatarResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateMyAvatarResponse parses an HTTP response from a UpdateMyAvatarWithResponse call
+func ParseUpdateMyAvatarResponse(rsp *http.Response) (*UpdateMyAvatarResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateMyAvatarResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

@@ -1260,6 +1260,23 @@ pub static DELETE_MESSAGE_TYPE: Route = Route {
     metadata: &metadata::DELETE_MESSAGE_TYPE,
 };
 
+/// `DELETE /my/avatar.json`.
+pub static DELETE_MY_AVATAR: Route = Route {
+    id: "DeleteMyAvatar",
+    service: "People",
+    method: Method::DELETE,
+    path: "/my/avatar.json",
+    pattern: "/my/avatar",
+    resource_type: "my_avatar",
+    params: &[],
+    body: BodyKind::None,
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::DELETE_MY_AVATAR,
+};
+
 /// `DELETE /subtasks/{subtaskId}`.
 pub static DELETE_SUBTASK: Route = Route {
     id: "DeleteSubtask",
@@ -5794,6 +5811,23 @@ pub static UPDATE_MESSAGE_TYPE: Route = Route {
     metadata: &metadata::UPDATE_MESSAGE_TYPE,
 };
 
+/// `PUT /my/avatar.json`.
+pub static UPDATE_MY_AVATAR: Route = Route {
+    id: "UpdateMyAvatar",
+    service: "People",
+    method: Method::PUT,
+    path: "/my/avatar.json",
+    pattern: "/my/avatar",
+    resource_type: "my_avatar",
+    params: &[],
+    body: BodyKind::Multipart { field: "avatar" },
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::UPDATE_MY_AVATAR,
+};
+
 /// `PUT /my/notes.json`.
 pub static UPDATE_MY_NOTE: Route = Route {
     id: "UpdateMyNote",
@@ -6277,6 +6311,7 @@ pub static ROUTES: &[&Route] = &[
     &DELETE_FOLDER,
     &DELETE_LINEUP_MARKER,
     &DELETE_MESSAGE_TYPE,
+    &DELETE_MY_AVATAR,
     &DELETE_SUBTASK,
     &DELETE_TEMPLATE,
     &DELETE_TOOL,
@@ -6495,6 +6530,7 @@ pub static ROUTES: &[&Route] = &[
     &UPDATE_LINEUP_MARKER,
     &UPDATE_MESSAGE,
     &UPDATE_MESSAGE_TYPE,
+    &UPDATE_MY_AVATAR,
     &UPDATE_MY_NOTE,
     &UPDATE_MY_PREFERENCES,
     &UPDATE_MY_PROFILE,

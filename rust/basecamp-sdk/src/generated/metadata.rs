@@ -188,6 +188,9 @@ pub static DELETE_LINEUP_MARKER: OperationMetadata = OperationMetadata { operati
 /// `DeleteMessageType`.
 #[rustfmt::skip]
 pub static DELETE_MESSAGE_TYPE: OperationMetadata = OperationMetadata { operation: "DeleteMessageType", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `DeleteMyAvatar`.
+#[rustfmt::skip]
+pub static DELETE_MY_AVATAR: OperationMetadata = OperationMetadata { operation: "DeleteMyAvatar", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `DeleteSubtask`.
 #[rustfmt::skip]
 pub static DELETE_SUBTASK: OperationMetadata = OperationMetadata { operation: "DeleteSubtask", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -842,6 +845,9 @@ pub static UPDATE_MESSAGE: OperationMetadata = OperationMetadata { operation: "U
 /// `UpdateMessageType`.
 #[rustfmt::skip]
 pub static UPDATE_MESSAGE_TYPE: OperationMetadata = OperationMetadata { operation: "UpdateMessageType", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `UpdateMyAvatar`.
+#[rustfmt::skip]
+pub static UPDATE_MY_AVATAR: OperationMetadata = OperationMetadata { operation: "UpdateMyAvatar", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `UpdateMyNote`.
 #[rustfmt::skip]
 pub static UPDATE_MY_NOTE: OperationMetadata = OperationMetadata { operation: "UpdateMyNote", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -969,6 +975,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &DELETE_FOLDER,
     &DELETE_LINEUP_MARKER,
     &DELETE_MESSAGE_TYPE,
+    &DELETE_MY_AVATAR,
     &DELETE_SUBTASK,
     &DELETE_TEMPLATE,
     &DELETE_TOOL,
@@ -1187,6 +1194,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &UPDATE_LINEUP_MARKER,
     &UPDATE_MESSAGE,
     &UPDATE_MESSAGE_TYPE,
+    &UPDATE_MY_AVATAR,
     &UPDATE_MY_NOTE,
     &UPDATE_MY_PREFERENCES,
     &UPDATE_MY_PROFILE,
