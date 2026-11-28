@@ -162,9 +162,13 @@ def _assert_single_avatar_part(request: httpx.Request, data: bytes, filename: st
     body = request.content
     assert body.count(b"Content-Disposition: form-data;") == 1
     expected = (
-        f'Content-Disposition: form-data; name="avatar"; filename="{filename}"\r\n'
-        f"Content-Type: {content_type}\r\n\r\n"
-    ).encode() + data + b"\r\n"
+        (
+            f'Content-Disposition: form-data; name="avatar"; filename="{filename}"\r\n'
+            f"Content-Type: {content_type}\r\n\r\n"
+        ).encode()
+        + data
+        + b"\r\n"
+    )
     assert expected in body
 
 
@@ -173,7 +177,9 @@ class TestMyAvatar:
     def test_update_my_avatar_sends_one_avatar_file_part(self):
         route = respx.put(MY_AVATAR).mock(return_value=httpx.Response(204))
 
-        result = _people().update_my_avatar(content=b"\x89PNG avatar-bytes", filename="me.png", content_type="image/png")
+        result = _people().update_my_avatar(
+            content=b"\x89PNG avatar-bytes", filename="me.png", content_type="image/png"
+        )
 
         assert result is None
         assert route.call_count == 1
@@ -212,7 +218,9 @@ class TestMyAvatar:
         route = respx.put(MY_AVATAR).mock(return_value=httpx.Response(204))
 
         account = AsyncClient(access_token="test-token").for_account("12345")
-        result = await account.people.update_my_avatar(content=b"gif-bytes", filename="me.gif", content_type="image/gif")
+        result = await account.people.update_my_avatar(
+            content=b"gif-bytes", filename="me.gif", content_type="image/gif"
+        )
 
         assert result is None
         _assert_single_avatar_part(route.calls[0].request, b"gif-bytes", "me.gif", "image/gif")
