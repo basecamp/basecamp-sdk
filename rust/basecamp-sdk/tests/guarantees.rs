@@ -139,11 +139,11 @@ fn configuration_is_validated() {
 #[test]
 fn the_route_table_is_complete_and_consistent() {
     use basecamp_sdk::routes::{ROUTES, Route};
-    assert_eq!(ROUTES.len(), 300);
-    assert_eq!(basecamp_sdk::metadata::OPERATIONS.len(), 300);
+    assert_eq!(ROUTES.len(), 302);
+    assert_eq!(basecamp_sdk::metadata::OPERATIONS.len(), 302);
     let mut ids: Vec<&str> = ROUTES.iter().map(|route| route.id).collect();
     ids.dedup();
-    assert_eq!(ids.len(), 300, "operation ids are unique");
+    assert_eq!(ids.len(), 302, "operation ids are unique");
     for route in ROUTES {
         assert_eq!(route.id, route.metadata.operation);
         assert!(route.path.starts_with('/'));
@@ -154,7 +154,7 @@ fn the_route_table_is_complete_and_consistent() {
         .iter()
         .filter(|route| route.metadata.idempotent)
         .count();
-    assert_eq!(idempotent, 105);
+    assert_eq!(idempotent, 107);
     let readonly = ROUTES
         .iter()
         .filter(|route| route.metadata.readonly)
@@ -232,7 +232,11 @@ fn the_route_table_is_complete_and_consistent() {
         basecamp_sdk::routes::UPDATE_PROJECT_LOGO.body,
         basecamp_sdk::routes::BodyKind::Multipart { field: "logo" }
     );
-    assert_eq!(basecamp_sdk::OPERATION_COUNT, 300);
+    assert_eq!(
+        basecamp_sdk::routes::UPDATE_MY_AVATAR.body,
+        basecamp_sdk::routes::BodyKind::Multipart { field: "avatar" }
+    );
+    assert_eq!(basecamp_sdk::OPERATION_COUNT, 302);
 }
 
 #[test]

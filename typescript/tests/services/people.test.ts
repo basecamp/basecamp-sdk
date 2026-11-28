@@ -1,7 +1,7 @@
 /**
  * Tests for the PeopleService (generated from OpenAPI spec)
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
@@ -338,6 +338,82 @@ describe("PeopleService", () => {
         expect(error).toBeInstanceOf(BasecampError);
         expect((error as BasecampError).httpStatus).toBe(403);
       }
+    });
+  });
+
+  describe("my avatar", () => {
+    it("uploads exact bytes in the avatar multipart field and returns void", async () => {
+      let captured: Request | undefined;
+      server.use(http.put(`${BASE_URL}/my/avatar.json`, ({ request }) => {
+        captured = request;
+        return new HttpResponse(null, { status: 204 });
+      }));
+
+      await expect(
+        client.people.updateMyAvatar(new Blob(["avatar-bytes"], { type: "image/png" }), "me.png")
+      ).resolves.toBeUndefined();
+
+      expect(captured!.method).toBe("PUT");
+      const form = await captured!.formData();
+      expect([...form.keys()]).toEqual(["avatar"]);
+      const file = form.get("avatar") as File;
+      expect(file.name).toBe("me.png");
+      expect(file.type).toBe("image/png");
+      expect(await file.text()).toBe("avatar-bytes");
+      expect(new URL(captured!.url).search).toBe("");
+    });
+
+    it("reports my_avatar for upload hooks", async () => {
+      const onOperationStart = vi.fn();
+      const observed = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: { onOperationStart },
+      });
+      server.use(http.put(`${BASE_URL}/my/avatar.json`, () =>
+        new HttpResponse(null, { status: 204 })
+      ));
+
+      await observed.people.updateMyAvatar(new Blob(["x"], { type: "image/png" }), "me.png");
+
+      expect(onOperationStart).toHaveBeenCalledWith(expect.objectContaining({
+        operation: "UpdateMyAvatar",
+        resourceType: "my_avatar",
+        isMutation: true,
+      }));
+    });
+
+    it("surfaces a refused image as a validation error", async () => {
+      server.use(http.put(`${BASE_URL}/my/avatar.json`, () =>
+        HttpResponse.json({ error: "Avatar is not an allowed image type" }, { status: 422 })
+      ));
+
+      await expect(
+        client.people.updateMyAvatar(new Blob(["not an image"]), "a.txt")
+      ).rejects.toMatchObject({ code: "validation", httpStatus: 422 });
+    });
+
+    it("deletes the avatar and returns void", async () => {
+      let method: string | undefined;
+      server.use(http.delete(`${BASE_URL}/my/avatar.json`, ({ request }) => {
+        method = request.method;
+        return new HttpResponse(null, { status: 204 });
+      }));
+
+      await expect(client.people.deleteMyAvatar()).resolves.toBeUndefined();
+      expect(method).toBe("DELETE");
+    });
+
+    it("surfaces a 403 on delete as forbidden", async () => {
+      server.use(http.delete(`${BASE_URL}/my/avatar.json`, () =>
+        HttpResponse.json({ error: "Access denied" }, { status: 403 })
+      ));
+
+      await expect(client.people.deleteMyAvatar()).rejects.toMatchObject({
+        code: "forbidden",
+        httpStatus: 403,
+      });
     });
   });
 });
