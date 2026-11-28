@@ -7275,6 +7275,9 @@ pub struct UpdateMessageTypeRequestContent {
 /// `UpdateMessageTypeResponseContent`.
 pub type UpdateMessageTypeResponseContent = MessageType;
 
+/// A raw byte payload, sent as the request body.
+pub type UpdateMyAvatarInputPayload = Vec<u8>;
+
 /// The `UpdateMyNoteRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateMyNoteRequestContent {

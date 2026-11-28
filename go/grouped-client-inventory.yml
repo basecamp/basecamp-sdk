@@ -261,6 +261,7 @@ not_grouped:
   - DeleteFolder
   - DeleteLineupMarker
   - DeleteMessageType
+  - DeleteMyAvatar
   - DeleteSubtask
   - DeleteTool
   - DeleteWormhole
@@ -422,6 +423,7 @@ not_grouped:
   - UpdateHillChartSettings
   - UpdateLineupMarker
   - UpdateMessageType
+  - UpdateMyAvatar
   - UpdateMyNote
   - UpdateMyPreferences
   - UpdateMyProfile

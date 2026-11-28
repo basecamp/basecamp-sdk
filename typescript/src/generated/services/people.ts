@@ -137,6 +137,61 @@ export class PeopleService extends BaseService {
   }
 
   /**
+   * Upload or replace the current user's avatar.
+   * @param file - File or Blob to upload
+   * @param filename - Display name for the uploaded file
+   * @returns void
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * await client.people.updateMyAvatar();
+   * ```
+   */
+  async updateMyAvatar(file: Blob | File, filename?: string): Promise<void> {
+    const url = `${this.baseUrl}` +
+      `/my/avatar.json`;
+    return this.requestMultipartUpload(
+      {
+        service: "People",
+        operation: "UpdateMyAvatar",
+        resourceType: "my_avatar",
+        isMutation: true,
+      },
+      url,
+      "PUT",
+      file,
+      "avatar",
+      filename,
+    );
+  }
+
+
+  /**
+   * Remove the current user's avatar, leaving their initials.
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.people.deleteMyAvatar();
+   * ```
+   */
+  async deleteMyAvatar(): Promise<void> {
+    await this.request(
+      {
+        service: "People",
+        operation: "DeleteMyAvatar",
+        resourceType: "my_avatar",
+        isMutation: true,
+      },
+      () =>
+        this.client.DELETE("/my/avatar.json", {
+        })
+    );
+  }
+
+  /**
    * Get the current user's preferences
    * @returns The my_preference
    *

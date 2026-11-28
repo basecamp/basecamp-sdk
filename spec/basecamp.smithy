@@ -376,6 +376,8 @@ service Basecamp {
 
     // Batch 18 - People (Profile & Preferences)
     UpdateMyProfile,
+    UpdateMyAvatar,
+    DeleteMyAvatar,
     GetMyPreferences,
     UpdateMyPreferences,
 
@@ -6973,6 +6975,52 @@ enum FirstWeekDay {
 }
 
 structure UpdateMyProfileOutput {}
+
+/// Upload or replace the current user's avatar (returns 204 No Content).
+/// Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIF, HEIC.
+/// Users only: an agent's token gets 403.
+@idempotent
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@basecampMultipart(field: "avatar")
+@http(method: "PUT", uri: "/{accountId}/my/avatar.json", code: 204)
+operation UpdateMyAvatar {
+  input: UpdateMyAvatarInput
+  output: UpdateMyAvatarOutput
+  errors: [ValidationError, ForbiddenError, UnauthorizedError, RateLimitError, InternalServerError]
+}
+
+structure UpdateMyAvatarInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpPayload
+  data: Blob
+}
+
+structure UpdateMyAvatarOutput {}
+
+/// Remove the current user's avatar, leaving their initials (returns 204 No Content).
+/// Users only: an agent's token gets 403.
+@idempotent
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/my/avatar.json", code: 204)
+operation DeleteMyAvatar {
+  input: DeleteMyAvatarInput
+  output: DeleteMyAvatarOutput
+  errors: [ForbiddenError, UnauthorizedError, RateLimitError, InternalServerError]
+}
+
+structure DeleteMyAvatarInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure DeleteMyAvatarOutput {}
 
 /// List all active people on a project
 ///

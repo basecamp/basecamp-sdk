@@ -8,6 +8,8 @@
     clippy::doc_markdown
 )]
 
+use bytes::Bytes;
+
 use crate::client::AccountClient;
 use crate::error::Error;
 use crate::generated::routes;
@@ -43,6 +45,15 @@ impl<'a> PeopleService<'a> {
     /// The client this service sends through.
     pub fn client(&self) -> &'a AccountClient {
         self.client
+    }
+
+    /// Remove the current user's avatar, leaving their initials (returns 204 No Content).
+    /// Users only: an agent's token gets 403.
+    ///
+    /// `DELETE /my/avatar.json` — idempotent; retries up to 2 attempt(s) on 429, 503.
+    pub async fn delete_my_avatar(&self) -> Result<(), Error> {
+        let operation = self.client.operation(&routes::DELETE_MY_AVATAR, &[]);
+        self.client.send_unit(operation).await
     }
 
     /// Disable out of office for a person.
@@ -198,6 +209,22 @@ impl<'a> PeopleService<'a> {
             .client
             .operation(&routes::GET_OUT_OF_OFFICE, &[&person_id]);
         self.client.send(operation).await
+    }
+
+    /// Upload or replace the current user's avatar (returns 204 No Content).
+    /// Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIF, HEIC.
+    /// Users only: an agent's token gets 403.
+    ///
+    /// `PUT /my/avatar.json` — idempotent; retries up to 2 attempt(s) on 429, 503.
+    pub async fn update_my_avatar(
+        &self,
+        filename: &str,
+        content_type: &str,
+        body: Bytes,
+    ) -> Result<(), Error> {
+        let mut operation = self.client.operation(&routes::UPDATE_MY_AVATAR, &[]);
+        operation.multipart("avatar", filename, content_type, &body);
+        self.client.send_unit(operation).await
     }
 
     /// Update the current user's preferences.

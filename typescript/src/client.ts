@@ -479,7 +479,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("todolists", () => new TodolistsService(client, hooks, fetchPage, maxPages));
   defineService("todosets", () => new TodosetsService(client, hooks, fetchPage, maxPages));
   defineService("hillCharts", () => new HillChartsService(client, hooks, fetchPage, maxPages));
-  defineService("people", () => new PeopleService(client, hooks, fetchPage, maxPages));
+  defineService("people", () => new PeopleService(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl, enableRetry));
   defineService("authorization", () => new AuthorizationService(client, hooks, authStrategy, userAgent));
   defineService("messages", () => new MessagesService(client, hooks, fetchPage, maxPages));
   // The mention composites resolve person ids through the client's own people

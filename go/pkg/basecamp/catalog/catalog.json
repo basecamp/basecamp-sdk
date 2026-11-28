@@ -3535,6 +3535,37 @@
       ]
     },
     {
+      "operationId": "DeleteMyAvatar",
+      "tag": "People",
+      "method": "DELETE",
+      "path": "/{accountId}/my/avatar.json",
+      "doc": "Remove the current user's avatar, leaving their initials (returns 204 No Content).\nUsers only: an agent's token gets 403.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
       "operationId": "DeleteSubtask",
       "tag": "Subtasks",
       "method": "DELETE",
@@ -14415,6 +14446,39 @@
         },
         "type": "object"
       }
+    },
+    {
+      "operationId": "UpdateMyAvatar",
+      "tag": "People",
+      "method": "PUT",
+      "path": "/{accountId}/my/avatar.json",
+      "doc": "Upload or replace the current user's avatar (returns 204 No Content).\nAccepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIF, HEIC.\nUsers only: an agent's token gets 403.",
+      "readonly": false,
+      "idempotent": true,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        }
+      ],
+      "bodyMediaType": "multipart/form-data",
+      "bodyRequired": true
     },
     {
       "operationId": "UpdateMyNote",

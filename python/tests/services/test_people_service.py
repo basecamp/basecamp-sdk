@@ -151,3 +151,76 @@ class TestAsyncProjectClients:
         assert (await people.enable_project_clients(project_id=100)) == {"clients_enabled": True}
         assert (await people.disable_project_clients(project_id=100)) == {"clients_enabled": False}
         await client.close()
+
+
+MY_AVATAR = f"{BASE}/my/avatar.json"
+
+
+def _assert_single_avatar_part(request: httpx.Request, data: bytes, filename: str, content_type: str) -> None:
+    assert request.method == "PUT"
+    assert request.headers["content-type"].startswith("multipart/form-data; boundary=")
+    body = request.content
+    assert body.count(b"Content-Disposition: form-data;") == 1
+    expected = (
+        (
+            f'Content-Disposition: form-data; name="avatar"; filename="{filename}"\r\n'
+            f"Content-Type: {content_type}\r\n\r\n"
+        ).encode()
+        + data
+        + b"\r\n"
+    )
+    assert expected in body
+
+
+class TestMyAvatar:
+    @respx.mock
+    def test_update_my_avatar_sends_one_avatar_file_part(self):
+        route = respx.put(MY_AVATAR).mock(return_value=httpx.Response(204))
+
+        result = _people().update_my_avatar(
+            content=b"\x89PNG avatar-bytes", filename="me.png", content_type="image/png"
+        )
+
+        assert result is None
+        assert route.call_count == 1
+        _assert_single_avatar_part(route.calls[0].request, b"\x89PNG avatar-bytes", "me.png", "image/png")
+
+    @respx.mock
+    def test_update_my_avatar_refused_image(self):
+        respx.put(MY_AVATAR).mock(
+            return_value=httpx.Response(422, json={"error": "Avatar is not an allowed image type"})
+        )
+
+        with pytest.raises(ValidationError) as excinfo:
+            _people().update_my_avatar(content=b"not an image", filename="a.txt", content_type="text/plain")
+
+        assert excinfo.value.http_status == 422
+
+    @respx.mock
+    def test_delete_my_avatar(self):
+        route = respx.delete(MY_AVATAR).mock(return_value=httpx.Response(204))
+
+        assert _people().delete_my_avatar() is None
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_delete_my_avatar_forbidden(self):
+        respx.delete(MY_AVATAR).mock(return_value=httpx.Response(403, json={"error": "Access denied"}))
+
+        with pytest.raises(ForbiddenError) as excinfo:
+            _people().delete_my_avatar()
+
+        assert excinfo.value.http_status == 403
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_update_my_avatar_sends_one_avatar_file_part(self):
+        route = respx.put(MY_AVATAR).mock(return_value=httpx.Response(204))
+
+        account = AsyncClient(access_token="test-token").for_account("12345")
+        result = await account.people.update_my_avatar(
+            content=b"gif-bytes", filename="me.gif", content_type="image/gif"
+        )
+
+        assert result is None
+        _assert_single_avatar_part(route.calls[0].request, b"gif-bytes", "me.gif", "image/gif")

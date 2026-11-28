@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -322,6 +323,77 @@ func (s *PeopleService) UpdateMyProfile(ctx context.Context, req *UpdateMyProfil
 	}
 
 	resp, err := s.client.parent.gen.UpdateMyProfileWithResponse(ctx, s.client.accountID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// UpdateMyAvatar uploads or replaces the current user's avatar.
+// avatar is the image data, filename is the file name (e.g., "avatar.png"),
+// and contentType is the MIME type (e.g., "image/png").
+// Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIF, HEIC. Users only.
+func (s *PeopleService) UpdateMyAvatar(ctx context.Context, avatar io.Reader, filename, contentType string) (err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "UpdateMyAvatar",
+		ResourceType: "person", IsMutation: true,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if avatar == nil {
+		err = ErrUsage("avatar reader is required")
+		return err
+	}
+	if filename == "" {
+		err = ErrUsage("filename is required")
+		return err
+	}
+	if contentType == "" {
+		err = ErrUsage("content type is required")
+		return err
+	}
+
+	body, multipartContentType, err := multipartFileBody("avatar", avatar, filename, contentType)
+	if err != nil {
+		return err
+	}
+
+	resp, err := s.client.parent.gen.UpdateMyAvatarWithBodyWithResponse(
+		ctx,
+		s.client.accountID,
+		multipartContentType,
+		body,
+	)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// DeleteMyAvatar removes the current user's avatar, leaving their initials.
+// Users only.
+func (s *PeopleService) DeleteMyAvatar(ctx context.Context) (err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "DeleteMyAvatar",
+		ResourceType: "person", IsMutation: true,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.DeleteMyAvatarWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return err
 	}

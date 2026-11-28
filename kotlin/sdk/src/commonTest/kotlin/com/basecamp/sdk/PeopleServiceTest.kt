@@ -370,4 +370,100 @@ class PeopleServiceTest {
 
         client.close()
     }
+
+    @Test
+    fun updateMyAvatarSendsOneAvatarFilePart() = runTest {
+        var capturedMethod: HttpMethod? = null
+        var capturedPath: String? = null
+        var capturedContentType: String? = null
+        var capturedBody: String? = null
+        val client = mockClient { request ->
+            capturedMethod = request.method
+            capturedPath = request.url.encodedPath
+            capturedContentType = request.body.contentType?.toString()
+            capturedBody = request.body.toByteArray().decodeToString()
+            respond(content = "", status = HttpStatusCode.NoContent)
+        }
+
+        val result: Unit = client.forAccount("12345").people.updateMyAvatar(
+            data = "avatar-bytes".encodeToByteArray(),
+            filename = "me.png",
+            contentType = "image/png",
+        )
+
+        assertEquals(Unit, result)
+        assertEquals(HttpMethod.Put, capturedMethod)
+        assertEquals("/12345/my/avatar.json", capturedPath)
+        assertTrue(capturedContentType!!.startsWith("multipart/form-data"), capturedContentType)
+        val body = capturedBody!!
+        assertEquals(1, Regex("Content-Disposition: form-data").findAll(body).count(), body)
+        assertTrue(body.contains("name=\"avatar\"; filename=\"me.png\""), body)
+        assertTrue(body.contains("Content-Type: image/png"), body)
+        assertTrue(body.contains("\r\n\r\navatar-bytes\r\n"), body)
+
+        client.close()
+    }
+
+    @Test
+    fun updateMyAvatarRefusedImageThrowsValidation() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = """{"error": "Avatar is not an allowed image type"}""",
+                status = HttpStatusCode.UnprocessableEntity,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        try {
+            client.forAccount("12345").people.updateMyAvatar(
+                data = "not an image".encodeToByteArray(),
+                filename = "a.txt",
+                contentType = "text/plain",
+            )
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Validation) {
+            assertEquals(422, e.httpStatus)
+        }
+
+        client.close()
+    }
+
+    @Test
+    fun deleteMyAvatar() = runTest {
+        var capturedMethod: HttpMethod? = null
+        var capturedPath: String? = null
+        val client = mockClient { request ->
+            capturedMethod = request.method
+            capturedPath = request.url.encodedPath
+            respond(content = "", status = HttpStatusCode.NoContent)
+        }
+
+        val result: Unit = client.forAccount("12345").people.deleteMyAvatar()
+
+        assertEquals(Unit, result)
+        assertEquals(HttpMethod.Delete, capturedMethod)
+        assertEquals("/12345/my/avatar.json", capturedPath)
+
+        client.close()
+    }
+
+    @Test
+    fun deleteMyAvatarForbiddenThrows() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = """{"error": "Access denied"}""",
+                status = HttpStatusCode.Forbidden,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        try {
+            client.forAccount("12345").people.deleteMyAvatar()
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Forbidden) {
+            assertEquals(403, e.httpStatus)
+        }
+
+        client.close()
+    }
 }

@@ -237,4 +237,53 @@ class PeopleServiceTest < Minitest::Test
       @account.people.disable_project_clients(project_id: 100)
     end
   end
+
+  def test_update_my_avatar_sends_one_avatar_file_part
+    captured = nil
+    stub = stub_request(:put, "#{BASE_URL}/12345/my/avatar.json")
+      .with { |request| captured = request }
+      .to_return(status: 204)
+
+    result = @account.people.update_my_avatar(io: "avatar-bytes", filename: "me.png", content_type: "image/png")
+
+    assert_nil result
+    assert_requested stub
+    assert_match %r{\Amultipart/form-data; boundary=}, captured.headers["Content-Type"]
+    dispositions = captured.body.scan(/Content-Disposition: form-data; name="([^"]+)"/).flatten
+    assert_equal [ "avatar" ], dispositions
+    assert_match(/name="avatar"; filename="me\.png"\r\nContent-Type: image\/png\r\n\r\navatar-bytes\r\n/, captured.body)
+  end
+
+  def test_update_my_avatar_refused_image
+    stub_request(:put, "#{BASE_URL}/12345/my/avatar.json")
+      .to_return(
+        status: 422,
+        body: { error: "Avatar is not an allowed image type" }.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @account.people.update_my_avatar(io: "not an image", filename: "a.txt", content_type: "text/plain")
+    end
+
+    assert_equal 422, error.http_status
+  end
+
+  def test_delete_my_avatar
+    stub = stub_request(:delete, "#{BASE_URL}/12345/my/avatar.json").to_return(status: 204)
+
+    assert_nil @account.people.delete_my_avatar
+    assert_requested stub
+  end
+
+  def test_delete_my_avatar_forbidden
+    stub_request(:delete, "#{BASE_URL}/12345/my/avatar.json")
+      .to_return(status: 403, body: { error: "Access denied" }.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.people.delete_my_avatar
+    end
+
+    assert_equal 403, error.http_status
+  end
 end

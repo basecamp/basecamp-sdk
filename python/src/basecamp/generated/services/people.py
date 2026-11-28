@@ -26,6 +26,38 @@ class PeopleService(BaseService):
             operation="ListPingablePeople",
         )
 
+    def update_my_avatar(self, *, content: bytes, filename: str, content_type: str) -> None:
+        """Upload or replace the current user's avatar (returns 204 No Content).
+        Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIF, HEIC.
+        Users only: an agent's token gets 403.
+
+        Args:
+            content: Raw bytes of the file to upload.
+            filename: Filename for the uploaded file.
+            content_type: MIME content type of the upload (e.g. "image/png").
+        """
+        self._request_multipart_void(
+            OperationInfo(service="people", operation="update_my_avatar", is_mutation=True),
+            "PUT",
+            "/my/avatar.json",
+            field="avatar",
+            content=content,
+            filename=filename,
+            content_type=content_type,
+            operation="UpdateMyAvatar",
+        )
+
+    def delete_my_avatar(self) -> None:
+        """Remove the current user's avatar, leaving their initials (returns 204 No Content).
+        Users only: an agent's token gets 403.
+        """
+        self._request_void(
+            OperationInfo(service="people", operation="delete_my_avatar", is_mutation=True),
+            "DELETE",
+            "/my/avatar.json",
+            operation="DeleteMyAvatar",
+        )
+
     def get_my_preferences(self) -> dict[str, Any]:
         """Get the current user's preferences."""
         return self._request(
@@ -332,6 +364,38 @@ class AsyncPeopleService(AsyncBaseService):
             "/circles/people.json",
             max_items=max_items,
             operation="ListPingablePeople",
+        )
+
+    async def update_my_avatar(self, *, content: bytes, filename: str, content_type: str) -> None:
+        """Upload or replace the current user's avatar (returns 204 No Content).
+        Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIF, HEIC.
+        Users only: an agent's token gets 403.
+
+        Args:
+            content: Raw bytes of the file to upload.
+            filename: Filename for the uploaded file.
+            content_type: MIME content type of the upload (e.g. "image/png").
+        """
+        await self._request_multipart_void(
+            OperationInfo(service="people", operation="update_my_avatar", is_mutation=True),
+            "PUT",
+            "/my/avatar.json",
+            field="avatar",
+            content=content,
+            filename=filename,
+            content_type=content_type,
+            operation="UpdateMyAvatar",
+        )
+
+    async def delete_my_avatar(self) -> None:
+        """Remove the current user's avatar, leaving their initials (returns 204 No Content).
+        Users only: an agent's token gets 403.
+        """
+        await self._request_void(
+            OperationInfo(service="people", operation="delete_my_avatar", is_mutation=True),
+            "DELETE",
+            "/my/avatar.json",
+            operation="DeleteMyAvatar",
         )
 
     async def get_my_preferences(self) -> dict[str, Any]:

@@ -368,6 +368,8 @@ apply DisableOutOfOffice @tags(["People"])
 
 // People (Profile & Preferences)
 apply UpdateMyProfile @tags(["People"])
+apply UpdateMyAvatar @tags(["People"])
+apply DeleteMyAvatar @tags(["People"])
 apply GetMyPreferences @tags(["People"])
 apply UpdateMyPreferences @tags(["People"])
 

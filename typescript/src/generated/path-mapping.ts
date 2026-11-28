@@ -261,6 +261,8 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/my/assignments.json": "GetMyAssignments",
   "GET:/{accountId}/my/assignments/completed.json": "GetMyCompletedAssignments",
   "GET:/{accountId}/my/assignments/due.json": "GetMyDueAssignments",
+  "DELETE:/{accountId}/my/avatar.json": "DeleteMyAvatar",
+  "PUT:/{accountId}/my/avatar.json": "UpdateMyAvatar",
   "GET:/{accountId}/my/bookmarks.json": "ListMyBookmarks",
   "GET:/{accountId}/my/drafts.json": "ListMyDrafts",
   "GET:/{accountId}/my/notes.json": "GetMyNote",
